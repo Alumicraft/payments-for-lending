@@ -54,7 +54,7 @@ class ACHTransaction(Document):
     def _set_max_retries_from_settings(self):
         """Set max retries from ACH Settings if this is a new transaction."""
         if self.is_new() and not self.max_retries:
-            from payments.payments.doctype.ach_settings.ach_settings import get_ach_settings
+            from payments_for_lending.payments_for_lending.doctype.ach_settings.ach_settings import get_ach_settings
             settings = get_ach_settings()
             self.max_retries = settings.max_retry_attempts
 
@@ -69,7 +69,7 @@ class ACHTransaction(Document):
             frappe.throw(_("Authorization is not active"))
 
         # Import and use ACHQ client
-        from payments.api.achq_integration import ACHQClient
+        from payments_for_lending.api.achq_integration import ACHQClient
 
         # Get customer name for the API call
         customer_name = frappe.db.get_value("Customer", self.customer, "customer_name")
@@ -152,7 +152,7 @@ class ACHTransaction(Document):
 
         # If initiated, try to cancel with ACHQ
         if self.status == "Initiated" and self.achq_transaction_id:
-            from payments.api.achq_integration import ACHQClient
+            from payments_for_lending.api.achq_integration import ACHQClient
             client = ACHQClient()
             result = client.cancel_payment(self.achq_transaction_id)
             if not result.get("success"):
@@ -192,7 +192,7 @@ class ACHTransaction(Document):
 
     def schedule_retry(self):
         """Schedule a retry transaction."""
-        from payments.payments.doctype.ach_settings.ach_settings import get_ach_settings
+        from payments_for_lending.payments_for_lending.doctype.ach_settings.ach_settings import get_ach_settings
         settings = get_ach_settings()
 
         self.next_retry_date = add_days(today(), settings.retry_delay_days)
@@ -233,9 +233,12 @@ class ACHTransaction(Document):
 
     def create_payment_entry(self):
         """Create ERPNext Payment Entry for successful transaction."""
+        from payments_for_lending.payments_for_lending.doctype.ach_settings.ach_settings import get_ach_settings
+
         try:
-            # Get loan details
+            # Get loan details and ACH settings
             loan = frappe.get_doc("Loan", self.loan)
+            settings = get_ach_settings()
 
             # Check if payment entry already exists (idempotency)
             existing = frappe.db.exists(
@@ -255,12 +258,19 @@ class ACHTransaction(Document):
             payment_entry.reference_date = getdate(self.completed_date)
             payment_entry.company = loan.company
 
-            # Set accounts - these should be configured in the system
-            payment_entry.paid_to = frappe.get_cached_value(
-                "Company", loan.company, "default_cash_account"
-            ) or frappe.get_cached_value(
-                "Company", loan.company, "default_bank_account"
-            )
+            # Use configured ACH clearing account, fall back to company defaults
+            if settings.ach_clearing_account:
+                payment_entry.paid_to = settings.ach_clearing_account
+            else:
+                payment_entry.paid_to = frappe.get_cached_value(
+                    "Company", loan.company, "default_cash_account"
+                ) or frappe.get_cached_value(
+                    "Company", loan.company, "default_bank_account"
+                )
+
+            # Set mode of payment if configured
+            if settings.mode_of_payment:
+                payment_entry.mode_of_payment = settings.mode_of_payment
 
             # Add reference to the loan
             payment_entry.append("references", {
@@ -283,7 +293,7 @@ class ACHTransaction(Document):
 
     def send_notification(self, notification_type):
         """Send notification based on transaction status."""
-        from payments.payments.doctype.ach_settings.ach_settings import get_ach_settings
+        from payments_for_lending.payments_for_lending.doctype.ach_settings.ach_settings import get_ach_settings
         settings = get_ach_settings()
 
         should_send = False

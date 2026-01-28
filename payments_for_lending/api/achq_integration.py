@@ -450,47 +450,6 @@ def setup_bank_account(customer, routing_number, account_number, account_type, i
 
 
 @frappe.whitelist()
-def get_authorization_status(loan):
-    """
-    Get the effective ACH authorization for a loan.
-
-    Uses resolution logic:
-    1. Check loan.ach_payment_account (if active)
-    2. Fall back to customer's default (if active)
-
-    Args:
-        loan: Loan name
-
-    Returns:
-        dict with has_authorization, status, bank_name, account_last4, authorization_name, is_override
-    """
-    from payments_for_lending.payments_for_lending.doctype.ach_authorization.ach_authorization import get_loan_payment_account
-
-    auth = get_loan_payment_account(loan)
-
-    if auth:
-        # Check if this is an override or using default
-        loan_doc = frappe.get_doc("Loan", loan)
-        is_override = bool(loan_doc.get("ach_payment_account"))
-
-        return {
-            "has_authorization": True,
-            "authorization_name": auth.name,
-            "status": auth.status,
-            "bank_name": auth.bank_name,
-            "account_last4": auth.bank_account_last4,
-            "account_type": auth.account_type,
-            "is_default": auth.is_default,
-            "is_override": is_override,
-            "token_source": auth.token_source,
-        }
-
-    return {
-        "has_authorization": False,
-    }
-
-
-@frappe.whitelist()
 def pause_authorization(authorization_name, reason=None):
     """Pause an ACH authorization."""
     auth = frappe.get_doc("ACH Authorization", authorization_name)

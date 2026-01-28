@@ -163,9 +163,3 @@ def get_loan_payment_account(loan):
 
     # Fall back to customer's default
     return get_customer_default_authorization(loan_doc.applicant)
-
-
-# Keep old function name for backward compatibility
-def get_active_authorization(loan):
-    """Get the active ACH Authorization for a loan (legacy function)."""
-    return get_loan_payment_account(loan)

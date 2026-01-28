@@ -31,7 +31,11 @@
   "notifications_section",
   "send_upcoming_debit_notification",
   "send_success_notification",
-  "send_failure_notification"
+  "send_failure_notification",
+  "accounting_section",
+  "ach_clearing_account",
+  "ach_bank_account",
+  "mode_of_payment"
  ],
  "fields": [
   {
@@ -214,6 +218,35 @@
    "fieldname": "send_failure_notification",
    "fieldtype": "Check",
    "label": "Send Failure Notification",
+   "depends_on": "enable_ach_autopay"
+  },
+  {
+   "fieldname": "accounting_section",
+   "fieldtype": "Section Break",
+   "label": "Accounting"
+  },
+  {
+   "fieldname": "ach_clearing_account",
+   "fieldtype": "Link",
+   "options": "Account",
+   "label": "ACH Clearing Account",
+   "description": "Account for pending ACH transactions before funds clear",
+   "depends_on": "enable_ach_autopay"
+  },
+  {
+   "fieldname": "ach_bank_account",
+   "fieldtype": "Link",
+   "options": "Account",
+   "label": "ACH Bank Account",
+   "description": "Bank account where cleared ACH funds are deposited",
+   "depends_on": "enable_ach_autopay"
+  },
+  {
+   "fieldname": "mode_of_payment",
+   "fieldtype": "Link",
+   "options": "Mode of Payment",
+   "label": "Mode of Payment",
+   "description": "Mode of payment for ACH transactions (e.g., 'ACH Transfer')",
    "depends_on": "enable_ach_autopay"
   }
  ],
