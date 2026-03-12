@@ -1,0 +1,380 @@
+[
+  {
+    "name": "Customer-dealer_information_section",
+    "dt": "Customer",
+    "fieldname": "dealer_information_section",
+    "fieldtype": "Section Break",
+    "label": "Dealer Information",
+    "insert_after": "customer_details",
+    "depends_on": "eval:doc.customer_group=='Dealer'",
+    "collapsible": 0
+  },
+  {
+    "name": "Customer-dealer_license_no",
+    "dt": "Customer",
+    "fieldname": "dealer_license_no",
+    "fieldtype": "Data",
+    "label": "Dealer License No",
+    "insert_after": "dealer_information_section"
+  },
+  {
+    "name": "Customer-license_expiry_date",
+    "dt": "Customer",
+    "fieldname": "license_expiry_date",
+    "fieldtype": "Date",
+    "label": "License Expiry Date",
+    "insert_after": "dealer_license_no"
+  },
+  {
+    "name": "Customer-sellers_permit_no",
+    "dt": "Customer",
+    "fieldname": "sellers_permit_no",
+    "fieldtype": "Data",
+    "label": "Seller's Permit No",
+    "insert_after": "license_expiry_date"
+  },
+  {
+    "name": "Customer-column_break_dealer1",
+    "dt": "Customer",
+    "fieldname": "column_break_dealer1",
+    "fieldtype": "Column Break",
+    "insert_after": "sellers_permit_no"
+  },
+  {
+    "name": "Customer-w9_status",
+    "dt": "Customer",
+    "fieldname": "w9_status",
+    "fieldtype": "Select",
+    "label": "W-9 Status",
+    "options": "\nPending\nReceived\nVerified",
+    "insert_after": "column_break_dealer1"
+  },
+  {
+    "name": "Customer-mifa_required",
+    "dt": "Customer",
+    "fieldname": "mifa_required",
+    "fieldtype": "Check",
+    "label": "MIFA Required (Floored Dealer)",
+    "insert_after": "w9_status"
+  },
+  {
+    "name": "Customer-dealer_agreement_status",
+    "dt": "Customer",
+    "fieldname": "dealer_agreement_status",
+    "fieldtype": "Select",
+    "label": "Dealer Agreement Status",
+    "options": "\nNot Sent\nSent\nSigned",
+    "insert_after": "mifa_required"
+  },
+  {
+    "name": "Customer-master_dealer_list_updated",
+    "dt": "Customer",
+    "fieldname": "master_dealer_list_updated",
+    "fieldtype": "Check",
+    "label": "Master Dealer List Updated",
+    "insert_after": "dealer_agreement_status"
+  },
+  {
+    "name": "Customer-dcr_application_section",
+    "dt": "Customer",
+    "fieldname": "dcr_application_section",
+    "fieldtype": "Section Break",
+    "label": "DCR Application",
+    "insert_after": "master_dealer_list_updated",
+    "depends_on": "eval:doc.customer_group=='Dealer'"
+  },
+  {
+    "name": "Customer-dcr_application_status",
+    "dt": "Customer",
+    "fieldname": "dcr_application_status",
+    "fieldtype": "Select",
+    "label": "DCR Application Status",
+    "options": "\nInitiated\nIn Review\nApproved\nRejected",
+    "insert_after": "dcr_application_section"
+  },
+  {
+    "name": "Customer-dcr_account_no",
+    "dt": "Customer",
+    "fieldname": "dcr_account_no",
+    "fieldtype": "Data",
+    "label": "DCR Account No",
+    "insert_after": "dcr_application_status"
+  },
+  {
+    "name": "Customer-column_break_dcr1",
+    "dt": "Customer",
+    "fieldname": "column_break_dcr1",
+    "fieldtype": "Column Break",
+    "insert_after": "dcr_account_no"
+  },
+  {
+    "name": "Customer-dealer_license_copy",
+    "dt": "Customer",
+    "fieldname": "dealer_license_copy",
+    "fieldtype": "Attach",
+    "label": "Dealer License Copy",
+    "insert_after": "column_break_dcr1"
+  },
+  {
+    "name": "Customer-sellers_permit_copy",
+    "dt": "Customer",
+    "fieldname": "sellers_permit_copy",
+    "fieldtype": "Attach",
+    "label": "Seller's Permit Copy",
+    "insert_after": "dealer_license_copy"
+  },
+  {
+    "name": "Customer-w9_copy",
+    "dt": "Customer",
+    "fieldname": "w9_copy",
+    "fieldtype": "Attach",
+    "label": "W-9 Copy",
+    "insert_after": "sellers_permit_copy"
+  },
+  {
+    "name": "Customer-retailer_application_copy",
+    "dt": "Customer",
+    "fieldname": "retailer_application_copy",
+    "fieldtype": "Attach",
+    "label": "Retailer Application Copy",
+    "insert_after": "w9_copy"
+  },
+  {
+    "name": "Supplier-lead_time_section",
+    "dt": "Supplier",
+    "fieldname": "lead_time_section",
+    "fieldtype": "Section Break",
+    "label": "Lead Times",
+    "insert_after": "supplier_details"
+  },
+  {
+    "name": "Supplier-standard_lead_time_days",
+    "dt": "Supplier",
+    "fieldname": "standard_lead_time_days",
+    "fieldtype": "Int",
+    "label": "Standard Lead Time (Days)",
+    "insert_after": "lead_time_section"
+  },
+  {
+    "name": "Supplier-current_lead_time_days",
+    "dt": "Supplier",
+    "fieldname": "current_lead_time_days",
+    "fieldtype": "Int",
+    "label": "Current Lead Time (Days)",
+    "insert_after": "standard_lead_time_days",
+    "description": "Used for advance date validation"
+  },
+  {
+    "name": "Supplier Quotation-home_build_request",
+    "dt": "Supplier Quotation",
+    "fieldname": "home_build_request",
+    "fieldtype": "Link",
+    "label": "Home Build Request",
+    "options": "Home Build Request",
+    "insert_after": "supplier"
+  },
+  {
+    "name": "Supplier Quotation-plot_plan",
+    "dt": "Supplier Quotation",
+    "fieldname": "plot_plan",
+    "fieldtype": "Attach",
+    "label": "Plot Plan",
+    "insert_after": "home_build_request"
+  },
+  {
+    "name": "Supplier Quotation-signed_by_dealer",
+    "dt": "Supplier Quotation",
+    "fieldname": "signed_by_dealer",
+    "fieldtype": "Check",
+    "label": "Signed by Dealer",
+    "insert_after": "plot_plan"
+  },
+  {
+    "name": "Supplier Quotation-signature_date",
+    "dt": "Supplier Quotation",
+    "fieldname": "signature_date",
+    "fieldtype": "Date",
+    "label": "Signature Date",
+    "insert_after": "signed_by_dealer"
+  },
+  {
+    "name": "Sales Order-home_build_request",
+    "dt": "Sales Order",
+    "fieldname": "home_build_request",
+    "fieldtype": "Link",
+    "label": "Home Build Request",
+    "options": "Home Build Request",
+    "insert_after": "customer_name"
+  },
+  {
+    "name": "Sales Order-home_type",
+    "dt": "Sales Order",
+    "fieldname": "home_type",
+    "fieldtype": "Data",
+    "label": "Home Type",
+    "read_only": 1,
+    "insert_after": "home_build_request",
+    "fetch_from": "home_build_request.home_type"
+  },
+  {
+    "name": "Sales Order-financing_type",
+    "dt": "Sales Order",
+    "fieldname": "financing_type",
+    "fieldtype": "Data",
+    "label": "Financing Type",
+    "read_only": 1,
+    "insert_after": "home_type",
+    "fetch_from": "home_build_request.financing_type"
+  },
+  {
+    "name": "Sales Order-property_type",
+    "dt": "Sales Order",
+    "fieldname": "property_type",
+    "fieldtype": "Data",
+    "label": "Property Type",
+    "read_only": 1,
+    "insert_after": "financing_type",
+    "fetch_from": "home_build_request.property_type"
+  },
+  {
+    "name": "Loan Application-home_build_request",
+    "dt": "Loan Application",
+    "fieldname": "home_build_request",
+    "fieldtype": "Link",
+    "label": "Home Build Request",
+    "options": "Home Build Request",
+    "insert_after": "applicant_name"
+  },
+  {
+    "name": "Loan Application-home_type",
+    "dt": "Loan Application",
+    "fieldname": "home_type",
+    "fieldtype": "Select",
+    "label": "Home Type",
+    "options": "\nSpec\nCustomer Sold",
+    "insert_after": "home_build_request",
+    "description": "Drives print format variant (Exhibit A)"
+  },
+  {
+    "name": "Loan Application-dcr_lending_section",
+    "dt": "Loan Application",
+    "fieldname": "dcr_lending_section",
+    "fieldtype": "Section Break",
+    "label": "DCR Lending",
+    "insert_after": "home_type"
+  },
+  {
+    "name": "Loan Application-requested_advance_amount",
+    "dt": "Loan Application",
+    "fieldname": "requested_advance_amount",
+    "fieldtype": "Currency",
+    "label": "Requested Advance Amount",
+    "insert_after": "dcr_lending_section"
+  },
+  {
+    "name": "Loan Application-advance_date_requested",
+    "dt": "Loan Application",
+    "fieldname": "advance_date_requested",
+    "fieldtype": "Date",
+    "label": "Advance Date Requested",
+    "insert_after": "requested_advance_amount"
+  },
+  {
+    "name": "Loan Application-column_break_dcr_lending",
+    "dt": "Loan Application",
+    "fieldname": "column_break_dcr_lending",
+    "fieldtype": "Column Break",
+    "insert_after": "advance_date_requested"
+  },
+  {
+    "name": "Loan Application-outstanding_loan_balance",
+    "dt": "Loan Application",
+    "fieldname": "outstanding_loan_balance",
+    "fieldtype": "Currency",
+    "label": "Outstanding Loan Balance",
+    "read_only": 1,
+    "insert_after": "column_break_dcr_lending",
+    "description": "Auto-calculated from active loans"
+  },
+  {
+    "name": "Loan Application-available_credit",
+    "dt": "Loan Application",
+    "fieldname": "available_credit",
+    "fieldtype": "Currency",
+    "label": "Available Credit",
+    "read_only": 1,
+    "insert_after": "outstanding_loan_balance",
+    "description": "MIFA credit limit minus outstanding balance"
+  },
+  {
+    "name": "Loan Application-signed_packet",
+    "dt": "Loan Application",
+    "fieldname": "signed_packet",
+    "fieldtype": "Attach",
+    "label": "Signed Packet",
+    "insert_after": "available_credit"
+  },
+  {
+    "name": "Loan Application-dcr_documents_section",
+    "dt": "Loan Application",
+    "fieldname": "dcr_documents_section",
+    "fieldtype": "Section Break",
+    "label": "DCR Documents",
+    "insert_after": "signed_packet"
+  },
+  {
+    "name": "Loan Application-doc_checklist",
+    "dt": "Loan Application",
+    "fieldname": "doc_checklist",
+    "fieldtype": "Table",
+    "label": "Document Checklist",
+    "options": "Document Checklist",
+    "insert_after": "dcr_documents_section"
+  },
+  {
+    "name": "Loan-ach_payment_section",
+    "dt": "Loan",
+    "fieldname": "ach_payment_section",
+    "fieldtype": "Section Break",
+    "label": "ACH Payment",
+    "insert_after": "repayment_method",
+    "collapsible": 1
+  },
+  {
+    "name": "Loan-ach_payment_account",
+    "dt": "Loan",
+    "fieldname": "ach_payment_account",
+    "fieldtype": "Link",
+    "options": "ACH Authorization",
+    "label": "ACH Payment Account",
+    "insert_after": "ach_payment_section",
+    "description": "Specific bank account for this loan (leave blank to use customer's default)"
+  },
+  {
+    "name": "Loan Disbursement-home_build_request",
+    "dt": "Loan Disbursement",
+    "fieldname": "home_build_request",
+    "fieldtype": "Link",
+    "label": "Home Build Request",
+    "options": "Home Build Request",
+    "insert_after": "against_loan"
+  },
+  {
+    "name": "Loan Disbursement-factory_po",
+    "dt": "Loan Disbursement",
+    "fieldname": "factory_po",
+    "fieldtype": "Link",
+    "label": "Factory PO",
+    "options": "Purchase Order",
+    "insert_after": "home_build_request"
+  },
+  {
+    "name": "Loan Disbursement-factory",
+    "dt": "Loan Disbursement",
+    "fieldname": "factory",
+    "fieldtype": "Link",
+    "label": "Factory",
+    "options": "Supplier",
+    "insert_after": "factory_po"
+  }
+]

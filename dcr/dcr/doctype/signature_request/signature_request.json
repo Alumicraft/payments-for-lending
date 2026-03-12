@@ -1,0 +1,137 @@
+{
+ "actions": [],
+ "autoname": "format:SIG-{####}",
+ "creation": "2024-01-01 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "customer",
+  "document_type",
+  "status",
+  "column_break_1",
+  "reference_doctype",
+  "reference_name",
+  "adobesign_section",
+  "adobesign_agreement_id",
+  "sent_date",
+  "column_break_adobe",
+  "signed_date",
+  "signed_attachment"
+ ],
+ "fields": [
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Customer",
+   "options": "Customer",
+   "reqd": 1
+  },
+  {
+   "fieldname": "document_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Document Type",
+   "options": "Dealer Agreement\nMIFA\nFlooring Packet",
+   "reqd": 1
+  },
+  {
+   "default": "Not Sent",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Not Sent\nSent\nSigned\nDeclined"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "reference_doctype",
+   "fieldtype": "Link",
+   "label": "Reference DocType",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "reference_name",
+   "fieldtype": "Dynamic Link",
+   "label": "Reference Name",
+   "options": "reference_doctype"
+  },
+  {
+   "fieldname": "adobesign_section",
+   "fieldtype": "Section Break",
+   "label": "AdobeSign"
+  },
+  {
+   "fieldname": "adobesign_agreement_id",
+   "fieldtype": "Data",
+   "label": "AdobeSign Agreement ID",
+   "read_only": 1,
+   "description": "Webhook matching key"
+  },
+  {
+   "fieldname": "sent_date",
+   "fieldtype": "Datetime",
+   "label": "Sent Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_adobe",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "signed_date",
+   "fieldtype": "Datetime",
+   "label": "Signed Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "signed_attachment",
+   "fieldtype": "Attach",
+   "label": "Signed Document",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-01-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "DCR",
+ "name": "Signature Request",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

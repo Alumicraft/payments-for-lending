@@ -4,10 +4,10 @@ with open("requirements.txt") as f:
     install_requires = f.read().strip().split("\n")
 
 setup(
-    name="payments_for_lending",
+    name="dcr",
     version="0.0.1",
-    description="ACH Autopay integration for ERPNext Lending module",
-    author="Your Company",
+    description="Dealer Capital Resources — Home Builder Lending Platform",
+    author="DCR",
     author_email="hello@example.com",
     packages=find_packages(),
     zip_safe=False,

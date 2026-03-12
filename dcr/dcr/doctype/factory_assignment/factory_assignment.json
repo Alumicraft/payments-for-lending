@@ -1,0 +1,113 @@
+{
+ "actions": [],
+ "autoname": "format:FA-{####}",
+ "creation": "2024-01-01 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "customer",
+  "factory",
+  "assignment_date",
+  "active",
+  "column_break_1",
+  "retailer_application_status",
+  "letter_of_authorization",
+  "loa_date"
+ ],
+ "fields": [
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Customer",
+   "options": "Customer",
+   "reqd": 1
+  },
+  {
+   "fieldname": "factory",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Factory",
+   "options": "Supplier",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "assignment_date",
+   "fieldtype": "Date",
+   "label": "Assignment Date",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "active",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Active"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Not Submitted",
+   "fieldname": "retailer_application_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Retailer Application Status",
+   "options": "Not Submitted\nSubmitted\nApproved\nRejected"
+  },
+  {
+   "fieldname": "letter_of_authorization",
+   "fieldtype": "Attach",
+   "label": "Letter of Authorization"
+  },
+  {
+   "fieldname": "loa_date",
+   "fieldtype": "Date",
+   "label": "LOA Date"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2024-01-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "DCR",
+ "name": "Factory Assignment",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

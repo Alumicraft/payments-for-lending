@@ -1,9 +1,9 @@
 [project]
-name = "payments_for_lending"
+name = "dcr"
 authors = [
-    { name = "Your Company", email = "hello@example.com" }
+    { name = "DCR", email = "hello@example.com" }
 ]
-description = "ACH Autopay integration for ERPNext Lending module"
+description = "Dealer Capital Resources — Home Builder Lending Platform"
 requires-python = ">=3.10"
 readme = "README.md"
 dynamic = ["version"]
@@ -13,4 +13,4 @@ requires = ["flit_core >=3.4,<4"]
 build-backend = "flit_core.buildapi"
 
 [tool.flit.module]
-name = "payments_for_lending"
+name = "dcr"

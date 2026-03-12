@@ -1,12 +1,12 @@
-# Payments for Lending
+# DCR
 
-ACH Autopay integration for ERPNext Lending module.
+Dealer Capital Resources — Home Builder Lending Platform for ERPNext.
 
 ## Installation
 
 ```bash
-bench get-app payments_for_lending
-bench --site your-site install-app payments_for_lending
+bench get-app dcr
+bench --site your-site install-app dcr
 ```
 
 ## License

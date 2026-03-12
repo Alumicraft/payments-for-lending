@@ -1,0 +1,167 @@
+{
+ "actions": [],
+ "autoname": "format:HBR-{####}",
+ "creation": "2024-01-01 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "customer",
+  "home_name",
+  "status",
+  "column_break_1",
+  "home_type",
+  "financing_type",
+  "property_type",
+  "references_section",
+  "factory",
+  "factory_quote",
+  "column_break_refs",
+  "sales_order",
+  "loan_application",
+  "documents_section",
+  "doc_checklist"
+ ],
+ "fields": [
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Customer",
+   "options": "Customer",
+   "reqd": 1
+  },
+  {
+   "fieldname": "home_name",
+   "fieldtype": "Data",
+   "label": "Home Name",
+   "description": "Used for document naming"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nDocs Pending\nReady to PO\nPO Submitted"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "home_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Home Type",
+   "options": "\nSpec\nCustomer Sold",
+   "reqd": 1
+  },
+  {
+   "fieldname": "financing_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Financing Type",
+   "options": "\nCash\nDCR Floored",
+   "reqd": 1
+  },
+  {
+   "fieldname": "property_type",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Property Type",
+   "options": "\nPark\nPrivate Property",
+   "reqd": 1
+  },
+  {
+   "fieldname": "references_section",
+   "fieldtype": "Section Break",
+   "label": "References"
+  },
+  {
+   "fieldname": "factory",
+   "fieldtype": "Link",
+   "label": "Factory",
+   "options": "Supplier"
+  },
+  {
+   "fieldname": "factory_quote",
+   "fieldtype": "Link",
+   "label": "Factory Quote",
+   "options": "Supplier Quotation"
+  },
+  {
+   "fieldname": "column_break_refs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "label": "Sales Order",
+   "options": "Sales Order",
+   "read_only": 1
+  },
+  {
+   "fieldname": "loan_application",
+   "fieldtype": "Link",
+   "label": "Loan Application",
+   "options": "Loan Application",
+   "read_only": 1,
+   "depends_on": "eval:doc.financing_type=='DCR Floored'"
+  },
+  {
+   "fieldname": "documents_section",
+   "fieldtype": "Section Break",
+   "label": "Document Checklist"
+  },
+  {
+   "fieldname": "doc_checklist",
+   "fieldtype": "Table",
+   "label": "Document Checklist",
+   "options": "Document Checklist"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2024-01-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "DCR",
+ "name": "Home Build Request",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
