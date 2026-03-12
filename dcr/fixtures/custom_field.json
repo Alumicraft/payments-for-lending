@@ -1,5 +1,6 @@
 [
   {
+    "doctype": "Custom Field",
     "name": "Customer-dealer_information_section",
     "dt": "Customer",
     "fieldname": "dealer_information_section",
@@ -10,6 +11,7 @@
     "collapsible": 0
   },
   {
+    "doctype": "Custom Field",
     "name": "Customer-dealer_license_no",
     "dt": "Customer",
     "fieldname": "dealer_license_no",
@@ -18,6 +20,7 @@
     "insert_after": "dealer_information_section"
   },
   {
+    "doctype": "Custom Field",
     "name": "Customer-license_expiry_date",
     "dt": "Customer",
     "fieldname": "license_expiry_date",
@@ -26,6 +29,7 @@
     "insert_after": "dealer_license_no"
   },
   {
+    "doctype": "Custom Field",
     "name": "Customer-sellers_permit_no",
     "dt": "Customer",
     "fieldname": "sellers_permit_no",
@@ -34,6 +38,7 @@
     "insert_after": "license_expiry_date"
   },
   {
+    "doctype": "Custom Field",
     "name": "Customer-column_break_dealer1",
     "dt": "Customer",
     "fieldname": "column_break_dealer1",
@@ -41,6 +46,7 @@
     "insert_after": "sellers_permit_no"
   },
   {
+    "doctype": "Custom Field",
     "name": "Customer-w9_status",
     "dt": "Customer",
     "fieldname": "w9_status",
@@ -50,6 +56,7 @@
     "insert_after": "column_break_dealer1"
   },
   {
+    "doctype": "Custom Field",
     "name": "Customer-mifa_required",
     "dt": "Customer",
     "fieldname": "mifa_required",
@@ -58,6 +65,7 @@
     "insert_after": "w9_status"
   },
   {
+    "doctype": "Custom Field",
     "name": "Customer-dealer_agreement_status",
     "dt": "Customer",
     "fieldname": "dealer_agreement_status",
@@ -67,6 +75,7 @@
     "insert_after": "mifa_required"
   },
   {
+    "doctype": "Custom Field",
     "name": "Customer-master_dealer_list_updated",
     "dt": "Customer",
     "fieldname": "master_dealer_list_updated",
@@ -75,6 +84,7 @@
     "insert_after": "dealer_agreement_status"
   },
   {
+    "doctype": "Custom Field",
     "name": "Customer-dcr_application_section",
     "dt": "Customer",
     "fieldname": "dcr_application_section",
@@ -84,6 +94,7 @@
     "depends_on": "eval:doc.customer_group=='Dealer'"
   },
   {
+    "doctype": "Custom Field",
     "name": "Customer-dcr_application_status",
     "dt": "Customer",
     "fieldname": "dcr_application_status",
@@ -93,6 +104,7 @@
     "insert_after": "dcr_application_section"
   },
   {
+    "doctype": "Custom Field",
     "name": "Customer-dcr_account_no",
     "dt": "Customer",
     "fieldname": "dcr_account_no",
@@ -101,6 +113,7 @@
     "insert_after": "dcr_application_status"
   },
   {
+    "doctype": "Custom Field",
     "name": "Customer-column_break_dcr1",
     "dt": "Customer",
     "fieldname": "column_break_dcr1",
@@ -108,6 +121,7 @@
     "insert_after": "dcr_account_no"
   },
   {
+    "doctype": "Custom Field",
     "name": "Customer-dealer_license_copy",
     "dt": "Customer",
     "fieldname": "dealer_license_copy",
@@ -116,6 +130,7 @@
     "insert_after": "column_break_dcr1"
   },
   {
+    "doctype": "Custom Field",
     "name": "Customer-sellers_permit_copy",
     "dt": "Customer",
     "fieldname": "sellers_permit_copy",
@@ -124,6 +139,7 @@
     "insert_after": "dealer_license_copy"
   },
   {
+    "doctype": "Custom Field",
     "name": "Customer-w9_copy",
     "dt": "Customer",
     "fieldname": "w9_copy",
@@ -132,6 +148,7 @@
     "insert_after": "sellers_permit_copy"
   },
   {
+    "doctype": "Custom Field",
     "name": "Customer-retailer_application_copy",
     "dt": "Customer",
     "fieldname": "retailer_application_copy",
@@ -140,6 +157,7 @@
     "insert_after": "w9_copy"
   },
   {
+    "doctype": "Custom Field",
     "name": "Supplier-lead_time_section",
     "dt": "Supplier",
     "fieldname": "lead_time_section",
@@ -148,6 +166,7 @@
     "insert_after": "supplier_details"
   },
   {
+    "doctype": "Custom Field",
     "name": "Supplier-standard_lead_time_days",
     "dt": "Supplier",
     "fieldname": "standard_lead_time_days",
@@ -156,6 +175,7 @@
     "insert_after": "lead_time_section"
   },
   {
+    "doctype": "Custom Field",
     "name": "Supplier-current_lead_time_days",
     "dt": "Supplier",
     "fieldname": "current_lead_time_days",
@@ -165,6 +185,7 @@
     "description": "Used for advance date validation"
   },
   {
+    "doctype": "Custom Field",
     "name": "Supplier Quotation-home_build_request",
     "dt": "Supplier Quotation",
     "fieldname": "home_build_request",
@@ -174,6 +195,7 @@
     "insert_after": "supplier"
   },
   {
+    "doctype": "Custom Field",
     "name": "Supplier Quotation-plot_plan",
     "dt": "Supplier Quotation",
     "fieldname": "plot_plan",
@@ -182,6 +204,7 @@
     "insert_after": "home_build_request"
   },
   {
+    "doctype": "Custom Field",
     "name": "Supplier Quotation-signed_by_dealer",
     "dt": "Supplier Quotation",
     "fieldname": "signed_by_dealer",
@@ -190,6 +213,7 @@
     "insert_after": "plot_plan"
   },
   {
+    "doctype": "Custom Field",
     "name": "Supplier Quotation-signature_date",
     "dt": "Supplier Quotation",
     "fieldname": "signature_date",
@@ -198,6 +222,7 @@
     "insert_after": "signed_by_dealer"
   },
   {
+    "doctype": "Custom Field",
     "name": "Sales Order-home_build_request",
     "dt": "Sales Order",
     "fieldname": "home_build_request",
@@ -207,6 +232,7 @@
     "insert_after": "customer_name"
   },
   {
+    "doctype": "Custom Field",
     "name": "Sales Order-home_type",
     "dt": "Sales Order",
     "fieldname": "home_type",
@@ -217,6 +243,7 @@
     "fetch_from": "home_build_request.home_type"
   },
   {
+    "doctype": "Custom Field",
     "name": "Sales Order-financing_type",
     "dt": "Sales Order",
     "fieldname": "financing_type",
@@ -227,6 +254,7 @@
     "fetch_from": "home_build_request.financing_type"
   },
   {
+    "doctype": "Custom Field",
     "name": "Sales Order-property_type",
     "dt": "Sales Order",
     "fieldname": "property_type",
@@ -237,6 +265,7 @@
     "fetch_from": "home_build_request.property_type"
   },
   {
+    "doctype": "Custom Field",
     "name": "Loan Application-home_build_request",
     "dt": "Loan Application",
     "fieldname": "home_build_request",
@@ -246,6 +275,7 @@
     "insert_after": "applicant_name"
   },
   {
+    "doctype": "Custom Field",
     "name": "Loan Application-home_type",
     "dt": "Loan Application",
     "fieldname": "home_type",
@@ -256,6 +286,7 @@
     "description": "Drives print format variant (Exhibit A)"
   },
   {
+    "doctype": "Custom Field",
     "name": "Loan Application-dcr_lending_section",
     "dt": "Loan Application",
     "fieldname": "dcr_lending_section",
@@ -264,6 +295,7 @@
     "insert_after": "home_type"
   },
   {
+    "doctype": "Custom Field",
     "name": "Loan Application-requested_advance_amount",
     "dt": "Loan Application",
     "fieldname": "requested_advance_amount",
@@ -272,6 +304,7 @@
     "insert_after": "dcr_lending_section"
   },
   {
+    "doctype": "Custom Field",
     "name": "Loan Application-advance_date_requested",
     "dt": "Loan Application",
     "fieldname": "advance_date_requested",
@@ -280,6 +313,7 @@
     "insert_after": "requested_advance_amount"
   },
   {
+    "doctype": "Custom Field",
     "name": "Loan Application-column_break_dcr_lending",
     "dt": "Loan Application",
     "fieldname": "column_break_dcr_lending",
@@ -287,6 +321,7 @@
     "insert_after": "advance_date_requested"
   },
   {
+    "doctype": "Custom Field",
     "name": "Loan Application-outstanding_loan_balance",
     "dt": "Loan Application",
     "fieldname": "outstanding_loan_balance",
@@ -297,6 +332,7 @@
     "description": "Auto-calculated from active loans"
   },
   {
+    "doctype": "Custom Field",
     "name": "Loan Application-available_credit",
     "dt": "Loan Application",
     "fieldname": "available_credit",
@@ -307,6 +343,7 @@
     "description": "MIFA credit limit minus outstanding balance"
   },
   {
+    "doctype": "Custom Field",
     "name": "Loan Application-signed_packet",
     "dt": "Loan Application",
     "fieldname": "signed_packet",
@@ -315,6 +352,7 @@
     "insert_after": "available_credit"
   },
   {
+    "doctype": "Custom Field",
     "name": "Loan Application-dcr_documents_section",
     "dt": "Loan Application",
     "fieldname": "dcr_documents_section",
@@ -323,6 +361,7 @@
     "insert_after": "signed_packet"
   },
   {
+    "doctype": "Custom Field",
     "name": "Loan Application-doc_checklist",
     "dt": "Loan Application",
     "fieldname": "doc_checklist",
@@ -332,6 +371,7 @@
     "insert_after": "dcr_documents_section"
   },
   {
+    "doctype": "Custom Field",
     "name": "Loan-ach_payment_section",
     "dt": "Loan",
     "fieldname": "ach_payment_section",
@@ -341,6 +381,7 @@
     "collapsible": 1
   },
   {
+    "doctype": "Custom Field",
     "name": "Loan-ach_payment_account",
     "dt": "Loan",
     "fieldname": "ach_payment_account",
@@ -351,6 +392,7 @@
     "description": "Specific bank account for this loan (leave blank to use customer's default)"
   },
   {
+    "doctype": "Custom Field",
     "name": "Loan Disbursement-home_build_request",
     "dt": "Loan Disbursement",
     "fieldname": "home_build_request",
@@ -360,6 +402,7 @@
     "insert_after": "against_loan"
   },
   {
+    "doctype": "Custom Field",
     "name": "Loan Disbursement-factory_po",
     "dt": "Loan Disbursement",
     "fieldname": "factory_po",
@@ -369,6 +412,7 @@
     "insert_after": "home_build_request"
   },
   {
+    "doctype": "Custom Field",
     "name": "Loan Disbursement-factory",
     "dt": "Loan Disbursement",
     "fieldname": "factory",
