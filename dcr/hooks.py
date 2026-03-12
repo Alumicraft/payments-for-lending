@@ -6,6 +6,9 @@ app_email = "hello@example.com"
 app_license = "MIT"
 required_apps = ["frappe", "erpnext", "lending"]
 
+after_install = "dcr.setup.after_install"
+after_migrate = "dcr.setup.after_install"
+
 # Fixtures - custom fields synced on bench migrate
 fixtures = [
     {
