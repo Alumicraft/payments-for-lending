@@ -2,7 +2,7 @@
 Resend Email Integration for Retailer Application
 
 Sends the retailer application package to factories when a Factory Assignment
-is submitted. Uses the emails app for Resend delivery.
+is submitted. Uses the emails app Vercel service for branded delivery.
 
 Package contents:
 1. Retailer Application (from Customer)
@@ -11,8 +11,11 @@ Package contents:
 4. W-9 copy
 """
 
+import base64
 import frappe
 from frappe import _
+
+from dcr.api.dcr_email import send_retailer_application
 
 
 def send_retailer_application_email(factory_assignment):
@@ -38,8 +41,9 @@ def send_retailer_application_email(factory_assignment):
     # Get customer details
     customer_doc = frappe.get_doc("Customer", customer)
     customer_name = customer_doc.customer_name
+    dealer_license_no = customer_doc.get("dealer_license_no") or ""
 
-    # Collect attachment file URLs
+    # Collect attachment file URLs and convert to base64 for Vercel service
     attachments = []
     attachment_fields = {
         "retailer_application_copy": "Retailer Application",
@@ -52,7 +56,16 @@ def send_retailer_application_email(factory_assignment):
     for field, label in attachment_fields.items():
         file_url = customer_doc.get(field)
         if file_url:
-            attachments.append({"file_url": file_url})
+            try:
+                file_doc = frappe.get_doc("File", {"file_url": file_url})
+                file_content = file_doc.get_content()
+                attachments.append({
+                    "filename": file_doc.file_name or f"{label}.pdf",
+                    "content": base64.b64encode(file_content).decode("utf-8"),
+                })
+            except Exception:
+                # Fall back to file_url-based attachment for frappe.sendmail compatibility
+                attachments.append({"file_url": file_url})
         else:
             missing.append(label)
 
@@ -65,33 +78,12 @@ def send_retailer_application_email(factory_assignment):
     # Get factory name for the email
     factory_name = frappe.db.get_value("Supplier", factory, "supplier_name")
 
-    subject = f"New Dealer Application — {customer_name}"
-    message = f"""<p>Dear {factory_name},</p>
-
-<p>Dealer Capital Resources is submitting the following dealer for your review
-and approval to order manufactured homes through your factory.</p>
-
-<p><strong>Dealer:</strong> {customer_name}</p>
-
-<p>Please find the following documents attached:</p>
-<ol>
-    <li>Completed Retailer Application</li>
-    <li>Copy of Dealer's License</li>
-    <li>Copy of Seller's Permit</li>
-    <li>Completed W-9</li>
-</ol>
-
-<p>Upon review, please respond with a Letter of Authorization confirming
-approval of this dealer.</p>
-
-<p>Thank you,<br>Dealer Capital Resources</p>"""
-
-    frappe.sendmail(
-        recipients=[factory_email],
-        subject=subject,
-        message=message,
+    send_retailer_application(
+        customer_name=customer_name,
+        dealer_license_no=dealer_license_no,
+        factory_name=factory_name,
+        to_email=factory_email,
         attachments=attachments,
-        now=True,
         reference_doctype="Factory Assignment",
         reference_name=factory_assignment.name,
     )
