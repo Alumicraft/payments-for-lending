@@ -1,0 +1,107 @@
+{
+ "actions": [],
+ "creation": "2026-03-13 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "issingle": 1,
+ "field_order": [
+  "enabled",
+  "environment",
+  "column_break_1",
+  "account_id",
+  "integration_key",
+  "credentials_section",
+  "user_id",
+  "rsa_private_key",
+  "webhook_section",
+  "webhook_hmac_key",
+  "allowed_ips"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enable DocuSign"
+  },
+  {
+   "default": "Sandbox",
+   "fieldname": "environment",
+   "fieldtype": "Select",
+   "label": "Environment",
+   "options": "Sandbox\nProduction",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "account_id",
+   "fieldtype": "Data",
+   "label": "Account ID",
+   "description": "DocuSign Account ID (GUID)"
+  },
+  {
+   "fieldname": "integration_key",
+   "fieldtype": "Data",
+   "label": "Integration Key",
+   "description": "Also called Client ID in DocuSign"
+  },
+  {
+   "fieldname": "credentials_section",
+   "fieldtype": "Section Break",
+   "label": "JWT Credentials"
+  },
+  {
+   "fieldname": "user_id",
+   "fieldtype": "Data",
+   "label": "User ID",
+   "description": "DocuSign User ID (GUID) for JWT impersonation"
+  },
+  {
+   "fieldname": "rsa_private_key",
+   "fieldtype": "Password",
+   "label": "RSA Private Key",
+   "description": "PEM-encoded RSA private key for JWT Grant"
+  },
+  {
+   "fieldname": "webhook_section",
+   "fieldtype": "Section Break",
+   "label": "Webhook Security"
+  },
+  {
+   "fieldname": "webhook_hmac_key",
+   "fieldtype": "Password",
+   "label": "Webhook HMAC Key",
+   "description": "HMAC key configured in DocuSign Connect"
+  },
+  {
+   "fieldname": "allowed_ips",
+   "fieldtype": "Data",
+   "label": "Allowed IPs",
+   "description": "Comma-separated IP whitelist (leave empty for no restriction)"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-03-13 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "DCR",
+ "name": "DocuSign Settings",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

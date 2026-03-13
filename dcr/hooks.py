@@ -74,7 +74,7 @@ doctype_js = {
 # Document Events
 doc_events = {
     "Customer": {
-        "on_update": "dcr.api.adobesign.on_customer_update"
+        "on_update": "dcr.api.docusign.on_customer_update"
     },
     "Loan Application": {
         "validate": "dcr.api.lending.validate_loan_application"

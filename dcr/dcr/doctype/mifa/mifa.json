@@ -68,7 +68,7 @@
    "fieldname": "signed_mifa",
    "fieldtype": "Attach",
    "label": "Signed MIFA",
-   "description": "Populated by AdobeSign webhook"
+   "description": "Populated by DocuSign webhook"
   }
  ],
  "index_web_pages_for_search": 1,

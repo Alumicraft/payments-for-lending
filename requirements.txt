@@ -1,2 +1,3 @@
 # Lending Payments requirements
 frappe
+PyJWT[crypto]

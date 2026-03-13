@@ -11,10 +11,10 @@
   "column_break_1",
   "reference_doctype",
   "reference_name",
-  "adobesign_section",
-  "adobesign_agreement_id",
+  "docusign_section",
+  "envelope_id",
   "sent_date",
-  "column_break_adobe",
+  "column_break_docusign",
   "signed_date",
   "signed_attachment"
  ],
@@ -63,16 +63,16 @@
    "options": "reference_doctype"
   },
   {
-   "fieldname": "adobesign_section",
+   "fieldname": "docusign_section",
    "fieldtype": "Section Break",
-   "label": "AdobeSign"
+   "label": "DocuSign"
   },
   {
-   "fieldname": "adobesign_agreement_id",
+   "fieldname": "envelope_id",
    "fieldtype": "Data",
-   "label": "AdobeSign Agreement ID",
+   "label": "Envelope ID",
    "read_only": 1,
-   "description": "Webhook matching key"
+   "description": "DocuSign envelope ID — webhook matching key"
   },
   {
    "fieldname": "sent_date",
@@ -81,7 +81,7 @@
    "read_only": 1
   },
   {
-   "fieldname": "column_break_adobe",
+   "fieldname": "column_break_docusign",
    "fieldtype": "Column Break"
   },
   {
@@ -99,7 +99,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-01-01 00:00:00.000000",
+ "modified": "2026-03-13 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "DCR",
  "name": "Signature Request",

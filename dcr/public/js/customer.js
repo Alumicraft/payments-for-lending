@@ -45,7 +45,7 @@ function send_dealer_agreement(frm) {
         __('Send Dealer Agreement to {0}?', [frm.doc.email_id]),
         function() {
             frappe.call({
-                method: 'dcr.api.adobesign.send_dealer_agreement',
+                method: 'dcr.api.docusign.send_dealer_agreement',
                 args: { customer: frm.doc.name },
                 freeze: true,
                 freeze_message: __('Sending agreement...'),
