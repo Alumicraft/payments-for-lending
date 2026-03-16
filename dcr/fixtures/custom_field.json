@@ -391,6 +391,179 @@
     "insert_after": "ach_payment_section",
     "description": "Specific bank account for this loan (leave blank to use customer's default)"
   },
+
+  {
+    "doctype": "Custom Field",
+    "name": "Loan-home_deal_reference_section",
+    "dt": "Loan",
+    "fieldname": "home_deal_reference_section",
+    "fieldtype": "Section Break",
+    "label": "Home / Deal Reference",
+    "insert_after": "ach_payment_account"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan-home_serial_no",
+    "dt": "Loan",
+    "fieldname": "home_serial_no",
+    "fieldtype": "Data",
+    "label": "Serial No",
+    "insert_after": "home_deal_reference_section"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan-buyer_name",
+    "dt": "Loan",
+    "fieldname": "buyer_name",
+    "fieldtype": "Data",
+    "label": "Buyer Name",
+    "insert_after": "home_serial_no"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan-column_break_home_deal",
+    "dt": "Loan",
+    "fieldname": "column_break_home_deal",
+    "fieldtype": "Column Break",
+    "insert_after": "buyer_name"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan-factory",
+    "dt": "Loan",
+    "fieldname": "factory",
+    "fieldtype": "Link",
+    "label": "Factory",
+    "options": "Supplier",
+    "insert_after": "column_break_home_deal"
+  },
+
+  {
+    "doctype": "Custom Field",
+    "name": "Loan-payoff_section",
+    "dt": "Loan",
+    "fieldname": "payoff_section",
+    "fieldtype": "Section Break",
+    "label": "Payoff",
+    "insert_after": "factory"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan-payoff_date",
+    "dt": "Loan",
+    "fieldname": "payoff_date",
+    "fieldtype": "Date",
+    "label": "Payoff Date",
+    "insert_after": "payoff_section"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan-payoff_good_thru_date",
+    "dt": "Loan",
+    "fieldname": "payoff_good_thru_date",
+    "fieldtype": "Date",
+    "label": "Payoff Good Thru Date",
+    "insert_after": "payoff_date"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan-column_break_payoff1",
+    "dt": "Loan",
+    "fieldname": "column_break_payoff1",
+    "fieldtype": "Column Break",
+    "insert_after": "payoff_good_thru_date"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan-interest_owed_at_payoff",
+    "dt": "Loan",
+    "fieldname": "interest_owed_at_payoff",
+    "fieldtype": "Currency",
+    "label": "Interest Owed at Payoff",
+    "insert_after": "column_break_payoff1"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan-late_fees_collected",
+    "dt": "Loan",
+    "fieldname": "late_fees_collected",
+    "fieldtype": "Currency",
+    "label": "Late Fees Collected",
+    "insert_after": "interest_owed_at_payoff"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan-service_fee_amount",
+    "dt": "Loan",
+    "fieldname": "service_fee_amount",
+    "fieldtype": "Currency",
+    "label": "Service Fees Collected",
+    "insert_after": "late_fees_collected"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan-insurance_at_payoff",
+    "dt": "Loan",
+    "fieldname": "insurance_at_payoff",
+    "fieldtype": "Currency",
+    "label": "Insurance at Payoff",
+    "insert_after": "service_fee_amount"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan-column_break_payoff2",
+    "dt": "Loan",
+    "fieldname": "column_break_payoff2",
+    "fieldtype": "Column Break",
+    "insert_after": "insurance_at_payoff"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan-principal_collected",
+    "dt": "Loan",
+    "fieldname": "principal_collected",
+    "fieldtype": "Currency",
+    "label": "Principal Collected",
+    "insert_after": "column_break_payoff2"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan-paid_from_escrow",
+    "dt": "Loan",
+    "fieldname": "paid_from_escrow",
+    "fieldtype": "Currency",
+    "label": "Paid from Escrow",
+    "insert_after": "principal_collected"
+  },
+
+  {
+    "doctype": "Custom Field",
+    "name": "Loan-rebate_section",
+    "dt": "Loan",
+    "fieldname": "rebate_section",
+    "fieldtype": "Section Break",
+    "label": "Rebate",
+    "insert_after": "paid_from_escrow"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan-qualifying_amount",
+    "dt": "Loan",
+    "fieldname": "qualifying_amount",
+    "fieldtype": "Currency",
+    "label": "Qualifying Amount",
+    "insert_after": "rebate_section"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan-rebate_percentage",
+    "dt": "Loan",
+    "fieldname": "rebate_percentage",
+    "fieldtype": "Percent",
+    "label": "Rebate Percentage",
+    "insert_after": "qualifying_amount"
+  },
+
   {
     "doctype": "Custom Field",
     "name": "Loan Disbursement-home_build_request",
