@@ -420,5 +420,354 @@
     "label": "Factory",
     "options": "Supplier",
     "insert_after": "factory_po"
+  },
+
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-exhibit_a_section",
+    "dt": "Loan Application",
+    "fieldname": "exhibit_a_section",
+    "fieldtype": "Section Break",
+    "label": "Exhibit A / ACH",
+    "insert_after": "doc_checklist"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-home_serial_no",
+    "dt": "Loan Application",
+    "fieldname": "home_serial_no",
+    "fieldtype": "Data",
+    "label": "Serial No",
+    "insert_after": "exhibit_a_section"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-quote_no",
+    "dt": "Loan Application",
+    "fieldname": "quote_no",
+    "fieldtype": "Data",
+    "label": "Quote No",
+    "insert_after": "home_serial_no"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-floor_plan",
+    "dt": "Loan Application",
+    "fieldname": "floor_plan",
+    "fieldtype": "Data",
+    "label": "Floor Plan",
+    "insert_after": "quote_no"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-column_break_exhibit_a",
+    "dt": "Loan Application",
+    "fieldname": "column_break_exhibit_a",
+    "fieldtype": "Column Break",
+    "insert_after": "floor_plan"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-buyer_name",
+    "dt": "Loan Application",
+    "fieldname": "buyer_name",
+    "fieldtype": "Data",
+    "label": "Buyer Name (End Customer)",
+    "insert_after": "column_break_exhibit_a",
+    "description": "End customer buying the home"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-monthly_interest_amount",
+    "dt": "Loan Application",
+    "fieldname": "monthly_interest_amount",
+    "fieldtype": "Currency",
+    "label": "Monthly Interest Amount",
+    "insert_after": "buyer_name"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-monthly_insurance_amount",
+    "dt": "Loan Application",
+    "fieldname": "monthly_insurance_amount",
+    "fieldtype": "Currency",
+    "label": "Monthly Insurance Amount",
+    "insert_after": "monthly_interest_amount"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-first_autopay_description",
+    "dt": "Loan Application",
+    "fieldname": "first_autopay_description",
+    "fieldtype": "Data",
+    "label": "First Autopay Description",
+    "insert_after": "monthly_insurance_amount"
+  },
+
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-advance_preapproval_section",
+    "dt": "Loan Application",
+    "fieldname": "advance_preapproval_section",
+    "fieldtype": "Section Break",
+    "label": "Advance Pre-Approval",
+    "insert_after": "first_autopay_description"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-custom_current_yn",
+    "dt": "Loan Application",
+    "fieldname": "custom_current_yn",
+    "fieldtype": "Select",
+    "label": "Current Y/N",
+    "options": "\nYes\nNo",
+    "insert_after": "advance_preapproval_section"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-custom_projected_investment",
+    "dt": "Loan Application",
+    "fieldname": "custom_projected_investment",
+    "fieldtype": "Currency",
+    "label": "Projected Investment",
+    "insert_after": "custom_current_yn",
+    "description": "Spec variant only"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-custom_projected_sales_price",
+    "dt": "Loan Application",
+    "fieldname": "custom_projected_sales_price",
+    "fieldtype": "Currency",
+    "label": "Projected Sales Price",
+    "insert_after": "custom_projected_investment",
+    "description": "Spec variant only"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-column_break_preapproval",
+    "dt": "Loan Application",
+    "fieldname": "column_break_preapproval",
+    "fieldtype": "Column Break",
+    "insert_after": "custom_projected_sales_price"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-custom_projected_equity",
+    "dt": "Loan Application",
+    "fieldname": "custom_projected_equity",
+    "fieldtype": "Currency",
+    "label": "Projected Equity",
+    "insert_after": "column_break_preapproval",
+    "description": "Spec variant — calculated"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-custom_projected_ltv",
+    "dt": "Loan Application",
+    "fieldname": "custom_projected_ltv",
+    "fieldtype": "Percent",
+    "label": "Projected LTV",
+    "insert_after": "custom_projected_equity",
+    "description": "Spec variant — calculated"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-custom_monthly_space_rent",
+    "dt": "Loan Application",
+    "fieldname": "custom_monthly_space_rent",
+    "fieldtype": "Currency",
+    "label": "Monthly Space Rent",
+    "insert_after": "custom_projected_ltv",
+    "description": "Spec variant only"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-custom_projected_payoff",
+    "dt": "Loan Application",
+    "fieldname": "custom_projected_payoff",
+    "fieldtype": "Data",
+    "label": "Projected Payoff",
+    "insert_after": "custom_monthly_space_rent",
+    "description": "e.g. 9-12 Months, 60-90 days"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-custom_notes",
+    "dt": "Loan Application",
+    "fieldname": "custom_notes",
+    "fieldtype": "Small Text",
+    "label": "Notes",
+    "insert_after": "custom_projected_payoff"
+  },
+
+  {
+    "doctype": "Custom Field",
+    "name": "Customer-dealer_contact_section",
+    "dt": "Customer",
+    "fieldname": "dealer_contact_section",
+    "fieldtype": "Section Break",
+    "label": "Dealer Contact & Address",
+    "insert_after": "retailer_application_copy",
+    "depends_on": "eval:doc.customer_group=='Dealer'"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Customer-dealer_contact_name",
+    "dt": "Customer",
+    "fieldname": "dealer_contact_name",
+    "fieldtype": "Data",
+    "label": "Dealer Contact Name",
+    "insert_after": "dealer_contact_section"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Customer-dealer_address",
+    "dt": "Customer",
+    "fieldname": "dealer_address",
+    "fieldtype": "Data",
+    "label": "Dealer Address",
+    "insert_after": "dealer_contact_name"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Customer-dealer_city_state_zip",
+    "dt": "Customer",
+    "fieldname": "dealer_city_state_zip",
+    "fieldtype": "Data",
+    "label": "Dealer City, State, Zip",
+    "insert_after": "dealer_address"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Customer-column_break_dealer_contact",
+    "dt": "Customer",
+    "fieldname": "column_break_dealer_contact",
+    "fieldtype": "Column Break",
+    "insert_after": "dealer_city_state_zip"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Customer-dealer_phone",
+    "dt": "Customer",
+    "fieldname": "dealer_phone",
+    "fieldtype": "Data",
+    "label": "Dealer Phone",
+    "options": "Phone",
+    "insert_after": "column_break_dealer_contact"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Customer-dealer_email",
+    "dt": "Customer",
+    "fieldname": "dealer_email",
+    "fieldtype": "Data",
+    "label": "Dealer Email",
+    "options": "Email",
+    "insert_after": "dealer_phone"
+  },
+
+  {
+    "doctype": "Custom Field",
+    "name": "Customer-bank_info_section",
+    "dt": "Customer",
+    "fieldname": "bank_info_section",
+    "fieldtype": "Section Break",
+    "label": "Bank Information",
+    "insert_after": "dealer_email",
+    "depends_on": "eval:doc.customer_group=='Dealer'"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Customer-bank_name",
+    "dt": "Customer",
+    "fieldname": "bank_name",
+    "fieldtype": "Data",
+    "label": "Bank Name",
+    "insert_after": "bank_info_section"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Customer-bank_account_last4",
+    "dt": "Customer",
+    "fieldname": "bank_account_last4",
+    "fieldtype": "Data",
+    "label": "Account Last 4",
+    "insert_after": "bank_name"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Customer-bank_routing_last4",
+    "dt": "Customer",
+    "fieldname": "bank_routing_last4",
+    "fieldtype": "Data",
+    "label": "Routing Last 4",
+    "insert_after": "bank_account_last4"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Customer-column_break_bank",
+    "dt": "Customer",
+    "fieldname": "column_break_bank",
+    "fieldtype": "Column Break",
+    "insert_after": "bank_routing_last4"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Customer-bank_account_type",
+    "dt": "Customer",
+    "fieldname": "bank_account_type",
+    "fieldtype": "Select",
+    "label": "Account Type",
+    "options": "\nChecking\nSavings",
+    "insert_after": "column_break_bank"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Customer-bank_city_state",
+    "dt": "Customer",
+    "fieldname": "bank_city_state",
+    "fieldtype": "Data",
+    "label": "Bank City/State",
+    "insert_after": "bank_account_type"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Customer-bank_account_holder_name",
+    "dt": "Customer",
+    "fieldname": "bank_account_holder_name",
+    "fieldtype": "Data",
+    "label": "Name on Account",
+    "insert_after": "bank_city_state"
+  },
+
+  {
+    "doctype": "Custom Field",
+    "name": "Customer-dealer_agreement_section",
+    "dt": "Customer",
+    "fieldname": "dealer_agreement_section",
+    "fieldtype": "Section Break",
+    "label": "Dealer Agreement",
+    "insert_after": "bank_account_holder_name",
+    "depends_on": "eval:doc.customer_group=='Dealer'"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Customer-rebate_percentage",
+    "dt": "Customer",
+    "fieldname": "rebate_percentage",
+    "fieldtype": "Percent",
+    "label": "Rebate Percentage",
+    "insert_after": "dealer_agreement_section"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Customer-entity_type",
+    "dt": "Customer",
+    "fieldname": "entity_type",
+    "fieldtype": "Select",
+    "label": "Entity Type",
+    "options": "\nLLC\nCorporation\nPartnership\nTrust",
+    "insert_after": "rebate_percentage"
   }
 ]

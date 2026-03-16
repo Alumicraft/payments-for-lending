@@ -10,10 +10,13 @@
   "column_break_1",
   "credit_limit",
   "interest_rate",
+  "entity_type",
+  "effective_date",
   "terms_section",
   "payment_terms",
   "signature_section",
-  "signed_mifa"
+  "signed_mifa",
+  "dealer_signer_title"
  ],
  "fields": [
   {
@@ -50,6 +53,19 @@
    "label": "Interest Rate"
   },
   {
+   "fieldname": "entity_type",
+   "fieldtype": "Select",
+   "label": "Entity Type",
+   "options": "\nLLC\nCorporation\nPartnership\nTrust",
+   "description": "Can also be fetched from Customer.entity_type"
+  },
+  {
+   "fieldname": "effective_date",
+   "fieldtype": "Date",
+   "label": "Effective Date",
+   "description": "Effective date of agreement (may differ from MIFA date)"
+  },
+  {
    "fieldname": "terms_section",
    "fieldtype": "Section Break",
    "label": "Terms"
@@ -69,6 +85,11 @@
    "fieldtype": "Attach",
    "label": "Signed MIFA",
    "description": "Populated by DocuSign webhook"
+  },
+  {
+   "fieldname": "dealer_signer_title",
+   "fieldtype": "Data",
+   "label": "Dealer Signer Title"
   }
  ],
  "index_web_pages_for_search": 1,

@@ -18,6 +18,30 @@
   "column_break_refs",
   "sales_order",
   "loan_application",
+  "park_section",
+  "park",
+  "space_number",
+  "buyer_section",
+  "home_buyer",
+  "escrow_section",
+  "escrow_company",
+  "escrow_number",
+  "column_break_escrow",
+  "escrow_contact",
+  "escrow_phone",
+  "customer_deposit",
+  "selling_price",
+  "column_break_escrow2",
+  "end_buyer_lender",
+  "broker_section",
+  "broker",
+  "column_break_broker",
+  "broker_contact",
+  "broker_phone",
+  "home_info_section",
+  "model_name",
+  "column_break_home_info",
+  "home_invoice_plus_freight",
   "documents_section",
   "doc_checklist"
  ],
@@ -111,6 +135,133 @@
    "options": "Loan Application",
    "read_only": 1,
    "depends_on": "eval:doc.financing_type=='DCR Floored'"
+  },
+  {
+   "fieldname": "park_section",
+   "fieldtype": "Section Break",
+   "label": "Park",
+   "depends_on": "eval:doc.property_type=='Park'"
+  },
+  {
+   "fieldname": "park",
+   "fieldtype": "Link",
+   "label": "Park",
+   "options": "Park"
+  },
+  {
+   "fieldname": "space_number",
+   "fieldtype": "Data",
+   "label": "Space #"
+  },
+  {
+   "fieldname": "buyer_section",
+   "fieldtype": "Section Break",
+   "label": "Buyer",
+   "depends_on": "eval:doc.home_type=='Customer Sold'"
+  },
+  {
+   "fieldname": "home_buyer",
+   "fieldtype": "Link",
+   "label": "Home Buyer",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "escrow_section",
+   "fieldtype": "Section Break",
+   "label": "Escrow",
+   "depends_on": "eval:doc.home_type=='Customer Sold'"
+  },
+  {
+   "fieldname": "escrow_company",
+   "fieldtype": "Link",
+   "label": "Escrow Company",
+   "options": "Supplier"
+  },
+  {
+   "fieldname": "escrow_number",
+   "fieldtype": "Data",
+   "label": "Escrow Number"
+  },
+  {
+   "fieldname": "column_break_escrow",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "escrow_contact",
+   "fieldtype": "Data",
+   "label": "Escrow Contact"
+  },
+  {
+   "fieldname": "escrow_phone",
+   "fieldtype": "Data",
+   "label": "Escrow Phone",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "customer_deposit",
+   "fieldtype": "Currency",
+   "label": "Customer Deposit in Escrow"
+  },
+  {
+   "fieldname": "selling_price",
+   "fieldtype": "Currency",
+   "label": "Selling Price of Home"
+  },
+  {
+   "fieldname": "column_break_escrow2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "end_buyer_lender",
+   "fieldtype": "Data",
+   "label": "Lender",
+   "description": "Buyer's financing source (e.g. Cash, FHA, Wells Fargo)"
+  },
+  {
+   "fieldname": "broker_section",
+   "fieldtype": "Section Break",
+   "label": "Broker",
+   "depends_on": "eval:doc.home_type=='Customer Sold'",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "broker",
+   "fieldtype": "Data",
+   "label": "Broker"
+  },
+  {
+   "fieldname": "column_break_broker",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "broker_contact",
+   "fieldtype": "Data",
+   "label": "Broker Contact"
+  },
+  {
+   "fieldname": "broker_phone",
+   "fieldtype": "Data",
+   "label": "Broker Phone",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "home_info_section",
+   "fieldtype": "Section Break",
+   "label": "Home Info"
+  },
+  {
+   "fieldname": "model_name",
+   "fieldtype": "Data",
+   "label": "Model"
+  },
+  {
+   "fieldname": "column_break_home_info",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "home_invoice_plus_freight",
+   "fieldtype": "Currency",
+   "label": "Home Invoice plus Freight"
   },
   {
    "fieldname": "documents_section",
