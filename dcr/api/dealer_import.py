@@ -99,7 +99,9 @@ def clean_phone(val):
     # If it looks like a float from Excel (e.g. 7604711234.0), strip the decimal
     if s.endswith(".0"):
         s = s[:-2]
-    return s
+    # Strip extensions: "Ext. 2", "ext 2", "x2", etc.
+    s = re.sub(r'\s*(ext\.?|x)\s*\d+$', '', s, flags=re.IGNORECASE).strip()
+    return s or None
 
 
 def clean_customer_name(dba):
