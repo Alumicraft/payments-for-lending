@@ -47,18 +47,22 @@ INTERMEDIATE_GROUPS = {
 
 
 def _delete_existing_accounts(company, dry_run=False):
-    """Delete all existing accounts for the company, bottom-up.
+    """Delete all existing accounts for the company using direct SQL.
 
-    Clears GL Entry references, unsets company default accounts, then deletes
-    leaf accounts first, followed by groups, to respect parent constraints.
+    Uses raw SQL to avoid NestedSet tree corruption that occurs with
+    frappe.delete_doc on tree-based doctypes.
 
     Returns dict with deleted count and any errors.
     """
     result = {"deleted": 0, "errors": []}
 
+    count = frappe.db.count("Account", {"company": company})
+    result["deleted"] = count
+
     if dry_run:
-        count = frappe.db.count("Account", {"company": company})
-        result["deleted"] = count
+        return result
+
+    if count == 0:
         return result
 
     # Unset company default account fields that reference Account records
@@ -81,36 +85,9 @@ def _delete_existing_accounts(company, dry_run=False):
     if update_fields:
         frappe.db.set_value("Company", company, update_fields, update_modified=False)
 
-    # Delete in rounds: leaves first, then groups become leaves, repeat
-    max_rounds = 20
-    for _ in range(max_rounds):
-        accounts = frappe.db.get_all(
-            "Account",
-            filters={"company": company},
-            fields=["name", "is_group"],
-            order_by="lft desc",  # deepest nodes first
-        )
-        if not accounts:
-            break
-
-        deleted_this_round = 0
-        for acct in accounts:
-            try:
-                frappe.delete_doc("Account", acct.name, force=True, ignore_permissions=True)
-                result["deleted"] += 1
-                deleted_this_round += 1
-            except Exception as e:
-                # May fail if it still has children — will catch next round
-                pass
-
-        if deleted_this_round == 0:
-            # Nothing could be deleted — remaining accounts have blockers
-            remaining = frappe.db.get_all("Account", filters={"company": company}, fields=["name"])
-            for r in remaining:
-                result["errors"].append(f"Could not delete: {r.name}")
-            break
-
-        frappe.db.commit()
+    # Direct SQL delete — bypasses NestedSet validation entirely
+    frappe.db.sql("DELETE FROM `tabAccount` WHERE company = %s", company)
+    frappe.db.commit()
 
     return result
 
@@ -397,9 +374,10 @@ def import_chart_of_accounts(company, dry_run=False, limit=0):
 
         _maybe_commit()
 
-    # Final commit for any remaining
+    # Final commit and rebuild NestedSet tree
     if not dry_run:
         frappe.db.commit()
+        frappe.rebuild_tree("Account", "parent_account")
 
     summary["total_created"] = (
         len(summary["created_roots"])
