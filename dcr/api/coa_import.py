@@ -164,6 +164,8 @@ def _create_account(name, number, is_group, root_type, account_type,
 
         doc = frappe.get_doc(doc_data)
         doc.flags.ignore_permissions = True
+        if not parent_account:
+            doc.flags.ignore_mandatory = True
         doc.insert()
         return ("created", doc.name)
     except Exception as e:
