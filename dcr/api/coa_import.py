@@ -1,5 +1,6 @@
 import frappe
 from frappe import _
+from frappe.utils.nestedset import rebuild_tree
 import openpyxl
 
 
@@ -47,22 +48,13 @@ INTERMEDIATE_GROUPS = {
 
 
 def _delete_existing_accounts(company, dry_run=False):
-    """Delete all existing accounts for the company using direct SQL.
-
-    Uses raw SQL to avoid NestedSet tree corruption that occurs with
-    frappe.delete_doc on tree-based doctypes.
-
-    Returns dict with deleted count and any errors.
-    """
+    """Delete all existing accounts for the company using direct SQL."""
     result = {"deleted": 0, "errors": []}
 
     count = frappe.db.count("Account", {"company": company})
     result["deleted"] = count
 
-    if dry_run:
-        return result
-
-    if count == 0:
+    if dry_run or count == 0:
         return result
 
     # Unset company default account fields that reference Account records
@@ -93,10 +85,7 @@ def _delete_existing_accounts(company, dry_run=False):
 
 
 def _read_xlsx():
-    """Read the QBO Chart of Accounts XLSX from the site files directory.
-
-    Returns a list of dicts with keys: account_number, name, qbo_type, detail_type.
-    """
+    """Read the QBO Chart of Accounts XLSX from the site files directory."""
     site = frappe.local.site
     file_path = f"/home/frappe/frappe-bench/sites/{site}/public/files/DCR Chart of Accounts.xlsx"
 
@@ -108,7 +97,6 @@ def _read_xlsx():
         acct_num = row[0]
         name = row[1]
 
-        # Skip empty rows, TOTAL row, timestamp rows
         if not acct_num or not name:
             continue
         acct_num_str = str(acct_num).strip()
@@ -129,36 +117,58 @@ def _read_xlsx():
     return rows
 
 
-def _create_account(name, number, is_group, root_type, account_type, parent_account, company, abbr, dry_run=False):
+def _find_account(account_name, company):
+    """Look up the actual Account document name by account_name + company.
+
+    ERPNext names accounts as '{number} - {name} - {abbr}' when account_number
+    is set, or '{name} - {abbr}' when it's not. This function finds the actual
+    name regardless of numbering.
+    """
+    return frappe.db.get_value(
+        "Account",
+        {"account_name": account_name, "company": company},
+        "name",
+    )
+
+
+def _create_account(name, number, is_group, root_type, account_type,
+                     parent_account, company, dry_run=False):
     """Create a single Account document if it doesn't already exist.
 
-    Returns tuple: (action, account_name) where action is 'created', 'skipped', or 'error'.
-    """
-    full_name = f"{name} - {abbr}"
+    parent_account should be the actual document name (looked up via _find_account)
+    or None/empty string for root accounts.
 
-    if frappe.db.exists("Account", full_name):
-        return ("skipped", full_name)
+    Returns tuple: (action, actual_name).
+    """
+    existing = _find_account(name, company)
+    if existing:
+        return ("skipped", existing)
 
     if dry_run:
-        return ("created", full_name)
+        return ("created", name)
 
     try:
-        doc = frappe.get_doc({
+        doc_data = {
             "doctype": "Account",
             "account_name": name,
-            "account_number": number,
             "is_group": is_group,
             "root_type": root_type,
-            "account_type": account_type,
-            "parent_account": parent_account,
             "company": company,
-        })
+        }
+        if number:
+            doc_data["account_number"] = number
+        if account_type:
+            doc_data["account_type"] = account_type
+        if parent_account:
+            doc_data["parent_account"] = parent_account
+
+        doc = frappe.get_doc(doc_data)
         doc.flags.ignore_permissions = True
         doc.insert()
-        return ("created", full_name)
+        return ("created", doc.name)
     except Exception as e:
         frappe.log_error(f"COA Import: Failed to create account {name}", str(e))
-        return ("error", f"{full_name}: {str(e)}")
+        return ("error", f"{name}: {str(e)}")
 
 
 @frappe.whitelist()
@@ -168,7 +178,7 @@ def import_chart_of_accounts(company, dry_run=False, limit=0):
     Call via browser console:
         frappe.call({
             method: "dcr.api.coa_import.import_chart_of_accounts",
-            args: { company: "DCR" },
+            args: { company: "Dealer Capital Resources" },
             callback: r => console.log(r.message)
         })
     """
@@ -209,7 +219,7 @@ def import_chart_of_accounts(company, dry_run=False, limit=0):
         if not dry_run and created_count > 0 and created_count % 20 == 0:
             frappe.db.commit()
 
-    # ── Pass 1: Root accounts ──────────────────────────────────────────
+    # ── Pass 1: Root accounts (no parent_account) ────────────────────
     for root_type, info in ROOT_ACCOUNTS.items():
         action, name = _create_account(
             name=info["name"],
@@ -219,7 +229,6 @@ def import_chart_of_accounts(company, dry_run=False, limit=0):
             account_type=None,
             parent_account=None,
             company=company,
-            abbr=abbr,
             dry_run=dry_run,
         )
         _track(action, name, "created_roots")
@@ -229,10 +238,8 @@ def import_chart_of_accounts(company, dry_run=False, limit=0):
     for group_name, info in INTERMEDIATE_GROUPS.items():
         root_type = info["root_type"]
         root_name = ROOT_ACCOUNTS[root_type]["name"]
-        parent_account = f"{root_name} - {abbr}"
+        parent_account = _find_account(root_name, company)
 
-        # Determine account_type for the intermediate group
-        # Find it from QBO_TYPE_MAP where the group name matches
         group_account_type = None
         for qbo_type, (rt, at, gn) in QBO_TYPE_MAP.items():
             if gn == group_name:
@@ -247,7 +254,6 @@ def import_chart_of_accounts(company, dry_run=False, limit=0):
             account_type=group_account_type,
             parent_account=parent_account,
             company=company,
-            abbr=abbr,
             dry_run=dry_run,
         )
         _track(action, name, "created_groups")
@@ -267,7 +273,6 @@ def import_chart_of_accounts(company, dry_run=False, limit=0):
             colon_parents.add(parent_part)
 
     # ── Pass 2b: Create colon-parent groups ────────────────────────────
-    # Collect unique colon parents with their info from the XLSX rows
     colon_parent_info = {}
     for row in rows:
         if ":" in row["name"]:
@@ -275,18 +280,12 @@ def import_chart_of_accounts(company, dry_run=False, limit=0):
             if parent_part not in colon_parent_info:
                 colon_parent_info[parent_part] = row["qbo_type"]
 
-    # Some colon-parents also appear as standalone rows with their own
-    # account number. We'll handle those in Pass 3 (they'll be created
-    # as is_group=1 there). Only create colon-parent groups here if
-    # they do NOT have their own standalone row.
     standalone_names = set()
     for row in rows:
         if ":" not in row["name"]:
             standalone_names.add(row["name"])
 
     for parent_name, qbo_type in colon_parent_info.items():
-        # Skip if this parent has its own standalone row — it will be
-        # created in Pass 3 with its own account number
         if parent_name in standalone_names:
             continue
 
@@ -297,11 +296,10 @@ def import_chart_of_accounts(company, dry_run=False, limit=0):
 
         root_type, account_type, group_name = mapping
 
-        # For Equity, parent directly under root
         if group_name is None:
-            parent_account = f"{ROOT_ACCOUNTS[root_type]['name']} - {abbr}"
+            parent_account = _find_account(ROOT_ACCOUNTS[root_type]["name"], company)
         else:
-            parent_account = f"{group_name} - {abbr}"
+            parent_account = _find_account(group_name, company)
 
         action, name = _create_account(
             name=parent_name,
@@ -311,7 +309,6 @@ def import_chart_of_accounts(company, dry_run=False, limit=0):
             account_type=account_type,
             parent_account=parent_account,
             company=company,
-            abbr=abbr,
             dry_run=dry_run,
         )
         _track(action, name, "created_groups")
@@ -331,11 +328,10 @@ def import_chart_of_accounts(company, dry_run=False, limit=0):
         root_type, account_type, group_name = mapping
 
         if ":" in acct_name:
-            # This is a child of a colon-parent
             parent_part, child_part = acct_name.split(":", 1)
             parent_part = parent_part.strip()
             child_part = child_part.strip()
-            parent_account = f"{parent_part} - {abbr}"
+            parent_account = _find_account(parent_part, company)
 
             action, name = _create_account(
                 name=child_part,
@@ -345,19 +341,16 @@ def import_chart_of_accounts(company, dry_run=False, limit=0):
                 account_type=account_type,
                 parent_account=parent_account,
                 company=company,
-                abbr=abbr,
                 dry_run=dry_run,
             )
             _track(action, name, "created_accounts")
         else:
-            # Standalone account — check if it's also a colon-parent
             is_group = 1 if acct_name in colon_parents else 0
 
-            # For Equity, parent directly under root
             if group_name is None:
-                parent_account = f"{ROOT_ACCOUNTS[root_type]['name']} - {abbr}"
+                parent_account = _find_account(ROOT_ACCOUNTS[root_type]["name"], company)
             else:
-                parent_account = f"{group_name} - {abbr}"
+                parent_account = _find_account(group_name, company)
 
             action, name = _create_account(
                 name=acct_name,
@@ -367,7 +360,6 @@ def import_chart_of_accounts(company, dry_run=False, limit=0):
                 account_type=account_type,
                 parent_account=parent_account,
                 company=company,
-                abbr=abbr,
                 dry_run=dry_run,
             )
             _track(action, name, "created_accounts")
@@ -377,7 +369,7 @@ def import_chart_of_accounts(company, dry_run=False, limit=0):
     # Final commit and rebuild NestedSet tree
     if not dry_run:
         frappe.db.commit()
-        frappe.rebuild_tree("Account", "parent_account")
+        rebuild_tree("Account", "parent_account")
 
     summary["total_created"] = (
         len(summary["created_roots"])
