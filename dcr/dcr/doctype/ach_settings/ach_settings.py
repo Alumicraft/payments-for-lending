@@ -52,12 +52,14 @@ def get_ach_settings():
     return frappe.get_single("ACH Settings")
 
 
+@frappe.whitelist()
 def is_ach_enabled():
     """Check if ACH autopay is enabled."""
     settings = get_ach_settings()
     return settings.enable_ach_autopay
 
 
+@frappe.whitelist()
 def is_plaid_enabled():
     """Check if Plaid integration is configured."""
     settings = get_ach_settings()
