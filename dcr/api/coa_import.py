@@ -162,6 +162,11 @@ def _create_account(name, number, is_group, root_type, account_type,
         if parent_account:
             doc_data["parent_account"] = parent_account
 
+        # ERPNext restricts certain account_types to group accounts only
+        group_only_types = {"Current Asset", "Fixed Asset", "Current Liability"}
+        if not is_group and account_type in group_only_types:
+            doc_data.pop("account_type", None)
+
         doc = frappe.get_doc(doc_data)
         doc.flags.ignore_permissions = True
         if not parent_account:
