@@ -23,27 +23,27 @@ QBO_TYPE_MAP = {
 }
 
 ROOT_ACCOUNTS = {
-    "Asset":     {"name": "Assets",      "number": "10000"},
-    "Liability": {"name": "Liabilities", "number": "20000"},
-    "Equity":    {"name": "Equity",      "number": "30000"},
-    "Income":    {"name": "Income",      "number": "40000"},
-    "Expense":   {"name": "Expenses",    "number": "50000"},
+    "Asset":     {"name": "Assets",      "number": None},
+    "Liability": {"name": "Liabilities", "number": None},
+    "Equity":    {"name": "Equity",      "number": None},
+    "Income":    {"name": "Income",      "number": None},
+    "Expense":   {"name": "Expenses",    "number": None},
 }
 
 INTERMEDIATE_GROUPS = {
-    "Bank Accounts":       {"number": "10100", "root_type": "Asset"},
-    "Current Assets":      {"number": "10200", "root_type": "Asset"},
-    "Other Assets":        {"number": "10300", "root_type": "Asset"},
-    "Accounts Receivable": {"number": "10400", "root_type": "Asset"},
-    "Accounts Payable":    {"number": "20100", "root_type": "Liability"},
-    "Credit Cards":        {"number": "20200", "root_type": "Liability"},
-    "Current Liabilities": {"number": "20300", "root_type": "Liability"},
-    "Long Term Liabilities": {"number": "20400", "root_type": "Liability"},
-    "Direct Income":       {"number": "40100", "root_type": "Income"},
-    "Other Income":        {"number": "40200", "root_type": "Income"},
-    "Cost of Goods Sold":  {"number": "50100", "root_type": "Expense"},
-    "Operating Expenses":  {"number": "50200", "root_type": "Expense"},
-    "Other Expenses":      {"number": "50300", "root_type": "Expense"},
+    "Bank Accounts":         {"number": None, "root_type": "Asset"},
+    "Current Assets":        {"number": None, "root_type": "Asset"},
+    "Other Assets":          {"number": None, "root_type": "Asset"},
+    "Accounts Receivable":   {"number": None, "root_type": "Asset"},
+    "Accounts Payable":      {"number": None, "root_type": "Liability"},
+    "Credit Cards":          {"number": None, "root_type": "Liability"},
+    "Current Liabilities":   {"number": None, "root_type": "Liability"},
+    "Long Term Liabilities": {"number": None, "root_type": "Liability"},
+    "Direct Income":         {"number": None, "root_type": "Income"},
+    "Other Income":          {"number": None, "root_type": "Income"},
+    "Cost of Goods Sold":    {"number": None, "root_type": "Expense"},
+    "Operating Expenses":    {"number": None, "root_type": "Expense"},
+    "Other Expenses":        {"number": None, "root_type": "Expense"},
 }
 
 
