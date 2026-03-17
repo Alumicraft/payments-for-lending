@@ -46,6 +46,75 @@ INTERMEDIATE_GROUPS = {
 }
 
 
+def _delete_existing_accounts(company, dry_run=False):
+    """Delete all existing accounts for the company, bottom-up.
+
+    Clears GL Entry references, unsets company default accounts, then deletes
+    leaf accounts first, followed by groups, to respect parent constraints.
+
+    Returns dict with deleted count and any errors.
+    """
+    result = {"deleted": 0, "errors": []}
+
+    if dry_run:
+        count = frappe.db.count("Account", {"company": company})
+        result["deleted"] = count
+        return result
+
+    # Unset company default account fields that reference Account records
+    default_account_fields = [
+        "default_bank_account", "default_cash_account",
+        "default_receivable_account", "default_payable_account",
+        "default_expense_account", "default_income_account",
+        "round_off_account", "write_off_account",
+        "exchange_gain_loss_account", "unrealized_exchange_gain_loss_account",
+        "default_deferred_revenue_account", "default_deferred_expense_account",
+        "cost_center", "default_finance_book",
+        "depreciation_expense_account", "disposal_account",
+        "accumulated_depreciation_account",
+    ]
+    update_fields = {}
+    meta = frappe.get_meta("Company")
+    for field in default_account_fields:
+        if meta.has_field(field):
+            update_fields[field] = None
+    if update_fields:
+        frappe.db.set_value("Company", company, update_fields, update_modified=False)
+
+    # Delete in rounds: leaves first, then groups become leaves, repeat
+    max_rounds = 20
+    for _ in range(max_rounds):
+        accounts = frappe.db.get_all(
+            "Account",
+            filters={"company": company},
+            fields=["name", "is_group"],
+            order_by="lft desc",  # deepest nodes first
+        )
+        if not accounts:
+            break
+
+        deleted_this_round = 0
+        for acct in accounts:
+            try:
+                frappe.delete_doc("Account", acct.name, force=True, ignore_permissions=True)
+                result["deleted"] += 1
+                deleted_this_round += 1
+            except Exception as e:
+                # May fail if it still has children — will catch next round
+                pass
+
+        if deleted_this_round == 0:
+            # Nothing could be deleted — remaining accounts have blockers
+            remaining = frappe.db.get_all("Account", filters={"company": company}, fields=["name"])
+            for r in remaining:
+                result["errors"].append(f"Could not delete: {r.name}")
+            break
+
+        frappe.db.commit()
+
+    return result
+
+
 def _read_xlsx():
     """Read the QBO Chart of Accounts XLSX from the site files directory.
 
@@ -133,7 +202,12 @@ def import_chart_of_accounts(company, dry_run=False, limit=0):
     if not abbr:
         frappe.throw(_("Company {0} not found or has no abbreviation").format(company))
 
+    # ── Delete existing accounts ────────────────────────────────────
+    delete_result = _delete_existing_accounts(company, dry_run=dry_run)
+
     summary = {
+        "deleted_accounts": delete_result["deleted"],
+        "delete_errors": delete_result["errors"],
         "created_roots": [],
         "created_groups": [],
         "created_accounts": [],
