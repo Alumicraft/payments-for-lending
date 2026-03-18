@@ -28,6 +28,17 @@ frappe.ui.form.on('Loan', {
                 }
             }
         });
+
+        // Payoff letter buttons — only for disbursed/active loans
+        if (frm.doc.status && ['Disbursed', 'Active'].includes(frm.doc.status)) {
+            frm.add_custom_button(__('FL Payoff Letter'), function() {
+                send_payoff(frm, 'Flooring');
+            }, __('Actions'));
+
+            frm.add_custom_button(__('COD Payoff Letter'), function() {
+                send_payoff(frm, 'COD');
+            }, __('Actions'));
+        }
     }
 });
 
@@ -505,6 +516,29 @@ function confirm_remove_account(auth_name, dialog, frm) {
                     }
                 });
             }, __('Remove Bank Account'), __('Remove'));
+        }
+    );
+}
+
+
+function send_payoff(frm, payoff_type) {
+    frappe.confirm(
+        __('Send {0} Payoff Letter to {1}?', [payoff_type, frm.doc.applicant]),
+        function() {
+            frappe.call({
+                method: 'dcr.api.docusign.send_payoff_letter',
+                args: { loan: frm.doc.name, payoff_type: payoff_type },
+                freeze: true,
+                freeze_message: __('Sending payoff letter...'),
+                callback: function(r) {
+                    if (r.message && r.message.success) {
+                        frappe.show_alert({
+                            message: __('{0} Payoff Letter sent', [payoff_type]),
+                            indicator: 'green'
+                        });
+                    }
+                }
+            });
         }
     );
 }

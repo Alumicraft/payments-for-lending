@@ -108,17 +108,19 @@ fixtures = [
 # Include JS in doctype views
 doctype_js = {
     "Loan": "public/js/loan.js",
+    "Loan Application": "public/js/loan_application.js",
     "Customer": "public/js/customer.js",
     "Home Build Request": "public/js/home_build_request.js",
+    "MIFA": "public/js/mifa.js",
 }
 
 # Document Events
 doc_events = {
-    "Customer": {
-        "on_update": "dcr.api.docusign.on_customer_update"
-    },
     "Loan Application": {
         "validate": "dcr.api.lending.validate_loan_application"
+    },
+    "Sales Order": {
+        "on_submit": "dcr.api.sales_order_hooks.on_submit"
     },
 }
 

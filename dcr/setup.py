@@ -11,7 +11,7 @@ def after_install():
         }).insert(ignore_permissions=True)
 
     # Supplier Groups
-    for group_name in ("Escrow",):
+    for group_name in ("Escrow", "Factory"):
         if not frappe.db.exists("Supplier Group", group_name):
             frappe.get_doc({
                 "doctype": "Supplier Group",
@@ -19,7 +19,7 @@ def after_install():
             }).insert(ignore_permissions=True)
 
     # Customer Groups
-    for group_name in ("Home Buyer",):
+    for group_name in ("Home Buyer", "Dealer"):
         if not frappe.db.exists("Customer Group", group_name):
             frappe.get_doc({
                 "doctype": "Customer Group",

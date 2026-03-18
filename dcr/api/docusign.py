@@ -350,7 +350,7 @@ def _handle_envelope_declined(envelope_id, data):
 
 
 def _update_reference_document(sig_req):
-    """Update the source document after signature completion."""
+    """Update the source document after signature completion and send notification."""
     if not sig_req.reference_doctype or not sig_req.reference_name:
         return
 
@@ -358,6 +358,7 @@ def _update_reference_document(sig_req):
         if sig_req.document_type == "Dealer Agreement" and sig_req.reference_doctype == "Customer":
             frappe.db.set_value("Customer", sig_req.reference_name,
                                 "dealer_agreement_status", "Signed")
+            _send_signed_email(sig_req)
 
         elif sig_req.document_type == "MIFA" and sig_req.reference_doctype == "MIFA":
             frappe.db.set_value("MIFA", sig_req.reference_name,
@@ -366,11 +367,65 @@ def _update_reference_document(sig_req):
         elif sig_req.document_type == "Flooring Packet" and sig_req.reference_doctype == "Loan Application":
             frappe.db.set_value("Loan Application", sig_req.reference_name,
                                 "signed_packet", sig_req.signed_attachment)
+            _send_signed_email(sig_req)
 
     except Exception as e:
         frappe.log_error(
             f"Failed to update reference doc {sig_req.reference_doctype}/{sig_req.reference_name}: {str(e)}",
             "DocuSign Reference Update"
+        )
+
+
+def _send_signed_email(sig_req):
+    """Send confirmation email after document is signed. Fails silently."""
+    try:
+        from dcr.api.dcr_email import (
+            send_dealer_agreement_signed,
+            send_flooring_packet_signed,
+        )
+
+        customer_doc = frappe.get_doc("Customer", sig_req.customer)
+        email = customer_doc.email_id
+        if not email:
+            return
+
+        # Prepare signed PDF attachment if available
+        attachments = None
+        if sig_req.signed_attachment:
+            try:
+                file_doc = frappe.get_doc("File", {"file_url": sig_req.signed_attachment})
+                attachments = [{
+                    "filename": file_doc.file_name,
+                    "content": base64.b64encode(file_doc.get_content()).decode("utf-8"),
+                }]
+            except Exception:
+                pass  # Send email without attachment
+
+        signed_date = frappe.utils.formatdate(sig_req.signed_date)
+
+        if sig_req.document_type == "Dealer Agreement":
+            send_dealer_agreement_signed(
+                customer_name=customer_doc.customer_name,
+                signed_date=signed_date,
+                to_email=email,
+                attachments=attachments,
+                reference_name=sig_req.reference_name,
+            )
+
+        elif sig_req.document_type == "Flooring Packet":
+            send_flooring_packet_signed(
+                customer_name=customer_doc.customer_name,
+                loan_application=sig_req.reference_name,
+                signed_date=signed_date,
+                to_email=email,
+                attachments=attachments,
+                reference_name=sig_req.reference_name,
+            )
+
+    except Exception as e:
+        frappe.log_error(
+            f"Failed to send signed email for {sig_req.name}: {str(e)}",
+            "DocuSign Signed Email"
         )
 
 
@@ -446,20 +501,6 @@ def send_dealer_agreement(customer):
     return {"success": True, "signature_request": sig_req.name}
 
 
-def on_customer_update(doc, method):
-    """Hook: auto-send dealer agreement on Customer save."""
-    if (doc.customer_group == "Dealer"
-            and doc.get("dealer_agreement_status") == "Not Sent"
-            and doc.email_id):
-        try:
-            send_dealer_agreement(doc.name)
-        except Exception as e:
-            frappe.log_error(
-                f"Auto-send dealer agreement failed for {doc.name}: {str(e)}",
-                "Dealer Agreement Auto-Send"
-            )
-
-
 @frappe.whitelist()
 def send_mifa_for_signature(mifa_name):
     """Send MIFA for signature via DocuSign."""
@@ -488,7 +529,7 @@ def send_mifa_for_signature(mifa_name):
 
 @frappe.whitelist()
 def send_flooring_packet(loan_application):
-    """Send Exhibit A + ACH Approval as a combined flooring packet."""
+    """Send Info Sheet + Exhibit A + ACH Approval as a combined flooring packet."""
     la = frappe.get_doc("Loan Application", loan_application)
     customer_doc = frappe.get_doc("Customer", la.applicant)
 
@@ -496,11 +537,18 @@ def send_flooring_packet(loan_application):
     if not email:
         frappe.throw(_("Customer does not have an email address"))
 
+    if not la.get("home_build_request"):
+        frappe.throw(_("Loan Application must be linked to a Home Build Request"))
+
+    # Render all 3 documents
+    info_sheet = frappe.get_print(
+        "Home Build Request", la.home_build_request, "New Home Info Sheet", as_pdf=True
+    )
     exhibit_a = frappe.get_print(
-        "Loan Application", loan_application, "Exhibit A", as_pdf=True
+        "Loan Application", loan_application, "Exhibit A Receipt", as_pdf=True
     )
     ach_approval = frappe.get_print(
-        "Loan Application", loan_application, "ACH Approval", as_pdf=True
+        "Loan Application", loan_application, "ACH Recurring Payment Authorization", as_pdf=True
     )
 
     client = DocuSignClient()
@@ -510,6 +558,7 @@ def send_flooring_packet(loan_application):
         name=f"Flooring Packet - {la.applicant}",
         recipients=[{"email": email, "name": customer_doc.customer_name, "role": "signer"}],
         documents=[
+            {"content": info_sheet, "name": "New-Home-Info-Sheet.pdf", "file_extension": "pdf"},
             {"content": exhibit_a, "name": "Exhibit-A.pdf", "file_extension": "pdf"},
             {"content": ach_approval, "name": "ACH-Approval.pdf", "file_extension": "pdf"},
         ],
@@ -530,3 +579,69 @@ def send_flooring_packet(loan_application):
     frappe.db.commit()
 
     return {"success": True, "signature_request": sig_req.name}
+
+
+@frappe.whitelist()
+def send_pre_approval(loan_application):
+    """Send Advance Pre-Approval letter as PDF email attachment (no signature needed)."""
+    la = frappe.get_doc("Loan Application", loan_application)
+    customer_doc = frappe.get_doc("Customer", la.applicant)
+
+    email = customer_doc.email_id
+    if not email:
+        frappe.throw(_("Customer does not have an email address"))
+
+    pdf_content = frappe.get_print(
+        "Loan Application", loan_application, "Advance Pre-Approval", as_pdf=True
+    )
+
+    frappe.sendmail(
+        recipients=[email],
+        subject=f"Advance Pre-Approval \u2014 {customer_doc.customer_name}",
+        message="Please find attached the Advance Pre-Approval letter for your review.",
+        attachments=[{
+            "fname": f"Advance-Pre-Approval-{la.applicant}.pdf",
+            "fcontent": pdf_content,
+        }],
+        reference_doctype="Loan Application",
+        reference_name=loan_application,
+    )
+
+    return {"success": True}
+
+
+@frappe.whitelist()
+def send_payoff_letter(loan, payoff_type="Flooring"):
+    """Send a payoff letter (FL or COD) as PDF email attachment.
+
+    Args:
+        loan: Loan name
+        payoff_type: "Flooring" or "COD"
+    """
+    loan_doc = frappe.get_doc("Loan", loan)
+    customer_doc = frappe.get_doc("Customer", loan_doc.applicant)
+
+    email = customer_doc.email_id
+    if not email:
+        frappe.throw(_("Customer does not have an email address"))
+
+    print_format = (
+        "Dealer Flooring Loan Payoff" if payoff_type == "Flooring"
+        else "Dealer Cash on Delivery Payoff"
+    )
+
+    pdf_content = frappe.get_print("Loan", loan, print_format, as_pdf=True)
+
+    frappe.sendmail(
+        recipients=[email],
+        subject=f"Loan Payoff Letter \u2014 {customer_doc.customer_name}",
+        message=f"Please find attached your {payoff_type} payoff letter.",
+        attachments=[{
+            "fname": f"Payoff-{payoff_type}-{loan_doc.applicant}.pdf",
+            "fcontent": pdf_content,
+        }],
+        reference_doctype="Loan",
+        reference_name=loan,
+    )
+
+    return {"success": True}
