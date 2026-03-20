@@ -27,6 +27,8 @@ except ImportError:
 
 def _normalize_pem_key(key):
     """Re-format a PEM private key that lost its newlines (e.g. from a Password field)."""
+    # Strip surrounding quotes that Frappe Password field may add
+    key = key.strip().strip('"').strip("'")
     if "\n" in key:
         return key
     # Strip header/footer, whitespace, then re-chunk at 64 chars
