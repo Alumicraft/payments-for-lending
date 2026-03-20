@@ -283,6 +283,8 @@
     "label": "Home Type",
     "options": "\nSpec\nCustomer Sold",
     "insert_after": "home_build_request",
+    "fetch_from": "home_build_request.home_type",
+    "read_only": 1,
     "description": "Drives print format variant (Exhibit A)"
   },
   {
@@ -349,7 +351,8 @@
     "fieldname": "signed_packet",
     "fieldtype": "Attach",
     "label": "Signed Packet",
-    "insert_after": "available_credit"
+    "insert_after": "doc_checklist",
+    "hidden": 1
   },
   {
     "doctype": "Custom Field",
@@ -358,7 +361,7 @@
     "fieldname": "dcr_documents_section",
     "fieldtype": "Section Break",
     "label": "Documents",
-    "insert_after": "signed_packet"
+    "insert_after": "custom_notes"
   },
   {
     "doctype": "Custom Field",
@@ -602,7 +605,7 @@
     "fieldname": "exhibit_a_section",
     "fieldtype": "Section Break",
     "label": "Exhibit A / ACH",
-    "insert_after": "doc_checklist"
+    "insert_after": "available_credit"
   },
   {
     "doctype": "Custom Field",
@@ -684,7 +687,8 @@
     "fieldname": "advance_preapproval_section",
     "fieldtype": "Section Break",
     "label": "Advance Pre-Approval",
-    "insert_after": "first_autopay_description"
+    "insert_after": "first_autopay_description",
+    "collapsible": 1
   },
   {
     "doctype": "Custom Field",
