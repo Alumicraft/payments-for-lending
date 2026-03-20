@@ -164,7 +164,12 @@ class DocuSignClient:
             json=payload,
             timeout=30,
         )
-        resp.raise_for_status()
+        if not resp.ok:
+            frappe.log_error(
+                f"DocuSign API {resp.status_code}: {resp.text}",
+                "DocuSign Envelope Error",
+            )
+            resp.raise_for_status()
         data = resp.json()
         return {"envelope_id": data.get("envelopeId")}
 
