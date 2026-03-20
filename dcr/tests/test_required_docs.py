@@ -32,7 +32,7 @@ class TestGetRequiredDocs(unittest.TestCase):
         self.assertEqual(len(docs), 4)
 
     def test_spec_floored_park(self):
-        docs = get_required_docs("Spec", "DCR Floored", "Park")
+        docs = get_required_docs("Spec", "Floored", "Park")
         self.assertIn("Spec Info Sheet", docs)
         self.assertIn("Storage Agreement", docs)
         self.assertIn("Park Agreement", docs)
@@ -41,7 +41,7 @@ class TestGetRequiredDocs(unittest.TestCase):
         self.assertEqual(len(docs), 5)
 
     def test_spec_floored_private(self):
-        docs = get_required_docs("Spec", "DCR Floored", "Private Property")
+        docs = get_required_docs("Spec", "Floored", "Private Property")
         self.assertIn("Spec Info Sheet", docs)
         self.assertIn("Factory Quote", docs)
         self.assertIn("Plot Plan", docs)
@@ -74,7 +74,7 @@ class TestGetRequiredDocs(unittest.TestCase):
         self.assertEqual(len(docs), 5)
 
     def test_customer_sold_floored_park(self):
-        docs = get_required_docs("Customer Sold", "DCR Floored", "Park")
+        docs = get_required_docs("Customer Sold", "Floored", "Park")
         self.assertIn("Retail Sold Info Sheet", docs)
         self.assertIn("Purchase Contract", docs)
         self.assertIn("Escrow Proof", docs)
@@ -86,7 +86,7 @@ class TestGetRequiredDocs(unittest.TestCase):
         self.assertEqual(len(docs), 8)
 
     def test_customer_sold_floored_private(self):
-        docs = get_required_docs("Customer Sold", "DCR Floored", "Private Property")
+        docs = get_required_docs("Customer Sold", "Floored", "Private Property")
         self.assertIn("Retail Sold Info Sheet", docs)
         self.assertIn("Purchase Contract", docs)
         self.assertIn("Escrow Proof", docs)
@@ -109,7 +109,7 @@ class TestGetRequiredDocs(unittest.TestCase):
     def test_all_combinations_covered(self):
         """Every valid combo of home_type x financing_type x property_type has docs."""
         home_types = ["Spec", "Customer Sold"]
-        financing_types = ["Cash", "DCR Floored"]
+        financing_types = ["Cash", "Floored"]
         property_types = ["Park", "Private Property"]
 
         for ht in home_types:
