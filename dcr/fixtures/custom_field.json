@@ -89,7 +89,7 @@
     "dt": "Customer",
     "fieldname": "dcr_application_section",
     "fieldtype": "Section Break",
-    "label": "DCR Application",
+    "label": "Application",
     "insert_after": "master_dealer_list_updated",
     "depends_on": "eval:doc.customer_group=='Dealer'"
   },
@@ -99,7 +99,7 @@
     "dt": "Customer",
     "fieldname": "dcr_application_status",
     "fieldtype": "Select",
-    "label": "DCR Application Status",
+    "label": "Application Status",
     "options": "\nInitiated\nIn Review\nApproved\nRejected",
     "insert_after": "dcr_application_section"
   },
@@ -109,7 +109,7 @@
     "dt": "Customer",
     "fieldname": "dcr_account_no",
     "fieldtype": "Data",
-    "label": "DCR Account No",
+    "label": "Account No",
     "insert_after": "dcr_application_status"
   },
   {
@@ -291,7 +291,7 @@
     "dt": "Loan Application",
     "fieldname": "dcr_lending_section",
     "fieldtype": "Section Break",
-    "label": "DCR Lending",
+    "label": "Lending",
     "insert_after": "home_type"
   },
   {
@@ -357,7 +357,7 @@
     "dt": "Loan Application",
     "fieldname": "dcr_documents_section",
     "fieldtype": "Section Break",
-    "label": "DCR Documents",
+    "label": "Documents",
     "insert_after": "signed_packet"
   },
   {
