@@ -89,7 +89,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Financing Type",
-   "options": "\nCash\nDCR Floored",
+   "options": "\nCash\nFloored",
    "reqd": 1
   },
   {
@@ -134,7 +134,7 @@
    "label": "Loan Application",
    "options": "Loan Application",
    "read_only": 1,
-   "depends_on": "eval:doc.financing_type=='DCR Floored'"
+   "depends_on": "eval:doc.financing_type=='Floored'"
   },
   {
    "fieldname": "park_section",
