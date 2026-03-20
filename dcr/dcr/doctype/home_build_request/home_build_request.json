@@ -29,6 +29,7 @@
   "column_break_escrow",
   "escrow_contact",
   "escrow_phone",
+  "escrow_financials_section",
   "customer_deposit",
   "selling_price",
   "column_break_escrow2",
@@ -198,6 +199,11 @@
    "options": "Phone"
   },
   {
+   "fieldname": "escrow_financials_section",
+   "fieldtype": "Section Break",
+   "label": "Financials"
+  },
+  {
    "fieldname": "customer_deposit",
    "fieldtype": "Currency",
    "label": "Customer Deposit in Escrow"
@@ -226,8 +232,9 @@
   },
   {
    "fieldname": "broker",
-   "fieldtype": "Data",
-   "label": "Broker"
+   "fieldtype": "Link",
+   "label": "Broker",
+   "options": "Supplier"
   },
   {
    "fieldname": "column_break_broker",
