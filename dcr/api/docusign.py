@@ -164,12 +164,17 @@ class DocuSignClient:
         if message:
             payload["emailBlurb"] = message
 
-        # Per-envelope webhook
+        # Per-envelope webhook (JSON format)
         if webhook_url:
             payload["eventNotification"] = {
                 "url": webhook_url,
                 "requireAcknowledgment": "true",
                 "loggingEnabled": "true",
+                "includeSoapBody": "false",
+                "eventData": {
+                    "version": "restv2.1",
+                    "format": "json",
+                },
                 "envelopeEvents": [
                     {"envelopeEventStatusCode": "completed"},
                     {"envelopeEventStatusCode": "declined"},
