@@ -53,11 +53,11 @@
    "label": "Interest Rate"
   },
   {
+   "fetch_from": "customer.entity_type",
    "fieldname": "entity_type",
    "fieldtype": "Select",
    "label": "Entity Type",
-   "options": "\nLLC\nCorporation\nPartnership\nTrust",
-   "description": "Can also be fetched from Customer.entity_type"
+   "options": "\nLLC\nCorporation\nPartnership\nTrust"
   },
   {
    "fieldname": "effective_date",
@@ -81,10 +81,11 @@
    "label": "Signature"
   },
   {
+   "description": "Populated by DocuSign webhook",
    "fieldname": "signed_mifa",
    "fieldtype": "Attach",
-   "label": "Signed MIFA",
-   "description": "Populated by DocuSign webhook"
+   "hidden": 1,
+   "label": "Signed MIFA"
   },
   {
    "fieldname": "dealer_signer_title",
