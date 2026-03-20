@@ -299,8 +299,8 @@ def _verify_webhook_request():
 
     hmac_key = settings.get("webhook_hmac_key")
     if not hmac_key:
-        frappe.logger().warning("DocuSign webhook: no HMAC key configured — rejecting request")
-        return False
+        frappe.logger().info("DocuSign webhook: no HMAC key configured — allowing request (per-envelope mode)")
+        return True
 
     # DocuSign sends HMAC in X-DocuSign-Signature-1 header (base64-encoded)
     signature = frappe.request.headers.get("X-DocuSign-Signature-1")
