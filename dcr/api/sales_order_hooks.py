@@ -1,7 +1,7 @@
 """
 Sales Order Hooks
 
-When a Sales Order for a DCR Floored deal is submitted,
+When a Sales Order for a Floored deal is submitted,
 auto-create a Loan Application linked to the Home Build Request.
 """
 
@@ -10,9 +10,9 @@ from frappe import _
 
 
 def on_submit(doc, method):
-    """Create Loan Application for DCR Floored deals on Sales Order submit."""
+    """Create Loan Application for Floored deals on Sales Order submit."""
     financing_type = doc.get("financing_type")
-    if financing_type != "DCR Floored":
+    if financing_type != "Floored":
         return
 
     hbr_name = doc.get("home_build_request")

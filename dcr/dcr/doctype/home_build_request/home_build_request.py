@@ -12,11 +12,11 @@ DOC_REQUIREMENTS = {
     ("Spec", "Cash", "Private Property"): [
         "Spec Info Sheet", "Factory Quote", "Plot Plan", "50% Deposit Proof"
     ],
-    ("Spec", "DCR Floored", "Park"): [
+    ("Spec", "Floored", "Park"): [
         "Spec Info Sheet", "Storage Agreement", "Park Agreement",
         "Factory Quote", "Plot Plan"
     ],
-    ("Spec", "DCR Floored", "Private Property"): [
+    ("Spec", "Floored", "Private Property"): [
         "Spec Info Sheet", "Factory Quote", "Plot Plan", "50% Deposit Proof"
     ],
     ("Customer Sold", "Cash", "Park"): [
@@ -28,12 +28,12 @@ DOC_REQUIREMENTS = {
         "Cash Private Info Sheet", "Purchase Contract", "Escrow Proof",
         "Factory Quote", "50% Deposit Proof"
     ],
-    ("Customer Sold", "DCR Floored", "Park"): [
+    ("Customer Sold", "Floored", "Park"): [
         "Retail Sold Info Sheet", "Purchase Contract", "Escrow Proof",
         "Factory Quote", "Plot Plan", "Loan Approval", "Park Approval",
         "Insurance"
     ],
-    ("Customer Sold", "DCR Floored", "Private Property"): [
+    ("Customer Sold", "Floored", "Private Property"): [
         "Retail Sold Info Sheet", "Purchase Contract", "Escrow Proof",
         "Factory Quote", "Plot Plan"
     ],
@@ -42,7 +42,7 @@ DOC_REQUIREMENTS = {
 
 class HomeBuildRequest(Document):
     def validate(self):
-        if self.financing_type == "DCR Floored" and not self.property_type:
+        if self.financing_type == "Floored" and not self.property_type:
             frappe.throw(_("Property Type is required"))
 
     def before_submit(self):
