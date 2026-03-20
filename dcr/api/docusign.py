@@ -119,12 +119,31 @@ class DocuSignClient:
         """
         signers = []
         for i, r in enumerate(recipients):
-            signers.append({
+            signer = {
                 "email": r["email"],
                 "name": r.get("name", r["email"]),
                 "recipientId": str(i + 1),
                 "routingOrder": str(i + 1),
-            })
+                "tabs": {
+                    "signHereTabs": [
+                        {
+                            "anchorString": f"/sig{i + 1}/",
+                            "anchorUnits": "pixels",
+                            "anchorXOffset": "0",
+                            "anchorYOffset": "-10",
+                        }
+                    ],
+                    "dateSignedTabs": [
+                        {
+                            "anchorString": f"/ds{i + 1}/",
+                            "anchorUnits": "pixels",
+                            "anchorXOffset": "0",
+                            "anchorYOffset": "0",
+                        }
+                    ],
+                },
+            }
+            signers.append(signer)
 
         doc_list = []
         for i, doc in enumerate(documents):
