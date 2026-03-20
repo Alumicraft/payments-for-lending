@@ -53,7 +53,7 @@
     "fieldtype": "Select",
     "label": "W-9 Status",
     "options": "\nPending\nReceived\nVerified",
-    "insert_after": "column_break_dealer1"
+    "insert_after": "entity_type"
   },
   {
     "doctype": "Custom Field",
@@ -62,7 +62,18 @@
     "fieldname": "mifa_required",
     "fieldtype": "Check",
     "label": "MIFA Required (Floored Dealer)",
-    "insert_after": "w9_status"
+    "insert_after": "master_dealer_list_updated"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Customer-dealer_documents_section",
+    "dt": "Customer",
+    "fieldname": "dealer_documents_section",
+    "fieldtype": "Section Break",
+    "label": "Dealer Documents",
+    "insert_after": "mifa_required",
+    "depends_on": "eval:doc.customer_group=='Dealer'",
+    "collapsible": 1
   },
   {
     "doctype": "Custom Field",
@@ -72,7 +83,7 @@
     "fieldtype": "Select",
     "label": "Dealer Agreement Status",
     "options": "\nNot Sent\nSent\nSigned",
-    "insert_after": "mifa_required"
+    "insert_after": "column_break_dcr1"
   },
   {
     "doctype": "Custom Field",
@@ -90,7 +101,7 @@
     "fieldname": "dcr_application_section",
     "fieldtype": "Section Break",
     "label": "Application",
-    "insert_after": "master_dealer_list_updated",
+    "insert_after": "w9_status",
     "depends_on": "eval:doc.customer_group=='Dealer'"
   },
   {
@@ -127,7 +138,7 @@
     "fieldname": "dealer_license_copy",
     "fieldtype": "Attach",
     "label": "Dealer License Copy",
-    "insert_after": "column_break_dcr1"
+    "insert_after": "dealer_documents_section"
   },
   {
     "doctype": "Custom Field",
@@ -140,12 +151,20 @@
   },
   {
     "doctype": "Custom Field",
+    "name": "Customer-column_break_dealer_docs",
+    "dt": "Customer",
+    "fieldname": "column_break_dealer_docs",
+    "fieldtype": "Column Break",
+    "insert_after": "sellers_permit_copy"
+  },
+  {
+    "doctype": "Custom Field",
     "name": "Customer-w9_copy",
     "dt": "Customer",
     "fieldname": "w9_copy",
     "fieldtype": "Attach",
     "label": "W-9 Copy",
-    "insert_after": "sellers_permit_copy"
+    "insert_after": "column_break_dealer_docs"
   },
   {
     "doctype": "Custom Field",
@@ -805,6 +824,6 @@
     "fieldtype": "Select",
     "label": "Entity Type",
     "options": "\nLLC\nCorporation\nPartnership\nTrust",
-    "insert_after": "rebate_percentage"
+    "insert_after": "column_break_dealer1"
   }
 ]
