@@ -628,6 +628,8 @@ def send_flooring_packet(loan_application):
 @frappe.whitelist()
 def send_pre_approval(loan_application):
     """Send Advance Pre-Approval letter as PDF email attachment (no signature needed)."""
+    from dcr.api.dcr_email import send_pre_approval as _send_pre_approval_email
+
     la = frappe.get_doc("Loan Application", loan_application)
     customer_doc = frappe.get_doc("Customer", la.applicant)
 
@@ -639,15 +641,21 @@ def send_pre_approval(loan_application):
         "Loan Application", loan_application, "Advance Pre-Approval", as_pdf=True
     )
 
-    frappe.sendmail(
-        recipients=[email],
-        subject=f"Advance Pre-Approval \u2014 {customer_doc.customer_name}",
-        message="Please find attached the Advance Pre-Approval letter for your review.",
-        attachments=[{
-            "fname": f"Advance-Pre-Approval-{la.applicant}.pdf",
-            "fcontent": pdf_content,
-        }],
-        reference_doctype="Loan Application",
+    attachments = [{
+        "filename": f"Advance-Pre-Approval-{la.applicant}.pdf",
+        "content": base64.b64encode(pdf_content).decode("utf-8"),
+    }]
+
+    loan_amount = ""
+    if la.loan_amount:
+        loan_amount = f"{la.loan_amount:,.0f}"
+
+    _send_pre_approval_email(
+        customer_name=customer_doc.customer_name,
+        loan_application=loan_application,
+        loan_amount=loan_amount,
+        to_email=email,
+        attachments=attachments,
         reference_name=loan_application,
     )
 

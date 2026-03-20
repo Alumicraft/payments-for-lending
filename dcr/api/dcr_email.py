@@ -298,3 +298,24 @@ def send_factory_loa_received(customer_name, factory_name, loa_date, to_email, r
         reference_doctype="Factory Assignment",
         reference_name=reference_name,
     )
+
+
+# ============================================================================
+# 12. Pre-Approval
+# ============================================================================
+
+def send_pre_approval(customer_name, loan_application, loan_amount, to_email, attachments=None, reference_name=None):
+    """Send advance pre-approval letter with PDF attachment."""
+    return _send_dcr_email(
+        template="pre-approval",
+        to_email=to_email,
+        subject=f"Advance Pre-Approval — {customer_name}",
+        data={
+            "customer_name": customer_name,
+            "loan_application": loan_application,
+            "loan_amount": loan_amount,
+        },
+        attachments=attachments,
+        reference_doctype="Loan Application",
+        reference_name=reference_name,
+    )
