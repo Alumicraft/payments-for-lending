@@ -25,6 +25,18 @@ except ImportError:
     pyjwt = None
 
 
+def _normalize_pem_key(key):
+    """Re-format a PEM private key that lost its newlines (e.g. from a Password field)."""
+    if "\n" in key:
+        return key
+    # Strip header/footer, whitespace, then re-chunk at 64 chars
+    key = key.replace("-----BEGIN RSA PRIVATE KEY-----", "")
+    key = key.replace("-----END RSA PRIVATE KEY-----", "")
+    key = key.replace(" ", "").replace("\r", "")
+    lines = [key[i:i+64] for i in range(0, len(key), 64)]
+    return "-----BEGIN RSA PRIVATE KEY-----\n" + "\n".join(lines) + "\n-----END RSA PRIVATE KEY-----\n"
+
+
 # ---------------------------------------------------------------------------
 # DocuSign API Client
 # ---------------------------------------------------------------------------
@@ -54,6 +66,7 @@ class DocuSignClient:
         integration_key = self.settings.integration_key
         user_id = self.settings.user_id
         private_key = self.settings.get_password("rsa_private_key")
+        private_key = _normalize_pem_key(private_key)
 
         now = int(time.time())
         payload = {
