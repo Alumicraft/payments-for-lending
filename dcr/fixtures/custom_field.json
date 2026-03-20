@@ -493,7 +493,7 @@
     "dt": "Loan",
     "fieldname": "column_break_payoff1",
     "fieldtype": "Column Break",
-    "insert_after": "payoff_good_thru_date"
+    "insert_after": "insurance_at_payoff"
   },
   {
     "doctype": "Custom Field",
@@ -502,7 +502,7 @@
     "fieldname": "interest_owed_at_payoff",
     "fieldtype": "Currency",
     "label": "Interest Owed at Payoff",
-    "insert_after": "column_break_payoff1"
+    "insert_after": "payoff_good_thru_date"
   },
   {
     "doctype": "Custom Field",
@@ -511,7 +511,7 @@
     "fieldname": "late_fees_collected",
     "fieldtype": "Currency",
     "label": "Late Fees Collected",
-    "insert_after": "interest_owed_at_payoff"
+    "insert_after": "column_break_payoff1"
   },
   {
     "doctype": "Custom Field",
@@ -529,15 +529,7 @@
     "fieldname": "insurance_at_payoff",
     "fieldtype": "Currency",
     "label": "Insurance at Payoff",
-    "insert_after": "service_fee_amount"
-  },
-  {
-    "doctype": "Custom Field",
-    "name": "Loan-column_break_payoff2",
-    "dt": "Loan",
-    "fieldname": "column_break_payoff2",
-    "fieldtype": "Column Break",
-    "insert_after": "insurance_at_payoff"
+    "insert_after": "interest_owed_at_payoff"
   },
   {
     "doctype": "Custom Field",
@@ -546,7 +538,7 @@
     "fieldname": "principal_collected",
     "fieldtype": "Currency",
     "label": "Principal Collected",
-    "insert_after": "column_break_payoff2"
+    "insert_after": "service_fee_amount"
   },
   {
     "doctype": "Custom Field",
@@ -565,7 +557,8 @@
     "fieldname": "rebate_section",
     "fieldtype": "Section Break",
     "label": "Rebate",
-    "insert_after": "paid_from_escrow"
+    "insert_after": "paid_from_escrow",
+    "collapsible": 1
   },
   {
     "doctype": "Custom Field",
