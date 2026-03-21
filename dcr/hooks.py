@@ -124,6 +124,7 @@ doctype_js = {
     "Customer": "public/js/customer.js",
     "Home Build Request": "public/js/home_build_request.js",
     "MIFA": "public/js/mifa.js",
+    "Factory Assignment": "public/js/factory_assignment.js",
 }
 
 # Document Events

@@ -3,6 +3,8 @@
  *
  * Buttons:
  * - "Send for Signature" (top-level) — Dealer Agreement via DocuSign
+ * - Create → MIFA — after dealer agreement is signed
+ * - Create → Factory Assignment — if none exists
  * - "Manage Bank Account" (Actions) — ACH setup via Plaid or manual
  */
 
@@ -18,6 +20,30 @@ frappe.ui.form.on('Customer', {
                 send_dealer_agreement(frm);
             });
         }
+
+        // Create → MIFA (after dealer agreement is signed)
+        if (frm.doc.dealer_agreement_status === 'Signed') {
+            frappe.db.count('MIFA', { customer: frm.doc.name }).then(function(count) {
+                if (count === 0) {
+                    frm.add_custom_button(__('MIFA'), function() {
+                        frappe.new_doc('MIFA', {
+                            customer: frm.doc.name
+                        });
+                    }, __('Create'));
+                }
+            });
+        }
+
+        // Create → Factory Assignment
+        frappe.db.count('Factory Assignment', { customer: frm.doc.name, docstatus: 1 }).then(function(count) {
+            if (count === 0) {
+                frm.add_custom_button(__('Factory Assignment'), function() {
+                    frappe.new_doc('Factory Assignment', {
+                        customer: frm.doc.name
+                    });
+                }, __('Create'));
+            }
+        });
 
         // Actions: Manage Bank Account
         frappe.call({

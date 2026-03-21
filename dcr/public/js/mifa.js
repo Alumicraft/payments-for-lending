@@ -9,8 +9,11 @@ frappe.ui.form.on('MIFA', {
     refresh: function(frm) {
         if (frm.is_new() || !frm.doc.customer) return;
 
-        // Don't show send button if already signed
-        if (frm.doc.signed_mifa) return;
+        if (frm.doc.signed_mifa) {
+            // Show signed indicator
+            frm.page.set_indicator(__('Signed'), 'green');
+            return;
+        }
 
         // Top-level: Send for Signature
         frm.add_custom_button(__('Send for Signature'), function() {

@@ -2,6 +2,7 @@
  * Loan Form Customization for ACH Autopay
  *
  * Buttons:
+ * - "Send Disbursement Notice" (top-level) — notify dealer of disbursement
  * - "Send Payoff Letter" (top-level) — FL or COD payoff letter
  * - "Manage Auto-Pay" (Actions) — ACH setup via Plaid or manual
  */
@@ -11,6 +12,13 @@ frappe.ui.form.on('Loan', {
         // Only show for submitted loans
         if (frm.doc.docstatus !== 1) {
             return;
+        }
+
+        // Top-level: Send Disbursement Notice — only for newly disbursed loans
+        if (frm.doc.status === 'Disbursed') {
+            frm.add_custom_button(__('Send Disbursement Notice'), function() {
+                send_disbursement_notice(frm);
+            });
         }
 
         // Top-level: Payoff letter buttons — only for disbursed/active loans
@@ -498,6 +506,44 @@ function confirm_remove_account(auth_name, dialog, frm) {
             }, __('Remove Bank Account'), __('Remove'));
         }
     );
+}
+
+
+function send_disbursement_notice(frm) {
+    frappe.db.get_value('Customer', frm.doc.applicant, 'email_id', function(r) {
+        if (!r || !r.email_id) {
+            frappe.msgprint(__('Customer {0} does not have an email address.', [frm.doc.applicant]));
+            return;
+        }
+
+        frappe.confirm(
+            __('Send Disbursement Notice to {0} ({1})?', [frm.doc.applicant, r.email_id]),
+            function() {
+                frappe.call({
+                    method: 'dcr.api.dcr_email.send_loan_disbursed',
+                    args: {
+                        customer_name: frm.doc.applicant_name || frm.doc.applicant,
+                        factory_name: frm.doc.factory || '',
+                        loan: frm.doc.name,
+                        home_build_request: frm.doc.home_serial_no || '',
+                        amount: frm.doc.loan_amount,
+                        to_email: r.email_id,
+                        reference_name: frm.doc.name
+                    },
+                    freeze: true,
+                    freeze_message: __('Sending disbursement notice...'),
+                    callback: function(r) {
+                        if (r.message && r.message.success) {
+                            frappe.show_alert({
+                                message: __('Disbursement Notice sent'),
+                                indicator: 'green'
+                            });
+                        }
+                    }
+                });
+            }
+        );
+    });
 }
 
 
