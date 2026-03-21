@@ -108,6 +108,7 @@
   },
   {
    "fieldname": "factory",
+   "fetch_from": "model_name.manufacturer",
    "fieldtype": "Link",
    "label": "Factory",
    "options": "Supplier"
@@ -258,8 +259,9 @@
   },
   {
    "fieldname": "model_name",
-   "fieldtype": "Data",
-   "label": "Model"
+   "fieldtype": "Link",
+   "label": "Model",
+   "options": "Model"
   },
   {
    "fieldname": "column_break_home_info",
