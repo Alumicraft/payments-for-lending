@@ -75,7 +75,7 @@
  "index_web_pages_for_search": 1,
  "links": [
   {
-   "group": "Deals",
+   "group": "Pre Sales",
    "link_doctype": "Home Build Request",
    "link_fieldname": "park"
   }
