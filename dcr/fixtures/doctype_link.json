@@ -30,7 +30,7 @@
     "link_doctype": "Home Build Request",
     "link_fieldname": "customer",
     "group": "Orders",
-    "idx": 5
+    "idx": 1
   },
   {
     "doctype": "DocType Link",
