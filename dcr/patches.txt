@@ -1,1 +1,2 @@
 dcr.patches.rename_dcr_floored
+dcr.patches.reorder_customer_links
