@@ -1,15 +1,9 @@
-// Copyright (c) 2024, Your Company and contributors
-// For license information, please see license.txt
-
 /**
  * Loan Form Customization for ACH Autopay
  *
- * Features:
- * - Multiple bank accounts per customer
- * - Plaid Link as primary connection method
- * - Manual entry as fallback
- * - Per-loan account override
- * - Default account management
+ * Buttons:
+ * - "Send Payoff Letter" (top-level) — FL or COD payoff letter
+ * - "Manage Auto-Pay" (Actions) — ACH setup via Plaid or manual
  */
 
 frappe.ui.form.on('Loan', {
@@ -19,35 +13,30 @@ frappe.ui.form.on('Loan', {
             return;
         }
 
-        // Check if ACH is enabled and add appropriate button
+        // Top-level: Payoff letter buttons — only for disbursed/active loans
+        if (frm.doc.status && ['Disbursed', 'Active'].includes(frm.doc.status)) {
+            frm.add_custom_button(__('Send FL Payoff Letter'), function() {
+                send_payoff(frm, 'Flooring');
+            });
+
+            frm.add_custom_button(__('Send COD Payoff Letter'), function() {
+                send_payoff(frm, 'COD');
+            });
+        }
+
+        // Actions: Manage Auto-Pay
         frappe.call({
             method: 'dcr.dcr.doctype.ach_settings.ach_settings.is_ach_enabled',
             callback: function(r) {
                 if (r.message) {
-                    add_manage_autopay_button(frm);
+                    frm.add_custom_button(__('Manage Auto-Pay'), function() {
+                        show_autopay_manager(frm);
+                    }, __('Actions'));
                 }
             }
         });
-
-        // Payoff letter buttons — only for disbursed/active loans
-        if (frm.doc.status && ['Disbursed', 'Active'].includes(frm.doc.status)) {
-            frm.add_custom_button(__('FL Payoff Letter'), function() {
-                send_payoff(frm, 'Flooring');
-            }, __('Actions'));
-
-            frm.add_custom_button(__('COD Payoff Letter'), function() {
-                send_payoff(frm, 'COD');
-            }, __('Actions'));
-        }
     }
 });
-
-
-function add_manage_autopay_button(frm) {
-    frm.add_custom_button(__('Manage Auto-Pay'), function() {
-        show_autopay_manager(frm);
-    }, __('Actions'));
-}
 
 
 function show_autopay_manager(frm) {
@@ -206,7 +195,6 @@ function show_autopay_dialog(frm, accounts, loan_account, plaid_available) {
 
 
 function start_plaid_link(frm) {
-    // Get Plaid Link token
     frappe.call({
         method: 'dcr.api.achq_integration.get_plaid_link_token',
         args: { customer: frm.doc.applicant },
@@ -220,7 +208,6 @@ function start_plaid_link(frm) {
 
 
 function open_plaid_link(frm, link_token) {
-    // Load Plaid Link script if not already loaded
     if (typeof Plaid === 'undefined') {
         const script = document.createElement('script');
         script.src = 'https://cdn.plaid.com/link/v2/stable/link-initialize.js';
@@ -238,7 +225,6 @@ function create_plaid_handler(frm, link_token) {
     const handler = Plaid.create({
         token: link_token,
         onSuccess: function(public_token, metadata) {
-            // User selected an account
             if (!metadata.accounts || metadata.accounts.length === 0) {
                 frappe.msgprint(__('No account was selected. Please try again.'));
                 show_autopay_manager(frm);
@@ -249,7 +235,6 @@ function create_plaid_handler(frm, link_token) {
         },
         onExit: function(err, metadata) {
             if (err) {
-                // User had an error - offer manual entry
                 frappe.confirm(
                     __("Couldn't connect to your bank. Would you like to enter your account details manually?"),
                     function() {
@@ -257,7 +242,6 @@ function create_plaid_handler(frm, link_token) {
                     }
                 );
             }
-            // If no error, user just closed - reopen manager
             show_autopay_manager(frm);
         },
         onEvent: function(eventName, metadata) {
@@ -395,27 +379,23 @@ function show_manual_entry_dialog(frm) {
 
 
 function validate_manual_entry(values) {
-    // Validate routing number (9 digits)
     const routing = values.routing_number.replace(/\D/g, '');
     if (routing.length !== 9) {
         frappe.msgprint(__('Routing number must be exactly 9 digits'));
         return false;
     }
 
-    // Validate account numbers match
     if (values.account_number !== values.confirm_account_number) {
         frappe.msgprint(__('Account numbers do not match'));
         return false;
     }
 
-    // Validate account number (numeric, 4-17 digits)
     const account = values.account_number.replace(/\D/g, '');
     if (account.length < 4 || account.length > 17) {
         frappe.msgprint(__('Account number must be between 4 and 17 digits'));
         return false;
     }
 
-    // Validate consent
     if (!values.consent) {
         frappe.msgprint(__('Please accept the authorization consent'));
         return false;
@@ -451,7 +431,7 @@ function clear_loan_override(frm, dialog) {
         method: 'dcr.api.achq_integration.set_loan_account',
         args: {
             loan: frm.doc.name,
-            authorization_name: ''  // Empty to clear override
+            authorization_name: ''
         },
         callback: function(r) {
             if (r.message && r.message.success) {

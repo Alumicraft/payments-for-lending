@@ -286,7 +286,28 @@
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
- "links": [],
+ "links": [
+  {
+   "link_doctype": "Supplier Quotation",
+   "link_fieldname": "home_build_request"
+  },
+  {
+   "link_doctype": "Sales Order",
+   "link_fieldname": "home_build_request"
+  },
+  {
+   "link_doctype": "Loan Application",
+   "link_fieldname": "home_build_request"
+  },
+  {
+   "link_doctype": "Loan Disbursement",
+   "link_fieldname": "home_build_request"
+  },
+  {
+   "link_doctype": "Signature Request",
+   "link_fieldname": "reference_name"
+  }
+ ],
  "modified": "2024-01-01 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "DCR",

@@ -1,4 +1,9 @@
-// dcr/public/js/mifa.js
+/**
+ * MIFA Form Customization
+ *
+ * Buttons:
+ * - "Send for Signature" (top-level) — MIFA via DocuSign
+ */
 
 frappe.ui.form.on('MIFA', {
     refresh: function(frm) {
@@ -7,9 +12,10 @@ frappe.ui.form.on('MIFA', {
         // Don't show send button if already signed
         if (frm.doc.signed_mifa) return;
 
+        // Top-level: Send for Signature
         frm.add_custom_button(__('Send for Signature'), function() {
             send_mifa(frm);
-        }, __('Actions'));
+        });
     }
 });
 

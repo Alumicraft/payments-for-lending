@@ -12,6 +12,18 @@ after_migrate = "dcr.setup.after_install"
 # Fixtures - custom fields synced on bench migrate
 fixtures = [
     {
+        "doctype": "DocType Link",
+        "filters": [
+            ["name", "in", [
+                "Customer-Home Build Request",
+                "Customer-MIFA",
+                "Customer-Factory Assignment",
+                "Loan Application-Signature Request",
+                "Sales Order-Home Build Request",
+            ]]
+        ]
+    },
+    {
         "doctype": "Custom Field",
         "filters": [
             ["name", "in", [

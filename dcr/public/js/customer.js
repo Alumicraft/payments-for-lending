@@ -1,10 +1,9 @@
 /**
  * Customer Form Customization for DCR Dealers
  *
- * Features:
- * - Bank account management via Plaid or manual entry
- * - Send Dealer Agreement button
- * - Dealer-specific field visibility handled by depends_on in custom fields
+ * Buttons:
+ * - "Send for Signature" (top-level) — Dealer Agreement via DocuSign
+ * - "Manage Bank Account" (Actions) — ACH setup via Plaid or manual
  */
 
 frappe.ui.form.on('Customer', {
@@ -13,7 +12,14 @@ frappe.ui.form.on('Customer', {
             return;
         }
 
-        // Bank account management button
+        // Top-level: Send for Signature (Dealer Agreement)
+        if (frm.doc.dealer_agreement_status !== 'Signed') {
+            frm.add_custom_button(__('Send for Signature'), function() {
+                send_dealer_agreement(frm);
+            });
+        }
+
+        // Actions: Manage Bank Account
         frappe.call({
             method: 'dcr.dcr.doctype.ach_settings.ach_settings.is_ach_enabled',
             callback: function(r) {
@@ -24,13 +30,6 @@ frappe.ui.form.on('Customer', {
                 }
             }
         });
-
-        // Send Dealer Agreement button
-        if (frm.doc.dealer_agreement_status !== 'Signed') {
-            frm.add_custom_button(__('Send Dealer Agreement'), function() {
-                send_dealer_agreement(frm);
-            }, __('Actions'));
-        }
     }
 });
 

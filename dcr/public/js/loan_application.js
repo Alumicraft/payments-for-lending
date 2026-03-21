@@ -1,4 +1,11 @@
-// dcr/public/js/loan_application.js
+/**
+ * Loan Application Form Customization
+ *
+ * Buttons:
+ * - "Send for Signature" (top-level) — Flooring Packet via DocuSign
+ * - "Send Pre-Approval" (top-level) — Pre-approval letter email
+ * - Create → "Loan" — after flooring packet is signed
+ */
 
 frappe.ui.form.on('Loan Application', {
     refresh: function(frm) {
@@ -7,18 +14,27 @@ frappe.ui.form.on('Loan Application', {
         // Only show DCR buttons if linked to a Home Build Request
         if (!frm.doc.home_build_request) return;
 
-        // Send Flooring Packet button (DocuSign)
-        // Show if no signed packet yet
+        // Top-level: Send for Signature (Flooring Packet)
         if (!frm.doc.signed_packet) {
-            frm.add_custom_button(__('Send Flooring Packet'), function() {
+            frm.add_custom_button(__('Send for Signature'), function() {
                 send_flooring_packet(frm);
-            }, __('DocuSign'));
+            });
         }
 
-        // Send Advance Pre-Approval button
+        // Top-level: Send Pre-Approval
         frm.add_custom_button(__('Send Pre-Approval'), function() {
             send_pre_approval(frm);
-        }, __('Actions'));
+        });
+
+        // Create → Loan (after packet is signed and app is submitted)
+        if (frm.doc.signed_packet && frm.doc.docstatus === 1) {
+            frm.add_custom_button(__('Loan'), function() {
+                frappe.model.open_mapped_doc({
+                    method: 'lending.loan_management.doctype.loan_application.loan_application.create_loan',
+                    frm: frm
+                });
+            }, __('Create'));
+        }
     }
 });
 

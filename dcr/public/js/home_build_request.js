@@ -1,11 +1,26 @@
 /**
  * Home Build Request Form Customization
  *
- * Auto-populates the Document Checklist when home_type, financing_type,
- * or property_type changes.
+ * Features:
+ * - Auto-populates Document Checklist on field change
+ * - Create → Sales Order button (after submission)
  */
 
 frappe.ui.form.on('Home Build Request', {
+    refresh: function(frm) {
+        // Create → Sales Order (submitted HBRs without a linked SO)
+        if (frm.doc.docstatus === 1 && !frm.doc.sales_order) {
+            frm.add_custom_button(__('Sales Order'), function() {
+                frappe.new_doc('Sales Order', {
+                    home_build_request: frm.doc.name,
+                    customer: frm.doc.customer,
+                    home_type: frm.doc.home_type,
+                    financing_type: frm.doc.financing_type,
+                    property_type: frm.doc.property_type
+                });
+            }, __('Create'));
+        }
+    },
     home_type: function(frm) { populate_checklist(frm); },
     financing_type: function(frm) { populate_checklist(frm); },
     property_type: function(frm) { populate_checklist(frm); },
