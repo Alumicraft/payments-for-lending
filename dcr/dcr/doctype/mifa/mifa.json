@@ -96,6 +96,7 @@
  "index_web_pages_for_search": 1,
  "links": [
   {
+   "group": "Documents",
    "link_doctype": "Signature Request",
    "link_fieldname": "reference_name"
   }

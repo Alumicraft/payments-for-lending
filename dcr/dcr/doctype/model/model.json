@@ -35,6 +35,7 @@
  ],
  "links": [
   {
+   "group": "Deals",
    "link_doctype": "Home Build Request",
    "link_fieldname": "model_name"
   }

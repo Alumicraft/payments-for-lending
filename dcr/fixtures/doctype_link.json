@@ -1,12 +1,13 @@
 [
   {
     "doctype": "DocType Link",
-    "name": "Customer-Home Build Request",
+    "name": "Customer-Factory Assignment",
     "parent": "Customer",
     "parenttype": "DocType",
     "parentfield": "links",
-    "link_doctype": "Home Build Request",
-    "link_fieldname": "customer"
+    "link_doctype": "Factory Assignment",
+    "link_fieldname": "customer",
+    "group": "Pre Sales"
   },
   {
     "doctype": "DocType Link",
@@ -15,16 +16,18 @@
     "parenttype": "DocType",
     "parentfield": "links",
     "link_doctype": "MIFA",
-    "link_fieldname": "customer"
+    "link_fieldname": "customer",
+    "group": "Pre Sales"
   },
   {
     "doctype": "DocType Link",
-    "name": "Customer-Factory Assignment",
+    "name": "Customer-Home Build Request",
     "parent": "Customer",
     "parenttype": "DocType",
     "parentfield": "links",
-    "link_doctype": "Factory Assignment",
-    "link_fieldname": "customer"
+    "link_doctype": "Home Build Request",
+    "link_fieldname": "customer",
+    "group": "Orders"
   },
   {
     "doctype": "DocType Link",
@@ -33,7 +36,8 @@
     "parenttype": "DocType",
     "parentfield": "links",
     "link_doctype": "Signature Request",
-    "link_fieldname": "reference_name"
+    "link_fieldname": "reference_name",
+    "group": "Documents"
   },
   {
     "doctype": "DocType Link",
@@ -42,6 +46,7 @@
     "parenttype": "DocType",
     "parentfield": "links",
     "link_doctype": "Home Build Request",
-    "link_fieldname": "sales_order"
+    "link_fieldname": "sales_order",
+    "group": "Reference"
   }
 ]

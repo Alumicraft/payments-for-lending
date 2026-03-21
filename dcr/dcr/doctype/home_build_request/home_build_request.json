@@ -288,22 +288,27 @@
  "is_submittable": 1,
  "links": [
   {
+   "group": "Orders",
    "link_doctype": "Supplier Quotation",
    "link_fieldname": "home_build_request"
   },
   {
+   "group": "Orders",
    "link_doctype": "Sales Order",
    "link_fieldname": "home_build_request"
   },
   {
+   "group": "Lending",
    "link_doctype": "Loan Application",
    "link_fieldname": "home_build_request"
   },
   {
+   "group": "Lending",
    "link_doctype": "Loan Disbursement",
    "link_fieldname": "home_build_request"
   },
   {
+   "group": "Documents",
    "link_doctype": "Signature Request",
    "link_fieldname": "reference_name"
   }
