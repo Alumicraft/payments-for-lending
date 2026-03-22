@@ -86,6 +86,14 @@ def validate_loan_application(doc, method):
         if hbr.factory:
             validate_advance_date(hbr.factory, doc.advance_date_requested)
 
+    # Auto-calculate pre-approval fields
+    investment = doc.get("custom_projected_investment") or 0
+    sales_price = doc.get("custom_projected_sales_price") or 0
+
+    if investment and sales_price:
+        doc.custom_projected_equity = sales_price - investment
+        doc.custom_projected_ltv = (investment / sales_price) * 100
+
 
 def validate_advance_date(factory, requested_date):
     """Check that requested advance date is achievable given factory lead time.
@@ -107,3 +115,21 @@ def validate_advance_date(factory, requested_date):
             ),
             title=_("Advance Date Too Early")
         )
+
+
+def on_loan_validate(doc, method):
+    """Populate deal reference fields from Loan Application."""
+    if not doc.loan_application:
+        return
+    la = frappe.db.get_value("Loan Application", doc.loan_application,
+        ["home_serial_no", "buyer_name", "home_build_request"], as_dict=True)
+    if not la:
+        return
+    if not doc.home_serial_no and la.home_serial_no:
+        doc.home_serial_no = la.home_serial_no
+    if not doc.buyer_name and la.buyer_name:
+        doc.buyer_name = la.buyer_name
+    if la.home_build_request:
+        factory = frappe.db.get_value("Home Build Request", la.home_build_request, "factory")
+        if factory and not doc.factory:
+            doc.factory = factory
