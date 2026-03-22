@@ -42,16 +42,5 @@
     "link_fieldname": "reference_name",
     "group": "Documents",
     "idx": 1
-  },
-  {
-    "doctype": "DocType Link",
-    "name": "Sales Order-Home Build Request",
-    "parent": "Sales Order",
-    "parenttype": "DocType",
-    "parentfield": "links",
-    "link_doctype": "Home Build Request",
-    "link_fieldname": "sales_order",
-    "group": "Reference",
-    "idx": 1
   }
 ]

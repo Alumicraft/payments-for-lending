@@ -6,7 +6,6 @@
  "engine": "InnoDB",
  "field_order": [
   "customer",
-  "home_name",
   "status",
   "column_break_1",
   "home_type",
@@ -16,7 +15,6 @@
   "factory",
   "factory_quote",
   "column_break_refs",
-  "sales_order",
   "loan_application",
   "park_section",
   "park",
@@ -57,19 +55,14 @@
    "reqd": 1
   },
   {
-   "fieldname": "home_name",
-   "fieldtype": "Data",
-   "label": "Home Name",
-   "description": "Used for document naming"
-  },
-  {
    "default": "Draft",
    "fieldname": "status",
    "fieldtype": "Select",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Draft\nDocs Pending\nReady to PO\nPO Submitted"
+   "options": "Draft\nDocs Pending\nReady to PO\nPO Submitted",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_1",
@@ -124,13 +117,6 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "sales_order",
-   "fieldtype": "Link",
-   "label": "Sales Order",
-   "options": "Sales Order",
-   "read_only": 1
-  },
-  {
    "fieldname": "loan_application",
    "fieldtype": "Link",
    "label": "Loan Application",
@@ -153,7 +139,7 @@
   {
    "fieldname": "space_number",
    "fieldtype": "Data",
-   "label": "Space #"
+   "label": "Space No"
   },
   {
    "fieldname": "buyer_section",
@@ -290,11 +276,6 @@
   {
    "group": "Orders",
    "link_doctype": "Supplier Quotation",
-   "link_fieldname": "home_build_request"
-  },
-  {
-   "group": "Orders",
-   "link_doctype": "Sales Order",
    "link_fieldname": "home_build_request"
   },
   {

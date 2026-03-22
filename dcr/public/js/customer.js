@@ -14,6 +14,13 @@ frappe.ui.form.on('Customer', {
             return;
         }
 
+        // Signing status indicator
+        if (frm.doc.dealer_agreement_status === 'Signed') {
+            frm.page.set_indicator(__('Agreement Signed'), 'green');
+        } else if (frm.doc.dealer_agreement_status === 'Sent') {
+            frm.page.set_indicator(__('Awaiting Signature'), 'orange');
+        }
+
         // Top-level: Send for Signature (Dealer Agreement)
         if (frm.doc.dealer_agreement_status !== 'Signed') {
             frm.add_custom_button(__('Send for Signature'), function() {
@@ -30,6 +37,7 @@ frappe.ui.form.on('Customer', {
                             customer: frm.doc.name
                         });
                     }, __('Create'));
+                    frm.change_custom_button_type(__('MIFA'), __('Create'), 'primary');
                 }
             });
         }
@@ -42,6 +50,7 @@ frappe.ui.form.on('Customer', {
                         customer: frm.doc.name
                     });
                 }, __('Create'));
+                frm.change_custom_button_type(__('Factory Assignment'), __('Create'), 'primary');
             }
         });
 

@@ -3,22 +3,42 @@
  *
  * Features:
  * - Auto-populates Document Checklist on field change
- * - Create → Sales Order button (after submission)
+ * - Create → Loan Application button (Floored deals, after submission)
+ * - Create → Supplier Quotation button (after submission)
  */
 
 frappe.ui.form.on('Home Build Request', {
     refresh: function(frm) {
-        // Create → Sales Order (submitted HBRs without a linked SO)
-        if (frm.doc.docstatus === 1 && !frm.doc.sales_order) {
-            frm.add_custom_button(__('Sales Order'), function() {
-                frappe.new_doc('Sales Order', {
-                    home_build_request: frm.doc.name,
-                    customer: frm.doc.customer,
-                    home_type: frm.doc.home_type,
-                    financing_type: frm.doc.financing_type,
-                    property_type: frm.doc.property_type
+        // Create → Loan Application (Floored only, no existing LA)
+        if (frm.doc.docstatus === 1 && frm.doc.financing_type === 'Floored' && !frm.doc.loan_application) {
+            frm.add_custom_button(__('Loan Application'), function() {
+                frappe.call({
+                    method: 'dcr.dcr.doctype.home_build_request.home_build_request.create_loan_application_from_hbr',
+                    args: { hbr_name: frm.doc.name },
+                    freeze: true,
+                    freeze_message: __('Creating Loan Application...'),
+                    callback: function(r) {
+                        if (r.message && r.message.success) {
+                            frm.reload_doc();
+                        }
+                    }
                 });
             }, __('Create'));
+            frm.change_custom_button_type(__('Loan Application'), __('Create'), 'primary');
+        }
+
+        // Create → Supplier Quotation (submitted, no factory_quote linked, factory set)
+        if (frm.doc.docstatus === 1 && !frm.doc.factory_quote && frm.doc.factory) {
+            frm.add_custom_button(__('Supplier Quotation'), function() {
+                frappe.new_doc('Supplier Quotation', {
+                    supplier: frm.doc.factory,
+                    home_build_request: frm.doc.name
+                });
+            }, __('Create'));
+            // Only primary if Loan Application button isn't showing
+            if (!(frm.doc.financing_type === 'Floored' && !frm.doc.loan_application)) {
+                frm.change_custom_button_type(__('Supplier Quotation'), __('Create'), 'primary');
+            }
         }
     },
     home_type: function(frm) { populate_checklist(frm); },

@@ -53,16 +53,7 @@
     "fieldtype": "Select",
     "label": "W-9 Status",
     "options": "\nPending\nReceived\nVerified",
-    "insert_after": "entity_type"
-  },
-  {
-    "doctype": "Custom Field",
-    "name": "Customer-mifa_required",
-    "dt": "Customer",
-    "fieldname": "mifa_required",
-    "fieldtype": "Check",
-    "label": "MIFA Required (Floored Dealer)",
-    "insert_after": "master_dealer_list_updated"
+    "insert_after": "column_break_dealer1"
   },
   {
     "doctype": "Custom Field",
@@ -71,7 +62,7 @@
     "fieldname": "dealer_documents_section",
     "fieldtype": "Section Break",
     "label": "Dealer Documents",
-    "insert_after": "mifa_required",
+    "insert_after": "w9_status",
     "depends_on": "eval:doc.customer_group=='Dealer'",
     "collapsible": 1
   },
@@ -83,53 +74,8 @@
     "fieldtype": "Select",
     "label": "Dealer Agreement Status",
     "options": "\nNot Sent\nSent\nSigned",
-    "insert_after": "column_break_dcr1"
-  },
-  {
-    "doctype": "Custom Field",
-    "name": "Customer-master_dealer_list_updated",
-    "dt": "Customer",
-    "fieldname": "master_dealer_list_updated",
-    "fieldtype": "Check",
-    "label": "Master Dealer List Updated",
-    "insert_after": "dealer_agreement_status"
-  },
-  {
-    "doctype": "Custom Field",
-    "name": "Customer-dcr_application_section",
-    "dt": "Customer",
-    "fieldname": "dcr_application_section",
-    "fieldtype": "Section Break",
-    "label": "Application",
-    "insert_after": "w9_status",
-    "depends_on": "eval:doc.customer_group=='Dealer'"
-  },
-  {
-    "doctype": "Custom Field",
-    "name": "Customer-dcr_application_status",
-    "dt": "Customer",
-    "fieldname": "dcr_application_status",
-    "fieldtype": "Select",
-    "label": "Application Status",
-    "options": "\nInitiated\nIn Review\nApproved\nRejected",
-    "insert_after": "dcr_application_section"
-  },
-  {
-    "doctype": "Custom Field",
-    "name": "Customer-dcr_account_no",
-    "dt": "Customer",
-    "fieldname": "dcr_account_no",
-    "fieldtype": "Data",
-    "label": "Account No",
-    "insert_after": "dcr_application_status"
-  },
-  {
-    "doctype": "Custom Field",
-    "name": "Customer-column_break_dcr1",
-    "dt": "Customer",
-    "fieldname": "column_break_dcr1",
-    "fieldtype": "Column Break",
-    "insert_after": "dcr_account_no"
+    "insert_after": "dealer_agreement_section",
+    "read_only": 1
   },
   {
     "doctype": "Custom Field",
@@ -242,49 +188,6 @@
   },
   {
     "doctype": "Custom Field",
-    "name": "Sales Order-home_build_request",
-    "dt": "Sales Order",
-    "fieldname": "home_build_request",
-    "fieldtype": "Link",
-    "label": "Home Build Request",
-    "options": "Home Build Request",
-    "insert_after": "customer_name"
-  },
-  {
-    "doctype": "Custom Field",
-    "name": "Sales Order-home_type",
-    "dt": "Sales Order",
-    "fieldname": "home_type",
-    "fieldtype": "Data",
-    "label": "Home Type",
-    "read_only": 1,
-    "insert_after": "home_build_request",
-    "fetch_from": "home_build_request.home_type"
-  },
-  {
-    "doctype": "Custom Field",
-    "name": "Sales Order-financing_type",
-    "dt": "Sales Order",
-    "fieldname": "financing_type",
-    "fieldtype": "Data",
-    "label": "Financing Type",
-    "read_only": 1,
-    "insert_after": "home_type",
-    "fetch_from": "home_build_request.financing_type"
-  },
-  {
-    "doctype": "Custom Field",
-    "name": "Sales Order-property_type",
-    "dt": "Sales Order",
-    "fieldname": "property_type",
-    "fieldtype": "Data",
-    "label": "Property Type",
-    "read_only": 1,
-    "insert_after": "financing_type",
-    "fetch_from": "home_build_request.property_type"
-  },
-  {
-    "doctype": "Custom Field",
     "name": "Loan Application-home_build_request",
     "dt": "Loan Application",
     "fieldname": "home_build_request",
@@ -322,7 +225,9 @@
     "fieldname": "requested_advance_amount",
     "fieldtype": "Currency",
     "label": "Requested Advance Amount",
-    "insert_after": "dcr_lending_section"
+    "insert_after": "dcr_lending_section",
+    "fetch_from": "home_build_request.home_invoice_plus_freight",
+    "fetch_if_empty": 1
   },
   {
     "doctype": "Custom Field",
@@ -371,26 +276,8 @@
     "fieldtype": "Attach",
     "label": "Signed Packet",
     "insert_after": "doc_checklist",
-    "hidden": 1
-  },
-  {
-    "doctype": "Custom Field",
-    "name": "Loan Application-dcr_documents_section",
-    "dt": "Loan Application",
-    "fieldname": "dcr_documents_section",
-    "fieldtype": "Section Break",
-    "label": "Documents",
-    "insert_after": "custom_notes"
-  },
-  {
-    "doctype": "Custom Field",
-    "name": "Loan Application-doc_checklist",
-    "dt": "Loan Application",
-    "fieldname": "doc_checklist",
-    "fieldtype": "Table",
-    "label": "Document Checklist",
-    "options": "Document Checklist",
-    "insert_after": "dcr_documents_section"
+    "hidden": 0,
+    "read_only": 1
   },
   {
     "doctype": "Custom Field",
@@ -569,15 +456,6 @@
     "label": "Qualifying Amount",
     "insert_after": "rebate_section"
   },
-  {
-    "doctype": "Custom Field",
-    "name": "Loan-rebate_percentage",
-    "dt": "Loan",
-    "fieldname": "rebate_percentage",
-    "fieldtype": "Percent",
-    "label": "Rebate Percentage",
-    "insert_after": "qualifying_amount"
-  },
 
   {
     "doctype": "Custom Field",
@@ -595,8 +473,8 @@
     "dt": "Loan Disbursement",
     "fieldname": "factory_po",
     "fieldtype": "Link",
-    "label": "Factory PO",
-    "options": "Purchase Order",
+    "label": "Purchase Invoice",
+    "options": "Purchase Invoice",
     "insert_after": "home_build_request"
   },
   {
@@ -644,7 +522,9 @@
     "fieldname": "floor_plan",
     "fieldtype": "Data",
     "label": "Floor Plan",
-    "insert_after": "quote_no"
+    "insert_after": "quote_no",
+    "fetch_from": "home_build_request.model_name",
+    "read_only": 1
   },
   {
     "doctype": "Custom Field",
@@ -662,7 +542,8 @@
     "fieldtype": "Data",
     "label": "Buyer Name (End Customer)",
     "insert_after": "column_break_exhibit_a",
-    "description": "End customer buying the home"
+    "description": "End customer buying the home",
+    "fetch_from": "home_build_request.home_buyer"
   },
   {
     "doctype": "Custom Field",
@@ -802,21 +683,33 @@
   },
   {
     "doctype": "Custom Field",
-    "name": "Customer-rebate_percentage",
-    "dt": "Customer",
-    "fieldname": "rebate_percentage",
-    "fieldtype": "Percent",
-    "label": "Rebate Percentage",
-    "insert_after": "dealer_agreement_section"
-  },
-  {
-    "doctype": "Custom Field",
     "name": "Customer-entity_type",
     "dt": "Customer",
     "fieldname": "entity_type",
     "fieldtype": "Select",
     "label": "Entity Type",
     "options": "\nLLC\nCorporation\nPartnership\nTrust",
-    "insert_after": "column_break_dealer1"
+    "insert_after": "default_loan_product"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Customer-default_loan_product",
+    "dt": "Customer",
+    "fieldname": "default_loan_product",
+    "fieldtype": "Link",
+    "options": "Loan Product",
+    "label": "Default Loan Product",
+    "insert_after": "dealer_agreement_status",
+    "description": "Default loan terms for this dealer — sets interest rate, rebate, and repayment terms"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Product-rebate_percentage",
+    "dt": "Loan Product",
+    "fieldname": "rebate_percentage",
+    "fieldtype": "Percent",
+    "label": "Rebate Percentage",
+    "insert_after": "penalty_interest_rate",
+    "description": "Dealer rebate applied at loan payoff"
   }
 ]

@@ -19,7 +19,6 @@ fixtures = [
                 "Customer-MIFA",
                 "Customer-Factory Assignment",
                 "Loan Application-Signature Request",
-                "Sales Order-Home Build Request",
             ]]
         ]
     },
@@ -33,13 +32,7 @@ fixtures = [
                 "Customer-sellers_permit_no",
                 "Customer-column_break_dealer1",
                 "Customer-w9_status",
-                "Customer-mifa_required",
                 "Customer-dealer_agreement_status",
-                "Customer-master_dealer_list_updated",
-                "Customer-dcr_application_section",
-                "Customer-dcr_application_status",
-                "Customer-dcr_account_no",
-                "Customer-column_break_dcr1",
                 "Customer-dealer_license_copy",
                 "Customer-sellers_permit_copy",
                 "Customer-w9_copy",
@@ -51,10 +44,6 @@ fixtures = [
                 "Supplier Quotation-plot_plan",
                 "Supplier Quotation-signed_by_dealer",
                 "Supplier Quotation-signature_date",
-                "Sales Order-home_build_request",
-                "Sales Order-home_type",
-                "Sales Order-financing_type",
-                "Sales Order-property_type",
                 "Loan Application-home_build_request",
                 "Loan Application-home_type",
                 "Loan Application-dcr_lending_section",
@@ -64,8 +53,6 @@ fixtures = [
                 "Loan Application-outstanding_loan_balance",
                 "Loan Application-available_credit",
                 "Loan Application-signed_packet",
-                "Loan Application-dcr_documents_section",
-                "Loan Application-doc_checklist",
                 "Loan-ach_payment_section",
                 "Loan-ach_payment_account",
                 "Loan-home_deal_reference_section",
@@ -86,7 +73,6 @@ fixtures = [
                 "Loan-paid_from_escrow",
                 "Loan-rebate_section",
                 "Loan-qualifying_amount",
-                "Loan-rebate_percentage",
                 "Loan Disbursement-home_build_request",
                 "Loan Disbursement-factory_po",
                 "Loan Disbursement-factory",
@@ -110,8 +96,9 @@ fixtures = [
                 "Loan Application-custom_projected_payoff",
                 "Loan Application-custom_notes",
                 "Customer-dealer_agreement_section",
-                "Customer-rebate_percentage",
                 "Customer-entity_type",
+                "Customer-default_loan_product",
+                "Loan Product-rebate_percentage",
             ]]
         ]
     }
@@ -132,8 +119,8 @@ doc_events = {
     "Loan Application": {
         "validate": "dcr.api.lending.validate_loan_application"
     },
-    "Sales Order": {
-        "on_submit": "dcr.api.sales_order_hooks.on_submit"
+    "Loan": {
+        "validate": "dcr.api.lending.on_loan_validate"
     },
 }
 

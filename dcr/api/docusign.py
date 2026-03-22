@@ -404,6 +404,23 @@ def _update_reference_document(sig_req):
                                 "dealer_agreement_status", "Signed")
             _send_signed_email(sig_req)
 
+            # Send welcome email after dealer agreement signed
+            try:
+                customer_doc = frappe.get_doc("Customer", sig_req.reference_name)
+                if customer_doc.email_id:
+                    from dcr.api.dcr_email import send_dealer_welcome
+                    send_dealer_welcome(
+                        customer_name=customer_doc.customer_name,
+                        account_id=customer_doc.name,
+                        to_email=customer_doc.email_id,
+                        reference_name=sig_req.reference_name,
+                    )
+            except Exception as e:
+                frappe.log_error(
+                    f"Failed to send welcome email for {sig_req.reference_name}: {str(e)}",
+                    "Dealer Welcome Email"
+                )
+
         elif sig_req.document_type == "MIFA" and sig_req.reference_doctype == "MIFA":
             frappe.db.set_value("MIFA", sig_req.reference_name,
                                 "signed_mifa", sig_req.signed_attachment)

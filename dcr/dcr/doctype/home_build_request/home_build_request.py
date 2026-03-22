@@ -48,6 +48,52 @@ class HomeBuildRequest(Document):
     def before_submit(self):
         self.validate_checklist_complete()
 
+    def on_submit(self):
+        if self.financing_type == "Floored":
+            self._create_loan_application()
+
+    def _create_loan_application(self):
+        """Auto-create Loan Application for Floored deals on HBR submit."""
+        existing = frappe.db.exists("Loan Application", {
+            "home_build_request": self.name,
+            "docstatus": ["!=", 2]
+        })
+        if existing:
+            frappe.msgprint(
+                _("Loan Application {0} already exists for this Home Build Request.").format(existing),
+                indicator="orange"
+            )
+            return
+
+        la = frappe.new_doc("Loan Application")
+        la.applicant_type = "Customer"
+        la.applicant = self.customer
+        la.home_build_request = self.name
+        la.home_type = self.home_type
+
+        # Set loan product from customer default
+        default_product = frappe.db.get_value("Customer", self.customer, "default_loan_product")
+        if default_product:
+            la.loan_product = default_product
+
+        # Set loan amount from home invoice if available
+        if self.home_invoice_plus_freight:
+            la.loan_amount = self.home_invoice_plus_freight
+
+        la.insert()
+
+        # Link back
+        self.loan_application = la.name
+        self.db_set("loan_application", la.name)
+
+        frappe.msgprint(
+            _("Loan Application {0} created for flooring.").format(
+                f'<a href="/app/loan-application/{la.name}">{la.name}</a>'
+            ),
+            indicator="green",
+            alert=True,
+        )
+
     def validate_checklist_complete(self):
         """Block submission until all required checklist items are Received or Verified."""
         incomplete = []
@@ -74,3 +120,16 @@ def get_required_docs(home_type, financing_type, property_type):
     key = (home_type, financing_type, property_type)
     docs = DOC_REQUIREMENTS.get(key, [])
     return docs
+
+
+@frappe.whitelist()
+def create_loan_application_from_hbr(hbr_name):
+    """Manual fallback to create Loan Application from a submitted HBR."""
+    hbr = frappe.get_doc("Home Build Request", hbr_name)
+    hbr.check_permission("write")
+    if hbr.docstatus != 1:
+        frappe.throw(_("Home Build Request must be submitted first."))
+    if hbr.financing_type != "Floored":
+        frappe.throw(_("Loan Applications are only created for Floored deals."))
+    hbr._create_loan_application()
+    return {"success": True}

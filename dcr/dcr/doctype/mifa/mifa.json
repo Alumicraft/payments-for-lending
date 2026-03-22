@@ -6,6 +6,7 @@
  "engine": "InnoDB",
  "field_order": [
   "customer",
+  "loan_product",
   "mifa_date",
   "column_break_1",
   "credit_limit",
@@ -26,6 +27,13 @@
    "in_standard_filter": 1,
    "label": "Customer",
    "options": "Customer",
+   "reqd": 1
+  },
+  {
+   "fieldname": "loan_product",
+   "fieldtype": "Link",
+   "options": "Loan Product",
+   "label": "Loan Product",
    "reqd": 1
   },
   {
@@ -50,7 +58,9 @@
   {
    "fieldname": "interest_rate",
    "fieldtype": "Percent",
-   "label": "Interest Rate"
+   "label": "Interest Rate",
+   "fetch_from": "loan_product.rate_of_interest",
+   "read_only": 1
   },
   {
    "fetch_from": "customer.entity_type",
@@ -135,5 +145,6 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
+ "is_submittable": 1,
  "track_changes": 1
 }

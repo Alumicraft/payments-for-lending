@@ -162,7 +162,7 @@ def send_retailer_application(customer_name, dealer_license_no, factory_name, to
 # 5. Dealer Welcome
 # ============================================================================
 
-def send_dealer_welcome(customer_name, dcr_account_no, to_email, reference_name=None):
+def send_dealer_welcome(customer_name, account_id, to_email, reference_name=None):
     """Send dealer welcome email after account approval."""
     return _send_dcr_email(
         template="dealer-welcome",
@@ -170,7 +170,7 @@ def send_dealer_welcome(customer_name, dcr_account_no, to_email, reference_name=
         subject="Welcome to Dealer Capital Resources",
         data={
             "customer_name": customer_name,
-            "dcr_account_no": dcr_account_no,
+            "account_id": account_id,
         },
         reference_doctype="Customer",
         reference_name=reference_name,
