@@ -9,9 +9,23 @@
 
 frappe.ui.form.on('Loan Application', {
     refresh: function(frm) {
-        if (frm.is_new()) return;
+        // Signing status indicator (show on any saved LA with HBR link)
+        if (!frm.is_new() && frm.doc.home_build_request) {
+            if (frm.doc.signed_packet) {
+                frm.page.set_indicator(__('Signed'), 'green');
+            } else {
+                frappe.db.get_value('Signature Request',
+                    {reference_doctype: 'Loan Application', reference_name: frm.doc.name, status: 'Sent'},
+                    'name', function(r) {
+                        if (r && r.name) {
+                            frm.page.set_indicator(__('Awaiting Signature'), 'orange');
+                        }
+                    });
+            }
+        }
 
-        // Only show DCR buttons if linked to a Home Build Request
+        // Buttons require submission + HBR link
+        if (frm.doc.docstatus !== 1) return;
         if (!frm.doc.home_build_request) return;
 
         // Top-level: Send for Signature (Flooring Packet)
@@ -34,6 +48,7 @@ frappe.ui.form.on('Loan Application', {
                     frm: frm
                 });
             }, __('Create'));
+            frm.change_custom_button_type(__('Loan'), __('Create'), 'primary');
         }
     }
 });

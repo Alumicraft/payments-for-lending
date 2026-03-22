@@ -2,27 +2,52 @@
  * MIFA Form Customization
  *
  * Buttons:
- * - "Send for Signature" (top-level) — MIFA via DocuSign
+ * - "Send for Signature" (top-level) — MIFA via DocuSign (requires submission)
+ *
+ * Indicators:
+ * - Signed (green) — signed MIFA attached
+ * - Awaiting Signature (orange) — Signature Request sent
  */
 
 frappe.ui.form.on('MIFA', {
     refresh: function(frm) {
-        if (frm.is_new() || !frm.doc.customer) return;
+        if (frm.is_new()) return;
 
+        // Signing status indicator (show on any saved MIFA)
         if (frm.doc.signed_mifa) {
-            // Show signed indicator
             frm.page.set_indicator(__('Signed'), 'green');
-            return;
+        } else {
+            frappe.db.get_value('Signature Request',
+                {reference_doctype: 'MIFA', reference_name: frm.doc.name, status: 'Sent'},
+                'name', function(r) {
+                    if (r && r.name) {
+                        frm.page.set_indicator(__('Awaiting Signature'), 'orange');
+                    }
+                });
         }
 
-        // Top-level: Send for Signature
-        frm.add_custom_button(__('Send for Signature'), function() {
-            send_mifa(frm);
-        });
+        // Buttons require submission
+        if (frm.doc.docstatus !== 1) return;
+
+        if (!frm.doc.signed_mifa) {
+            frm.add_custom_button(__('Send for Signature'), function() {
+                send_mifa(frm);
+            });
+        }
     }
 });
 
 function send_mifa(frm) {
+    // Validate required fields before sending
+    if (!frm.doc.credit_limit || frm.doc.credit_limit <= 0) {
+        frappe.msgprint(__('Credit Limit must be set before sending for signature.'));
+        return;
+    }
+    if (!frm.doc.loan_product) {
+        frappe.msgprint(__('Loan Product must be set before sending for signature.'));
+        return;
+    }
+
     // Validate customer has email
     frappe.db.get_value('Customer', frm.doc.customer, 'email_id', function(r) {
         if (!r || !r.email_id) {
