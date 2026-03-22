@@ -73,7 +73,6 @@ fixtures = [
                 "Loan-paid_from_escrow",
                 "Loan-rebate_section",
                 "Loan-qualifying_amount",
-                "Loan-rebate_percentage",
                 "Loan Disbursement-home_build_request",
                 "Loan Disbursement-factory_po",
                 "Loan Disbursement-factory",

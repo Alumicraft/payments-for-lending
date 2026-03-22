@@ -3,7 +3,8 @@
  *
  * Features:
  * - Auto-populates Document Checklist on field change
- * - Create → Sales Order button (after submission)
+ * - Create → Loan Application button (Floored deals, after submission)
+ * - Create → Supplier Quotation button (after submission)
  */
 
 frappe.ui.form.on('Home Build Request', {
@@ -34,7 +35,10 @@ frappe.ui.form.on('Home Build Request', {
                     home_build_request: frm.doc.name
                 });
             }, __('Create'));
-            frm.change_custom_button_type(__('Supplier Quotation'), __('Create'), 'primary');
+            // Only primary if Loan Application button isn't showing
+            if (!(frm.doc.financing_type === 'Floored' && !frm.doc.loan_application)) {
+                frm.change_custom_button_type(__('Supplier Quotation'), __('Create'), 'primary');
+            }
         }
     },
     home_type: function(frm) { populate_checklist(frm); },

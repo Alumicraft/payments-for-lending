@@ -83,6 +83,7 @@ class HomeBuildRequest(Document):
         la.insert()
 
         # Link back
+        self.loan_application = la.name
         self.db_set("loan_application", la.name)
 
         frappe.msgprint(
@@ -125,6 +126,7 @@ def get_required_docs(home_type, financing_type, property_type):
 def create_loan_application_from_hbr(hbr_name):
     """Manual fallback to create Loan Application from a submitted HBR."""
     hbr = frappe.get_doc("Home Build Request", hbr_name)
+    hbr.check_permission("write")
     if hbr.docstatus != 1:
         frappe.throw(_("Home Build Request must be submitted first."))
     if hbr.financing_type != "Floored":
