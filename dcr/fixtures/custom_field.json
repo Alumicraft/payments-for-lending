@@ -62,7 +62,7 @@
     "fieldname": "dealer_documents_section",
     "fieldtype": "Section Break",
     "label": "Dealer Documents",
-    "insert_after": "mifa_required",
+    "insert_after": "w9_status",
     "depends_on": "eval:doc.customer_group=='Dealer'",
     "collapsible": 1
   },
