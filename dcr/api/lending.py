@@ -26,7 +26,7 @@ def get_available_credit(customer):
     available_credit = MIFA.credit_limit - outstanding_balance
     """
     # Get the most recent MIFA credit limit
-    mifa = frappe.db.get_value("MIFA", {"customer": customer},
+    mifa = frappe.db.get_value("MIFA", {"customer": customer, "docstatus": 1},
         "credit_limit", order_by="mifa_date desc")
 
     if not mifa:
@@ -57,7 +57,7 @@ def validate_loan_application(doc, method):
     outstanding = get_dealer_outstanding_balance(customer)
     doc.outstanding_loan_balance = outstanding
 
-    mifa_limit = frappe.db.get_value("MIFA", {"customer": customer},
+    mifa_limit = frappe.db.get_value("MIFA", {"customer": customer, "docstatus": 1},
         "credit_limit", order_by="mifa_date desc")
 
     if mifa_limit:
