@@ -116,11 +116,11 @@ class HomeBuildRequest(Document):
     def _copy_factory_quote_to_sq(self, sq_name):
         """Copy the Factory Quote attachment from the HBR checklist to the SQ."""
         for row in self.doc_checklist:
-            if row.document_type == "Factory Quote" and row.attach:
+            if row.document_type == "Factory Quote" and row.attachment:
                 try:
                     frappe.get_doc({
                         "doctype": "File",
-                        "file_url": row.attach,
+                        "file_url": row.attachment,
                         "attached_to_doctype": "Supplier Quotation",
                         "attached_to_name": sq_name,
                     }).insert(ignore_permissions=True)
