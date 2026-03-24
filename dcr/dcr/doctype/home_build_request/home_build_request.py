@@ -161,6 +161,14 @@ class HomeBuildRequest(Document):
         if self.home_invoice_plus_freight:
             la.loan_amount = self.home_invoice_plus_freight
 
+        # Ensure repayment fields are set so lending validate doesn't fail
+        if not la.repayment_method:
+            la.repayment_method = "Repay Over Number of Periods"
+        if not la.repayment_periods:
+            la.repayment_periods = 12
+        if not la.repayment_amount:
+            la.repayment_amount = 0
+
         la.insert()
 
         # Link back
