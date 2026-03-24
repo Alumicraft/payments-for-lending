@@ -319,3 +319,65 @@ def send_pre_approval(customer_name, loan_application, loan_amount, to_email, at
         reference_doctype="Loan Application",
         reference_name=reference_name,
     )
+
+
+# ============================================================================
+# 13. Autopay Setup
+# ============================================================================
+
+def send_autopay_setup(customer_name, loan_name, loan_amount, setup_url, to_email, reference_name=None):
+    """Send email prompting dealer to connect bank account via Plaid."""
+    return _send_dcr_email(
+        template="autopay-setup",
+        to_email=to_email,
+        subject=f"Set Up Auto-Pay for Loan {loan_name}",
+        data={
+            "customer_name": customer_name,
+            "loan_name": loan_name,
+            "loan_amount": loan_amount,
+            "setup_url": setup_url,
+        },
+        reference_doctype="Loan",
+        reference_name=reference_name or loan_name,
+    )
+
+
+# ============================================================================
+# 14. Autopay Update
+# ============================================================================
+
+def send_autopay_update(customer_name, setup_url, to_email, reference_name=None):
+    """Send email prompting dealer to update their bank account via Plaid."""
+    return _send_dcr_email(
+        template="autopay-update",
+        to_email=to_email,
+        subject="Update Your Auto-Pay Bank Account",
+        data={
+            "customer_name": customer_name,
+            "setup_url": setup_url,
+        },
+        reference_doctype="Customer",
+        reference_name=reference_name,
+    )
+
+
+@frappe.whitelist()
+def send_autopay_update_email(customer):
+    """Whitelisted method — send autopay update email to a dealer."""
+    customer_doc = frappe.get_doc("Customer", customer)
+    customer_doc.check_permission("read")
+
+    email = customer_doc.email_id
+    if not email:
+        frappe.throw(_("Customer {0} does not have an email address.").format(customer))
+
+    setup_url = frappe.utils.get_url(f"/plaid-setup?customer={customer}")
+
+    send_autopay_update(
+        customer_name=customer_doc.customer_name or customer,
+        setup_url=setup_url,
+        to_email=email,
+        reference_name=customer,
+    )
+
+    return {"success": True}

@@ -14,12 +14,16 @@ frappe.ui.form.on('Loan', {
             return;
         }
 
-        // Top-level: Send Disbursement Notice — only for newly disbursed loans
-        if (frm.doc.status === 'Disbursed') {
-            frm.add_custom_button(__('Send Disbursement Notice'), function() {
-                send_disbursement_notice(frm);
-            });
-        }
+        // Top-level: Send Disbursement Notice — show if any disbursement exists
+        frappe.db.count('Loan Disbursement', {
+            filters: { against_loan: frm.doc.name, docstatus: 1 }
+        }).then(count => {
+            if (count > 0) {
+                frm.add_custom_button(__('Send Disbursement Notice'), function() {
+                    send_disbursement_notice(frm);
+                });
+            }
+        });
 
         // Top-level: Payoff letter buttons — only for disbursed/active loans
         if (frm.doc.status && ['Disbursed', 'Active'].includes(frm.doc.status)) {
@@ -78,7 +82,10 @@ function show_autopay_dialog(frm, accounts, loan_account, plaid_available) {
         accounts_html = `
             <div class="text-muted text-center" style="padding: 20px;">
                 <p>No bank accounts set up yet.</p>
-                <p>Add a bank account to enable automatic payments.</p>
+                <p>Add a bank account below, or send the dealer a link to connect.</p>
+                <button class="btn btn-default btn-sm btn-send-setup-email" style="margin-top: 8px;">
+                    <i class="fa fa-envelope-o"></i> Send Setup Email to Dealer
+                </button>
             </div>
         `;
     } else {
@@ -198,6 +205,23 @@ function show_autopay_dialog(frm, accounts, loan_account, plaid_available) {
 
     dialog.$wrapper.find('.clear-override').on('click', function() {
         clear_loan_override(frm, dialog);
+    });
+
+    dialog.$wrapper.find('.btn-send-setup-email').on('click', function() {
+        frappe.call({
+            method: 'dcr.api.dcr_email.send_autopay_update_email',
+            args: { customer: frm.doc.applicant },
+            freeze: true,
+            freeze_message: __('Sending email...'),
+            callback: function(r) {
+                if (r.message && r.message.success) {
+                    frappe.show_alert({
+                        message: __('Setup email sent to dealer'),
+                        indicator: 'green'
+                    });
+                }
+            }
+        });
     });
 }
 

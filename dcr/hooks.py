@@ -46,6 +46,7 @@ fixtures = [
                 "Supplier Quotation-signature_date",
                 "Loan Application-home_build_request",
                 "Loan Application-home_type",
+                "Loan Application-factory",
                 "Loan Application-dcr_lending_section",
                 "Loan Application-requested_advance_amount",
                 "Loan Application-advance_date_requested",
@@ -55,6 +56,7 @@ fixtures = [
                 "Loan Application-signed_packet",
                 "Loan-ach_payment_section",
                 "Loan-ach_payment_account",
+                "Loan-home_build_request",
                 "Loan-home_deal_reference_section",
                 "Loan-home_serial_no",
                 "Loan-buyer_name",
@@ -120,7 +122,8 @@ doc_events = {
         "validate": "dcr.api.lending.validate_loan_application"
     },
     "Loan": {
-        "validate": "dcr.api.lending.on_loan_validate"
+        "validate": "dcr.api.lending.on_loan_validate",
+        "after_insert": "dcr.api.lending.on_loan_after_insert"
     },
 }
 

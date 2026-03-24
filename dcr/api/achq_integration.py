@@ -765,7 +765,7 @@ def get_plaid_link_token(customer):
                 "user": {
                     "client_user_id": customer
                 },
-                "client_name": frappe.get_single("System Settings").company or "Payment System",
+                "client_name": frappe.defaults.get_global_default("company") or "Dealer Capital Resources",
                 "products": ["auth"],
                 "country_codes": ["US"],
                 "language": "en",

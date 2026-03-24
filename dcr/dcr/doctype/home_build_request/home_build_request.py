@@ -49,8 +49,87 @@ class HomeBuildRequest(Document):
         self.validate_checklist_complete()
 
     def on_submit(self):
+        # Create Supplier Quotation for all deals (floored + cash)
+        self._create_supplier_quotation()
+
+        # Create Loan Application for Floored deals only
         if self.financing_type == "Floored":
             self._create_loan_application()
+
+    def _create_supplier_quotation(self):
+        """Auto-create Supplier Quotation from HBR on submit."""
+        if not self.factory:
+            frappe.msgprint(
+                _("No factory assigned — Supplier Quotation not created."),
+                indicator="orange"
+            )
+            return
+
+        existing = frappe.db.exists("Supplier Quotation", {
+            "home_build_request": self.name,
+            "docstatus": ["!=", 2]
+        })
+        if existing:
+            frappe.msgprint(
+                _("Supplier Quotation {0} already exists for this Home Build Request.").format(existing),
+                indicator="orange"
+            )
+            return
+
+        item_code = "Manufactured Home"
+        if not frappe.db.exists("Item", item_code):
+            frappe.throw(
+                _('Item "{0}" does not exist. Please create it first (non-stock service item).').format(
+                    item_code
+                )
+            )
+
+        sq = frappe.new_doc("Supplier Quotation")
+        sq.supplier = self.factory
+        sq.home_build_request = self.name
+        sq.company = frappe.defaults.get_global_default("company")
+
+        amount = self.home_invoice_plus_freight or 0
+        sq.append("items", {
+            "item_code": item_code,
+            "qty": 1,
+            "rate": amount,
+            "amount": amount,
+        })
+
+        sq.insert()
+
+        # Copy factory quote attachment from checklist if exists
+        self._copy_factory_quote_to_sq(sq.name)
+
+        # Link back
+        self.db_set("factory_quote", sq.name)
+
+        frappe.msgprint(
+            _("Supplier Quotation {0} created.").format(
+                f'<a href="/app/supplier-quotation/{sq.name}">{sq.name}</a>'
+            ),
+            indicator="green",
+            alert=True,
+        )
+
+    def _copy_factory_quote_to_sq(self, sq_name):
+        """Copy the Factory Quote attachment from the HBR checklist to the SQ."""
+        for row in self.doc_checklist:
+            if row.document_type == "Factory Quote" and row.attach:
+                try:
+                    frappe.get_doc({
+                        "doctype": "File",
+                        "file_url": row.attach,
+                        "attached_to_doctype": "Supplier Quotation",
+                        "attached_to_name": sq_name,
+                    }).insert(ignore_permissions=True)
+                except Exception:
+                    frappe.log_error(
+                        f"Failed to copy factory quote attachment to SQ {sq_name}",
+                        "HBR Submit"
+                    )
+                break
 
     def _create_loan_application(self):
         """Auto-create Loan Application for Floored deals on HBR submit."""
@@ -70,6 +149,8 @@ class HomeBuildRequest(Document):
         la.applicant = self.customer
         la.home_build_request = self.name
         la.home_type = self.home_type
+        if self.factory:
+            la.factory = self.factory
 
         # Set loan product from customer default
         default_product = frappe.db.get_value("Customer", self.customer, "default_loan_product")

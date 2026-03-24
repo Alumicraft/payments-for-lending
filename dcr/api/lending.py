@@ -45,11 +45,23 @@ def get_available_credit(customer):
 def validate_loan_application(doc, method):
     """Hook called on Loan Application validate.
 
+    - Ensures linked HBR is submitted
     - Calculates outstanding balance and available credit
     - Validates advance date against factory lead time
     - Warns if requested amount exceeds available credit
     """
-    if not doc.get("home_build_request"):
+    # Ensure linked HBR is submitted
+    if doc.get("home_build_request"):
+        hbr_status = frappe.db.get_value(
+            "Home Build Request", doc.home_build_request, "docstatus"
+        )
+        if hbr_status != 1:
+            frappe.throw(
+                _("Home Build Request {0} must be submitted before linking to a Loan Application.").format(
+                    doc.home_build_request
+                )
+            )
+    else:
         return
 
     # Calculate and set balance fields
@@ -122,14 +134,65 @@ def on_loan_validate(doc, method):
     if not doc.loan_application:
         return
     la = frappe.db.get_value("Loan Application", doc.loan_application,
-        ["home_serial_no", "buyer_name", "home_build_request"], as_dict=True)
+        ["home_serial_no", "buyer_name", "home_build_request", "factory"], as_dict=True)
     if not la:
         return
     if not doc.home_serial_no and la.home_serial_no:
         doc.home_serial_no = la.home_serial_no
     if not doc.buyer_name and la.buyer_name:
         doc.buyer_name = la.buyer_name
-    if la.home_build_request:
-        factory = frappe.db.get_value("Home Build Request", la.home_build_request, "factory")
-        if factory and not doc.factory:
-            doc.factory = factory
+    if not doc.home_build_request and la.home_build_request:
+        doc.home_build_request = la.home_build_request
+    if not doc.factory and la.factory:
+        doc.factory = la.factory
+
+
+def on_loan_after_insert(doc, method):
+    """Auto-link ACH payment account or send Plaid setup email on loan creation."""
+    if not doc.applicant:
+        return
+
+    # Check for existing ACH Authorization on this customer
+    existing_auth = frappe.db.get_value(
+        "ACH Authorization",
+        {"customer": doc.applicant, "status": "Active", "is_default": 1},
+        ["name", "bank_name", "bank_account_last4"],
+        as_dict=True
+    )
+
+    if existing_auth:
+        doc.db_set("ach_payment_account", existing_auth.name, update_modified=False)
+        frappe.msgprint(
+            _("Auto-Pay linked to {0} ending in {1}").format(
+                existing_auth.bank_name, existing_auth.bank_account_last4
+            ),
+            indicator="green",
+            alert=True
+        )
+    else:
+        send_plaid_setup_email(doc)
+
+
+def send_plaid_setup_email(loan_doc):
+    """Send dealer an email to connect their bank account via Plaid."""
+    customer_email = frappe.db.get_value("Customer", loan_doc.applicant, "email_id")
+    if not customer_email:
+        frappe.log_error(
+            f"Cannot send Plaid setup email: no email on Customer {loan_doc.applicant}",
+            "ACH Setup"
+        )
+        return
+
+    from dcr.api.dcr_email import send_autopay_setup
+
+    plaid_setup_url = frappe.utils.get_url(f"/plaid-setup?loan={loan_doc.name}")
+    loan_amount = frappe.format_value(loan_doc.loan_amount or 0, {"fieldtype": "Currency"}).replace("$", "")
+
+    send_autopay_setup(
+        customer_name=loan_doc.applicant_name or loan_doc.applicant,
+        loan_name=loan_doc.name,
+        loan_amount=loan_amount,
+        setup_url=plaid_setup_url,
+        to_email=customer_email,
+        reference_name=loan_doc.name,
+    )

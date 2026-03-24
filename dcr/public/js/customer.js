@@ -54,13 +54,17 @@ frappe.ui.form.on('Customer', {
             }
         });
 
-        // Actions: Manage Bank Account
+        // Actions: Manage Bank Account + Send Bank Update Email
         frappe.call({
             method: 'dcr.dcr.doctype.ach_settings.ach_settings.is_ach_enabled',
             callback: function(r) {
                 if (r.message) {
                     frm.add_custom_button(__('Manage Bank Account'), function() {
                         show_bank_account_manager(frm);
+                    }, __('Actions'));
+
+                    frm.add_custom_button(__('Send Bank Update Email'), function() {
+                        send_bank_update_email(frm);
                     }, __('Actions'));
                 }
             }
@@ -342,4 +346,32 @@ function show_manual_entry_customer(frm) {
         }
     });
     dialog.show();
+}
+
+
+function send_bank_update_email(frm) {
+    if (!frm.doc.email_id) {
+        frappe.msgprint(__('Please set an email address for this customer first.'));
+        return;
+    }
+
+    frappe.confirm(
+        __('Send bank account update email to {0} ({1})?', [frm.doc.customer_name, frm.doc.email_id]),
+        function() {
+            frappe.call({
+                method: 'dcr.api.dcr_email.send_autopay_update_email',
+                args: { customer: frm.doc.name },
+                freeze: true,
+                freeze_message: __('Sending email...'),
+                callback: function(r) {
+                    if (r.message && r.message.success) {
+                        frappe.show_alert({
+                            message: __('Bank update email sent to {0}', [frm.doc.email_id]),
+                            indicator: 'green'
+                        });
+                    }
+                }
+            });
+        }
+    );
 }

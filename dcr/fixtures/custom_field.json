@@ -194,7 +194,8 @@
     "fieldtype": "Link",
     "label": "Home Build Request",
     "options": "Home Build Request",
-    "insert_after": "applicant_name"
+    "insert_after": "applicant_name",
+    "link_filters": "{\"docstatus\": 1}"
   },
   {
     "doctype": "Custom Field",
@@ -208,6 +209,18 @@
     "fetch_from": "home_build_request.home_type",
     "read_only": 1,
     "description": "Drives print format variant (Exhibit A)"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-factory",
+    "dt": "Loan Application",
+    "fieldname": "factory",
+    "fieldtype": "Link",
+    "options": "Supplier",
+    "label": "Factory",
+    "insert_after": "home_type",
+    "fetch_from": "home_build_request.factory",
+    "read_only": 1
   },
   {
     "doctype": "Custom Field",
@@ -309,6 +322,16 @@
     "fieldtype": "Section Break",
     "label": "Home / Deal Reference",
     "insert_after": "ach_payment_account"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan-home_build_request",
+    "dt": "Loan",
+    "fieldname": "home_build_request",
+    "fieldtype": "Link",
+    "options": "Home Build Request",
+    "label": "Home Build Request",
+    "insert_after": "home_deal_reference_section"
   },
   {
     "doctype": "Custom Field",
@@ -465,7 +488,8 @@
     "fieldtype": "Link",
     "label": "Home Build Request",
     "options": "Home Build Request",
-    "insert_after": "against_loan"
+    "insert_after": "against_loan",
+    "fetch_from": "against_loan.home_build_request"
   },
   {
     "doctype": "Custom Field",
@@ -485,7 +509,8 @@
     "fieldtype": "Link",
     "label": "Factory",
     "options": "Supplier",
-    "insert_after": "factory_po"
+    "insert_after": "factory_po",
+    "fetch_from": "against_loan.factory"
   },
 
   {

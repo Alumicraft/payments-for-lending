@@ -49,6 +49,7 @@ frappe.ui.form.on('Loan Application', {
                 });
             }, __('Create'));
             frm.change_custom_button_type(__('Loan'), __('Create'), 'primary');
+            frm.change_custom_button_type('Create', null, 'primary');
         }
     }
 });

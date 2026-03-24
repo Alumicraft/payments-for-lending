@@ -27,19 +27,6 @@ frappe.ui.form.on('Home Build Request', {
             frm.change_custom_button_type(__('Loan Application'), __('Create'), 'primary');
         }
 
-        // Create → Supplier Quotation (submitted, no factory_quote linked, factory set)
-        if (frm.doc.docstatus === 1 && !frm.doc.factory_quote && frm.doc.factory) {
-            frm.add_custom_button(__('Supplier Quotation'), function() {
-                frappe.new_doc('Supplier Quotation', {
-                    supplier: frm.doc.factory,
-                    home_build_request: frm.doc.name
-                });
-            }, __('Create'));
-            // Only primary if Loan Application button isn't showing
-            if (!(frm.doc.financing_type === 'Floored' && !frm.doc.loan_application)) {
-                frm.change_custom_button_type(__('Supplier Quotation'), __('Create'), 'primary');
-            }
-        }
     },
     home_type: function(frm) { populate_checklist(frm); },
     financing_type: function(frm) { populate_checklist(frm); },
