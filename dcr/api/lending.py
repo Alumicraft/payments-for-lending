@@ -170,7 +170,15 @@ def on_loan_after_insert(doc, method):
             alert=True
         )
     else:
-        send_plaid_setup_email(doc)
+        try:
+            send_plaid_setup_email(doc)
+        except Exception:
+            frappe.log_error("Failed to send Plaid setup email", "ACH Setup")
+            frappe.msgprint(
+                _("Loan created but auto-pay setup email could not be sent. Check Error Log."),
+                indicator="orange",
+                alert=True,
+            )
 
 
 def send_plaid_setup_email(loan_doc):
