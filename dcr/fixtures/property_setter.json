@@ -1,0 +1,20 @@
+[
+  {
+    "doctype": "Property Setter",
+    "name": "Customer-first_name-hidden",
+    "doc_type": "Customer",
+    "field_name": "first_name",
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Customer-last_name-hidden",
+    "doc_type": "Customer",
+    "field_name": "last_name",
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
+  }
+]

@@ -6,41 +6,56 @@
  "engine": "InnoDB",
  "field_order": [
   "customer",
+  "financing_type",
   "status",
   "column_break_1",
   "home_type",
-  "financing_type",
   "property_type",
-  "references_section",
+  "home_section",
+  "model_name",
+  "home_serial_no",
+  "home_invoice_plus_freight",
+  "column_break_home",
   "factory",
-  "factory_quote",
-  "column_break_refs",
-  "loan_application",
+  "quote_no",
   "park_section",
   "park",
+  "column_break_park",
   "space_number",
+  "park_details_section",
+  "park_address_line1",
+  "park_address_line2",
+  "column_break_park_details",
+  "park_city",
+  "park_state",
+  "park_zip",
+  "park_contact_section",
+  "park_contact_name",
+  "park_gated",
+  "column_break_park_contact",
+  "park_phone",
+  "park_access_code",
   "buyer_section",
   "home_buyer",
+  "customer_deposit",
+  "column_break_buyer",
+  "end_buyer_lender",
+  "selling_price",
   "escrow_section",
   "escrow_company",
   "escrow_number",
   "column_break_escrow",
   "escrow_contact",
   "escrow_phone",
-  "escrow_financials_section",
-  "customer_deposit",
-  "selling_price",
-  "column_break_escrow2",
-  "end_buyer_lender",
   "broker_section",
   "broker",
   "column_break_broker",
   "broker_contact",
   "broker_phone",
-  "home_info_section",
-  "model_name",
-  "column_break_home_info",
-  "home_invoice_plus_freight",
+  "factory_order_section",
+  "factory_quote",
+  "column_break_factory_order",
+  "loan_application",
   "documents_section",
   "doc_checklist"
  ],
@@ -52,6 +67,15 @@
    "in_standard_filter": 1,
    "label": "Customer",
    "options": "Customer",
+   "reqd": 1
+  },
+  {
+   "fieldname": "financing_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Financing Type",
+   "options": "\nCash\nFloored",
    "reqd": 1
   },
   {
@@ -78,15 +102,6 @@
    "reqd": 1
   },
   {
-   "fieldname": "financing_type",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Financing Type",
-   "options": "\nCash\nFloored",
-   "reqd": 1
-  },
-  {
    "fieldname": "property_type",
    "fieldtype": "Select",
    "in_standard_filter": 1,
@@ -95,34 +110,44 @@
    "reqd": 1
   },
   {
-   "fieldname": "references_section",
+   "fieldname": "home_section",
    "fieldtype": "Section Break",
-   "label": "References"
+   "label": "Home"
   },
   {
-   "fieldname": "factory",
+   "fieldname": "model_name",
+   "fieldtype": "Link",
+   "label": "Model",
+   "options": "Model",
+   "reqd": 1
+  },
+  {
+   "fieldname": "home_serial_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Home Serial No"
+  },
+  {
+   "fieldname": "home_invoice_plus_freight",
+   "fieldtype": "Currency",
+   "label": "Home Invoice plus Freight",
+   "read_only_depends_on": "eval:doc.factory_quote"
+  },
+  {
+   "fieldname": "column_break_home",
+   "fieldtype": "Column Break"
+  },
+  {
    "fetch_from": "model_name.manufacturer",
+   "fieldname": "factory",
    "fieldtype": "Link",
    "label": "Factory",
    "options": "Supplier"
   },
   {
-   "fieldname": "factory_quote",
-   "fieldtype": "Link",
-   "label": "Factory Quote",
-   "options": "Supplier Quotation"
-  },
-  {
-   "fieldname": "column_break_refs",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "loan_application",
-   "fieldtype": "Link",
-   "label": "Loan Application",
-   "options": "Loan Application",
-   "read_only": 1,
-   "depends_on": "eval:doc.financing_type=='Floored'"
+   "fieldname": "quote_no",
+   "fieldtype": "Data",
+   "label": "Quote No"
   },
   {
    "fieldname": "park_section",
@@ -137,9 +162,97 @@
    "options": "Park"
   },
   {
+   "fieldname": "column_break_park",
+   "fieldtype": "Column Break"
+  },
+  {
    "fieldname": "space_number",
    "fieldtype": "Data",
    "label": "Space No"
+  },
+  {
+   "fieldname": "park_details_section",
+   "fieldtype": "Section Break",
+   "label": "Park Details",
+   "depends_on": "eval:doc.property_type=='Park'"
+  },
+  {
+   "fetch_from": "park.address_line1",
+   "fieldname": "park_address_line1",
+   "fieldtype": "Data",
+   "label": "Address Line 1",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "park.address_line2",
+   "fieldname": "park_address_line2",
+   "fieldtype": "Data",
+   "label": "Address Line 2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_park_details",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "park.city",
+   "fieldname": "park_city",
+   "fieldtype": "Data",
+   "label": "City",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "park.state",
+   "fieldname": "park_state",
+   "fieldtype": "Data",
+   "label": "State",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "park.zip",
+   "fieldname": "park_zip",
+   "fieldtype": "Data",
+   "label": "ZIP",
+   "read_only": 1
+  },
+  {
+   "fieldname": "park_contact_section",
+   "fieldtype": "Section Break",
+   "label": "Park Contact",
+   "depends_on": "eval:doc.property_type=='Park'"
+  },
+  {
+   "fetch_from": "park.contact_name",
+   "fieldname": "park_contact_name",
+   "fieldtype": "Data",
+   "label": "Contact Name",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "park.gated",
+   "fieldname": "park_gated",
+   "fieldtype": "Check",
+   "label": "Gated",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_park_contact",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "park.office_phone",
+   "fieldname": "park_phone",
+   "fieldtype": "Data",
+   "label": "Phone",
+   "options": "Phone",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "park.access_code",
+   "fieldname": "park_access_code",
+   "fieldtype": "Data",
+   "label": "Access Code",
+   "read_only": 1
   },
   {
    "fieldname": "buyer_section",
@@ -152,6 +265,26 @@
    "fieldtype": "Link",
    "label": "Home Buyer",
    "options": "Customer"
+  },
+  {
+   "fieldname": "customer_deposit",
+   "fieldtype": "Currency",
+   "label": "Customer Deposit in Escrow"
+  },
+  {
+   "fieldname": "column_break_buyer",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Buyer's financing source (e.g. Cash, FHA, Wells Fargo)",
+   "fieldname": "end_buyer_lender",
+   "fieldtype": "Data",
+   "label": "Lender"
+  },
+  {
+   "fieldname": "selling_price",
+   "fieldtype": "Currency",
+   "label": "Selling Price of Home"
   },
   {
    "fieldname": "escrow_section",
@@ -186,36 +319,11 @@
    "options": "Phone"
   },
   {
-   "fieldname": "escrow_financials_section",
-   "fieldtype": "Section Break",
-   "label": "Financials"
-  },
-  {
-   "fieldname": "customer_deposit",
-   "fieldtype": "Currency",
-   "label": "Customer Deposit in Escrow"
-  },
-  {
-   "fieldname": "selling_price",
-   "fieldtype": "Currency",
-   "label": "Selling Price of Home"
-  },
-  {
-   "fieldname": "column_break_escrow2",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "end_buyer_lender",
-   "fieldtype": "Data",
-   "label": "Lender",
-   "description": "Buyer's financing source (e.g. Cash, FHA, Wells Fargo)"
-  },
-  {
+   "collapsible": 1,
+   "depends_on": "eval:doc.home_type=='Customer Sold'",
    "fieldname": "broker_section",
    "fieldtype": "Section Break",
-   "label": "Broker",
-   "depends_on": "eval:doc.home_type=='Customer Sold'",
-   "collapsible": 1
+   "label": "Broker"
   },
   {
    "fieldname": "broker",
@@ -239,24 +347,28 @@
    "options": "Phone"
   },
   {
-   "fieldname": "home_info_section",
+   "fieldname": "factory_order_section",
    "fieldtype": "Section Break",
-   "label": "Home Info"
+   "label": "Factory Order"
   },
   {
-   "fieldname": "model_name",
+   "fieldname": "factory_quote",
    "fieldtype": "Link",
-   "label": "Model",
-   "options": "Model"
+   "label": "Factory Quote",
+   "options": "Supplier Quotation",
+   "read_only": 1
   },
   {
-   "fieldname": "column_break_home_info",
+   "fieldname": "column_break_factory_order",
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "home_invoice_plus_freight",
-   "fieldtype": "Currency",
-   "label": "Home Invoice plus Freight"
+   "depends_on": "eval:doc.financing_type=='Floored'",
+   "fieldname": "loan_application",
+   "fieldtype": "Link",
+   "label": "Loan Application",
+   "options": "Loan Application",
+   "read_only": 1
   },
   {
    "fieldname": "documents_section",

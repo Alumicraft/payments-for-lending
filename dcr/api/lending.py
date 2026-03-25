@@ -130,21 +130,19 @@ def validate_advance_date(factory, requested_date):
 
 
 def on_loan_validate(doc, method):
-    """Populate deal reference fields from Loan Application."""
+    """Populate home_build_request from Loan Application.
+
+    Other deal reference fields (home_serial_no, buyer_name, factory)
+    are handled by fetch_from declarations in fixtures.
+    """
     if not doc.loan_application:
         return
-    la = frappe.db.get_value("Loan Application", doc.loan_application,
-        ["home_serial_no", "buyer_name", "home_build_request", "factory"], as_dict=True)
-    if not la:
-        return
-    if not doc.home_serial_no and la.home_serial_no:
-        doc.home_serial_no = la.home_serial_no
-    if not doc.buyer_name and la.buyer_name:
-        doc.buyer_name = la.buyer_name
-    if not doc.home_build_request and la.home_build_request:
-        doc.home_build_request = la.home_build_request
-    if not doc.factory and la.factory:
-        doc.factory = la.factory
+    if not doc.home_build_request:
+        hbr = frappe.db.get_value(
+            "Loan Application", doc.loan_application, "home_build_request"
+        )
+        if hbr:
+            doc.home_build_request = hbr
 
 
 def on_loan_after_insert(doc, method):
@@ -204,3 +202,14 @@ def send_plaid_setup_email(loan_doc):
         to_email=customer_email,
         reference_name=loan_doc.name,
     )
+
+
+def on_sq_before_save(doc, method):
+    """Write home_serial_no and quote_no back to linked HBR."""
+    if not doc.home_build_request:
+        return
+    hbr = frappe.get_doc("Home Build Request", doc.home_build_request)
+    if doc.home_serial_no and hbr.home_serial_no != doc.home_serial_no:
+        hbr.db_set("home_serial_no", doc.home_serial_no)
+    if doc.quote_no and hbr.quote_no != doc.quote_no:
+        hbr.db_set("quote_no", doc.quote_no)

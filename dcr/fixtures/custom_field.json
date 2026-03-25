@@ -17,7 +17,8 @@
     "fieldname": "dealer_license_no",
     "fieldtype": "Data",
     "label": "Dealer License No",
-    "insert_after": "dealer_information_section"
+    "insert_after": "dealer_information_section",
+    "reqd": 1
   },
   {
     "doctype": "Custom Field",
@@ -157,7 +158,8 @@
     "fieldtype": "Link",
     "label": "Home Build Request",
     "options": "Home Build Request",
-    "insert_after": "supplier"
+    "insert_after": "supplier",
+    "link_filters": "{\"docstatus\": 1}"
   },
   {
     "doctype": "Custom Field",
@@ -188,6 +190,24 @@
   },
   {
     "doctype": "Custom Field",
+    "name": "Supplier Quotation-home_serial_no",
+    "dt": "Supplier Quotation",
+    "fieldname": "home_serial_no",
+    "fieldtype": "Data",
+    "label": "Serial No",
+    "insert_after": "signature_date"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Supplier Quotation-quote_no",
+    "dt": "Supplier Quotation",
+    "fieldname": "quote_no",
+    "fieldtype": "Data",
+    "label": "Quote No",
+    "insert_after": "home_serial_no"
+  },
+  {
+    "doctype": "Custom Field",
     "name": "Loan Application-home_build_request",
     "dt": "Loan Application",
     "fieldname": "home_build_request",
@@ -195,7 +215,8 @@
     "label": "Home Build Request",
     "options": "Home Build Request",
     "insert_after": "applicant_name",
-    "link_filters": "{\"docstatus\": 1}"
+    "link_filters": "{\"docstatus\": 1}",
+    "reqd": 1
   },
   {
     "doctype": "Custom Field",
@@ -240,7 +261,8 @@
     "label": "Requested Advance Amount",
     "insert_after": "dcr_lending_section",
     "fetch_from": "home_build_request.home_invoice_plus_freight",
-    "fetch_if_empty": 1
+    "fetch_if_empty": 1,
+    "reqd": 1
   },
   {
     "doctype": "Custom Field",
@@ -313,7 +335,6 @@
     "insert_after": "ach_payment_section",
     "description": "Specific bank account for this loan (leave blank to use customer's default)"
   },
-
   {
     "doctype": "Custom Field",
     "name": "Loan-home_deal_reference_section",
@@ -331,7 +352,9 @@
     "fieldtype": "Link",
     "options": "Home Build Request",
     "label": "Home Build Request",
-    "insert_after": "home_deal_reference_section"
+    "insert_after": "home_deal_reference_section",
+    "read_only": 1,
+    "reqd": 1
   },
   {
     "doctype": "Custom Field",
@@ -340,7 +363,9 @@
     "fieldname": "home_serial_no",
     "fieldtype": "Data",
     "label": "Serial No",
-    "insert_after": "home_deal_reference_section"
+    "insert_after": "home_build_request",
+    "fetch_from": "home_build_request.home_serial_no",
+    "read_only": 1
   },
   {
     "doctype": "Custom Field",
@@ -349,7 +374,9 @@
     "fieldname": "buyer_name",
     "fieldtype": "Data",
     "label": "Buyer Name",
-    "insert_after": "home_serial_no"
+    "insert_after": "home_serial_no",
+    "fetch_from": "home_build_request.home_buyer",
+    "read_only": 1
   },
   {
     "doctype": "Custom Field",
@@ -367,9 +394,11 @@
     "fieldtype": "Link",
     "label": "Factory",
     "options": "Supplier",
-    "insert_after": "column_break_home_deal"
+    "insert_after": "column_break_home_deal",
+    "fetch_from": "home_build_request.factory",
+    "read_only": 1,
+    "reqd": 1
   },
-
   {
     "doctype": "Custom Field",
     "name": "Loan-payoff_section",
@@ -459,7 +488,6 @@
     "label": "Paid from Escrow",
     "insert_after": "principal_collected"
   },
-
   {
     "doctype": "Custom Field",
     "name": "Loan-rebate_section",
@@ -479,7 +507,6 @@
     "label": "Qualifying Amount",
     "insert_after": "rebate_section"
   },
-
   {
     "doctype": "Custom Field",
     "name": "Loan Disbursement-home_build_request",
@@ -489,7 +516,8 @@
     "label": "Home Build Request",
     "options": "Home Build Request",
     "insert_after": "against_loan",
-    "fetch_from": "against_loan.home_build_request"
+    "fetch_from": "against_loan.home_build_request",
+    "reqd": 1
   },
   {
     "doctype": "Custom Field",
@@ -510,9 +538,9 @@
     "label": "Factory",
     "options": "Supplier",
     "insert_after": "factory_po",
-    "fetch_from": "against_loan.factory"
+    "fetch_from": "against_loan.factory",
+    "reqd": 1
   },
-
   {
     "doctype": "Custom Field",
     "name": "Loan Application-exhibit_a_section",
@@ -529,7 +557,9 @@
     "fieldname": "home_serial_no",
     "fieldtype": "Data",
     "label": "Serial No",
-    "insert_after": "exhibit_a_section"
+    "insert_after": "exhibit_a_section",
+    "fetch_from": "home_build_request.home_serial_no",
+    "read_only": 1
   },
   {
     "doctype": "Custom Field",
@@ -538,7 +568,9 @@
     "fieldname": "quote_no",
     "fieldtype": "Data",
     "label": "Quote No",
-    "insert_after": "home_serial_no"
+    "insert_after": "home_serial_no",
+    "fetch_from": "home_build_request.quote_no",
+    "read_only": 1
   },
   {
     "doctype": "Custom Field",
@@ -597,7 +629,6 @@
     "label": "First Autopay Description",
     "insert_after": "monthly_insurance_amount"
   },
-
   {
     "doctype": "Custom Field",
     "name": "Loan Application-advance_preapproval_section",
@@ -654,7 +685,7 @@
     "fieldtype": "Currency",
     "label": "Projected Equity",
     "insert_after": "column_break_preapproval",
-    "description": "Spec variant — calculated"
+    "description": "Spec variant \u2014 calculated"
   },
   {
     "doctype": "Custom Field",
@@ -664,7 +695,7 @@
     "fieldtype": "Percent",
     "label": "Projected LTV",
     "insert_after": "custom_projected_equity",
-    "description": "Spec variant — calculated"
+    "description": "Spec variant \u2014 calculated"
   },
   {
     "doctype": "Custom Field",
@@ -695,7 +726,6 @@
     "label": "Notes",
     "insert_after": "custom_projected_payoff"
   },
-
   {
     "doctype": "Custom Field",
     "name": "Customer-dealer_agreement_section",
@@ -714,7 +744,8 @@
     "fieldtype": "Select",
     "label": "Entity Type",
     "options": "\nLLC\nCorporation\nPartnership\nTrust",
-    "insert_after": "default_loan_product"
+    "insert_after": "default_loan_product",
+    "reqd": 1
   },
   {
     "doctype": "Custom Field",
@@ -725,16 +756,7 @@
     "options": "Loan Product",
     "label": "Default Loan Product",
     "insert_after": "dealer_agreement_status",
-    "description": "Default loan terms for this dealer — sets interest rate, rebate, and repayment terms"
-  },
-  {
-    "doctype": "Custom Field",
-    "name": "Loan Product-rebate_percentage",
-    "dt": "Loan Product",
-    "fieldname": "rebate_percentage",
-    "fieldtype": "Percent",
-    "label": "Rebate Percentage",
-    "insert_after": "penalty_interest_rate",
-    "description": "Dealer rebate applied at loan payoff"
+    "description": "Default loan terms for this dealer \u2014 sets interest rate, rebate, and repayment terms",
+    "reqd": 1
   }
 ]

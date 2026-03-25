@@ -10,11 +10,18 @@
   "office_phone",
   "contact_name",
   "address_section",
-  "address",
-  "city_state_zip",
+  "address_line1",
+  "address_line2",
+  "column_break_address",
+  "city",
+  "state",
+  "zip",
   "access_section",
   "gated",
-  "access_code"
+  "access_code",
+  "old_address_section",
+  "address",
+  "city_state_zip"
  ],
  "fields": [
   {
@@ -46,14 +53,33 @@
    "label": "Address"
   },
   {
-   "fieldname": "address",
+   "fieldname": "address_line1",
    "fieldtype": "Data",
-   "label": "Address"
+   "label": "Address Line 1"
   },
   {
-   "fieldname": "city_state_zip",
+   "fieldname": "address_line2",
    "fieldtype": "Data",
-   "label": "City, St Zip"
+   "label": "Address Line 2"
+  },
+  {
+   "fieldname": "column_break_address",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "city",
+   "fieldtype": "Data",
+   "label": "City"
+  },
+  {
+   "fieldname": "state",
+   "fieldtype": "Data",
+   "label": "State"
+  },
+  {
+   "fieldname": "zip",
+   "fieldtype": "Data",
+   "label": "Zip"
   },
   {
    "fieldname": "access_section",
@@ -70,6 +96,24 @@
    "fieldtype": "Data",
    "label": "Access Code",
    "depends_on": "gated"
+  },
+  {
+   "fieldname": "old_address_section",
+   "fieldtype": "Section Break",
+   "label": "Old Address (deprecated)",
+   "hidden": 1
+  },
+  {
+   "fieldname": "address",
+   "fieldtype": "Data",
+   "label": "Address",
+   "hidden": 1
+  },
+  {
+   "fieldname": "city_state_zip",
+   "fieldtype": "Data",
+   "label": "City, St Zip",
+   "hidden": 1
   }
  ],
  "index_web_pages_for_search": 1,
@@ -111,6 +155,7 @@
    "write": 1
   }
  ],
+ "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

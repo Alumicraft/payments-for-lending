@@ -45,6 +45,37 @@ class HomeBuildRequest(Document):
         if self.financing_type == "Floored" and not self.property_type:
             frappe.throw(_("Property Type is required"))
 
+        # Warn if factory has no approved Factory Assignment for this dealer
+        if self.factory and self.customer:
+            has_fa = frappe.db.exists("Factory Assignment", {
+                "customer": self.customer,
+                "factory": self.factory,
+                "docstatus": 1,
+                "active": 1
+            })
+            if not has_fa:
+                frappe.msgprint(
+                    _("Factory {0} has no approved Factory Assignment for dealer {1}.").format(
+                        self.factory, self.customer
+                    ),
+                    indicator="orange",
+                    title=_("Missing Factory Assignment")
+                )
+
+        # Enforce home_serial_no uniqueness (can't use DB unique because empty values conflict)
+        if self.home_serial_no:
+            existing = frappe.db.get_value(
+                "Home Build Request",
+                {"home_serial_no": self.home_serial_no, "name": ["!=", self.name]},
+                "name"
+            )
+            if existing:
+                frappe.throw(
+                    _("Home Serial No {0} is already used on {1}.").format(
+                        self.home_serial_no, existing
+                    )
+                )
+
     def before_submit(self):
         self.validate_checklist_complete()
 
@@ -209,6 +240,31 @@ def get_required_docs(home_type, financing_type, property_type):
     key = (home_type, financing_type, property_type)
     docs = DOC_REQUIREMENTS.get(key, [])
     return docs
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def get_assigned_factories(doctype, txt, searchfield, start, page_len, filters):
+    """Return factories where this customer has an approved Factory Assignment."""
+    customer = filters.get("customer")
+    if not customer:
+        return []
+
+    return frappe.db.sql("""
+        SELECT DISTINCT fa.factory, fa.factory
+        FROM `tabFactory Assignment` fa
+        WHERE fa.customer = %(customer)s
+            AND fa.docstatus = 1
+            AND fa.active = 1
+            AND fa.factory LIKE %(txt)s
+        ORDER BY fa.factory
+        LIMIT %(page_len)s OFFSET %(start)s
+    """, {
+        "customer": customer,
+        "txt": f"%{txt}%",
+        "start": start,
+        "page_len": page_len
+    })
 
 
 @frappe.whitelist()

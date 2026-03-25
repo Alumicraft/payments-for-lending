@@ -5,8 +5,9 @@ from frappe.model.document import Document
 
 class FactoryAssignment(Document):
     def on_submit(self):
-        if self.retailer_application_status == "Submitted":
-            self.send_retailer_application()
+        # Auto-set status to Submitted
+        self.db_set("retailer_application_status", "Submitted")
+        self.send_retailer_application()
 
     def send_retailer_application(self):
         """Send retailer application package to factory via Resend."""

@@ -9,6 +9,16 @@
 
 frappe.ui.form.on('Home Build Request', {
     refresh: function(frm) {
+        // Filter factory by dealer's approved Factory Assignments
+        if (frm.doc.customer) {
+            frm.set_query('factory', function() {
+                return {
+                    query: 'dcr.dcr.doctype.home_build_request.home_build_request.get_assigned_factories',
+                    filters: { customer: frm.doc.customer }
+                };
+            });
+        }
+
         // Create → Loan Application (Floored only, no existing LA)
         if (frm.doc.docstatus === 1 && frm.doc.financing_type === 'Floored' && !frm.doc.loan_application) {
             frm.add_custom_button(__('Loan Application'), function() {
@@ -27,6 +37,16 @@ frappe.ui.form.on('Home Build Request', {
             frm.change_custom_button_type(__('Loan Application'), __('Create'), 'primary');
         }
 
+    },
+    customer: function(frm) {
+        if (frm.doc.customer) {
+            frm.set_query('factory', function() {
+                return {
+                    query: 'dcr.dcr.doctype.home_build_request.home_build_request.get_assigned_factories',
+                    filters: { customer: frm.doc.customer }
+                };
+            });
+        }
     },
     home_type: function(frm) { populate_checklist(frm); },
     financing_type: function(frm) { populate_checklist(frm); },

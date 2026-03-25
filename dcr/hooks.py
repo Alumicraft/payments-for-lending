@@ -44,6 +44,8 @@ fixtures = [
                 "Supplier Quotation-plot_plan",
                 "Supplier Quotation-signed_by_dealer",
                 "Supplier Quotation-signature_date",
+                "Supplier Quotation-home_serial_no",
+                "Supplier Quotation-quote_no",
                 "Loan Application-home_build_request",
                 "Loan Application-home_type",
                 "Loan Application-factory",
@@ -100,10 +102,18 @@ fixtures = [
                 "Customer-dealer_agreement_section",
                 "Customer-entity_type",
                 "Customer-default_loan_product",
-                "Loan Product-rebate_percentage",
             ]]
         ]
-    }
+    },
+    {
+        "doctype": "Property Setter",
+        "filters": [
+            ["name", "in", [
+                "Customer-first_name-hidden",
+                "Customer-last_name-hidden",
+            ]]
+        ]
+    },
 ]
 
 # Include JS in doctype views
@@ -124,6 +134,9 @@ doc_events = {
     "Loan": {
         "validate": "dcr.api.lending.on_loan_validate",
         "after_insert": "dcr.api.lending.on_loan_after_insert"
+    },
+    "Supplier Quotation": {
+        "before_save": "dcr.api.lending.on_sq_before_save"
     },
 }
 

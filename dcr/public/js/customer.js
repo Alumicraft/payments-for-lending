@@ -42,17 +42,12 @@ frappe.ui.form.on('Customer', {
             });
         }
 
-        // Create → Factory Assignment
-        frappe.db.count('Factory Assignment', { customer: frm.doc.name, docstatus: 1 }).then(function(count) {
-            if (count === 0) {
-                frm.add_custom_button(__('Factory Assignment'), function() {
-                    frappe.new_doc('Factory Assignment', {
-                        customer: frm.doc.name
-                    });
-                }, __('Create'));
-                frm.change_custom_button_type(__('Factory Assignment'), __('Create'), 'primary');
-            }
-        });
+        // Create → Factory Assignment (multiple allowed per dealer)
+        frm.add_custom_button(__('Factory Assignment'), function() {
+            frappe.new_doc('Factory Assignment', {
+                customer: frm.doc.name
+            });
+        }, __('Create'));
 
         // Actions: Manage Bank Account + Send Bank Update Email
         frappe.call({
