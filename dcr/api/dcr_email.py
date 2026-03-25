@@ -1,75 +1,37 @@
 """
 DCR Email Integration
 
-Sends branded emails via the Vercel react-email service (emails app).
-Each function corresponds to one of the 11 DCR email templates.
+Sends branded emails via the emails app generic pipeline.
+Each function passes template-specific data via extra_data override.
 """
 
 import frappe
 from frappe import _
-from frappe.utils import formatdate, fmt_money
-
-from emails.email_service.vercel_client import send_email as vercel_send_email
-from emails.email_service.branding import get_company_branding
-from emails.email_service.utils import create_communication_log
 
 
-def _send_dcr_email(
-    template,
+def _send(
+    doctype,
+    docname,
     to_email,
     subject,
-    data,
-    reference_doctype=None,
-    reference_name=None,
+    template,
+    extra_data=None,
     attachments=None,
-    tags=None,
+    cc=None,
 ):
-    """Internal helper to send a DCR email via the Vercel service.
+    """Internal helper — routes through the emails app generic pipeline."""
+    from emails.email_service.generic_email import send_document_email
 
-    Args:
-        template: Vercel template name (e.g. "dealer-welcome")
-        to_email: Recipient email address
-        subject: Email subject line
-        data: Template data dict (props for the React component)
-        reference_doctype: For communication log linking
-        reference_name: For communication log linking
-        attachments: List of {"filename": str, "content": base64_str}
-        tags: List of {"name": str, "value": str} for Resend tracking
-
-    Returns:
-        dict: {"success": True, "message_id": str}
-    """
-    branding = get_company_branding()
-
-    if not tags:
-        tags = []
-    tags.append({"name": "app", "value": "dcr"})
-    tags.append({"name": "template", "value": template})
-
-    result = vercel_send_email(
-        template=template,
+    return send_document_email(
+        doctype=doctype,
+        docname=docname,
         to_email=to_email,
-        subject=subject,
-        data=data,
-        branding=branding,
-        attachments=attachments,
-        tags=tags,
+        subject_override=subject,
+        template_override=template,
+        extra_data=extra_data,
+        attachments=attachments or [],
+        cc=cc,
     )
-
-    message_id = result.get("message_id")
-
-    if reference_doctype and reference_name:
-        create_communication_log(
-            doctype=reference_doctype,
-            docname=reference_name,
-            recipient=to_email,
-            subject=subject,
-            content=result.get("html", f"Sent {template} email"),
-            status="Sent",
-            message_id=message_id,
-        )
-
-    return {"success": True, "message_id": message_id}
 
 
 # ============================================================================
@@ -78,19 +40,19 @@ def _send_dcr_email(
 
 def send_ach_payment_upcoming(loan, customer_name, scheduled_date, amount, account_last4, to_email, reference_name=None):
     """Send upcoming ACH payment notification."""
-    return _send_dcr_email(
-        template="ach-payment-upcoming",
+    return _send(
+        doctype="Loan",
+        docname=reference_name or loan,
         to_email=to_email,
         subject=f"Upcoming Payment — ${amount}",
-        data={
+        template="ach-payment-upcoming",
+        extra_data={
             "loan": loan,
             "customer_name": customer_name,
             "scheduled_date": scheduled_date,
             "amount": amount,
             "account_last4": account_last4,
         },
-        reference_doctype="Loan",
-        reference_name=reference_name or loan,
     )
 
 
@@ -100,18 +62,18 @@ def send_ach_payment_upcoming(loan, customer_name, scheduled_date, amount, accou
 
 def send_ach_payment_success(loan, customer_name, scheduled_date, amount, to_email, reference_name=None):
     """Send ACH payment success notification."""
-    return _send_dcr_email(
-        template="ach-payment-success",
+    return _send(
+        doctype="Loan",
+        docname=reference_name or loan,
         to_email=to_email,
         subject=f"Payment Successful — ${amount}",
-        data={
+        template="ach-payment-success",
+        extra_data={
             "loan": loan,
             "customer_name": customer_name,
             "scheduled_date": scheduled_date,
             "amount": amount,
         },
-        reference_doctype="Loan",
-        reference_name=reference_name or loan,
     )
 
 
@@ -121,19 +83,19 @@ def send_ach_payment_success(loan, customer_name, scheduled_date, amount, to_ema
 
 def send_ach_payment_failure(loan, customer_name, scheduled_date, amount, failure_reason, to_email, reference_name=None):
     """Send ACH payment failure notification."""
-    return _send_dcr_email(
-        template="ach-payment-failure",
+    return _send(
+        doctype="Loan",
+        docname=reference_name or loan,
         to_email=to_email,
         subject=f"Payment Failed — ${amount}",
-        data={
+        template="ach-payment-failure",
+        extra_data={
             "loan": loan,
             "customer_name": customer_name,
             "scheduled_date": scheduled_date,
             "amount": amount,
             "failure_reason": failure_reason,
         },
-        reference_doctype="Loan",
-        reference_name=reference_name or loan,
     )
 
 
@@ -143,17 +105,17 @@ def send_ach_payment_failure(loan, customer_name, scheduled_date, amount, failur
 
 def send_retailer_application(customer_name, dealer_license_no, factory_name, to_email, attachments=None, reference_doctype=None, reference_name=None):
     """Send retailer application to factory."""
-    return _send_dcr_email(
-        template="retailer-application",
+    return _send(
+        doctype=reference_doctype or "Factory Assignment",
+        docname=reference_name,
         to_email=to_email,
         subject=f"New Dealer Application — {customer_name}",
-        data={
+        template="retailer-application",
+        extra_data={
             "customer_name": customer_name,
             "dealer_license_no": dealer_license_no,
             "factory_name": factory_name,
         },
-        reference_doctype=reference_doctype or "Factory Assignment",
-        reference_name=reference_name,
         attachments=attachments,
     )
 
@@ -164,16 +126,16 @@ def send_retailer_application(customer_name, dealer_license_no, factory_name, to
 
 def send_dealer_welcome(customer_name, account_id, to_email, reference_name=None):
     """Send dealer welcome email after account approval."""
-    return _send_dcr_email(
-        template="dealer-welcome",
+    return _send(
+        doctype="Customer",
+        docname=reference_name or account_id,
         to_email=to_email,
         subject="Welcome to Dealer Capital Resources",
-        data={
+        template="dealer-welcome",
+        extra_data={
             "customer_name": customer_name,
             "account_id": account_id,
         },
-        reference_doctype="Customer",
-        reference_name=reference_name,
     )
 
 
@@ -183,16 +145,16 @@ def send_dealer_welcome(customer_name, account_id, to_email, reference_name=None
 
 def send_dealer_agreement_sent(customer_name, email, reference_name=None):
     """Send notification that dealer agreement is ready for signature."""
-    return _send_dcr_email(
-        template="dealer-agreement-sent",
+    return _send(
+        doctype="Customer",
+        docname=reference_name,
         to_email=email,
         subject="Dealer Agreement Ready for Signature",
-        data={
+        template="dealer-agreement-sent",
+        extra_data={
             "customer_name": customer_name,
             "email": email,
         },
-        reference_doctype="Customer",
-        reference_name=reference_name,
     )
 
 
@@ -202,16 +164,16 @@ def send_dealer_agreement_sent(customer_name, email, reference_name=None):
 
 def send_dealer_agreement_signed(customer_name, signed_date, to_email, attachments=None, reference_name=None):
     """Send notification that dealer agreement has been fully executed."""
-    return _send_dcr_email(
-        template="dealer-agreement-signed",
+    return _send(
+        doctype="Customer",
+        docname=reference_name,
         to_email=to_email,
         subject="Dealer Agreement Fully Executed",
-        data={
+        template="dealer-agreement-signed",
+        extra_data={
             "customer_name": customer_name,
             "signed_date": signed_date,
         },
-        reference_doctype="Customer",
-        reference_name=reference_name,
         attachments=attachments,
     )
 
@@ -222,18 +184,18 @@ def send_dealer_agreement_signed(customer_name, signed_date, to_email, attachmen
 
 def send_flooring_packet_sent(customer_name, loan_application, requested_advance_amount, factory_name, to_email, reference_name=None):
     """Send notification that flooring packet is ready for signature."""
-    return _send_dcr_email(
-        template="flooring-packet-sent",
+    return _send(
+        doctype="Loan Application",
+        docname=reference_name or loan_application,
         to_email=to_email,
         subject="Flooring Packet Ready for Signature",
-        data={
+        template="flooring-packet-sent",
+        extra_data={
             "customer_name": customer_name,
             "loan_application": loan_application,
             "requested_advance_amount": requested_advance_amount,
             "factory_name": factory_name,
         },
-        reference_doctype="Loan Application",
-        reference_name=reference_name or loan_application,
     )
 
 
@@ -243,17 +205,17 @@ def send_flooring_packet_sent(customer_name, loan_application, requested_advance
 
 def send_flooring_packet_signed(customer_name, loan_application, signed_date, to_email, attachments=None, reference_name=None):
     """Send notification that flooring packet has been fully executed."""
-    return _send_dcr_email(
-        template="flooring-packet-signed",
+    return _send(
+        doctype="Loan Application",
+        docname=reference_name or loan_application,
         to_email=to_email,
         subject="Flooring Packet Fully Executed",
-        data={
+        template="flooring-packet-signed",
+        extra_data={
             "customer_name": customer_name,
             "loan_application": loan_application,
             "signed_date": signed_date,
         },
-        reference_doctype="Loan Application",
-        reference_name=reference_name or loan_application,
         attachments=attachments,
     )
 
@@ -264,19 +226,19 @@ def send_flooring_packet_signed(customer_name, loan_application, signed_date, to
 
 def send_loan_disbursed(customer_name, factory_name, loan, home_build_request, amount, to_email, reference_name=None):
     """Send notification that loan advance has been disbursed to factory."""
-    return _send_dcr_email(
-        template="loan-disbursed",
+    return _send(
+        doctype="Loan",
+        docname=reference_name or loan,
         to_email=to_email,
         subject=f"Loan Advance Disbursed — ${amount}",
-        data={
+        template="loan-disbursed",
+        extra_data={
             "customer_name": customer_name,
             "factory_name": factory_name,
             "loan": loan,
             "home_build_request": home_build_request,
             "amount": amount,
         },
-        reference_doctype="Loan",
-        reference_name=reference_name or loan,
     )
 
 
@@ -286,17 +248,17 @@ def send_loan_disbursed(customer_name, factory_name, loan, home_build_request, a
 
 def send_factory_loa_received(customer_name, factory_name, loa_date, to_email, reference_name=None):
     """Send notification that factory approval has been received."""
-    return _send_dcr_email(
-        template="factory-loa-received",
+    return _send(
+        doctype="Factory Assignment",
+        docname=reference_name,
         to_email=to_email,
         subject=f"Factory Approval Received — {factory_name}",
-        data={
+        template="factory-loa-received",
+        extra_data={
             "customer_name": customer_name,
             "factory_name": factory_name,
             "loa_date": loa_date,
         },
-        reference_doctype="Factory Assignment",
-        reference_name=reference_name,
     )
 
 
@@ -306,18 +268,18 @@ def send_factory_loa_received(customer_name, factory_name, loa_date, to_email, r
 
 def send_pre_approval(customer_name, loan_application, loan_amount, to_email, attachments=None, reference_name=None):
     """Send advance pre-approval letter with PDF attachment."""
-    return _send_dcr_email(
-        template="pre-approval",
+    return _send(
+        doctype="Loan Application",
+        docname=reference_name or loan_application,
         to_email=to_email,
         subject=f"Advance Pre-Approval — {customer_name}",
-        data={
+        template="pre-approval",
+        extra_data={
             "customer_name": customer_name,
             "loan_application": loan_application,
             "loan_amount": loan_amount,
         },
         attachments=attachments,
-        reference_doctype="Loan Application",
-        reference_name=reference_name,
     )
 
 
@@ -327,18 +289,18 @@ def send_pre_approval(customer_name, loan_application, loan_amount, to_email, at
 
 def send_autopay_setup(customer_name, loan_name, loan_amount, setup_url, to_email, reference_name=None):
     """Send email prompting dealer to connect bank account via Plaid."""
-    return _send_dcr_email(
-        template="autopay-setup",
+    return _send(
+        doctype="Loan",
+        docname=reference_name or loan_name,
         to_email=to_email,
         subject=f"Set Up Auto-Pay for Loan {loan_name}",
-        data={
+        template="autopay-setup",
+        extra_data={
             "customer_name": customer_name,
             "loan_name": loan_name,
             "loan_amount": loan_amount,
             "setup_url": setup_url,
         },
-        reference_doctype="Loan",
-        reference_name=reference_name or loan_name,
     )
 
 
@@ -348,16 +310,16 @@ def send_autopay_setup(customer_name, loan_name, loan_amount, setup_url, to_emai
 
 def send_autopay_update(customer_name, setup_url, to_email, reference_name=None):
     """Send email prompting dealer to update their bank account via Plaid."""
-    return _send_dcr_email(
-        template="autopay-update",
+    return _send(
+        doctype="Customer",
+        docname=reference_name,
         to_email=to_email,
         subject="Update Your Auto-Pay Bank Account",
-        data={
+        template="autopay-update",
+        extra_data={
             "customer_name": customer_name,
             "setup_url": setup_url,
         },
-        reference_doctype="Customer",
-        reference_name=reference_name,
     )
 
 
