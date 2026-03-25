@@ -17,11 +17,11 @@
 **Files:**
 - Modify: `dcr/dcr/doctype/park/park.json`
 - Create: `dcr/patches/park_address_split.py`
-- Modify: `dcr/hooks.py` (add patch to patches list if needed)
+- Modify: `dcr/patches.txt` (register migration patch)
 
-- [ ] **Step 1: Update Park JSON — replace address fields**
+- [ ] **Step 1: Update Park JSON — add new fields, keep old fields hidden for migration**
 
-In `dcr/dcr/doctype/park/park.json`, replace the `field_order` and `fields` arrays. Remove `address` and `city_state_zip`. Add `address_line1`, `address_line2`, `city`, `state`, `zip`. Add `quick_entry: 1`.
+In `dcr/dcr/doctype/park/park.json`: Keep `address` and `city_state_zip` but mark them `hidden: 1` (needed by migration patch — Frappe syncs JSON before running patches). Add `address_line1`, `address_line2`, `city`, `state`, `zip`. Add `quick_entry: 1`. Old fields will be removed in a follow-up after the patch runs.
 
 New `field_order`:
 ```json
@@ -37,10 +37,34 @@ New `field_order`:
   "city",
   "state",
   "zip",
+  "old_fields_section",
+  "address",
+  "city_state_zip",
   "access_section",
   "gated",
   "access_code"
 ]
+```
+
+Old fields kept temporarily (hidden):
+```json
+{
+  "fieldname": "old_fields_section",
+  "fieldtype": "Section Break",
+  "hidden": 1
+},
+{
+  "fieldname": "address",
+  "fieldtype": "Data",
+  "label": "Address (Old)",
+  "hidden": 1
+},
+{
+  "fieldname": "city_state_zip",
+  "fieldtype": "Data",
+  "label": "City, St Zip (Old)",
+  "hidden": 1
+}
 ```
 
 New fields to add (replacing `address` and `city_state_zip`):
@@ -134,14 +158,17 @@ def execute():
     frappe.db.commit()
 ```
 
-- [ ] **Step 3: Verify patch runs without error**
+- [ ] **Step 3: Register patch in patches.txt**
 
-Run locally or check Error Log after deploy. The patch should process all existing Park records.
+Add to `dcr/patches.txt`:
+```
+dcr.patches.park_address_split
+```
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add dcr/dcr/doctype/park/park.json dcr/patches/park_address_split.py
+git add dcr/dcr/doctype/park/park.json dcr/patches/park_address_split.py dcr/patches.txt
 git commit -m "feat: split Park address fields + enable quick_entry"
 ```
 
@@ -220,7 +247,6 @@ New fields to ADD (keep all existing fields, just add these):
   "fieldname": "home_serial_no",
   "fieldtype": "Data",
   "label": "Home Serial No",
-  "unique": 1,
   "in_list_view": 1
 },
 {
@@ -235,7 +261,10 @@ Section/layout changes:
 - Add `home_section` (Section Break, label "Home")
 - Add `column_break_home` (Column Break)
 - Add `read_only_depends_on: "eval:doc.factory_quote"` to `home_invoice_plus_freight`
-- Add `park_details_section` (Section Break, label "Park Details", depends_on park_section scope)
+- Add `park_details_section` (Section Break, label "Park Details", `depends_on: "eval:doc.property_type=='Park'"`)
+- Add `park_contact_section` (Section Break, `depends_on: "eval:doc.property_type=='Park'"`) — Frappe sections are not nested; each needs its own depends_on
+- Add `"read_only": 1` to `factory_quote` field (set programmatically on HBR submit)
+- Enforce `home_serial_no` uniqueness in HBR `validate()` (not via `unique: 1` on the field, because empty values cause duplicate key violations in Frappe)
 - Add all `park_*` fetch_from fields (9 fields, all read_only, fetch_from park.*)
 - Add `park_contact_section`, column breaks for park layout
 - Add `factory_order_section` (Section Break, label "Factory Order")
