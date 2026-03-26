@@ -9,7 +9,7 @@
 
 frappe.ui.form.on('Home Build Request', {
     refresh: function(frm) {
-        // Filter factory by dealer's approved Factory Assignments
+        // Factory filter
         if (frm.doc.customer) {
             frm.set_query('factory', function() {
                 return {
@@ -19,24 +19,33 @@ frappe.ui.form.on('Home Build Request', {
             });
         }
 
-        // Create → Loan Application (Floored only, no existing LA)
-        if (frm.doc.docstatus === 1 && frm.doc.financing_type === 'Floored' && !frm.doc.loan_application) {
-            frm.add_custom_button(__('Loan Application'), function() {
-                frappe.call({
-                    method: 'dcr.dcr.doctype.home_build_request.home_build_request.create_loan_application_from_hbr',
-                    args: { hbr_name: frm.doc.name },
-                    freeze: true,
-                    freeze_message: __('Creating Loan Application...'),
-                    callback: function(r) {
-                        if (r.message && r.message.success) {
-                            frm.reload_doc();
-                        }
-                    }
-                });
-            }, __('Create'));
-            frm.change_custom_button_type(__('Loan Application'), __('Create'), 'primary');
+        // Create buttons only on submitted HBR
+        if (frm.doc.docstatus !== 1) return;
+
+        // Create → Loan Application (Floored only, if none exists)
+        if (frm.doc.financing_type === 'Floored') {
+            frappe.db.count('Loan Application', {
+                filters: { home_build_request: frm.doc.name, docstatus: ['!=', 2] }
+            }).then(function(count) {
+                if (count === 0) {
+                    frm.add_custom_button(__('Loan Application'), function() {
+                        frappe.new_doc('Loan Application', {
+                            applicant_type: 'Customer',
+                            applicant: frm.doc.customer,
+                            home_build_request: frm.doc.name
+                        });
+                    }, __('Create'));
+                }
+            });
         }
 
+        // Create → Purchase Invoice (all deals)
+        frm.add_custom_button(__('Purchase Invoice'), function() {
+            frappe.new_doc('Purchase Invoice', {
+                supplier: frm.doc.factory,
+                home_build_request: frm.doc.name
+            });
+        }, __('Create'));
     },
     customer: function(frm) {
         if (frm.doc.customer) {
