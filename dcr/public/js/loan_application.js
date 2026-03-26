@@ -9,6 +9,14 @@
 
 frappe.ui.form.on('Loan Application', {
     refresh: function(frm) {
+        frm.set_query('home_build_request', function() {
+            return {
+                filters: {
+                    'docstatus': 1
+                }
+            };
+        });
+
         // Signing status indicator (show on any saved LA with HBR link)
         if (!frm.is_new() && frm.doc.home_build_request) {
             if (frm.doc.signed_packet) {
@@ -51,7 +59,18 @@ frappe.ui.form.on('Loan Application', {
             frm.change_custom_button_type(__('Loan'), __('Create'), 'primary');
             frm.change_custom_button_type('Create', null, 'primary');
         }
-    }
+    },
+
+    loan_amount: function(frm) {
+        calculate_monthly_interest(frm);
+        calculate_preapproval(frm);
+    },
+    rate_of_interest: function(frm) {
+        calculate_monthly_interest(frm);
+    },
+    custom_projected_sales_price: function(frm) {
+        calculate_preapproval(frm);
+    },
 });
 
 
@@ -114,4 +133,20 @@ function send_pre_approval(frm) {
             }
         );
     });
+}
+
+
+function calculate_monthly_interest(frm) {
+    let rate = frm.doc.rate_of_interest || 0;
+    let amount = frm.doc.loan_amount || 0;
+    frm.set_value('monthly_interest_amount', (rate / 100) * amount / 12);
+}
+
+function calculate_preapproval(frm) {
+    let sales_price = frm.doc.custom_projected_sales_price || 0;
+    let loan_amount = frm.doc.loan_amount || 0;
+    if (sales_price > 0) {
+        frm.set_value('custom_projected_equity', sales_price - loan_amount);
+        frm.set_value('custom_projected_ltv', (loan_amount / sales_price) * 100);
+    }
 }
