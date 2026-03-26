@@ -78,7 +78,7 @@ def validate_loan_application(doc, method):
         doc.available_credit = 0
 
     # Warn if requested amount exceeds available credit
-    requested = doc.get("requested_advance_amount") or doc.get("loan_amount") or 0
+    requested = doc.get("loan_amount") or 0
     if mifa_limit and requested > doc.available_credit:
         frappe.msgprint(
             _("Requested amount {0} exceeds available credit {1} "
@@ -99,12 +99,16 @@ def validate_loan_application(doc, method):
             validate_advance_date(hbr.factory, doc.advance_date_requested)
 
     # Auto-calculate pre-approval fields
-    investment = doc.get("custom_projected_investment") or 0
+    loan_amount = doc.get("loan_amount") or 0
     sales_price = doc.get("custom_projected_sales_price") or 0
 
-    if investment and sales_price:
-        doc.custom_projected_equity = sales_price - investment
-        doc.custom_projected_ltv = (investment / sales_price) * 100
+    if loan_amount and sales_price:
+        doc.custom_projected_equity = sales_price - loan_amount
+        doc.custom_projected_ltv = (loan_amount / sales_price) * 100
+
+    rate = doc.get("rate_of_interest") or 0
+    if rate and loan_amount:
+        doc.monthly_interest_amount = (rate / 100) * loan_amount / 12
 
 
 def validate_advance_date(factory, requested_date):
