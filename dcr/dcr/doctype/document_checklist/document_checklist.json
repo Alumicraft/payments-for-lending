@@ -6,7 +6,7 @@
  "engine": "InnoDB",
  "field_order": [
   "document_type",
-  "status",
+  "waived",
   "column_break_1",
   "attachment",
   "received_date"
@@ -21,13 +21,11 @@
    "reqd": 1
   },
   {
-   "default": "Pending",
-   "fieldname": "status",
-   "fieldtype": "Select",
+   "default": 0,
+   "fieldname": "waived",
+   "fieldtype": "Check",
    "in_list_view": 1,
-   "label": "Status",
-   "options": "Pending\nReceived\nVerified\nWaived",
-   "reqd": 1
+   "label": "Waived"
   },
   {
    "fieldname": "column_break_1",

@@ -87,7 +87,6 @@ function populate_checklist(frm) {
             for (const doc_type of r.message) {
                 let row = frm.add_child('doc_checklist');
                 row.document_type = doc_type;
-                row.status = 'Pending';
             }
 
             frm.refresh_field('doc_checklist');

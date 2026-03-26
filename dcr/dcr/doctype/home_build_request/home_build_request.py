@@ -84,18 +84,18 @@ class HomeBuildRequest(Document):
         pass
 
     def validate_checklist_complete(self):
-        """Block submission until all required checklist items are Received or Verified."""
+        """Block submission unless every checklist row has an attachment or is waived."""
         incomplete = []
         for row in self.doc_checklist:
-            if row.status not in ("Received", "Verified", "Waived"):
+            if not row.waived and not row.attachment:
                 incomplete.append(row.document_type)
 
         if incomplete:
             frappe.throw(
-                _("The following documents are still pending: {0}").format(
+                _("The following documents are missing: {0}").format(
                     ", ".join(incomplete)
                 ),
-                title=_("Document Checklist Incomplete")
+                title=_("Document checklist incomplete"),
             )
 
 
