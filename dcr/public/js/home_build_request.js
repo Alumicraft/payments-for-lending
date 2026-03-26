@@ -19,6 +19,22 @@ frappe.ui.form.on('Home Build Request', {
             });
         }
 
+        frm.set_query('home_buyer', function() {
+            return {
+                filters: {
+                    'customer_group': 'Home Buyer'
+                }
+            };
+        });
+
+        frm.set_query('escrow_company', function() {
+            return {
+                filters: {
+                    'supplier_group': 'Escrow'
+                }
+            };
+        });
+
         // Create buttons only on submitted HBR
         if (frm.doc.docstatus !== 1) return;
 
@@ -56,6 +72,40 @@ frappe.ui.form.on('Home Build Request', {
                 };
             });
         }
+    },
+    escrow_company: function(frm) {
+        if (!frm.doc.escrow_company) {
+            frm.set_value('escrow_contact', '');
+            frm.set_value('escrow_phone', '');
+            return;
+        }
+        // Find Contact via Dynamic Link child table
+        frappe.call({
+            method: 'frappe.client.get_list',
+            args: {
+                doctype: 'Dynamic Link',
+                filters: {
+                    parenttype: 'Contact',
+                    link_doctype: 'Supplier',
+                    link_name: frm.doc.escrow_company
+                },
+                fields: ['parent'],
+                limit_page_length: 1
+            },
+            callback: function(r) {
+                if (r.message && r.message.length > 0) {
+                    frappe.db.get_value('Contact', r.message[0].parent,
+                        ['first_name', 'last_name', 'mobile_no', 'phone'],
+                        function(contact) {
+                            let name = contact.first_name || '';
+                            if (contact.last_name) name += ' ' + contact.last_name;
+                            frm.set_value('escrow_contact', name.trim());
+                            frm.set_value('escrow_phone', contact.mobile_no || contact.phone || '');
+                        }
+                    );
+                }
+            }
+        });
     },
     home_type: function(frm) { populate_checklist(frm); },
     financing_type: function(frm) { populate_checklist(frm); },
