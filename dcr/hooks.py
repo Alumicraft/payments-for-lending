@@ -47,6 +47,7 @@ fixtures = [
                 "Loan Application-advance_date_requested",
                 "Loan Application-outstanding_loan_balance",
                 "Loan Application-available_credit",
+                "Loan Application-dcr_lending_section",
                 "Loan Application-lending_calculations_section",
                 "Loan Application-column_break_lending_calc",
                 "Loan Application-signed_packet",
@@ -105,7 +106,7 @@ fixtures = [
             ["name", "in", [
                 "Customer-first_name-hidden",
                 "Customer-last_name-hidden",
-                "Loan Application-section_break_4-label",
+                "Loan Application-section_break_4-hidden",
                 "Loan Application-is_term_loan-hidden",
                 "Loan Application-is_secured_loan-hidden",
                 "Loan Application-description-hidden",
@@ -120,6 +121,8 @@ fixtures = [
                 "Loan Application-applicant_type-default",
                 "Loan Application-loan_amount-fetch_from",
                 "Loan Application-loan_amount-fetch_if_empty",
+                "Loan Application-loan_product-fetch_from",
+                "Loan Application-loan_product-fetch_if_empty",
             ]]
         ]
     },

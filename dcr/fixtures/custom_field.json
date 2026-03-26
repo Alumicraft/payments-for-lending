@@ -196,6 +196,15 @@
   },
   {
     "doctype": "Custom Field",
+    "name": "Loan Application-dcr_lending_section",
+    "dt": "Loan Application",
+    "fieldname": "dcr_lending_section",
+    "fieldtype": "Section Break",
+    "label": "Lending",
+    "insert_after": "factory"
+  },
+  {
+    "doctype": "Custom Field",
     "name": "Loan Application-advance_date_requested",
     "dt": "Loan Application",
     "fieldname": "advance_date_requested",

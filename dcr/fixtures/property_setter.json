@@ -21,13 +21,13 @@
   },
   {
     "doctype": "Property Setter",
-    "name": "Loan Application-section_break_4-label",
+    "name": "Loan Application-section_break_4-hidden",
     "doc_type": "Loan Application",
     "doctype_or_field": "DocField",
     "field_name": "section_break_4",
-    "property": "label",
-    "property_type": "Data",
-    "value": "Lending"
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
   },
   {
     "doctype": "Property Setter",
@@ -165,6 +165,26 @@
     "doc_type": "Loan Application",
     "doctype_or_field": "DocField",
     "field_name": "loan_amount",
+    "property": "fetch_if_empty",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-loan_product-fetch_from",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "loan_product",
+    "property": "fetch_from",
+    "property_type": "Small Text",
+    "value": "applicant.default_loan_product"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-loan_product-fetch_if_empty",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "loan_product",
     "property": "fetch_if_empty",
     "property_type": "Check",
     "value": "1"
