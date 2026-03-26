@@ -26,19 +26,28 @@ def after_install():
                 "customer_group_name": group_name,
             }).insert(ignore_permissions=True)
 
-    # Wipe ALL Loan Application custom fields (including manually created ones)
-    # Fixture sync recreates them cleanly in chain order
-    old_la_fields = frappe.get_all(
-        "Custom Field", filters={"dt": "Loan Application"}, pluck="name"
-    )
-    for cf_name in old_la_fields:
-        frappe.delete_doc("Custom Field", cf_name, force=True)
+    # Delete known orphaned custom fields (manually created or removed from fixtures)
+    orphans = [
+        "Loan Application-requested_advance_amount",
+        "Loan Application-column_break_dcr_lending",
+        "Loan Application-exhibit_a_section",
+        "Loan Application-column_break_exhibit_a",
+        "Loan Application-first_autopay_description",
+        "Loan Application-custom_projected_investment",
+    ]
+    for cf_name in orphans:
+        if frappe.db.exists("Custom Field", cf_name):
+            frappe.delete_doc("Custom Field", cf_name, force=True)
 
-    # Also wipe orphaned Property Setters that may conflict
-    old_la_ps = frappe.get_all(
-        "Property Setter", filters={"doc_type": "Loan Application"}, pluck="name"
+    # Delete manually created fields that conflict with fixtures
+    manual_fields = frappe.get_all(
+        "Custom Field",
+        filters={"dt": "Loan Application", "name": ["like", "Loan Application-custom_column_break_%"]},
+        pluck="name"
     )
-    for ps_name in old_la_ps:
-        frappe.delete_doc("Property Setter", ps_name, force=True)
+    for cf_name in manual_fields:
+        frappe.delete_doc("Custom Field", cf_name, force=True)
+    if frappe.db.exists("Custom Field", "Loan Application-custom_lending_overview"):
+        frappe.delete_doc("Custom Field", "Loan Application-custom_lending_overview", force=True)
 
     frappe.db.commit()
