@@ -9,6 +9,7 @@
   "column_break_1",
   "office_phone",
   "contact_name",
+  "space_rent",
   "address_section",
   "address_line1",
   "address_line2",
@@ -46,6 +47,11 @@
    "fieldname": "contact_name",
    "fieldtype": "Data",
    "label": "Contact Name"
+  },
+  {
+   "fieldname": "space_rent",
+   "fieldtype": "Currency",
+   "label": "Monthly Space Rent"
   },
   {
    "fieldname": "address_section",
