@@ -675,6 +675,8 @@
     "fieldname": "custom_monthly_space_rent",
     "fieldtype": "Currency",
     "label": "Monthly Space Rent",
+    "fetch_from": "home_build_request.park_space_rent",
+    "fetch_if_empty": 1,
     "insert_after": "custom_projected_ltv",
     "description": "Spec variant only"
   },

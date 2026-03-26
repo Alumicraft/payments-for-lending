@@ -21,6 +21,7 @@
   "park_section",
   "park",
   "space_number",
+  "park_space_rent",
   "park_details_section",
   "park_address_line1",
   "park_address_line2",
@@ -162,6 +163,13 @@
    "fieldname": "space_number",
    "fieldtype": "Data",
    "label": "Space No"
+  },
+  {
+   "fetch_from": "park.space_rent",
+   "fieldname": "park_space_rent",
+   "fieldtype": "Currency",
+   "label": "Monthly Space Rent",
+   "read_only": 1
   },
   {
    "fieldname": "park_details_section",
