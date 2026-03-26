@@ -152,62 +152,6 @@
   },
   {
     "doctype": "Custom Field",
-    "name": "Supplier Quotation-home_build_request",
-    "dt": "Supplier Quotation",
-    "fieldname": "home_build_request",
-    "fieldtype": "Link",
-    "label": "Home Build Request",
-    "options": "Home Build Request",
-    "insert_after": "supplier",
-    "link_filters": "{\"docstatus\": 1}"
-  },
-  {
-    "doctype": "Custom Field",
-    "name": "Supplier Quotation-plot_plan",
-    "dt": "Supplier Quotation",
-    "fieldname": "plot_plan",
-    "fieldtype": "Attach",
-    "label": "Plot Plan",
-    "insert_after": "home_build_request"
-  },
-  {
-    "doctype": "Custom Field",
-    "name": "Supplier Quotation-signed_by_dealer",
-    "dt": "Supplier Quotation",
-    "fieldname": "signed_by_dealer",
-    "fieldtype": "Check",
-    "label": "Signed by Dealer",
-    "insert_after": "plot_plan"
-  },
-  {
-    "doctype": "Custom Field",
-    "name": "Supplier Quotation-signature_date",
-    "dt": "Supplier Quotation",
-    "fieldname": "signature_date",
-    "fieldtype": "Date",
-    "label": "Signature Date",
-    "insert_after": "signed_by_dealer"
-  },
-  {
-    "doctype": "Custom Field",
-    "name": "Supplier Quotation-home_serial_no",
-    "dt": "Supplier Quotation",
-    "fieldname": "home_serial_no",
-    "fieldtype": "Data",
-    "label": "Serial No",
-    "insert_after": "signature_date"
-  },
-  {
-    "doctype": "Custom Field",
-    "name": "Supplier Quotation-quote_no",
-    "dt": "Supplier Quotation",
-    "fieldname": "quote_no",
-    "fieldtype": "Data",
-    "label": "Quote No",
-    "insert_after": "home_serial_no"
-  },
-  {
-    "doctype": "Custom Field",
     "name": "Loan Application-home_build_request",
     "dt": "Loan Application",
     "fieldname": "home_build_request",

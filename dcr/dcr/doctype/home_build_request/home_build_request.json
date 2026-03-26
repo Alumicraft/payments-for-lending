@@ -130,8 +130,7 @@
   {
    "fieldname": "home_invoice_plus_freight",
    "fieldtype": "Currency",
-   "label": "Home Invoice plus Freight",
-   "read_only_depends_on": "eval:doc.factory_quote"
+   "label": "Home Total"
   },
   {
    "fieldname": "column_break_home",
@@ -385,11 +384,6 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [
-  {
-   "group": "Orders",
-   "link_doctype": "Supplier Quotation",
-   "link_fieldname": "home_build_request"
-  },
   {
    "group": "Lending",
    "link_doctype": "Loan Application",
