@@ -54,7 +54,8 @@
   "broker_contact",
   "broker_phone",
   "documents_section",
-  "doc_checklist"
+  "doc_checklist",
+  "amended_from"
  ],
  "fields": [
   {
@@ -168,8 +169,7 @@
    "fetch_from": "park.space_rent",
    "fieldname": "park_space_rent",
    "fieldtype": "Currency",
-   "label": "Monthly Space Rent",
-   "read_only": 1
+   "label": "Monthly Space Rent"
   },
   {
    "fieldname": "park_details_section",
@@ -363,6 +363,15 @@
    "fieldtype": "Table",
    "label": "Document Checklist",
    "options": "Document Checklist"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Home Build Request",
+   "print_hide": 1,
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
