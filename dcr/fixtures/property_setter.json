@@ -188,5 +188,65 @@
     "property": "fetch_if_empty",
     "property_type": "Check",
     "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-rate_of_interest-hidden",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "rate_of_interest",
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-company-hidden",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "company",
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-company-default",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "company",
+    "property": "default",
+    "property_type": "Small Text",
+    "value": "Dealer Capital Resources"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-repayment_amount-hidden",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "repayment_amount",
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-total_payable_amount-hidden",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "total_payable_amount",
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-total_payable_interest-hidden",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "total_payable_interest",
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
   }
 ]

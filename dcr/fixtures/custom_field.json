@@ -247,12 +247,22 @@
   },
   {
     "doctype": "Custom Field",
+    "name": "Loan Application-dcr_rate_of_interest",
+    "dt": "Loan Application",
+    "fieldname": "dcr_rate_of_interest",
+    "fieldtype": "Percent",
+    "label": "Rate of Interest",
+    "insert_after": "description",
+    "read_only": 1
+  },
+  {
+    "doctype": "Custom Field",
     "name": "Loan Application-buyer_name",
     "dt": "Loan Application",
     "fieldname": "buyer_name",
     "fieldtype": "Data",
     "label": "Buyer Name",
-    "insert_after": "description",
+    "insert_after": "dcr_rate_of_interest",
     "fetch_from": "home_build_request.home_buyer",
     "read_only": 1
   },
@@ -323,6 +333,36 @@
     "fieldtype": "Currency",
     "label": "Monthly Insurance Amount",
     "insert_after": "monthly_interest_amount"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-dcr_repayment_amount",
+    "dt": "Loan Application",
+    "fieldname": "dcr_repayment_amount",
+    "fieldtype": "Currency",
+    "label": "Monthly Repayment Amount",
+    "insert_after": "monthly_insurance_amount",
+    "read_only": 1
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-dcr_total_payable_amount",
+    "dt": "Loan Application",
+    "fieldname": "dcr_total_payable_amount",
+    "fieldtype": "Currency",
+    "label": "Total Payable Amount",
+    "insert_after": "dcr_repayment_amount",
+    "read_only": 1
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-dcr_total_payable_interest",
+    "dt": "Loan Application",
+    "fieldname": "dcr_total_payable_interest",
+    "fieldtype": "Currency",
+    "label": "Total Payable Interest",
+    "insert_after": "dcr_total_payable_amount",
+    "read_only": 1
   },
   {
     "doctype": "Custom Field",
@@ -428,6 +468,17 @@
     "insert_after": "dcr_documents_section",
     "hidden": 0,
     "read_only": 1
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-dcr_company",
+    "dt": "Loan Application",
+    "fieldname": "dcr_company",
+    "fieldtype": "Link",
+    "options": "Company",
+    "label": "Company",
+    "insert_after": "total_payable_interest",
+    "reqd": 1
   },
   {
     "doctype": "Custom Field",

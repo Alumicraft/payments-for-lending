@@ -17,6 +17,9 @@ frappe.ui.form.on('Loan Application', {
             };
         });
 
+        // Sync standard fields → custom mirrors (without dirtying form)
+        sync_mirror_fields(frm);
+
         // Signing status indicator (show on any saved LA with HBR link)
         if (!frm.is_new() && frm.doc.home_build_request) {
             if (frm.doc.signed_packet) {
@@ -67,9 +70,14 @@ frappe.ui.form.on('Loan Application', {
     },
     rate_of_interest: function(frm) {
         calculate_monthly_interest(frm);
+        frm.doc.dcr_rate_of_interest = frm.doc.rate_of_interest;
+        frm.refresh_field('dcr_rate_of_interest');
     },
     custom_projected_sales_price: function(frm) {
         calculate_preapproval(frm);
+    },
+    dcr_company: function(frm) {
+        frm.set_value('company', frm.doc.dcr_company);
     },
 });
 
@@ -148,5 +156,22 @@ function calculate_preapproval(frm) {
     if (sales_price > 0) {
         frm.set_value('custom_projected_equity', sales_price - loan_amount);
         frm.set_value('custom_projected_ltv', (loan_amount / sales_price) * 100);
+    }
+}
+
+function sync_mirror_fields(frm) {
+    // Sync standard hidden fields → custom visible mirrors (without dirtying form)
+    let mirrors = {
+        'dcr_rate_of_interest': 'rate_of_interest',
+        'dcr_company': 'company',
+        'dcr_repayment_amount': 'repayment_amount',
+        'dcr_total_payable_amount': 'total_payable_amount',
+        'dcr_total_payable_interest': 'total_payable_interest'
+    };
+    for (let [mirror, source] of Object.entries(mirrors)) {
+        if (frm.doc[source] !== undefined) {
+            frm.doc[mirror] = frm.doc[source];
+            frm.refresh_field(mirror);
+        }
     }
 }
