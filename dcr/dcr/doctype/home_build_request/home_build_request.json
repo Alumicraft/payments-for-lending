@@ -52,10 +52,6 @@
   "column_break_broker",
   "broker_contact",
   "broker_phone",
-  "factory_order_section",
-  "factory_quote",
-  "column_break_factory_order",
-  "loan_application",
   "documents_section",
   "doc_checklist"
  ],
@@ -85,7 +81,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Draft\nDocs Pending\nReady to PO\nPO Submitted",
+   "options": "Draft\nSubmitted",
    "read_only": 1
   },
   {
@@ -344,30 +340,6 @@
    "fieldtype": "Data",
    "label": "Broker Phone",
    "options": "Phone"
-  },
-  {
-   "fieldname": "factory_order_section",
-   "fieldtype": "Section Break",
-   "label": "Factory Order"
-  },
-  {
-   "fieldname": "factory_quote",
-   "fieldtype": "Link",
-   "label": "Factory Quote",
-   "options": "Supplier Quotation",
-   "read_only": 1
-  },
-  {
-   "fieldname": "column_break_factory_order",
-   "fieldtype": "Column Break"
-  },
-  {
-   "depends_on": "eval:doc.financing_type=='Floored'",
-   "fieldname": "loan_application",
-   "fieldtype": "Link",
-   "label": "Loan Application",
-   "options": "Loan Application",
-   "read_only": 1
   },
   {
    "fieldname": "documents_section",
