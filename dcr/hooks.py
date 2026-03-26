@@ -40,6 +40,8 @@ fixtures = [
                 "Supplier-lead_time_section",
                 "Supplier-standard_lead_time_days",
                 "Supplier-current_lead_time_days",
+                "Loan Application-deal_reference_section",
+                "Loan Application-column_break_deal_ref",
                 "Loan Application-home_build_request",
                 "Loan Application-home_type",
                 "Loan Application-factory",
