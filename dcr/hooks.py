@@ -96,6 +96,7 @@ fixtures = [
                 "Customer-dealer_agreement_section",
                 "Customer-entity_type",
                 "Customer-default_loan_product",
+                "Purchase Invoice-home_build_request",
             ]]
         ]
     },

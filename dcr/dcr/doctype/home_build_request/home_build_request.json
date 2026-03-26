@@ -70,7 +70,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Financing Type",
+   "label": "Deal type",
    "options": "\nCash\nFloored",
    "reqd": 1
   },

@@ -297,6 +297,7 @@
     "options": "Home Build Request",
     "label": "Home Build Request",
     "insert_after": "home_deal_reference_section",
+    "fetch_from": "loan_application.home_build_request",
     "read_only": 1,
     "reqd": 1
   },
@@ -702,5 +703,15 @@
     "insert_after": "dealer_agreement_status",
     "description": "Default loan terms for this dealer \u2014 sets interest rate, rebate, and repayment terms",
     "reqd": 1
+  },
+  {
+    "doctype": "Custom Field",
+    "dt": "Purchase Invoice",
+    "fieldname": "home_build_request",
+    "fieldtype": "Link",
+    "label": "Home Build Request",
+    "name": "Purchase Invoice-home_build_request",
+    "options": "Home Build Request",
+    "insert_after": "supplier_name"
   }
 ]
