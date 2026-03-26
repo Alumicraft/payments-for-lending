@@ -21,13 +21,13 @@
   },
   {
     "doctype": "Property Setter",
-    "name": "Loan Application-section_break_4-hidden",
+    "name": "Loan Application-section_break_4-label",
     "doc_type": "Loan Application",
     "doctype_or_field": "DocField",
     "field_name": "section_break_4",
-    "property": "hidden",
-    "property_type": "Check",
-    "value": "1"
+    "property": "label",
+    "property_type": "Data",
+    "value": ""
   },
   {
     "doctype": "Property Setter",
@@ -186,16 +186,6 @@
     "doctype_or_field": "DocField",
     "field_name": "loan_product",
     "property": "fetch_if_empty",
-    "property_type": "Check",
-    "value": "1"
-  },
-  {
-    "doctype": "Property Setter",
-    "name": "Loan Application-rate_of_interest-hidden",
-    "doc_type": "Loan Application",
-    "doctype_or_field": "DocField",
-    "field_name": "rate_of_interest",
-    "property": "hidden",
     "property_type": "Check",
     "value": "1"
   },

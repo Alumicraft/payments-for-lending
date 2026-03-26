@@ -247,22 +247,12 @@
   },
   {
     "doctype": "Custom Field",
-    "name": "Loan Application-dcr_rate_of_interest",
-    "dt": "Loan Application",
-    "fieldname": "dcr_rate_of_interest",
-    "fieldtype": "Percent",
-    "label": "Rate of Interest",
-    "insert_after": "description",
-    "read_only": 1
-  },
-  {
-    "doctype": "Custom Field",
     "name": "Loan Application-buyer_name",
     "dt": "Loan Application",
     "fieldname": "buyer_name",
     "fieldtype": "Data",
     "label": "Buyer Name",
-    "insert_after": "dcr_rate_of_interest",
+    "insert_after": "description",
     "fetch_from": "home_build_request.home_buyer",
     "read_only": 1
   },

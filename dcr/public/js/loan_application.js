@@ -70,8 +70,6 @@ frappe.ui.form.on('Loan Application', {
     },
     rate_of_interest: function(frm) {
         calculate_monthly_interest(frm);
-        frm.doc.dcr_rate_of_interest = frm.doc.rate_of_interest;
-        frm.refresh_field('dcr_rate_of_interest');
     },
     custom_projected_sales_price: function(frm) {
         calculate_preapproval(frm);
@@ -162,7 +160,6 @@ function calculate_preapproval(frm) {
 function sync_mirror_fields(frm) {
     // Sync standard hidden fields → custom visible mirrors (without dirtying form)
     let mirrors = {
-        'dcr_rate_of_interest': 'rate_of_interest',
         'dcr_company': 'company',
         'dcr_repayment_amount': 'repayment_amount',
         'dcr_total_payable_amount': 'total_payable_amount',
