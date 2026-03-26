@@ -6,10 +6,10 @@
  "engine": "InnoDB",
  "field_order": [
   "document_type",
-  "waived",
   "column_break_1",
   "attachment",
-  "received_date"
+  "received_date",
+  "waived"
  ],
  "fields": [
   {
