@@ -136,6 +136,10 @@ doc_events = {
 # ------------------
 # Methods accessible via /api/method/dcr.api.<module>.<method>
 
+override_doctype_dashboards = {
+    "Customer": "dcr.overrides.customer_dashboard.get_data"
+}
+
 # Scheduled Tasks
 scheduler_events = {
     "daily": [
