@@ -38,22 +38,20 @@ frappe.ui.form.on('Home Build Request', {
         // Create buttons only on submitted HBR
         if (frm.doc.docstatus !== 1) return;
 
-        // Create → Loan Application (Floored only, if none exists)
-        if (frm.doc.financing_type === 'Floored') {
-            frappe.db.count('Loan Application', {
-                filters: { home_build_request: frm.doc.name, docstatus: ['!=', 2] }
-            }).then(function(count) {
-                if (count === 0) {
-                    frm.add_custom_button(__('Loan Application'), function() {
-                        frappe.new_doc('Loan Application', {
-                            applicant_type: 'Customer',
-                            applicant: frm.doc.customer,
-                            home_build_request: frm.doc.name
-                        });
-                    }, __('Create'));
-                }
-            });
-        }
+        // Create → Loan Application (if none exists)
+        frappe.db.count('Loan Application', {
+            filters: { home_build_request: frm.doc.name, docstatus: ['!=', 2] }
+        }).then(function(count) {
+            if (count === 0) {
+                frm.add_custom_button(__('Loan Application'), function() {
+                    frappe.new_doc('Loan Application', {
+                        applicant_type: 'Customer',
+                        applicant: frm.doc.customer,
+                        home_build_request: frm.doc.name
+                    });
+                }, __('Create'));
+            }
+        });
 
         // Create → Purchase Invoice (all deals)
         frm.add_custom_button(__('Purchase Invoice'), function() {
