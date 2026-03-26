@@ -105,6 +105,21 @@ fixtures = [
             ["name", "in", [
                 "Customer-first_name-hidden",
                 "Customer-last_name-hidden",
+                "Loan Application-section_break_4-label",
+                "Loan Application-is_term_loan-hidden",
+                "Loan Application-is_secured_loan-hidden",
+                "Loan Application-description-hidden",
+                "Loan Application-loan_security_details_section-hidden",
+                "Loan Application-proposed_pledges-hidden",
+                "Loan Application-maximum_loan_amount-hidden",
+                "Loan Application-repayment_method-hidden",
+                "Loan Application-repayment_method-default",
+                "Loan Application-repayment_periods-hidden",
+                "Loan Application-repayment_periods-default",
+                "Loan Application-applicant_type-hidden",
+                "Loan Application-applicant_type-default",
+                "Loan Application-loan_amount-fetch_from",
+                "Loan Application-loan_amount-fetch_if_empty",
             ]]
         ]
     },
