@@ -134,7 +134,7 @@ def send_dealer_welcome(customer_name, account_id, to_email, reference_name=None
         template="dealer-welcome",
         extra_data={
             "customer_name": customer_name,
-            "account_id": account_id,
+            "dcr_account_no": account_id,
         },
     )
 
