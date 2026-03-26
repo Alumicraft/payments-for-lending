@@ -471,25 +471,24 @@
   },
   {
     "doctype": "Custom Field",
+    "dt": "Loan Disbursement",
+    "fieldname": "deal_reference_section",
+    "fieldtype": "Section Break",
+    "label": "Deal reference",
+    "name": "Loan Disbursement-deal_reference_section",
+    "insert_after": "against_loan"
+  },
+  {
+    "doctype": "Custom Field",
     "name": "Loan Disbursement-home_build_request",
     "dt": "Loan Disbursement",
     "fieldname": "home_build_request",
     "fieldtype": "Link",
     "label": "Home Build Request",
     "options": "Home Build Request",
-    "insert_after": "against_loan",
+    "insert_after": "deal_reference_section",
     "fetch_from": "against_loan.home_build_request",
     "reqd": 1
-  },
-  {
-    "doctype": "Custom Field",
-    "name": "Loan Disbursement-factory_po",
-    "dt": "Loan Disbursement",
-    "fieldname": "factory_po",
-    "fieldtype": "Link",
-    "label": "Purchase Invoice",
-    "options": "Purchase Invoice",
-    "insert_after": "home_build_request"
   },
   {
     "doctype": "Custom Field",
@@ -499,9 +498,27 @@
     "fieldtype": "Link",
     "label": "Factory",
     "options": "Supplier",
-    "insert_after": "factory_po",
+    "insert_after": "home_build_request",
     "fetch_from": "against_loan.factory",
     "reqd": 1
+  },
+  {
+    "doctype": "Custom Field",
+    "dt": "Loan Disbursement",
+    "fieldname": "column_break_deal_ref",
+    "fieldtype": "Column Break",
+    "name": "Loan Disbursement-column_break_deal_ref",
+    "insert_after": "factory"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Disbursement-factory_po",
+    "dt": "Loan Disbursement",
+    "fieldname": "factory_po",
+    "fieldtype": "Link",
+    "label": "Purchase Invoice",
+    "options": "Purchase Invoice",
+    "insert_after": "column_break_deal_ref"
   },
   {
     "doctype": "Custom Field",
