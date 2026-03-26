@@ -2,9 +2,9 @@
  * Loan Form Customization for ACH Autopay
  *
  * Buttons:
- * - "Send Disbursement Notice" (top-level) — notify dealer of disbursement
- * - "Send Payoff Letter" (top-level) — FL or COD payoff letter
- * - "Manage Auto-Pay" (Actions) — ACH setup via Plaid or manual
+ * - Email → "Disbursement Notice" — notify dealer of disbursement
+ * - Email → "FL Payoff Letter" / "COD Payoff Letter" — payoff letters
+ * - Actions → "Manage Auto-Pay" — ACH setup via Plaid or manual
  */
 
 frappe.ui.form.on('Loan', {
@@ -14,26 +14,26 @@ frappe.ui.form.on('Loan', {
             return;
         }
 
-        // Top-level: Send Disbursement Notice — show if any disbursement exists
+        // Email: Disbursement Notice — show if any disbursement exists
         frappe.db.count('Loan Disbursement', {
             filters: { against_loan: frm.doc.name, docstatus: 1 }
         }).then(count => {
             if (count > 0) {
-                frm.add_custom_button(__('Send Disbursement Notice'), function() {
+                frm.add_custom_button(__('Disbursement Notice'), function() {
                     send_disbursement_notice(frm);
-                });
+                }, __('Email'));
             }
         });
 
-        // Top-level: Payoff letter buttons — only for disbursed/active loans
+        // Email: Payoff letter buttons — only for disbursed/active loans
         if (frm.doc.status && ['Disbursed', 'Active'].includes(frm.doc.status)) {
-            frm.add_custom_button(__('Send FL Payoff Letter'), function() {
+            frm.add_custom_button(__('FL Payoff Letter'), function() {
                 send_payoff(frm, 'Flooring');
-            });
+            }, __('Email'));
 
-            frm.add_custom_button(__('Send COD Payoff Letter'), function() {
+            frm.add_custom_button(__('COD Payoff Letter'), function() {
                 send_payoff(frm, 'COD');
-            });
+            }, __('Email'));
         }
 
         // Actions: Manage Auto-Pay

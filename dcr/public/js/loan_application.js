@@ -2,8 +2,8 @@
  * Loan Application Form Customization
  *
  * Buttons:
- * - "Send for Signature" (top-level) — Flooring Packet via DocuSign
- * - "Send Pre-Approval" (top-level) — Pre-approval letter email
+ * - Email → "Flooring Packet" — Flooring Packet via DocuSign
+ * - Email → "Pre-Approval" — Pre-approval letter email
  * - Create → "Loan" — after flooring packet is signed
  */
 
@@ -28,17 +28,17 @@ frappe.ui.form.on('Loan Application', {
         if (frm.doc.docstatus !== 1) return;
         if (!frm.doc.home_build_request) return;
 
-        // Top-level: Send for Signature (Flooring Packet)
+        // Email: Flooring Packet (for signature)
         if (!frm.doc.signed_packet) {
-            frm.add_custom_button(__('Send for Signature'), function() {
+            frm.add_custom_button(__('Flooring Packet'), function() {
                 send_flooring_packet(frm);
-            });
+            }, __('Email'));
         }
 
-        // Top-level: Send Pre-Approval
-        frm.add_custom_button(__('Send Pre-Approval'), function() {
+        // Email: Pre-Approval
+        frm.add_custom_button(__('Pre-Approval'), function() {
             send_pre_approval(frm);
-        });
+        }, __('Email'));
 
         // Create → Loan (after packet is signed and app is submitted)
         if (frm.doc.signed_packet && frm.doc.docstatus === 1) {

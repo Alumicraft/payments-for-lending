@@ -2,10 +2,10 @@
  * Customer Form Customization for DCR Dealers
  *
  * Buttons:
- * - "Send for Signature" (top-level) — Dealer Agreement via DocuSign
+ * - Email → "Dealer Agreement" — Dealer Agreement via DocuSign
  * - Create → MIFA — after dealer agreement is signed
  * - Create → Factory Assignment — if none exists
- * - "Manage Bank Account" (Actions) — ACH setup via Plaid or manual
+ * - Actions → "Manage Bank Account" — ACH setup via Plaid or manual
  */
 
 frappe.ui.form.on('Customer', {
@@ -21,11 +21,11 @@ frappe.ui.form.on('Customer', {
             frm.page.set_indicator(__('Awaiting Signature'), 'orange');
         }
 
-        // Top-level: Send for Signature (Dealer Agreement)
+        // Email: Dealer Agreement (for signature)
         if (frm.doc.dealer_agreement_status !== 'Signed') {
-            frm.add_custom_button(__('Send for Signature'), function() {
+            frm.add_custom_button(__('Dealer Agreement'), function() {
                 send_dealer_agreement(frm);
-            });
+            }, __('Email'));
         }
 
         // Create → MIFA (after dealer agreement is signed)
