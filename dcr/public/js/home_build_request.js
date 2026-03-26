@@ -97,12 +97,16 @@ frappe.ui.form.on('Home Build Request', {
                     frappe.db.get_value('Contact', r.message[0].parent,
                         ['first_name', 'last_name', 'mobile_no', 'phone'],
                         function(contact) {
+                            if (!contact) return;
                             let name = contact.first_name || '';
                             if (contact.last_name) name += ' ' + contact.last_name;
                             frm.set_value('escrow_contact', name.trim());
                             frm.set_value('escrow_phone', contact.mobile_no || contact.phone || '');
                         }
                     );
+                } else {
+                    frm.set_value('escrow_contact', '');
+                    frm.set_value('escrow_phone', '');
                 }
             }
         });
