@@ -26,11 +26,19 @@ def after_install():
                 "customer_group_name": group_name,
             }).insert(ignore_permissions=True)
 
-    # Wipe ALL Loan Application custom fields — fixture sync recreates them cleanly
+    # Wipe ALL Loan Application custom fields (including manually created ones)
+    # Fixture sync recreates them cleanly in chain order
     old_la_fields = frappe.get_all(
         "Custom Field", filters={"dt": "Loan Application"}, pluck="name"
     )
     for cf_name in old_la_fields:
         frappe.delete_doc("Custom Field", cf_name, force=True)
+
+    # Also wipe orphaned Property Setters that may conflict
+    old_la_ps = frappe.get_all(
+        "Property Setter", filters={"doc_type": "Loan Application"}, pluck="name"
+    )
+    for ps_name in old_la_ps:
+        frappe.delete_doc("Property Setter", ps_name, force=True)
 
     frappe.db.commit()
