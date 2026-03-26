@@ -31,7 +31,6 @@ fixtures = [
                 "Customer-license_expiry_date",
                 "Customer-sellers_permit_no",
                 "Customer-column_break_dealer1",
-                "Customer-w9_status",
                 "Customer-dealer_agreement_status",
                 "Customer-dealer_license_copy",
                 "Customer-sellers_permit_copy",

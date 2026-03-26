@@ -48,22 +48,12 @@
   },
   {
     "doctype": "Custom Field",
-    "name": "Customer-w9_status",
-    "dt": "Customer",
-    "fieldname": "w9_status",
-    "fieldtype": "Select",
-    "label": "W-9 Status",
-    "options": "\nPending\nReceived\nVerified",
-    "insert_after": "column_break_dealer1"
-  },
-  {
-    "doctype": "Custom Field",
     "name": "Customer-dealer_documents_section",
     "dt": "Customer",
     "fieldname": "dealer_documents_section",
     "fieldtype": "Section Break",
     "label": "Dealer Documents",
-    "insert_after": "w9_status",
+    "insert_after": "column_break_dealer1",
     "depends_on": "eval:doc.customer_group=='Dealer'",
     "collapsible": 1
   },
