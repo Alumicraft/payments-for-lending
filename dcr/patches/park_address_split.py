@@ -3,6 +3,7 @@ import frappe
 
 def execute():
     """Migrate Park address/city_state_zip to split fields."""
+    frappe.reload_doc("dcr", "doctype", "park")
     parks = frappe.get_all("Park", fields=["name", "address", "city_state_zip"])
 
     for park in parks:
