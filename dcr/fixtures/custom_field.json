@@ -282,7 +282,7 @@
     "fieldname": "ach_payment_section",
     "fieldtype": "Section Break",
     "label": "ACH Payment",
-    "insert_after": "repayment_method",
+    "insert_after": "buyer_name",
     "collapsible": 1
   },
   {
@@ -302,7 +302,7 @@
     "dt": "Loan",
     "fieldname": "home_deal_reference_section",
     "fieldtype": "Section Break",
-    "label": "Home / Deal Reference",
+    "label": "Deal reference",
     "insert_after": "ach_payment_account"
   },
   {
@@ -325,7 +325,7 @@
     "fieldname": "home_serial_no",
     "fieldtype": "Data",
     "label": "Serial No",
-    "insert_after": "home_build_request",
+    "insert_after": "column_break_home_deal",
     "fetch_from": "home_build_request.home_serial_no",
     "read_only": 1
   },
@@ -346,7 +346,7 @@
     "dt": "Loan",
     "fieldname": "column_break_home_deal",
     "fieldtype": "Column Break",
-    "insert_after": "buyer_name"
+    "insert_after": "factory"
   },
   {
     "doctype": "Custom Field",
@@ -356,7 +356,7 @@
     "fieldtype": "Link",
     "label": "Factory",
     "options": "Supplier",
-    "insert_after": "column_break_home_deal",
+    "insert_after": "home_build_request",
     "fetch_from": "home_build_request.factory",
     "read_only": 1,
     "reqd": 1
