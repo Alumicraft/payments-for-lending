@@ -12,12 +12,12 @@
   "financing_type",
   "property_type",
   "home_section",
-  "factory",
   "model_name",
-  "home_invoice_plus_freight",
-  "column_break_home",
   "home_serial_no",
+  "column_break_home",
+  "factory",
   "quote_no",
+  "home_invoice_plus_freight",
   "park_section",
   "park",
   "space_number",
@@ -37,10 +37,10 @@
   "buyer_section",
   "home_buyer",
   "financials_section",
-  "customer_deposit",
-  "selling_price",
-  "column_break_financials",
   "end_buyer_lender",
+  "column_break_financials",
+  "selling_price",
+  "customer_deposit",
   "escrow_section",
   "escrow_company",
   "escrow_number",
@@ -78,6 +78,7 @@
    "default": "Draft",
    "fieldname": "status",
    "fieldtype": "Select",
+   "hidden": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
@@ -108,7 +109,7 @@
   {
    "fieldname": "home_section",
    "fieldtype": "Section Break",
-   "label": "Deal reference"
+   "label": "Deal Reference"
   },
   {
    "fieldname": "model_name",
@@ -121,12 +122,12 @@
    "fieldname": "home_serial_no",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Home Serial No"
+   "label": "Serial No"
   },
   {
    "fieldname": "home_invoice_plus_freight",
    "fieldtype": "Currency",
-   "label": "Home Total"
+   "label": "Quoted Amount"
   },
   {
    "fieldname": "column_break_home",
@@ -137,12 +138,13 @@
    "fieldname": "factory",
    "fieldtype": "Link",
    "label": "Factory",
-   "options": "Supplier"
+   "options": "Supplier",
+   "read_only": 1
   },
   {
    "fieldname": "quote_no",
    "fieldtype": "Data",
-   "label": "Quote No"
+   "label": "Factory Quote No"
   },
   {
    "fieldname": "park_section",
@@ -266,12 +268,12 @@
   {
    "fieldname": "customer_deposit",
    "fieldtype": "Currency",
-   "label": "Customer Deposit in Escrow"
+   "label": "Deposit In Escrow"
   },
   {
    "fieldname": "selling_price",
    "fieldtype": "Currency",
-   "label": "Selling Price of Home"
+   "label": "Selling Price"
   },
   {
    "fieldname": "column_break_financials",
@@ -281,7 +283,7 @@
    "description": "Buyer's financing source (e.g. Cash, FHA, Wells Fargo)",
    "fieldname": "end_buyer_lender",
    "fieldtype": "Data",
-   "label": "Lender"
+   "label": "Financing Source"
   },
   {
    "fieldname": "escrow_section",
@@ -316,7 +318,7 @@
    "options": "Phone"
   },
   {
-   "collapsible": 1,
+   "collapsible": 0,
    "depends_on": "eval:doc.home_type=='Customer Sold'",
    "fieldname": "broker_section",
    "fieldtype": "Section Break",

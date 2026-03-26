@@ -145,7 +145,7 @@
     "dt": "Loan Application",
     "fieldname": "deal_reference_section",
     "fieldtype": "Section Break",
-    "label": "Deal reference",
+    "label": "Deal Reference",
     "name": "Loan Application-deal_reference_section",
     "insert_after": "applicant_name"
   },
@@ -292,7 +292,7 @@
     "dt": "Loan",
     "fieldname": "home_deal_reference_section",
     "fieldtype": "Section Break",
-    "label": "Deal reference",
+    "label": "Deal Reference",
     "insert_after": "ach_payment_account"
   },
   {
@@ -464,7 +464,7 @@
     "dt": "Loan Disbursement",
     "fieldname": "deal_reference_section",
     "fieldtype": "Section Break",
-    "label": "Deal reference",
+    "label": "Deal Reference",
     "name": "Loan Disbursement-deal_reference_section",
     "insert_after": "against_loan"
   },
