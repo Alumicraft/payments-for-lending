@@ -135,9 +135,6 @@ doc_events = {
         "validate": "dcr.api.lending.on_loan_validate",
         "after_insert": "dcr.api.lending.on_loan_after_insert"
     },
-    "Supplier Quotation": {
-        "before_save": "dcr.api.lending.on_sq_before_save"
-    },
 }
 
 # Whitelisted Methods

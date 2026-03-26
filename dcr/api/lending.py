@@ -202,14 +202,3 @@ def send_plaid_setup_email(loan_doc):
         to_email=customer_email,
         reference_name=loan_doc.name,
     )
-
-
-def on_sq_before_save(doc, method):
-    """Write home_serial_no and quote_no back to linked HBR."""
-    if not doc.home_build_request:
-        return
-    hbr = frappe.get_doc("Home Build Request", doc.home_build_request)
-    if doc.home_serial_no and hbr.home_serial_no != doc.home_serial_no:
-        hbr.db_set("home_serial_no", doc.home_serial_no)
-    if doc.quote_no and hbr.quote_no != doc.quote_no:
-        hbr.db_set("quote_no", doc.quote_no)
