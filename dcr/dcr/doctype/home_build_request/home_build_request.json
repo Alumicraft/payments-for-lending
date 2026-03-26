@@ -6,21 +6,20 @@
  "engine": "InnoDB",
  "field_order": [
   "customer",
-  "financing_type",
   "status",
   "column_break_1",
   "home_type",
+  "financing_type",
   "property_type",
   "home_section",
+  "factory",
   "model_name",
-  "home_serial_no",
   "home_invoice_plus_freight",
   "column_break_home",
-  "factory",
+  "home_serial_no",
   "quote_no",
   "park_section",
   "park",
-  "column_break_park",
   "space_number",
   "park_details_section",
   "park_address_line1",
@@ -37,10 +36,11 @@
   "park_access_code",
   "buyer_section",
   "home_buyer",
+  "financials_section",
   "customer_deposit",
-  "column_break_buyer",
-  "end_buyer_lender",
   "selling_price",
+  "column_break_financials",
+  "end_buyer_lender",
   "escrow_section",
   "escrow_company",
   "escrow_number",
@@ -108,7 +108,7 @@
   {
    "fieldname": "home_section",
    "fieldtype": "Section Break",
-   "label": "Home"
+   "label": "Deal reference"
   },
   {
    "fieldname": "model_name",
@@ -155,10 +155,6 @@
    "fieldtype": "Link",
    "label": "Park",
    "options": "Park"
-  },
-  {
-   "fieldname": "column_break_park",
-   "fieldtype": "Column Break"
   },
   {
    "fieldname": "space_number",
@@ -262,12 +258,23 @@
    "options": "Customer"
   },
   {
+   "fieldname": "financials_section",
+   "fieldtype": "Section Break",
+   "label": "Financials",
+   "depends_on": "eval:doc.home_type=='Customer Sold'"
+  },
+  {
    "fieldname": "customer_deposit",
    "fieldtype": "Currency",
    "label": "Customer Deposit in Escrow"
   },
   {
-   "fieldname": "column_break_buyer",
+   "fieldname": "selling_price",
+   "fieldtype": "Currency",
+   "label": "Selling Price of Home"
+  },
+  {
+   "fieldname": "column_break_financials",
    "fieldtype": "Column Break"
   },
   {
@@ -275,11 +282,6 @@
    "fieldname": "end_buyer_lender",
    "fieldtype": "Data",
    "label": "Lender"
-  },
-  {
-   "fieldname": "selling_price",
-   "fieldtype": "Currency",
-   "label": "Selling Price of Home"
   },
   {
    "fieldname": "escrow_section",
