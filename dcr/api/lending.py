@@ -50,6 +50,14 @@ def validate_loan_application(doc, method):
     - Validates advance date against factory lead time
     - Warns if requested amount exceeds available credit
     """
+    # Sync custom mirrors → standard fields
+    if doc.get("dcr_loan_product"):
+        doc.loan_product = doc.dcr_loan_product
+    if doc.get("dcr_loan_amount"):
+        doc.loan_amount = doc.dcr_loan_amount
+    if doc.get("dcr_company"):
+        doc.company = doc.dcr_company
+
     # Ensure linked HBR is submitted
     if doc.get("home_build_request"):
         hbr_status = frappe.db.get_value(

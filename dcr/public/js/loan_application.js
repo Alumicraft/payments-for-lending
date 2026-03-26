@@ -64,11 +64,25 @@ frappe.ui.form.on('Loan Application', {
         }
     },
 
+    dcr_loan_product: function(frm) {
+        frm.set_value('loan_product', frm.doc.dcr_loan_product);
+    },
+    dcr_loan_amount: function(frm) {
+        frm.set_value('loan_amount', frm.doc.dcr_loan_amount);
+    },
     loan_amount: function(frm) {
+        frm.doc.dcr_loan_amount = frm.doc.loan_amount;
+        frm.refresh_field('dcr_loan_amount');
         calculate_monthly_interest(frm);
         calculate_preapproval(frm);
     },
+    loan_product: function(frm) {
+        frm.doc.dcr_loan_product = frm.doc.loan_product;
+        frm.refresh_field('dcr_loan_product');
+    },
     rate_of_interest: function(frm) {
+        frm.doc.dcr_rate_of_interest = frm.doc.rate_of_interest;
+        frm.refresh_field('dcr_rate_of_interest');
         calculate_monthly_interest(frm);
     },
     custom_projected_sales_price: function(frm) {
@@ -160,6 +174,9 @@ function calculate_preapproval(frm) {
 function sync_mirror_fields(frm) {
     // Sync standard hidden fields → custom visible mirrors (without dirtying form)
     let mirrors = {
+        'dcr_loan_product': 'loan_product',
+        'dcr_loan_amount': 'loan_amount',
+        'dcr_rate_of_interest': 'rate_of_interest',
         'dcr_company': 'company',
         'dcr_repayment_amount': 'repayment_amount',
         'dcr_total_payable_amount': 'total_payable_amount',

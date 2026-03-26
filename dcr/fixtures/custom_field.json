@@ -147,7 +147,7 @@
     "fieldtype": "Section Break",
     "label": "Deal Reference",
     "name": "Loan Application-deal_reference_section",
-    "insert_after": "status"
+    "insert_after": "applicant_name"
   },
   {
     "doctype": "Custom Field",
@@ -205,12 +205,32 @@
   },
   {
     "doctype": "Custom Field",
+    "name": "Loan Application-dcr_loan_product",
+    "dt": "Loan Application",
+    "fieldname": "dcr_loan_product",
+    "fieldtype": "Link",
+    "options": "Loan Product",
+    "label": "Loan Product",
+    "insert_after": "dcr_lending_section",
+    "reqd": 1
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-dcr_loan_amount",
+    "dt": "Loan Application",
+    "fieldname": "dcr_loan_amount",
+    "fieldtype": "Currency",
+    "label": "Loan Amount",
+    "insert_after": "dcr_loan_product"
+  },
+  {
+    "doctype": "Custom Field",
     "name": "Loan Application-advance_date_requested",
     "dt": "Loan Application",
     "fieldname": "advance_date_requested",
     "fieldtype": "Date",
     "label": "Advance Date",
-    "insert_after": "rate_of_interest"
+    "insert_after": "dcr_loan_amount"
   },
   {
     "doctype": "Custom Field",
@@ -247,12 +267,30 @@
   },
   {
     "doctype": "Custom Field",
+    "name": "Loan Application-column_break_lending",
+    "dt": "Loan Application",
+    "fieldname": "column_break_lending",
+    "fieldtype": "Column Break",
+    "insert_after": "floor_plan"
+  },
+  {
+    "doctype": "Custom Field",
+    "name": "Loan Application-dcr_rate_of_interest",
+    "dt": "Loan Application",
+    "fieldname": "dcr_rate_of_interest",
+    "fieldtype": "Percent",
+    "label": "Rate of Interest",
+    "insert_after": "column_break_lending",
+    "read_only": 1
+  },
+  {
+    "doctype": "Custom Field",
     "name": "Loan Application-buyer_name",
     "dt": "Loan Application",
     "fieldname": "buyer_name",
     "fieldtype": "Data",
     "label": "Buyer Name",
-    "insert_after": "description",
+    "insert_after": "dcr_rate_of_interest",
     "fetch_from": "home_build_request.home_buyer",
     "read_only": 1
   },
@@ -361,7 +399,7 @@
     "fieldname": "advance_preapproval_section",
     "fieldtype": "Section Break",
     "label": "Pre-Approval Letter",
-    "insert_after": "maximum_loan_amount",
+    "insert_after": "dcr_total_payable_interest",
     "collapsible": 1,
     "depends_on": "eval:doc.home_type=='Spec'"
   },
@@ -467,7 +505,7 @@
     "fieldtype": "Link",
     "options": "Company",
     "label": "Company",
-    "insert_after": "total_payable_interest",
+    "insert_after": "signed_packet",
     "reqd": 1
   },
   {

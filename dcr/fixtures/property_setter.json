@@ -21,13 +21,63 @@
   },
   {
     "doctype": "Property Setter",
-    "name": "Loan Application-section_break_4-label",
+    "name": "Loan Application-section_break_4-hidden",
     "doc_type": "Loan Application",
     "doctype_or_field": "DocField",
     "field_name": "section_break_4",
-    "property": "label",
-    "property_type": "Data",
-    "value": ""
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-loan_product-hidden",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "loan_product",
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-loan_amount-hidden",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "loan_amount",
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-rate_of_interest-hidden",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "rate_of_interest",
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-column_break_7-hidden",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "column_break_7",
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-column_break_2-hidden",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "column_break_2",
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
   },
   {
     "doctype": "Property Setter",
