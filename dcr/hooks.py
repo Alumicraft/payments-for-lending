@@ -81,7 +81,6 @@ fixtures = [
                 "Loan Disbursement-home_build_request",
                 "Loan Disbursement-factory_po",
                 "Loan Disbursement-factory",
-                "Loan Application-exhibit_a_section",
                 "Loan Application-home_serial_no",
                 "Loan Application-quote_no",
                 "Loan Application-floor_plan",
