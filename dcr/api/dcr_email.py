@@ -182,7 +182,7 @@ def send_dealer_agreement_signed(customer_name, signed_date, to_email, attachmen
 # 8. Flooring Packet Sent
 # ============================================================================
 
-def send_flooring_packet_sent(customer_name, loan_application, requested_advance_amount, factory_name, to_email, reference_name=None):
+def send_flooring_packet_sent(customer_name, loan_application, loan_amount, factory_name, to_email, reference_name=None):
     """Send notification that flooring packet is ready for signature."""
     return _send(
         doctype="Loan Application",
@@ -193,7 +193,7 @@ def send_flooring_packet_sent(customer_name, loan_application, requested_advance
         extra_data={
             "customer_name": customer_name,
             "loan_application": loan_application,
-            "requested_advance_amount": requested_advance_amount,
+            "loan_amount": loan_amount,
             "factory_name": factory_name,
         },
     )
