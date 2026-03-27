@@ -13,6 +13,11 @@ frappe.ui.form.on('Loan Application', {
         if (frm.is_new() && !frm.doc.applicant_type) {
             frm.set_value('applicant_type', 'Customer');
         }
+
+        // Only show submitted HBRs in the link dropdown
+        frm.set_query('home_build_request', function() {
+            return { filters: { docstatus: 1 } };
+        });
     },
 
     refresh: function(frm) {

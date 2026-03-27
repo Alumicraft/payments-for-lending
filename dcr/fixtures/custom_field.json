@@ -166,7 +166,6 @@
     "label": "Home Build Request",
     "options": "Home Build Request",
     "insert_after": "deal_reference_section",
-    "link_filters": "[[\"docstatus\", \"=\", 1]]",
     "reqd": 1
   },
   {

@@ -157,6 +157,10 @@ def reorder_loan_application_fields():
         if fn in field_map:
             field_map[fn].hidden = 1
 
+    # Clear stale link_filters on home_build_request (dict format crashes JS)
+    if "home_build_request" in field_map:
+        field_map["home_build_request"].link_filters = None
+
     try:
         customize.save_customization()
         print("  Loan Application field order updated successfully")
