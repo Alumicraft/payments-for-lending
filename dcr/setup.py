@@ -127,10 +127,12 @@ def reorder_loan_application_fields():
     ]
 
     # Clear stale link_filters BEFORE Customize Form reads it
-    frappe.db.set_value(
-        "Custom Field", "Loan Application-home_build_request",
-        "link_filters", "", update_modified=False
-    )
+    frappe.db.sql("""
+        UPDATE `tabCustom Field`
+        SET link_filters = NULL
+        WHERE name = 'Loan Application-home_build_request'
+        AND link_filters IS NOT NULL
+    """)
 
     customize = frappe.get_doc("Customize Form")
     customize.doc_type = "Loan Application"
