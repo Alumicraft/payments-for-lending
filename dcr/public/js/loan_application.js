@@ -8,6 +8,13 @@
  */
 
 frappe.ui.form.on('Loan Application', {
+    setup: function(frm) {
+        // Default applicant_type to Customer (hidden field)
+        if (frm.is_new() && !frm.doc.applicant_type) {
+            frm.set_value('applicant_type', 'Customer');
+        }
+    },
+
     refresh: function(frm) {
         // Signing status indicator (show on any saved LA with HBR link)
         if (!frm.is_new() && frm.doc.home_build_request) {
@@ -51,8 +58,41 @@ frappe.ui.form.on('Loan Application', {
             frm.change_custom_button_type(__('Loan'), __('Create'), 'primary');
             frm.change_custom_button_type('Create', null, 'primary');
         }
+    },
+
+    loan_amount: function(frm) {
+        calculate_monthly_interest(frm);
+        calculate_preapproval_fields(frm);
+    },
+
+    rate_of_interest: function(frm) {
+        calculate_monthly_interest(frm);
+    },
+
+    custom_projected_sales_price: function(frm) {
+        calculate_preapproval_fields(frm);
     }
 });
+
+
+function calculate_monthly_interest(frm) {
+    var rate = frm.doc.rate_of_interest || 0;
+    var amount = frm.doc.loan_amount || 0;
+    if (rate && amount) {
+        frm.set_value('monthly_interest_amount', (rate / 100) * amount / 12);
+    }
+}
+
+
+function calculate_preapproval_fields(frm) {
+    var sales_price = frm.doc.custom_projected_sales_price || 0;
+    var loan_amount = frm.doc.loan_amount || 0;
+
+    if (sales_price && loan_amount) {
+        frm.set_value('custom_projected_equity', sales_price - loan_amount);
+        frm.set_value('custom_projected_ltv', (loan_amount / sales_price) * 100);
+    }
+}
 
 
 function send_flooring_packet(frm) {
