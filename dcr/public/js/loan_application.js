@@ -21,6 +21,15 @@ frappe.ui.form.on('Loan Application', {
     },
 
     refresh: function(frm) {
+        // Force-show read-only fields (Frappe v15 hides empty read-only fields on new forms)
+        ['rate_of_interest', 'buyer_name', 'available_credit', 'outstanding_loan_balance',
+         'monthly_interest_amount', 'custom_current_yn', 'repayment_amount',
+         'total_payable_amount', 'total_payable_interest', 'custom_projected_equity',
+         'custom_projected_ltv', 'custom_monthly_space_rent'].forEach(function(fn) {
+            var field = frm.fields_dict[fn];
+            if (field && field.$wrapper) field.$wrapper.show();
+        });
+
         // Signing status indicator (show on any saved LA with HBR link)
         if (!frm.is_new() && frm.doc.home_build_request) {
             if (frm.doc.signed_packet) {
