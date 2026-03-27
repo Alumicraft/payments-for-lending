@@ -74,6 +74,17 @@ frappe.ui.form.on('Loan Application', {
         }
     },
 
+    applicant: function(frm) {
+        // Fetch default loan product from Customer profile
+        if (frm.doc.applicant) {
+            frappe.db.get_value('Customer', frm.doc.applicant, 'default_loan_product', function(r) {
+                if (r && r.default_loan_product && !frm.doc.loan_product) {
+                    frm.set_value('loan_product', r.default_loan_product);
+                }
+            });
+        }
+    },
+
     loan_amount: function(frm) {
         calculate_monthly_interest(frm);
         calculate_preapproval_fields(frm);
