@@ -312,7 +312,8 @@
     "fieldtype": "Currency",
     "label": "Monthly Interest Amount",
     "insert_after": "column_break_lending_calc",
-    "read_only": 1
+    "read_only": 1,
+    "default": "0"
   },
   {
     "doctype": "Custom Field",
@@ -354,7 +355,8 @@
     "label": "Projected Equity",
     "insert_after": "custom_projected_sales_price",
     "description": "Spec variant \u2014 calculated",
-    "read_only": 1
+    "read_only": 1,
+    "default": "0"
   },
   {
     "doctype": "Custom Field",
@@ -365,7 +367,8 @@
     "label": "Projected LTV",
     "insert_after": "custom_projected_equity",
     "description": "Spec variant \u2014 calculated",
-    "read_only": 1
+    "read_only": 1,
+    "default": "0"
   },
   {
     "doctype": "Custom Field",
@@ -395,7 +398,8 @@
     "insert_after": "column_break_preapproval",
     "description": "Spec variant only",
     "fetch_from": "home_build_request.park_space_rent",
-    "read_only": 1
+    "read_only": 1,
+    "default": "0"
   },
   {
     "doctype": "Custom Field",
@@ -423,7 +427,8 @@
     "label": "Current",
     "options": "\nYes\nNo",
     "insert_after": "outstanding_loan_balance",
-    "read_only": 1
+    "read_only": 1,
+    "default": "Yes"
   },
   {
     "doctype": "Custom Field",
