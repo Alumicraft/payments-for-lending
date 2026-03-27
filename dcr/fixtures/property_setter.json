@@ -18,5 +18,155 @@
     "property": "hidden",
     "property_type": "Check",
     "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-applicant_type-hidden",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "applicant_type",
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-applicant_type-default",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "applicant_type",
+    "property": "default",
+    "property_type": "Text",
+    "value": "Customer"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-is_term_loan-hidden",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "is_term_loan",
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-is_secured_loan-hidden",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "is_secured_loan",
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-description-hidden",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "description",
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-proposed_pledges-hidden",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "proposed_pledges",
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-maximum_loan_amount-hidden",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "maximum_loan_amount",
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-repayment_method-hidden",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "repayment_method",
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-repayment_method-default",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "repayment_method",
+    "property": "default",
+    "property_type": "Text",
+    "value": "Repay Over Number of Periods"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-repayment_periods-hidden",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "repayment_periods",
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-repayment_periods-default",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "repayment_periods",
+    "property": "default",
+    "property_type": "Text",
+    "value": "12"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-rate_of_interest-read_only",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "rate_of_interest",
+    "property": "read_only",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-repayment_amount-read_only",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "repayment_amount",
+    "property": "read_only",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-total_payable_amount-read_only",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "total_payable_amount",
+    "property": "read_only",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-total_payable_interest-read_only",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "total_payable_interest",
+    "property": "read_only",
+    "property_type": "Check",
+    "value": "1"
   }
 ]
