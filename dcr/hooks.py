@@ -126,6 +126,7 @@ fixtures = [
                 "Loan Application-total_payable_interest-read_only",
                 "Loan Application-loan_amount-fetch_from",
                 "Loan Application-loan_product-fetch_from",
+                "Loan Application-rate_of_interest-fetch_from",
             ]]
         ]
     },

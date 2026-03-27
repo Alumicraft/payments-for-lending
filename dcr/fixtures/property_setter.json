@@ -188,5 +188,15 @@
     "property": "fetch_from",
     "property_type": "Small Text",
     "value": "applicant.default_loan_product"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-rate_of_interest-fetch_from",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "rate_of_interest",
+    "property": "fetch_from",
+    "property_type": "Small Text",
+    "value": "loan_product.rate_of_interest"
   }
 ]
