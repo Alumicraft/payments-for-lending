@@ -75,14 +75,26 @@ frappe.ui.form.on('Loan Application', {
     },
 
     applicant: function(frm) {
+        if (!frm.doc.applicant) return;
+
         // Fetch default loan product from Customer profile
-        if (frm.doc.applicant) {
-            frappe.db.get_value('Customer', frm.doc.applicant, 'default_loan_product', function(r) {
-                if (r && r.default_loan_product && !frm.doc.loan_product) {
-                    frm.set_value('loan_product', r.default_loan_product);
+        frappe.db.get_value('Customer', frm.doc.applicant, 'default_loan_product', function(r) {
+            if (r && r.default_loan_product && !frm.doc.loan_product) {
+                frm.set_value('loan_product', r.default_loan_product);
+            }
+        });
+
+        // Fetch available credit and outstanding balance
+        frappe.call({
+            method: 'dcr.api.lending.get_available_credit',
+            args: { customer: frm.doc.applicant },
+            callback: function(r) {
+                if (r.message) {
+                    frm.set_value('available_credit', r.message.available);
+                    frm.set_value('outstanding_loan_balance', r.message.outstanding);
                 }
-            });
-        }
+            }
+        });
     },
 
     loan_amount: function(frm) {

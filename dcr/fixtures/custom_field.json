@@ -288,6 +288,7 @@
     "fieldtype": "Currency",
     "label": "Available Credit",
     "read_only": 1,
+    "default": "0",
     "insert_after": "lending_calculations_section",
     "description": "MIFA credit limit minus outstanding balance"
   },
@@ -299,6 +300,7 @@
     "fieldtype": "Currency",
     "label": "Outstanding Loan Balance",
     "read_only": 1,
+    "default": "0",
     "insert_after": "available_credit",
     "description": "Auto-calculated from active loans"
   },
