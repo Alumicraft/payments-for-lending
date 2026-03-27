@@ -19,6 +19,23 @@ def get_dealer_outstanding_balance(customer):
     return result[0].total or 0 if result else 0
 
 
+def is_dealer_current(customer):
+    """Check if a dealer has any overdue (unpaid + past due) loan repayment entries.
+
+    Returns "Yes" if no overdue payments, "No" if any exist.
+    """
+    overdue = frappe.db.sql("""
+        SELECT COUNT(*) FROM `tabRepayment Schedule` rs
+        INNER JOIN `tabLoan` l ON rs.parent = l.name
+        WHERE l.applicant = %s
+        AND l.status IN ('Disbursed', 'Active')
+        AND rs.payment_date < %s
+        AND rs.is_paid = 0
+    """, (customer, today()))[0][0]
+
+    return "Yes" if overdue == 0 else "No"
+
+
 @frappe.whitelist()
 def get_available_credit(customer):
     """Calculate available credit for a dealer.
@@ -66,6 +83,7 @@ def validate_loan_application(doc, method):
 
     # Calculate and set balance fields
     customer = doc.applicant
+    doc.custom_current_yn = is_dealer_current(customer)
     outstanding = get_dealer_outstanding_balance(customer)
     doc.outstanding_loan_balance = outstanding
 
