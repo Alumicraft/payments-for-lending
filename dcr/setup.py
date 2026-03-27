@@ -126,6 +126,12 @@ def reorder_loan_application_fields():
         "column_break_11",
     ]
 
+    # Clear stale link_filters BEFORE Customize Form reads it
+    frappe.db.set_value(
+        "Custom Field", "Loan Application-home_build_request",
+        "link_filters", "", update_modified=False
+    )
+
     customize = frappe.get_doc("Customize Form")
     customize.doc_type = "Loan Application"
     customize.fetch_to_customize()
@@ -156,10 +162,6 @@ def reorder_loan_application_fields():
     for fn in HIDE_FIELDS:
         if fn in field_map:
             field_map[fn].hidden = 1
-
-    # Clear stale link_filters on home_build_request (dict format crashes JS)
-    if "home_build_request" in field_map:
-        field_map["home_build_request"].link_filters = None
 
     try:
         customize.save_customization()
