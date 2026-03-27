@@ -145,7 +145,7 @@
     "dt": "Loan Application",
     "fieldname": "deal_reference_section",
     "fieldtype": "Section Break",
-    "label": "Deal reference",
+    "label": "Deal Reference",
     "name": "Loan Application-deal_reference_section",
     "insert_after": "applicant_name"
   },
@@ -277,7 +277,7 @@
     "dt": "Loan Application",
     "fieldname": "lending_calculations_section",
     "fieldtype": "Section Break",
-    "label": "Lending calculations",
+    "label": "Lending Calculations",
     "insert_after": "buyer_name"
   },
   {
@@ -330,7 +330,7 @@
     "dt": "Loan Application",
     "fieldname": "advance_preapproval_section",
     "fieldtype": "Section Break",
-    "label": "Pre-approval letter",
+    "label": "Pre-Approval Letter",
     "insert_after": "total_payable_interest",
     "collapsible": 0,
     "depends_on": "eval:doc.home_type=='Spec'"
@@ -436,7 +436,7 @@
     "dt": "Loan Application",
     "fieldname": "dcr_documents_section",
     "fieldtype": "Section Break",
-    "label": "Signed documents",
+    "label": "Signed Documents",
     "insert_after": "custom_notes"
   },
   {
