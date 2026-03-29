@@ -141,14 +141,13 @@ def reorder_loan_application_fields():
     # Build lookup: fieldname → field row
     field_map = {f.fieldname: f for f in customize.fields}
 
-    # Verify all expected fields exist
+    # Skip fields not yet on the form (user may not have created them yet)
     missing = [fn for fn in FIELD_ORDER if fn not in field_map]
     if missing:
-        print(f"  WARNING: LA reorder skipping — missing fields: {missing}")
-        return
+        print(f"  NOTE: LA reorder skipping missing fields: {missing}")
 
-    # Reorder: place spec fields first, then any unexpected fields at the end
-    ordered = [field_map[fn] for fn in FIELD_ORDER]
+    # Reorder: place known spec fields first, then any unexpected fields at the end
+    ordered = [field_map[fn] for fn in FIELD_ORDER if fn in field_map]
     remaining = [f for f in customize.fields if f.fieldname not in set(FIELD_ORDER)]
     if remaining:
         print(f"  WARNING: unexpected fields on LA (appended at end): "
