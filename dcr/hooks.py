@@ -9,69 +9,9 @@ required_apps = ["frappe", "erpnext", "lending"]
 after_install = "dcr.setup.after_install"
 after_migrate = "dcr.setup.after_install"
 
-# Fixtures - custom fields synced on bench migrate
+# Fixtures — Property Setters only (standard field behavior).
+# Custom fields are managed directly on Frappe Cloud Customize Form.
 fixtures = [
-    {
-        "doctype": "DocType Link",
-        "filters": [
-            ["name", "in", [
-                "Customer-Home Build Request",
-                "Customer-MIFA",
-                "Customer-Factory Assignment",
-                "Loan Application-Signature Request",
-            ]]
-        ]
-    },
-    {
-        "doctype": "Custom Field",
-        "filters": [
-            ["name", "in", [
-                "Customer-dealer_information_section",
-                "Customer-dealer_license_no",
-                "Customer-license_expiry_date",
-                "Customer-sellers_permit_no",
-                "Customer-column_break_dealer1",
-                "Customer-dealer_agreement_status",
-                "Customer-dealer_license_copy",
-                "Customer-sellers_permit_copy",
-                "Customer-w9_copy",
-                "Customer-retailer_application_copy",
-                "Supplier-lead_time_section",
-                "Supplier-standard_lead_time_days",
-                "Supplier-current_lead_time_days",
-                "Loan-ach_payment_section",
-                "Loan-ach_payment_account",
-                "Loan-home_build_request",
-                "Loan-home_deal_reference_section",
-                "Loan-home_serial_no",
-                "Loan-buyer_name",
-                "Loan-column_break_home_deal",
-                "Loan-factory",
-                "Loan-payoff_section",
-                "Loan-payoff_date",
-                "Loan-payoff_good_thru_date",
-                "Loan-column_break_payoff1",
-                "Loan-interest_owed_at_payoff",
-                "Loan-late_fees_collected",
-                "Loan-service_fee_amount",
-                "Loan-insurance_at_payoff",
-                "Loan-column_break_payoff2",
-                "Loan-principal_collected",
-                "Loan-paid_from_escrow",
-                "Loan-rebate_section",
-                "Loan-qualifying_amount",
-                "Loan Disbursement-deal_reference_section",
-                "Loan Disbursement-column_break_deal_ref",
-                "Loan Disbursement-home_build_request",
-                "Loan Disbursement-factory_po",
-                "Loan Disbursement-factory",
-                "Customer-dealer_agreement_section",
-                "Customer-entity_type",
-                "Customer-default_loan_product",
-                "Purchase Invoice-home_build_request",
-            ]]
-        ]
-    },
     {
         "doctype": "Property Setter",
         "filters": [
