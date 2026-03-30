@@ -1,11 +1,12 @@
 {
  "actions": [],
- "autoname": "format:HBR-{####}",
+ "autoname": "naming_series:",
  "creation": "2024-01-01 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "customer",
+  "amended_from",
   "status",
   "column_break_1",
   "home_type",
@@ -13,9 +14,9 @@
   "property_type",
   "home_section",
   "model_name",
-  "home_serial_no",
-  "column_break_home",
   "factory",
+  "column_break_home",
+  "home_serial_no",
   "quote_no",
   "home_invoice_plus_freight",
   "park_section",
@@ -31,9 +32,9 @@
   "park_zip",
   "park_contact_section",
   "park_contact_name",
-  "park_gated",
   "column_break_park_contact",
   "park_phone",
+  "park_gated",
   "park_access_code",
   "buyer_section",
   "home_buyer",
@@ -44,18 +45,17 @@
   "customer_deposit",
   "escrow_section",
   "escrow_company",
-  "escrow_number",
   "column_break_escrow",
   "escrow_contact",
   "escrow_phone",
+  "escrow_number",
   "broker_section",
   "broker",
   "column_break_broker",
   "broker_contact",
   "broker_phone",
   "documents_section",
-  "doc_checklist",
-  "amended_from"
+  "doc_checklist"
  ],
  "fields": [
   {
@@ -66,6 +66,15 @@
    "label": "Customer",
    "options": "Customer",
    "reqd": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Home Build Request",
+   "print_hide": 1,
+   "read_only": 1
   },
   {
    "fieldname": "financing_type",
@@ -230,13 +239,6 @@
    "read_only": 1
   },
   {
-   "fetch_from": "park.gated",
-   "fieldname": "park_gated",
-   "fieldtype": "Check",
-   "label": "Gated",
-   "read_only": 1
-  },
-  {
    "fieldname": "column_break_park_contact",
    "fieldtype": "Column Break"
   },
@@ -246,6 +248,13 @@
    "fieldtype": "Data",
    "label": "Phone",
    "options": "Phone",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "park.gated",
+   "fieldname": "park_gated",
+   "fieldtype": "Check",
+   "label": "Gated",
    "read_only": 1
   },
   {
@@ -306,11 +315,6 @@
    "options": "Supplier"
   },
   {
-   "fieldname": "escrow_number",
-   "fieldtype": "Data",
-   "label": "Escrow Number"
-  },
-  {
    "fieldname": "column_break_escrow",
    "fieldtype": "Column Break"
   },
@@ -324,6 +328,11 @@
    "fieldtype": "Data",
    "label": "Escrow Phone",
    "options": "Phone"
+  },
+  {
+   "fieldname": "escrow_number",
+   "fieldtype": "Data",
+   "label": "Escrow Number"
   },
   {
    "depends_on": "eval:doc.home_type=='Customer Sold'",
@@ -362,15 +371,6 @@
    "fieldtype": "Table",
    "label": "Document Checklist",
    "options": "Document Checklist"
-  },
-  {
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Home Build Request",
-   "print_hide": 1,
-   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
