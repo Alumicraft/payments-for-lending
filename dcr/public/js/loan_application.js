@@ -105,6 +105,15 @@ frappe.ui.form.on('Loan Application', {
         frm.trigger('refresh');
     },
 
+    home_build_request: function(frm) {
+        // fetch_from silently populates applicant without firing the applicant handler
+        // so we manually clear cache and re-run credit fetches after HBR is linked
+        frappe.after_ajax(function() {
+            frm.doc.__credit_fetched = false;
+            frm.trigger('refresh');
+        });
+    },
+
     loan_amount: function(frm) {
         calculate_monthly_interest(frm);
         calculate_preapproval_fields(frm);
