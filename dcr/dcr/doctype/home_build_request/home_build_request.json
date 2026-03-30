@@ -1,10 +1,12 @@
 {
  "actions": [],
  "autoname": "naming_series:",
+ "naming_rule": "Naming Series",
  "creation": "2024-01-01 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "naming_series",
   "customer",
   "amended_from",
   "status",
@@ -58,6 +60,13 @@
   "doc_checklist"
  ],
  "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "ACC-HBR-.YYYY.-.#####\n",
+   "set_only_once": 1
+  },
   {
    "fieldname": "customer",
    "fieldtype": "Link",
