@@ -55,7 +55,8 @@ def get_available_credit(customer):
     return {
         "credit_limit": mifa,
         "outstanding": outstanding,
-        "available": available
+        "available": available,
+        "current_yn": is_dealer_current(customer)
     }
 
 

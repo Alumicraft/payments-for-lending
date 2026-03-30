@@ -48,6 +48,7 @@ frappe.ui.form.on('Loan Application', {
                         if (r.message) {
                             frm.set_value('available_credit', r.message.available);
                             frm.set_value('outstanding_loan_balance', r.message.outstanding);
+                            frm.set_value('custom_current_yn', r.message.current_yn);
                         }
                     }
                 });
@@ -99,7 +100,8 @@ frappe.ui.form.on('Loan Application', {
     },
 
     applicant: function(frm) {
-        // Trigger refresh to pick up loan product + credit info
+        // Clear fetch cache so credit info re-runs for new applicant
+        frm.doc.__credit_fetched = false;
         frm.trigger('refresh');
     },
 
