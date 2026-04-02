@@ -237,10 +237,20 @@ def _send_setup_email_if_needed(doc):
 
 
 def on_loan_disbursement_validate(doc, method):
-    """Block loan disbursement if no valid bank account is linked."""
+    """Populate deal reference fields and block if no bank account."""
     from dcr.api.bank_account_ach import get_loan_payment_account
 
     loan = frappe.get_doc("Loan", doc.against_loan)
+
+    # Populate HBR and factory from the Loan / HBR chain
+    if not doc.home_build_request and loan.get("home_build_request"):
+        doc.home_build_request = loan.home_build_request
+
+    if doc.home_build_request and not doc.get("factory"):
+        factory = frappe.db.get_value("Home Build Request", doc.home_build_request, "factory")
+        if factory:
+            doc.factory = factory
+
     account = get_loan_payment_account(loan)
 
     if not account:
