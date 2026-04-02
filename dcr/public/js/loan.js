@@ -68,8 +68,10 @@ function show_autopay_indicator(frm) {
                 );
             } else {
                 frm.dashboard.set_headline(
-                    __('Auto-Pay: No bank account linked') +
-                    ' <button class="btn btn-xs btn-default ml-3 resend-autopay-email" style="margin-left: 12px;">Resend Setup Email</button>',
+                    '<span style="display:flex;justify-content:space-between;align-items:center;width:100%">' +
+                    '<span>' + __('Auto-Pay: No bank account linked') + '</span>' +
+                    '<button class="btn btn-xs btn-default resend-autopay-email">Resend Setup Email</button>' +
+                    '</span>',
                     'red'
                 );
                 // Bind after headline renders
