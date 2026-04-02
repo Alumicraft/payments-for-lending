@@ -70,7 +70,7 @@ function show_autopay_indicator(frm) {
                 frm.dashboard.set_headline(
                     '<span style="display:flex;justify-content:space-between;align-items:center;width:100%">' +
                     '<span>' + __('Auto-Pay: No bank account linked') + '</span>' +
-                    '<button class="btn btn-xs resend-autopay-email" style="background:#fff;color:#d32f2f;border:1px solid #fff;font-weight:600;">Resend Setup Email</button>' +
+                    '<button class="btn btn-xs btn-primary resend-autopay-email" style="font-weight:600;">Resend Setup Email</button>' +
                     '</span>',
                     'red'
                 );
