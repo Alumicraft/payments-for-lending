@@ -143,7 +143,7 @@ def send_dealer_welcome(customer_name, account_id, to_email, reference_name=None
 # 6. Dealer Agreement Sent
 # ============================================================================
 
-def send_dealer_agreement_sent(customer_name, email, reference_name=None):
+def send_dealer_agreement_sent(customer_name, email, signing_url=None, reference_name=None):
     """Send notification that dealer agreement is ready for signature."""
     return _send(
         doctype="Customer",
@@ -154,6 +154,7 @@ def send_dealer_agreement_sent(customer_name, email, reference_name=None):
         extra_data={
             "customer_name": customer_name,
             "email": email,
+            "signing_url": signing_url,
         },
     )
 
@@ -182,7 +183,7 @@ def send_dealer_agreement_signed(customer_name, signed_date, to_email, attachmen
 # 8. Flooring Packet Sent
 # ============================================================================
 
-def send_flooring_packet_sent(customer_name, loan_application, loan_amount, factory_name, to_email, reference_name=None):
+def send_flooring_packet_sent(customer_name, loan_application, loan_amount, factory_name, to_email, signing_url=None, reference_name=None):
     """Send notification that flooring packet is ready for signature."""
     return _send(
         doctype="Loan Application",
@@ -195,6 +196,7 @@ def send_flooring_packet_sent(customer_name, loan_application, loan_amount, fact
             "loan_application": loan_application,
             "loan_amount": loan_amount,
             "factory_name": factory_name,
+            "signing_url": signing_url,
         },
     )
 

@@ -100,4 +100,5 @@ scheduler_events = {
 # Website Route Rules
 website_route_rules = [
     {"from_route": "/plaid-setup", "to_route": "plaid_setup"},
+    {"from_route": "/docusign-complete", "to_route": "docusign_complete"},
 ]

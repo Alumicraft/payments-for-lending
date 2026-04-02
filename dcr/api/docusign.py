@@ -104,7 +104,7 @@ class DocuSignClient:
             "Content-Type": "application/json",
         }
 
-    def create_envelope(self, name, recipients, documents, webhook_url=None, message=""):
+    def create_envelope(self, name, recipients, documents, webhook_url=None, message="", client_user_id=None):
         """Create an envelope (send for signature).
 
         Args:
@@ -113,6 +113,8 @@ class DocuSignClient:
             documents: List of dicts with content (bytes), name, file_extension
             webhook_url: URL for per-envelope webhook notification
             message: Optional message to signer
+            client_user_id: If set, uses embedded signing (suppresses DocuSign emails).
+                We send the signing link ourselves via our own email system.
 
         Returns:
             dict with envelope_id
@@ -143,6 +145,8 @@ class DocuSignClient:
                     ],
                 },
             }
+            if client_user_id:
+                signer["clientUserId"] = client_user_id
             signers.append(signer)
 
         doc_list = []
@@ -196,6 +200,32 @@ class DocuSignClient:
             resp.raise_for_status()
         data = resp.json()
         return {"envelope_id": data.get("envelopeId")}
+
+    def get_signing_url(self, envelope_id, email, name, client_user_id, return_url):
+        """Generate an embedded signing URL for a recipient.
+
+        The URL is short-lived (5 min default) so generate it on-demand
+        right before redirecting the signer.
+        """
+        resp = requests.post(
+            f"{self.base_url}/v2.1/accounts/{self.account_id}/envelopes/{envelope_id}/views/recipient",
+            headers=self._headers(),
+            json={
+                "returnUrl": return_url,
+                "authenticationMethod": "email",
+                "email": email,
+                "userName": name,
+                "clientUserId": client_user_id,
+            },
+            timeout=30,
+        )
+        if not resp.ok:
+            frappe.log_error(
+                f"DocuSign signing URL {resp.status_code}: {resp.text}",
+                "DocuSign Signing URL Error",
+            )
+            resp.raise_for_status()
+        return resp.json().get("url")
 
     def get_envelope_document(self, envelope_id):
         """Download the signed combined PDF for an envelope."""
@@ -491,6 +521,130 @@ def _send_signed_email(sig_req):
 
 
 # ---------------------------------------------------------------------------
+# Embedded Signing — email with signing link
+# ---------------------------------------------------------------------------
+
+def _generate_signing_token(sig_req_name):
+    """Generate HMAC token for a signing redirect URL."""
+    secret = frappe.local.conf.get("encryption_key") or frappe.local.conf.get("secret_key")
+    return hmac.new(
+        secret.encode(), sig_req_name.encode(), hashlib.sha256
+    ).hexdigest()[:20]
+
+
+def _verify_signing_token(sig_req_name, token):
+    """Verify HMAC token for a signing redirect URL."""
+    expected = _generate_signing_token(sig_req_name)
+    return hmac.compare_digest(token, expected)
+
+
+def _send_signing_email(sig_req, recipient_email, recipient_name, client_user_id):
+    """Send our own email with a signing link (since DocuSign emails are suppressed)."""
+    token = _generate_signing_token(sig_req.name)
+    signing_url = frappe.utils.get_url(
+        f"/api/method/dcr.api.docusign.sign_document?sig={sig_req.name}&token={token}"
+    )
+
+    from dcr.api.dcr_email import (
+        send_dealer_agreement_sent,
+        send_flooring_packet_sent,
+    )
+
+    if sig_req.document_type == "Dealer Agreement":
+        send_dealer_agreement_sent(
+            customer_name=recipient_name,
+            email=recipient_email,
+            signing_url=signing_url,
+            reference_name=sig_req.reference_name,
+        )
+    elif sig_req.document_type == "Flooring Packet":
+        la = frappe.get_doc("Loan Application", sig_req.reference_name)
+        loan_amount = ""
+        if la.loan_amount:
+            loan_amount = f"{la.loan_amount:,.0f}"
+        factory_name = ""
+        if la.get("home_build_request"):
+            factory_name = frappe.db.get_value(
+                "Home Build Request", la.home_build_request, "factory"
+            ) or ""
+
+        send_flooring_packet_sent(
+            customer_name=recipient_name,
+            loan_application=sig_req.reference_name,
+            loan_amount=loan_amount,
+            factory_name=factory_name,
+            to_email=recipient_email,
+            signing_url=signing_url,
+            reference_name=sig_req.reference_name,
+        )
+    elif sig_req.document_type == "MIFA":
+        # Generic email for MIFA
+        frappe.sendmail(
+            recipients=[recipient_email],
+            subject=f"Document Ready for Signature — {recipient_name}",
+            message=f'<p>Please <a href="{signing_url}">click here to sign your document</a>.</p>',
+            reference_doctype="Signature Request",
+            reference_name=sig_req.name,
+        )
+
+
+@frappe.whitelist(allow_guest=True)
+def sign_document(sig, token):
+    """Guest-accessible redirect: generates a fresh DocuSign signing URL and redirects."""
+    if not sig or not token or not _verify_signing_token(sig, token):
+        frappe.respond_as_web_page(
+            _("Invalid Link"),
+            _("This signing link is invalid or has expired. Please contact support."),
+            http_status_code=403,
+        )
+        return
+
+    sig_req = frappe.db.get_value(
+        "Signature Request", sig,
+        ["envelope_id", "customer", "document_type", "status"],
+        as_dict=True,
+    )
+
+    if not sig_req:
+        frappe.respond_as_web_page(
+            _("Not Found"),
+            _("Signature request not found."),
+            http_status_code=404,
+        )
+        return
+
+    if sig_req.status == "Signed":
+        frappe.respond_as_web_page(
+            _("Already Signed"),
+            _("This document has already been signed. No further action is needed."),
+        )
+        return
+
+    customer_doc = frappe.get_doc("Customer", sig_req.customer)
+    client_user_id = f"{sig_req.customer}-{sig_req.document_type}"
+    return_url = frappe.utils.get_url("/docusign-complete")
+
+    try:
+        client = DocuSignClient()
+        url = client.get_signing_url(
+            envelope_id=sig_req.envelope_id,
+            email=customer_doc.email_id,
+            name=customer_doc.customer_name,
+            client_user_id=client_user_id,
+            return_url=return_url,
+        )
+        frappe.local.response["type"] = "redirect"
+        frappe.local.response["location"] = url
+    except Exception as e:
+        frappe.log_error(f"Failed to generate signing URL: {str(e)}", "DocuSign Signing URL")
+        frappe.respond_as_web_page(
+            _("Something went wrong"),
+            _("Unable to open the signing page. Please try again or contact support."),
+            http_status_code=500,
+        )
+
+
+# ---------------------------------------------------------------------------
 # Send Methods
 # ---------------------------------------------------------------------------
 
@@ -498,7 +652,8 @@ def send_for_signature(document_type, reference_doctype, reference_name, custome
                        recipient_email, recipient_name, pdf_content, pdf_name, envelope_subject=None):
     """Generic method to send a document for signature via DocuSign.
 
-    Creates a Signature Request record and sends via DocuSign API.
+    Uses embedded signing: DocuSign does NOT send emails. Instead, we generate
+    a signing URL and send it via our own email system.
 
     Returns:
         Signature Request document
@@ -506,11 +661,15 @@ def send_for_signature(document_type, reference_doctype, reference_name, custome
     client = DocuSignClient()
     webhook_url = get_webhook_url()
 
+    # Use Signature Request name pattern as clientUserId for embedded signing
+    client_user_id = f"{customer}-{document_type}"
+
     result = client.create_envelope(
         name=envelope_subject or f"{document_type} - {customer}",
         recipients=[{"email": recipient_email, "name": recipient_name, "role": "signer"}],
         documents=[{"content": pdf_content, "name": pdf_name, "file_extension": "pdf"}],
         webhook_url=webhook_url,
+        client_user_id=client_user_id,
     )
 
     envelope_id = result["envelope_id"]
@@ -526,6 +685,10 @@ def send_for_signature(document_type, reference_doctype, reference_name, custome
     sig_req.insert()
 
     frappe.db.commit()
+
+    # Send signing link via our own email
+    _send_signing_email(sig_req, recipient_email, recipient_name, client_user_id)
+
     return sig_req
 
 
@@ -614,6 +777,7 @@ def send_flooring_packet(loan_application):
 
     client = DocuSignClient()
     webhook_url = get_webhook_url()
+    client_user_id = f"{la.applicant}-Flooring Packet"
 
     result = client.create_envelope(
         name=f"Flooring Packet - {la.applicant}",
@@ -624,6 +788,7 @@ def send_flooring_packet(loan_application):
             {"content": ach_approval, "name": "ACH-Approval.pdf", "file_extension": "pdf"},
         ],
         webhook_url=webhook_url,
+        client_user_id=client_user_id,
     )
 
     envelope_id = result["envelope_id"]
@@ -638,6 +803,8 @@ def send_flooring_packet(loan_application):
     sig_req.sent_date = now_datetime()
     sig_req.insert()
     frappe.db.commit()
+
+    _send_signing_email(sig_req, email, customer_doc.customer_name, client_user_id)
 
     return {"success": True, "signature_request": sig_req.name}
 

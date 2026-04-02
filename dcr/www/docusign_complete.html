@@ -1,0 +1,13 @@
+{% extends "templates/web.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block page_content %}
+<div class="container" style="max-width: 600px; margin: 40px auto; padding: 0 20px; text-align: center;">
+    <div style="padding: 60px 20px;">
+        <div style="font-size: 48px; margin-bottom: 16px;">{{ icon }}</div>
+        <h2>{{ title }}</h2>
+        <p style="color: #666; margin-top: 16px;">{{ message }}</p>
+    </div>
+</div>
+{% endblock %}
