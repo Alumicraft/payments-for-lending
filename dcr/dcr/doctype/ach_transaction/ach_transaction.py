@@ -82,9 +82,9 @@ class ACHTransaction(Document):
         if self.bank_account:
             data = frappe.db.get_value(
                 "Bank Account", self.bank_account,
-                ["achq_token", "token_source"], as_dict=True
+                ["custom_achq_token", "custom_token_source"], as_dict=True
             )
-            return data.achq_token if data else None, data.token_source if data else None
+            return data.custom_achq_token if data else None, data.custom_token_source if data else None
         if self.ach_authorization:
             auth = frappe.get_doc("ACH Authorization", self.ach_authorization)
             return auth.get_password("achq_token"), auth.token_source
@@ -93,7 +93,7 @@ class ACHTransaction(Document):
     def _get_account_status(self):
         """Get the ACH status from the payment account."""
         if self.bank_account:
-            return frappe.db.get_value("Bank Account", self.bank_account, "ach_status")
+            return frappe.db.get_value("Bank Account", self.bank_account, "custom_ach_status")
         if self.ach_authorization:
             return frappe.db.get_value("ACH Authorization", self.ach_authorization, "status")
         return None

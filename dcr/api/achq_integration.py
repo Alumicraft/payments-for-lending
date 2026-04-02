@@ -500,16 +500,16 @@ def _create_bank_account(customer, bank_name, account_type, token, token_source,
     ba.is_company_account = 0
 
     # ACH custom fields
-    ba.ach_status = "Active"
-    ba.achq_token = token
-    ba.token_source = token_source
-    ba.bank_account_last4 = account_last4
-    ba.routing_number_last4 = routing_last4
-    ba.verification_status = verify_status
-    ba.consent_captured = 1
-    ba.authorization_ip = frappe.local.request_ip if hasattr(frappe.local, 'request_ip') else ""
-    ba.authorization_date = now_datetime()
-    ba.sec_code = settings.default_sec_code
+    ba.custom_ach_status = "Active"
+    ba.custom_achq_token = token
+    ba.custom_token_source = token_source
+    ba.custom_bank_account_last4 = account_last4
+    ba.custom_routing_number_last4 = routing_last4
+    ba.custom_verification_status = verify_status
+    ba.custom_consent_captured = 1
+    ba.custom_authorization_ip = frappe.local.request_ip if hasattr(frappe.local, 'request_ip') else ""
+    ba.custom_authorization_date = now_datetime()
+    ba.custom_sec_code = settings.default_sec_code
 
     ba.insert()
     return ba
@@ -646,13 +646,13 @@ def get_customer_accounts(customer):
         filters={
             "party_type": "Customer",
             "party": customer,
-            "ach_status": ["in", ["Active", "Paused"]]
+            "custom_ach_status": ["in", ["Active", "Paused"]]
         },
         fields=[
-            "name", "ach_status as status", "bank", "bank_account_last4",
-            "is_default", "token_source", "authorization_date"
+            "name", "custom_ach_status as status", "bank", "custom_bank_account_last4 as bank_account_last4",
+            "is_default", "custom_token_source as token_source", "custom_authorization_date as authorization_date"
         ],
-        order_by="is_default desc, authorization_date desc"
+        order_by="is_default desc, custom_authorization_date desc"
     )
 
     # Resolve bank names
@@ -700,7 +700,7 @@ def set_loan_account(loan, bank_account_name):
         ba = frappe.get_doc("Bank Account", bank_account_name)
         if ba.party != loan_doc.applicant:
             frappe.throw(_("This bank account does not belong to this customer"))
-        if ba.get("ach_status") != "Active":
+        if ba.get("custom_ach_status") != "Active":
             frappe.throw(_("This bank account is not active"))
 
         loan_doc.ach_payment_account = bank_account_name
@@ -747,10 +747,10 @@ def get_loan_account_info(loan):
         "has_account": True,
         "bank_account_name": ba.name,
         "bank_name": bank_name,
-        "account_last4": ba.bank_account_last4,
-        "status": ba.get("ach_status"),
+        "account_last4": ba.custom_bank_account_last4,
+        "status": ba.get("custom_ach_status"),
         "is_default": ba.is_default,
-        "token_source": ba.token_source,
+        "token_source": ba.custom_token_source,
         "resolution": resolution
     }
 

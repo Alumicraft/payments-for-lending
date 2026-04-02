@@ -64,7 +64,7 @@ def process_upcoming_payments():
             if not account:
                 continue
 
-            if account.get("ach_status") != "Active":
+            if account.get("custom_ach_status") != "Active":
                 continue
 
             process_loan_payment(loan_data, account, target_date, initiation_days)
@@ -246,7 +246,7 @@ def process_retry_transactions():
 
             # Check payment account is still active
             if txn_data.bank_account:
-                acct_status = frappe.db.get_value("Bank Account", txn_data.bank_account, "ach_status")
+                acct_status = frappe.db.get_value("Bank Account", txn_data.bank_account, "custom_ach_status")
             elif txn_data.ach_authorization:
                 acct_status = frappe.db.get_value("ACH Authorization", txn_data.ach_authorization, "status")
             else:

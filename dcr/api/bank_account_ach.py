@@ -17,7 +17,7 @@ def get_customer_default_bank_account(customer):
     """
     name = frappe.db.get_value(
         "Bank Account",
-        {"party_type": "Customer", "party": customer, "is_default": 1, "ach_status": "Active"},
+        {"party_type": "Customer", "party": customer, "is_default": 1, "custom_ach_status": "Active"},
         "name"
     )
     if name:
@@ -38,11 +38,11 @@ def get_loan_payment_account(loan):
 
     if loan_doc.get("ach_payment_account"):
         ba = frappe.get_doc("Bank Account", loan_doc.ach_payment_account)
-        if ba.get("ach_status") == "Active":
+        if ba.get("custom_ach_status") == "Active":
             return ba
         else:
             frappe.log_error(
-                f"Loan {loan_doc.name} has bank account override {ba.name} but ach_status is {ba.get('ach_status')}",
+                f"Loan {loan_doc.name} has bank account override {ba.name} but ach_status is {ba.get('custom_ach_status')}",
                 "ACH Payment Account Error"
             )
             return None
@@ -54,7 +54,7 @@ def set_as_default(bank_account_name):
     """Set a Bank Account as the default for its customer."""
     ba = frappe.get_doc("Bank Account", bank_account_name)
 
-    if ba.get("ach_status") != "Active":
+    if ba.get("custom_ach_status") != "Active":
         frappe.throw(_("Only active bank accounts can be set as default"))
 
     # Unset other defaults for this customer
@@ -73,10 +73,10 @@ def pause(bank_account_name, reason=None):
     """Temporarily pause ACH on a bank account."""
     ba = frappe.get_doc("Bank Account", bank_account_name)
 
-    if ba.get("ach_status") != "Active":
+    if ba.get("custom_ach_status") != "Active":
         frappe.throw(_("Only active bank accounts can be paused"))
 
-    ba.ach_status = "Paused"
+    ba.custom_ach_status = "Paused"
     if reason:
         ba.add_comment("Comment", f"ACH paused: {reason}")
     ba.save()
@@ -87,10 +87,10 @@ def resume(bank_account_name):
     """Resume ACH on a paused bank account."""
     ba = frappe.get_doc("Bank Account", bank_account_name)
 
-    if ba.get("ach_status") != "Paused":
+    if ba.get("custom_ach_status") != "Paused":
         frappe.throw(_("Only paused bank accounts can be resumed"))
 
-    ba.ach_status = "Active"
+    ba.custom_ach_status = "Active"
     ba.add_comment("Comment", "ACH resumed")
     ba.save()
     return True
@@ -100,7 +100,7 @@ def revoke(bank_account_name, reason=None):
     """Permanently revoke ACH on a bank account and cancel pending transactions."""
     ba = frappe.get_doc("Bank Account", bank_account_name)
 
-    if ba.get("ach_status") == "Revoked":
+    if ba.get("custom_ach_status") == "Revoked":
         frappe.throw(_("Bank account ACH is already revoked"))
 
     # Warn if this is the only default and customer has active loans
@@ -110,7 +110,7 @@ def revoke(bank_account_name, reason=None):
             {
                 "party_type": "Customer",
                 "party": ba.party,
-                "ach_status": "Active",
+                "custom_ach_status": "Active",
                 "name": ("!=", ba.name)
             }
         )
@@ -130,11 +130,11 @@ def revoke(bank_account_name, reason=None):
                     indicator="orange"
                 )
 
-    ba.ach_status = "Revoked"
+    ba.custom_ach_status = "Revoked"
     ba.is_default = 0
     ba.disabled = 1
-    ba.revocation_date = now_datetime()
-    ba.revocation_reason = reason
+    ba.custom_revocation_date = now_datetime()
+    ba.custom_revocation_reason = reason
     ba.save()
 
     # Cancel pending transactions
@@ -176,17 +176,17 @@ def validate_single_default(doc, method):
 
     Only applies to Bank Accounts that have an ach_status field set.
     """
-    if not doc.get("ach_status"):
+    if not doc.get("custom_ach_status"):
         return
 
-    if doc.is_default and doc.get("ach_status") == "Active":
+    if doc.is_default and doc.get("custom_ach_status") == "Active":
         existing = frappe.db.exists(
             "Bank Account",
             {
                 "party_type": "Customer",
                 "party": doc.party,
                 "is_default": 1,
-                "ach_status": "Active",
+                "custom_ach_status": "Active",
                 "name": ("!=", doc.name)
             }
         )

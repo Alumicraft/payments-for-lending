@@ -13,9 +13,9 @@ from frappe.utils import now_datetime
 
 def execute():
     # Check that custom fields exist on Bank Account
-    if not frappe.db.exists("Custom Field", {"dt": "Bank Account", "fieldname": "ach_status"}):
+    if not frappe.db.exists("Custom Field", {"dt": "Bank Account", "fieldname": "custom_ach_status"}):
         frappe.log_error(
-            "Migration skipped: Bank Account custom field 'ach_status' does not exist. "
+            "Migration skipped: Bank Account custom field 'custom_ach_status' does not exist. "
             "Create Bank Account custom fields on Frappe Cloud Customize Form first.",
             "ACH Migration"
         )
@@ -56,7 +56,7 @@ def execute():
         # Idempotency check
         existing_ba = frappe.db.get_value(
             "Bank Account",
-            {"ach_authorization_legacy": auth.name},
+            {"custom_ach_authorization_legacy": auth.name},
             "name"
         )
         if existing_ba:
@@ -89,19 +89,19 @@ def execute():
         ba.disabled = disabled
 
         # ACH custom fields
-        ba.ach_status = ach_status
-        ba.achq_token = tokens.get(auth.name, "")
-        ba.token_source = auth.token_source
-        ba.bank_account_last4 = auth.bank_account_last4
-        ba.routing_number_last4 = auth.routing_number_last4
-        ba.verification_status = auth.verification_status
-        ba.consent_captured = auth.consent_captured
-        ba.authorization_ip = auth.authorization_ip
-        ba.authorization_date = auth.authorization_date
-        ba.sec_code = auth.sec_code
-        ba.revocation_date = auth.revocation_date
-        ba.revocation_reason = auth.revocation_reason
-        ba.ach_authorization_legacy = auth.name
+        ba.custom_ach_status = ach_status
+        ba.custom_achq_token = tokens.get(auth.name, "")
+        ba.custom_token_source = auth.token_source
+        ba.custom_bank_account_last4 = auth.bank_account_last4
+        ba.custom_routing_number_last4 = auth.routing_number_last4
+        ba.custom_verification_status = auth.verification_status
+        ba.custom_consent_captured = auth.consent_captured
+        ba.custom_authorization_ip = auth.authorization_ip
+        ba.custom_authorization_date = auth.authorization_date
+        ba.custom_sec_code = auth.sec_code
+        ba.custom_revocation_date = auth.revocation_date
+        ba.custom_revocation_reason = auth.revocation_reason
+        ba.custom_ach_authorization_legacy = auth.name
 
         ba.flags.ignore_validate = True  # Skip validate hook during migration
         ba.insert(ignore_permissions=True)
