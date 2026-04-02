@@ -64,9 +64,29 @@ function show_autopay_indicator(frm) {
                 );
             } else {
                 frm.dashboard.set_headline(
-                    __('Auto-Pay: No bank account linked'),
+                    __('Auto-Pay: No bank account linked') +
+                    ' <button class="btn btn-xs btn-default ml-3 resend-autopay-email" style="margin-left: 12px;">Resend Setup Email</button>',
                     'red'
                 );
+                // Bind after headline renders
+                frm.dashboard.$body.find('.resend-autopay-email').on('click', function() {
+                    $(this).prop('disabled', true).text('Sending...');
+                    frappe.call({
+                        method: 'dcr.api.dcr_email.send_autopay_update_email',
+                        args: { customer: frm.doc.applicant },
+                        callback: function(r) {
+                            if (r.message && r.message.success) {
+                                frappe.show_alert({
+                                    message: __('Auto-pay setup email sent to dealer'),
+                                    indicator: 'green'
+                                });
+                            }
+                        },
+                        always: function() {
+                            frm.dashboard.$body.find('.resend-autopay-email').prop('disabled', false).text('Resend Setup Email');
+                        }
+                    });
+                });
             }
         }
     });
