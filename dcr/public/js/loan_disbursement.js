@@ -1,5 +1,5 @@
 frappe.ui.form.on('Loan Disbursement', {
-    refresh: function(frm) {
+    onload_post_render: function(frm) {
         if (frm.doc.against_loan && !frm.doc.home_build_request) {
             fetch_deal_reference(frm);
         }
