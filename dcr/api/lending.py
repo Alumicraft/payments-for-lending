@@ -165,7 +165,7 @@ def on_loan_validate(doc, method):
 
 
 def on_loan_after_insert(doc, method):
-    """Auto-link bank account or send Plaid setup email on loan creation."""
+    """Auto-link bank account or send setup email on loan creation."""
     if not doc.applicant:
         return
 
@@ -184,15 +184,56 @@ def on_loan_after_insert(doc, method):
             alert=True
         )
     else:
-        try:
-            send_plaid_setup_email(doc)
-        except Exception:
-            frappe.log_error("Failed to send Plaid setup email", "ACH Setup")
-            frappe.msgprint(
-                _("Loan created but auto-pay setup email could not be sent. Check Error Log."),
-                indicator="orange",
-                alert=True,
-            )
+        _send_setup_email_if_needed(doc)
+
+
+def on_loan_on_update(doc, method):
+    """On every save, check for bank account and auto-send setup email if missing."""
+    if not doc.applicant or doc.docstatus != 0:
+        return
+
+    from dcr.api.bank_account_ach import get_loan_payment_account
+
+    account = get_loan_payment_account(doc)
+
+    if account:
+        # Auto-link if not already set
+        if not doc.ach_payment_account:
+            doc.db_set("ach_payment_account", account.name, update_modified=False)
+        return
+
+    _send_setup_email_if_needed(doc)
+
+
+def _send_setup_email_if_needed(doc):
+    """Send auto-pay setup email if one hasn't been sent in the last 24 hours."""
+    # Check if we already sent an email for this loan recently (avoid spam)
+    recent_email = frappe.db.exists("Communication", {
+        "reference_doctype": "Loan",
+        "reference_name": doc.name,
+        "subject": ["like", "%Auto-Pay%"],
+        "creation": [">=", frappe.utils.add_days(frappe.utils.today(), -1)]
+    })
+
+    if recent_email:
+        return
+
+    try:
+        send_plaid_setup_email(doc)
+        frappe.msgprint(
+            _("No bank account found for {0}. Auto-pay setup email sent to dealer.").format(
+                doc.applicant_name or doc.applicant
+            ),
+            indicator="green",
+            alert=True
+        )
+    except Exception:
+        frappe.log_error("Failed to send auto-pay setup email", "ACH Setup")
+        frappe.msgprint(
+            _("No bank account linked. Setup email could not be sent — check Error Log."),
+            indicator="orange",
+            alert=True,
+        )
 
 
 def on_loan_disbursement_validate(doc, method):

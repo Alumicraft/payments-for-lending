@@ -2,12 +2,14 @@
  * Loan Form Customization
  *
  * Buttons:
- * - Email → "Auto-Pay Setup" — send Plaid setup link to dealer
  * - Email → "Disbursement Notice" — notify dealer of disbursement
  * - Email → "FL Payoff Letter" / "COD Payoff Letter" — payoff letters
  *
  * Indicators:
  * - Auto-Pay status (green if bank account linked, red if not)
+ *
+ * Auto-Pay setup email is sent automatically on save when no bank account
+ * is linked (server-side, with 24-hour dedup).
  */
 
 frappe.ui.form.on('Loan', {
@@ -18,21 +20,6 @@ frappe.ui.form.on('Loan', {
 
         // Auto-Pay status indicator (show on saved and submitted loans)
         show_autopay_indicator(frm);
-
-        // Email: Auto-Pay Setup — show when no bank account linked
-        if (frm.doc.applicant) {
-            frappe.call({
-                method: 'dcr.api.achq_integration.get_loan_account_info',
-                args: { loan: frm.doc.name },
-                callback: function(r) {
-                    if (!r.message || !r.message.has_account) {
-                        frm.add_custom_button(__('Auto-Pay Setup'), function() {
-                            send_autopay_setup(frm);
-                        }, __('Email'));
-                    }
-                }
-            });
-        }
 
         // Submitted-only buttons
         if (frm.doc.docstatus !== 1) {
@@ -82,36 +69,6 @@ function show_autopay_indicator(frm) {
                 );
             }
         }
-    });
-}
-
-
-function send_autopay_setup(frm) {
-    frappe.db.get_value('Customer', frm.doc.applicant, 'email_id', function(r) {
-        if (!r || !r.email_id) {
-            frappe.msgprint(__('Customer {0} does not have an email address.', [frm.doc.applicant]));
-            return;
-        }
-
-        frappe.confirm(
-            __('Send Auto-Pay setup email to {0} ({1})?', [frm.doc.applicant, r.email_id]),
-            function() {
-                frappe.call({
-                    method: 'dcr.api.dcr_email.send_autopay_update_email',
-                    args: { customer: frm.doc.applicant },
-                    freeze: true,
-                    freeze_message: __('Sending setup email...'),
-                    callback: function(r) {
-                        if (r.message && r.message.success) {
-                            frappe.show_alert({
-                                message: __('Auto-Pay setup email sent to dealer'),
-                                indicator: 'green'
-                            });
-                        }
-                    }
-                });
-            }
-        );
     });
 }
 
