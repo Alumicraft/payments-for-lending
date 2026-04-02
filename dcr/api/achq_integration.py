@@ -1005,3 +1005,41 @@ def is_plaid_available():
         "available": is_plaid_enabled(),
         "environment": settings.plaid_environment if settings.has_plaid_credentials() else None
     }
+
+
+# ---------------------------------------------------------------------------
+# Guest-accessible Plaid endpoints (token-verified, for /plaid-setup page)
+# ---------------------------------------------------------------------------
+
+def _verify_plaid_guest_token(customer, token):
+    """Verify the HMAC token from a Plaid setup URL."""
+    from dcr.www.plaid_setup import verify_plaid_token
+    if not customer or not token:
+        frappe.throw(_("Invalid request"), frappe.AuthenticationError)
+    if not verify_plaid_token(customer, token):
+        frappe.throw(_("Invalid or expired link"), frappe.AuthenticationError)
+
+
+@frappe.whitelist(allow_guest=True)
+def get_plaid_link_token_guest(customer, token):
+    """Guest-accessible wrapper for get_plaid_link_token. Verified via HMAC token."""
+    _verify_plaid_guest_token(customer, token)
+    # Token verification is the authorization — elevate to bypass doc-level permission checks
+    original_user = frappe.session.user
+    try:
+        frappe.set_user("Administrator")
+        return get_plaid_link_token(customer)
+    finally:
+        frappe.set_user(original_user)
+
+
+@frappe.whitelist(allow_guest=True)
+def process_plaid_callback_guest(public_token, account_id, customer, token):
+    """Guest-accessible wrapper for process_plaid_callback. Verified via HMAC token."""
+    _verify_plaid_guest_token(customer, token)
+    original_user = frappe.session.user
+    try:
+        frappe.set_user("Administrator")
+        return process_plaid_callback(public_token, account_id, customer, is_default=True)
+    finally:
+        frappe.set_user(original_user)

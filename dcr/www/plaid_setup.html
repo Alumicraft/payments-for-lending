@@ -1,0 +1,131 @@
+{% extends "templates/web.html" %}
+
+{% block title %}Auto-Pay Setup{% endblock %}
+
+{% block page_content %}
+<div class="container" style="max-width: 600px; margin: 40px auto; padding: 0 20px;">
+
+    {% if error %}
+    <div style="text-align: center; padding: 60px 20px;">
+        <h2>Something went wrong</h2>
+        <p style="color: #666; margin-top: 16px;">{{ error }}</p>
+    </div>
+
+    {% elif already_connected %}
+    <div style="text-align: center; padding: 60px 20px;">
+        <div style="font-size: 48px; margin-bottom: 16px;">&#10003;</div>
+        <h2>Bank Account Already Connected</h2>
+        <p style="color: #666; margin-top: 16px;">
+            {{ customer_name }}, your bank account is already set up for auto-pay.
+            No further action is needed.
+        </p>
+    </div>
+
+    {% elif show_plaid %}
+    <div id="plaid-container" style="text-align: center; padding: 60px 20px;">
+        <h2>Set Up Auto-Pay</h2>
+        <p style="color: #666; margin: 16px 0 32px;">
+            Connecting your bank account securely&hellip;
+        </p>
+        <div class="spinner-border" role="status" style="color: #999;"></div>
+        <p style="color: #999; font-size: 13px; margin-top: 24px;">
+            Your bank credentials are handled securely by Plaid and are never stored by us.
+        </p>
+    </div>
+
+    <div id="success-container" style="text-align: center; padding: 60px 20px; display: none;">
+        <div style="font-size: 48px; margin-bottom: 16px;">&#10003;</div>
+        <h2>Bank Account Connected!</h2>
+        <p style="color: #666; margin-top: 16px;">
+            Your <strong id="bank-name"></strong> account ending in <strong id="account-last4"></strong>
+            has been set up for automatic payments. You can close this page.
+        </p>
+    </div>
+
+    <div id="error-container" style="text-align: center; padding: 60px 20px; display: none;">
+        <h2>Connection Failed</h2>
+        <p id="error-message" style="color: #666; margin-top: 16px;"></p>
+        <button onclick="location.reload()" class="btn btn-primary" style="margin-top: 20px;">
+            Try Again
+        </button>
+    </div>
+
+    <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+    <script>
+    (function() {
+        var customer = "{{ customer }}";
+        var token = "{{ token }}";
+
+        // Get link token from server
+        fetch("/api/method/dcr.api.achq_integration.get_plaid_link_token_guest", {
+            method: "POST",
+            headers: {"Content-Type": "application/json", "X-Frappe-CSRF-Token": "{{ frappe.session.csrf_token }}"},
+            body: JSON.stringify({customer: customer, token: token})
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.message || !data.message.link_token) {
+                showError("Unable to initialize bank connection. Please try again.");
+                return;
+            }
+
+            var handler = Plaid.create({
+                token: data.message.link_token,
+                onSuccess: function(public_token, metadata) {
+                    document.getElementById("plaid-container").innerHTML =
+                        '<h2>Set Up Auto-Pay</h2>' +
+                        '<p style="color: #666; margin: 16px 0 32px;">Saving your bank account&hellip;</p>' +
+                        '<div class="spinner-border" role="status" style="color: #999;"></div>';
+
+                    var account_id = metadata.accounts[0].id;
+
+                    fetch("/api/method/dcr.api.achq_integration.process_plaid_callback_guest", {
+                        method: "POST",
+                        headers: {"Content-Type": "application/json", "X-Frappe-CSRF-Token": "{{ frappe.session.csrf_token }}"},
+                        body: JSON.stringify({
+                            public_token: public_token,
+                            account_id: account_id,
+                            customer: customer,
+                            token: token
+                        })
+                    })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.message && data.message.success) {
+                            document.getElementById("bank-name").textContent = data.message.bank_name || "Bank";
+                            document.getElementById("account-last4").textContent = data.message.account_last4 || "****";
+                            document.getElementById("plaid-container").style.display = "none";
+                            document.getElementById("success-container").style.display = "block";
+                        } else {
+                            showError("Failed to connect your bank account. Please try again.");
+                        }
+                    })
+                    .catch(function() {
+                        showError("An error occurred. Please try again.");
+                    });
+                },
+                onExit: function(err) {
+                    if (err) {
+                        showError("Bank connection was interrupted. Please try again.");
+                    }
+                }
+            });
+
+            // Auto-open Plaid Link immediately
+            handler.open();
+        })
+        .catch(function() {
+            showError("Unable to load bank connection. Please try again later.");
+        });
+
+        function showError(msg) {
+            document.getElementById("plaid-container").style.display = "none";
+            document.getElementById("error-message").textContent = msg;
+            document.getElementById("error-container").style.display = "block";
+        }
+    })();
+    </script>
+    {% endif %}
+
+</div>
+{% endblock %}

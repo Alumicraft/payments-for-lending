@@ -353,7 +353,9 @@ def send_autopay_update_email(customer):
     if not email:
         frappe.throw(_("Customer {0} does not have an email address.").format(customer))
 
-    setup_url = frappe.utils.get_url(f"/plaid-setup?customer={customer}")
+    from dcr.www.plaid_setup import generate_plaid_token
+    token = generate_plaid_token(customer)
+    setup_url = frappe.utils.get_url(f"/plaid-setup?customer={customer}&token={token}")
 
     send_autopay_update(
         customer_name=customer_doc.customer_name or customer,

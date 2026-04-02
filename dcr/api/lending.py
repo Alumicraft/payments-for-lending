@@ -263,7 +263,10 @@ def send_plaid_setup_email(loan_doc):
 
     from dcr.api.dcr_email import send_autopay_setup
 
-    plaid_setup_url = frappe.utils.get_url(f"/plaid-setup?loan={loan_doc.name}")
+    from dcr.www.plaid_setup import generate_plaid_token
+    customer = loan_doc.applicant
+    token = generate_plaid_token(customer)
+    plaid_setup_url = frappe.utils.get_url(f"/plaid-setup?loan={loan_doc.name}&token={token}")
     loan_amount = frappe.format_value(loan_doc.loan_amount or 0, {"fieldtype": "Currency"}).replace("$", "")
 
     send_autopay_setup(
