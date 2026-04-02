@@ -30,7 +30,7 @@ def is_dealer_current(customer):
         WHERE l.applicant = %s
         AND l.status IN ('Disbursed', 'Active')
         AND rs.payment_date < %s
-        AND rs.is_paid = 0
+        AND rs.demand_generated = 0
     """, (customer, today()))[0][0]
 
     return "Yes" if overdue == 0 else "No"
