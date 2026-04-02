@@ -96,3 +96,8 @@ scheduler_events = {
         "dcr.tasks.scheduled_debits.check_pending_transactions"
     ],
 }
+
+# Website Route Rules
+website_route_rules = [
+    {"from_route": "/plaid-setup", "to_route": "plaid_setup"},
+]
