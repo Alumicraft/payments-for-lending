@@ -5,9 +5,9 @@
  * - Email → "Dealer Agreement" — Dealer Agreement via DocuSign
  * - Create → MIFA — after dealer agreement is signed
  * - Create → Factory Assignment — if none exists
- * - Actions → "Send Bank Update Email" — send Plaid setup link
  *
  * Bank account management uses standard Bank Account "+" on Customer form.
+ * Auto-Pay setup email is sent from the Loan form.
  */
 
 frappe.ui.form.on('Customer', {
@@ -51,17 +51,6 @@ frappe.ui.form.on('Customer', {
             });
         }, __('Create'));
 
-        // Actions: Send Bank Update Email
-        frappe.call({
-            method: 'dcr.dcr.doctype.ach_settings.ach_settings.is_ach_enabled',
-            callback: function(r) {
-                if (r.message) {
-                    frm.add_custom_button(__('Send Bank Update Email'), function() {
-                        send_bank_update_email(frm);
-                    }, __('Actions'));
-                }
-            }
-        });
     }
 });
 
@@ -87,34 +76,6 @@ function send_dealer_agreement(frm) {
                             indicator: 'green'
                         });
                         frm.reload_doc();
-                    }
-                }
-            });
-        }
-    );
-}
-
-
-function send_bank_update_email(frm) {
-    if (!frm.doc.email_id) {
-        frappe.msgprint(__('Please set an email address for this customer first.'));
-        return;
-    }
-
-    frappe.confirm(
-        __('Send bank account update email to {0} ({1})?', [frm.doc.customer_name, frm.doc.email_id]),
-        function() {
-            frappe.call({
-                method: 'dcr.api.dcr_email.send_autopay_update_email',
-                args: { customer: frm.doc.name },
-                freeze: true,
-                freeze_message: __('Sending email...'),
-                callback: function(r) {
-                    if (r.message && r.message.success) {
-                        frappe.show_alert({
-                            message: __('Bank update email sent to {0}', [frm.doc.email_id]),
-                            indicator: 'green'
-                        });
                     }
                 }
             });
