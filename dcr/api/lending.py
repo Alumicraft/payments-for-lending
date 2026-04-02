@@ -140,7 +140,9 @@ def validate_advance_date(factory, requested_date):
 
 
 def on_loan_validate(doc, method):
-    """Populate home_build_request from Loan Application."""
+    """Populate home_build_request from Loan Application.
+    Block submission if no active bank account is linked.
+    """
     if not doc.loan_application:
         return
     if not doc.home_build_request:
@@ -149,6 +151,17 @@ def on_loan_validate(doc, method):
         )
         if hbr:
             doc.home_build_request = hbr
+
+    # Block submission without bank account
+    if doc.docstatus == 1:
+        from dcr.api.bank_account_ach import get_loan_payment_account
+        account = get_loan_payment_account(doc)
+        if not account:
+            frappe.throw(
+                _("Cannot submit loan: no active bank account is linked for auto-pay. "
+                  "The dealer must connect a bank account before this loan can be submitted."),
+                title=_("Bank Account Required")
+            )
 
 
 def on_loan_after_insert(doc, method):
