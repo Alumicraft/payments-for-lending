@@ -93,7 +93,7 @@ def execute():
         ba.custom_achq_token = tokens.get(auth.name, "")
         ba.custom_token_source = auth.token_source
         ba.custom_account_last_four = auth.bank_account_last4
-        ba.custom_routing_last_four = auth.routing_number_last4
+        ba.custom_routing_last_4 = auth.routing_number_last4
         ba.custom_verification_status = auth.verification_status
         ba.custom_consent_captured = auth.consent_captured
         ba.custom_authorization_ip = auth.authorization_ip

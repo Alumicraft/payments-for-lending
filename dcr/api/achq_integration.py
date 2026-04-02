@@ -504,7 +504,7 @@ def _create_bank_account(customer, bank_name, account_type, token, token_source,
     ba.custom_achq_token = token
     ba.custom_token_source = token_source
     ba.custom_account_last_four = account_last4
-    ba.custom_routing_last_four = routing_last4
+    ba.custom_routing_last_4 = routing_last4
     ba.custom_verification_status = verify_status
     ba.custom_consent_captured = 1
     ba.custom_authorization_ip = frappe.local.request_ip if hasattr(frappe.local, 'request_ip') else ""
