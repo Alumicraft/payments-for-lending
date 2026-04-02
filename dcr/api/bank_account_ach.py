@@ -17,7 +17,7 @@ def get_customer_default_bank_account(customer):
     """
     name = frappe.db.get_value(
         "Bank Account",
-        {"party_type": "Customer", "party": customer, "is_default": 1, "custom_ach_status": "Active"},
+        {"party_type": "Customer", "party": customer, "is_default": 1, "custom_ach_status": "Active", "disabled": 0},
         "name"
     )
     if name:
@@ -38,11 +38,11 @@ def get_loan_payment_account(loan):
 
     if loan_doc.get("ach_payment_account"):
         ba = frappe.get_doc("Bank Account", loan_doc.ach_payment_account)
-        if ba.get("custom_ach_status") == "Active":
+        if ba.get("custom_ach_status") == "Active" and not ba.disabled:
             return ba
         else:
             frappe.log_error(
-                f"Loan {loan_doc.name} has bank account override {ba.name} but ach_status is {ba.get('custom_ach_status')}",
+                f"Loan {loan_doc.name} has bank account override {ba.name} but ach_status is {ba.get('custom_ach_status')}, disabled={ba.disabled}",
                 "ACH Payment Account Error"
             )
             return None
