@@ -41,12 +41,27 @@ ACHQ_REJECTION_CODES = {
 
 class ACHTransaction(Document):
     def validate(self):
-        self._set_customer_from_authorization()
+        self._set_customer_from_account()
         self._set_max_retries_from_settings()
 
-    def _set_customer_from_authorization(self):
-        """Fetch customer from the authorization if not set."""
-        if self.ach_authorization and not self.customer:
+    def _get_payment_account(self):
+        """Get the Bank Account or legacy ACH Authorization for this transaction.
+
+        Returns (doc, source) where source is 'bank_account' or 'ach_authorization'.
+        """
+        if self.bank_account:
+            return frappe.get_doc("Bank Account", self.bank_account), "bank_account"
+        if self.ach_authorization:
+            return frappe.get_doc("ACH Authorization", self.ach_authorization), "ach_authorization"
+        return None, None
+
+    def _set_customer_from_account(self):
+        """Fetch customer from the payment account if not set."""
+        if self.customer:
+            return
+        if self.bank_account:
+            self.customer = frappe.db.get_value("Bank Account", self.bank_account, "party")
+        elif self.ach_authorization:
             self.customer = frappe.db.get_value(
                 "ACH Authorization", self.ach_authorization, "customer"
             )
@@ -58,30 +73,56 @@ class ACHTransaction(Document):
             settings = get_ach_settings()
             self.max_retries = settings.max_retry_attempts
 
+    def _get_token_and_source(self):
+        """Get the ACHQ token and token_source from the payment account.
+
+        Uses frappe.db.get_value for Bank Account since achq_token is a Data field.
+        Uses get_password for legacy ACH Authorization since it's a Password field.
+        """
+        if self.bank_account:
+            data = frappe.db.get_value(
+                "Bank Account", self.bank_account,
+                ["achq_token", "token_source"], as_dict=True
+            )
+            return data.achq_token if data else None, data.token_source if data else None
+        if self.ach_authorization:
+            auth = frappe.get_doc("ACH Authorization", self.ach_authorization)
+            return auth.get_password("achq_token"), auth.token_source
+        return None, None
+
+    def _get_account_status(self):
+        """Get the ACH status from the payment account."""
+        if self.bank_account:
+            return frappe.db.get_value("Bank Account", self.bank_account, "ach_status")
+        if self.ach_authorization:
+            return frappe.db.get_value("ACH Authorization", self.ach_authorization, "status")
+        return None
+
     def initiate(self):
         """Initiate the ACH transaction via ACHQ API."""
         if self.status != "Scheduled":
             frappe.throw(_("Only scheduled transactions can be initiated"))
 
-        # Get the authorization and its token
-        auth = frappe.get_doc("ACH Authorization", self.ach_authorization)
-        if auth.status != "Active":
-            frappe.throw(_("Authorization is not active"))
+        status = self._get_account_status()
+        if status != "Active":
+            frappe.throw(_("Payment account is not active"))
 
-        # Import and use ACHQ client
+        token, token_source = self._get_token_and_source()
+        if not token:
+            frappe.throw(_("No payment token found on the payment account"))
+
         from dcr.api.achq_integration import ACHQClient
 
-        # Get customer name for the API call
         customer_name = frappe.db.get_value("Customer", self.customer, "customer_name")
 
         client = ACHQClient()
         result = client.create_payment(
             amount=self.amount,
-            token=auth.get_password("achq_token"),
+            token=token,
             customer_name=customer_name,
             description=f"Loan payment for {self.loan}",
             txn_id=self.name,
-            token_source=auth.token_source  # Pass token_source for Plaid vs Manual handling
+            token_source=token_source
         )
 
         if result.get("success"):
@@ -89,7 +130,6 @@ class ACHTransaction(Document):
             self.achq_transaction_id = result.get("transaction_id")
             self.achq_status = result.get("status")
             self.initiated_date = now_datetime()
-            # Estimate settlement date (3-5 business days)
             self.settlement_date = add_days(today(), 5)
             self.save()
             frappe.db.commit()
@@ -109,14 +149,12 @@ class ACHTransaction(Document):
         if achq_status:
             self.achq_status = achq_status
 
-        # Create Payment Entry
         payment_entry = self.create_payment_entry()
         if payment_entry:
             self.payment_entry = payment_entry.name
 
         self.save()
 
-        # Send success notification
         if not self.notification_sent:
             self.send_notification("success")
 
@@ -135,11 +173,9 @@ class ACHTransaction(Document):
         self.completed_date = now_datetime()
         self.save()
 
-        # Check if we should schedule a retry
         if self.should_retry(return_code):
             self.schedule_retry()
 
-        # Send failure notification
         if not self.notification_sent:
             self.send_notification("failure")
 
@@ -150,7 +186,6 @@ class ACHTransaction(Document):
         if self.status not in ("Scheduled", "Initiated"):
             frappe.throw(_("Only scheduled or initiated transactions can be cancelled"))
 
-        # If initiated, try to cancel with ACHQ
         if self.status == "Initiated" and self.achq_transaction_id:
             from dcr.api.achq_integration import ACHQClient
             client = ACHQClient()
@@ -171,23 +206,18 @@ class ACHTransaction(Document):
 
     def should_retry(self, return_code):
         """Determine if the transaction should be retried based on return code."""
-        # Don't retry if max retries reached
         if self.retry_attempt >= self.max_retries:
             return False
 
-        # Don't retry non-retryable return codes (account/authorization issues)
         if return_code and return_code in NON_RETRYABLE_RETURN_CODES:
             return False
 
-        # Don't retry ACHQ pre-flight rejections (data issues)
         if return_code and return_code in ACHQ_REJECTION_CODES:
             return False
 
-        # Explicitly retryable codes (funding issues) - always retry if under max
         if return_code and return_code in RETRYABLE_RETURN_CODES:
             return True
 
-        # For unknown codes, default to retry (to be safe)
         return True
 
     def schedule_retry(self):
@@ -208,13 +238,14 @@ class ACHTransaction(Document):
         if self.retry_attempt >= self.max_retries:
             frappe.throw(_("Maximum retry attempts reached"))
 
-        # Check authorization is still active
-        auth = frappe.get_doc("ACH Authorization", self.ach_authorization)
-        if auth.status != "Active":
-            frappe.throw(_("Authorization is no longer active"))
+        # Verify payment account is still active
+        status = self._get_account_status()
+        if status != "Active":
+            frappe.throw(_("Payment account is no longer active"))
 
         retry_txn = frappe.new_doc("ACH Transaction")
-        retry_txn.ach_authorization = self.ach_authorization
+        retry_txn.bank_account = self.bank_account
+        retry_txn.ach_authorization = self.ach_authorization  # Keep for backward compat
         retry_txn.loan = self.loan
         retry_txn.customer = self.customer
         retry_txn.amount = self.amount
@@ -225,7 +256,6 @@ class ACHTransaction(Document):
         retry_txn.original_transaction = self.original_transaction or self.name
         retry_txn.insert()
 
-        # Clear next_retry_date on original
         self.next_retry_date = None
         self.save()
 
@@ -236,11 +266,9 @@ class ACHTransaction(Document):
         from dcr.dcr.doctype.ach_settings.ach_settings import get_ach_settings
 
         try:
-            # Get loan details and ACH settings
             loan = frappe.get_doc("Loan", self.loan)
             settings = get_ach_settings()
 
-            # Check if payment entry already exists (idempotency)
             existing = frappe.db.exists(
                 "Payment Entry",
                 {"reference_no": self.name, "docstatus": ["!=", 2]}
@@ -258,7 +286,6 @@ class ACHTransaction(Document):
             payment_entry.reference_date = getdate(self.completed_date)
             payment_entry.company = loan.company
 
-            # Use configured ACH clearing account, fall back to company defaults
             if settings.ach_clearing_account:
                 payment_entry.paid_to = settings.ach_clearing_account
             else:
@@ -268,11 +295,9 @@ class ACHTransaction(Document):
                     "Company", loan.company, "default_bank_account"
                 )
 
-            # Set mode of payment if configured
             if settings.mode_of_payment:
                 payment_entry.mode_of_payment = settings.mode_of_payment
 
-            # Add reference to the loan
             payment_entry.append("references", {
                 "reference_doctype": "Loan",
                 "reference_name": self.loan,

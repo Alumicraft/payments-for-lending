@@ -39,19 +39,16 @@ def process_upcoming_payments():
     if not is_ach_enabled():
         return
 
-    from dcr.dcr.doctype.ach_authorization.ach_authorization import get_loan_payment_account
+    from dcr.api.bank_account_ach import get_loan_payment_account
 
     settings = frappe.get_single("ACH Settings")
     notification_days = settings.advance_notification_days
     initiation_days = settings.days_before_due_to_initiate
 
-    # Calculate the target due date range
-    # We want to notify for payments due in `notification_days` days
     target_date = add_days(today(), notification_days)
 
     frappe.logger().info(f"Processing upcoming payments for due date: {target_date}")
 
-    # Find all active loans (we'll resolve payment accounts per-loan)
     active_loans = frappe.get_all(
         "Loan",
         filters={
@@ -62,17 +59,15 @@ def process_upcoming_payments():
 
     for loan_data in active_loans:
         try:
-            # Get the effective payment account for this loan
-            auth = get_loan_payment_account(loan_data.name)
+            account = get_loan_payment_account(loan_data.name)
 
-            if not auth:
-                # No valid payment account for this loan
+            if not account:
                 continue
 
-            if auth.status != "Active":
+            if account.get("ach_status") != "Active":
                 continue
 
-            process_loan_payment(loan_data, auth, target_date, initiation_days)
+            process_loan_payment(loan_data, account, target_date, initiation_days)
         except Exception as e:
             frappe.log_error(
                 f"Error processing loan {loan_data.name}: {str(e)}",
@@ -82,13 +77,13 @@ def process_upcoming_payments():
     frappe.db.commit()
 
 
-def process_loan_payment(loan_data, auth, target_date, initiation_days):
+def process_loan_payment(loan_data, account, target_date, initiation_days):
     """
     Process a single loan for upcoming payment.
 
     Args:
         loan_data: Loan dict with name and applicant
-        auth: ACH Authorization document (resolved for this loan)
+        account: Bank Account document (resolved for this loan)
         target_date: The due date we're looking for
         initiation_days: Days before due to schedule initiation
     """
@@ -99,7 +94,6 @@ def process_loan_payment(loan_data, auth, target_date, initiation_days):
     if not next_payment_date:
         return
 
-    # Check if the payment is due on our target date
     if next_payment_date != getdate(target_date):
         return
 
@@ -118,11 +112,10 @@ def process_loan_payment(loan_data, auth, target_date, initiation_days):
     if existing:
         return
 
-    # Create ACH Transaction
     scheduled_date = add_days(target_date, -initiation_days)
 
     txn = frappe.new_doc("ACH Transaction")
-    txn.ach_authorization = auth.name
+    txn.bank_account = account.name
     txn.loan = loan.name
     txn.customer = loan.applicant
     txn.amount = next_payment_amount
@@ -135,7 +128,6 @@ def process_loan_payment(loan_data, auth, target_date, initiation_days):
         f"amount {next_payment_amount}, scheduled for {scheduled_date}"
     )
 
-    # Send upcoming debit notification
     txn.send_notification("upcoming")
 
 
@@ -175,7 +167,6 @@ def initiate_scheduled_transactions():
 
     settings = frappe.get_single("ACH Settings")
 
-    # Check cutoff time
     cutoff_time = settings.cutoff_time
     if cutoff_time:
         current_time = get_time(nowtime())
@@ -185,7 +176,6 @@ def initiate_scheduled_transactions():
             )
             return
 
-    # Find scheduled transactions ready to initiate
     transactions = frappe.get_all(
         "ACH Transaction",
         filters={
@@ -201,15 +191,15 @@ def initiate_scheduled_transactions():
         try:
             txn = frappe.get_doc("ACH Transaction", txn_name)
 
-            # Verify authorization is still active
-            auth = frappe.get_doc("ACH Authorization", txn.ach_authorization)
-            if auth.status != "Active":
+            # Verify payment account is still active
+            status = txn._get_account_status()
+            if status != "Active":
+                account_ref = txn.bank_account or txn.ach_authorization
                 frappe.logger().warning(
-                    f"Skipping transaction {txn_name}: authorization {auth.name} is {auth.status}"
+                    f"Skipping transaction {txn_name}: payment account {account_ref} is {status}"
                 )
                 continue
 
-            # Initiate the transaction
             success = txn.initiate()
             if success:
                 frappe.logger().info(f"Initiated transaction {txn_name}")
@@ -237,7 +227,6 @@ def process_retry_transactions():
     if not is_ach_enabled():
         return
 
-    # Find transactions ready for retry
     transactions = frappe.get_all(
         "ACH Transaction",
         filters=[
@@ -245,37 +234,31 @@ def process_retry_transactions():
             ["next_retry_date", "<=", today()],
             ["next_retry_date", "is", "set"]
         ],
-        fields=["name", "retry_attempt", "max_retries", "ach_authorization"]
+        fields=["name", "retry_attempt", "max_retries", "bank_account", "ach_authorization"]
     )
 
     frappe.logger().info(f"Found {len(transactions)} transactions for retry")
 
     for txn_data in transactions:
         try:
-            # Check if we can retry
             if txn_data.retry_attempt >= txn_data.max_retries:
                 continue
 
-            # Check authorization is still active
-            auth_status = frappe.db.get_value(
-                "ACH Authorization",
-                txn_data.ach_authorization,
-                "status"
-            )
-            if auth_status != "Active":
+            # Check payment account is still active
+            if txn_data.bank_account:
+                acct_status = frappe.db.get_value("Bank Account", txn_data.bank_account, "ach_status")
+            elif txn_data.ach_authorization:
+                acct_status = frappe.db.get_value("ACH Authorization", txn_data.ach_authorization, "status")
+            else:
+                acct_status = None
+
+            if acct_status != "Active":
                 frappe.logger().warning(
-                    f"Skipping retry for {txn_data.name}: authorization is {auth_status}"
+                    f"Skipping retry for {txn_data.name}: payment account is {acct_status}"
                 )
-                # Clear the next_retry_date
-                frappe.db.set_value(
-                    "ACH Transaction",
-                    txn_data.name,
-                    "next_retry_date",
-                    None
-                )
+                frappe.db.set_value("ACH Transaction", txn_data.name, "next_retry_date", None)
                 continue
 
-            # Create retry transaction
             txn = frappe.get_doc("ACH Transaction", txn_data.name)
             retry_txn = txn.create_retry_transaction()
 
@@ -315,7 +298,6 @@ def check_pending_transactions():
         )
         return
 
-    # Query status updates for today and yesterday
     dates_to_check = [today(), add_days(today(), -1)]
 
     for check_date in dates_to_check:
@@ -352,13 +334,11 @@ def process_achq_status_update(achq_txn):
     """
     from dcr.api.achq_integration import ACHQ_STATUS_MAP
 
-    # Try to find our transaction by ACHQ transaction ID or merchant reference
     achq_transaction_id = achq_txn.get("TransactionID")
     merchant_ref_id = achq_txn.get("Merchant_ReferenceID")
 
     txn_name = None
 
-    # First try merchant reference (our internal name)
     if merchant_ref_id and frappe.db.exists("ACH Transaction", merchant_ref_id):
         txn_name = merchant_ref_id
     elif achq_transaction_id:
@@ -369,11 +349,10 @@ def process_achq_status_update(achq_txn):
         )
 
     if not txn_name:
-        return  # Transaction not found in our system
+        return
 
     txn = frappe.get_doc("ACH Transaction", txn_name)
 
-    # Skip if already in a final state
     if txn.status in ("Success", "Cancelled"):
         return
 
@@ -381,7 +360,6 @@ def process_achq_status_update(achq_txn):
     mapped_status = ACHQ_STATUS_MAP.get(achq_status)
 
     if not mapped_status:
-        # Unknown status, just update the raw status
         if txn.achq_status != achq_status:
             txn.achq_status = achq_status
             txn.save()

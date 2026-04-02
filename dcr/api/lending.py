@@ -42,7 +42,6 @@ def get_available_credit(customer):
 
     available_credit = MIFA.credit_limit - outstanding_balance
     """
-    # Get the most recent MIFA credit limit
     mifa = frappe.db.get_value("MIFA", {"customer": customer, "docstatus": 1},
         "credit_limit", order_by="mifa_date desc")
 
@@ -68,7 +67,6 @@ def validate_loan_application(doc, method):
     - Validates advance date against factory lead time
     - Warns if requested amount exceeds available credit
     """
-    # Ensure linked HBR is submitted
     if doc.get("home_build_request"):
         hbr_status = frappe.db.get_value(
             "Home Build Request", doc.home_build_request, "docstatus"
@@ -82,7 +80,6 @@ def validate_loan_application(doc, method):
     else:
         return
 
-    # Calculate and set balance fields
     customer = doc.applicant
     doc.custom_current_yn = is_dealer_current(customer)
     outstanding = get_dealer_outstanding_balance(customer)
@@ -96,7 +93,6 @@ def validate_loan_application(doc, method):
     else:
         doc.available_credit = 0
 
-    # Warn if requested amount exceeds available credit
     requested = doc.get("loan_amount") or 0
     if mifa_limit and requested > doc.available_credit:
         frappe.msgprint(
@@ -111,13 +107,11 @@ def validate_loan_application(doc, method):
             indicator="orange"
         )
 
-    # Validate advance date against factory lead time
     if doc.get("advance_date_requested"):
         hbr = frappe.get_doc("Home Build Request", doc.home_build_request)
         if hbr.factory:
             validate_advance_date(hbr.factory, doc.advance_date_requested)
 
-    # Auto-calculate pre-approval fields
     loan_amount = doc.get("loan_amount") or 0
     sales_price = doc.get("custom_projected_sales_price") or 0
 
@@ -127,10 +121,7 @@ def validate_loan_application(doc, method):
 
 
 def validate_advance_date(factory, requested_date):
-    """Check that requested advance date is achievable given factory lead time.
-
-    Raises a hard error if the date is too soon.
-    """
+    """Check that requested advance date is achievable given factory lead time."""
     lead_time = frappe.db.get_value("Supplier", factory, "current_lead_time_days")
     if not lead_time:
         return
@@ -149,11 +140,7 @@ def validate_advance_date(factory, requested_date):
 
 
 def on_loan_validate(doc, method):
-    """Populate home_build_request from Loan Application.
-
-    Other deal reference fields (home_serial_no, buyer_name, factory)
-    are handled by fetch_from declarations in fixtures.
-    """
+    """Populate home_build_request from Loan Application."""
     if not doc.loan_application:
         return
     if not doc.home_build_request:
@@ -165,23 +152,20 @@ def on_loan_validate(doc, method):
 
 
 def on_loan_after_insert(doc, method):
-    """Auto-link ACH payment account or send Plaid setup email on loan creation."""
+    """Auto-link bank account or send Plaid setup email on loan creation."""
     if not doc.applicant:
         return
 
-    # Check for existing ACH Authorization on this customer
-    existing_auth = frappe.db.get_value(
-        "ACH Authorization",
-        {"customer": doc.applicant, "status": "Active", "is_default": 1},
-        ["name", "bank_name", "bank_account_last4"],
-        as_dict=True
-    )
+    from dcr.api.bank_account_ach import get_customer_default_bank_account
 
-    if existing_auth:
-        doc.db_set("ach_payment_account", existing_auth.name, update_modified=False)
+    existing = get_customer_default_bank_account(doc.applicant)
+
+    if existing:
+        bank_name = frappe.db.get_value("Bank", existing.bank, "bank_name") if existing.bank else ""
+        doc.db_set("ach_payment_account", existing.name, update_modified=False)
         frappe.msgprint(
             _("Auto-Pay linked to {0} ending in {1}").format(
-                existing_auth.bank_name, existing_auth.bank_account_last4
+                bank_name, existing.bank_account_last4
             ),
             indicator="green",
             alert=True
@@ -196,6 +180,21 @@ def on_loan_after_insert(doc, method):
                 indicator="orange",
                 alert=True,
             )
+
+
+def on_loan_disbursement_validate(doc, method):
+    """Block loan disbursement if no valid bank account is linked."""
+    from dcr.api.bank_account_ach import get_loan_payment_account
+
+    loan = frappe.get_doc("Loan", doc.against_loan)
+    account = get_loan_payment_account(loan)
+
+    if not account:
+        frappe.throw(
+            _("Cannot disburse loan {0}: no active bank account is linked for auto-pay. "
+              "The dealer must connect a bank account before disbursement.").format(doc.against_loan),
+            title=_("Bank Account Required")
+        )
 
 
 def send_plaid_setup_email(loan_doc):

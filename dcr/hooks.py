@@ -64,6 +64,12 @@ doc_events = {
         "validate": "dcr.api.lending.on_loan_validate",
         "after_insert": "dcr.api.lending.on_loan_after_insert"
     },
+    "Loan Disbursement": {
+        "validate": "dcr.api.lending.on_loan_disbursement_validate"
+    },
+    "Bank Account": {
+        "validate": "dcr.api.bank_account_ach.validate_single_default"
+    },
 }
 
 # Whitelisted Methods

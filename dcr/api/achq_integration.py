@@ -473,12 +473,54 @@ def _validate_account_number(account_number):
         frappe.throw(_("Account number must be between 4 and 17 digits"))
 
 
+def _get_or_create_bank(bank_name):
+    """Find or create a Bank doctype record for the given bank name."""
+    if not bank_name:
+        return None
+    existing = frappe.db.get_value("Bank", {"bank_name": bank_name}, "name")
+    if existing:
+        return existing
+    bank = frappe.new_doc("Bank")
+    bank.bank_name = bank_name
+    bank.insert(ignore_permissions=True)
+    return bank.name
+
+
+def _create_bank_account(customer, bank_name, account_type, token, token_source,
+                         verify_status, account_last4, routing_last4, is_default, settings):
+    """Create a Bank Account record with ACH custom fields."""
+    bank_record = _get_or_create_bank(bank_name)
+
+    ba = frappe.new_doc("Bank Account")
+    ba.account_name = f"{customer} - {bank_name or 'Bank'} {account_last4}"
+    ba.bank = bank_record
+    ba.party_type = "Customer"
+    ba.party = customer
+    ba.is_default = 1 if is_default else 0
+    ba.is_company_account = 0
+
+    # ACH custom fields
+    ba.ach_status = "Active"
+    ba.achq_token = token
+    ba.token_source = token_source
+    ba.bank_account_last4 = account_last4
+    ba.routing_number_last4 = routing_last4
+    ba.verification_status = verify_status
+    ba.consent_captured = 1
+    ba.authorization_ip = frappe.local.request_ip if hasattr(frappe.local, 'request_ip') else ""
+    ba.authorization_date = now_datetime()
+    ba.sec_code = settings.default_sec_code
+
+    ba.insert()
+    return ba
+
+
 @frappe.whitelist()
 def setup_bank_account(customer, routing_number, account_number, account_type, is_default=True, check_type=None):
     """
     Set up a bank account for ACH autopay using manual entry.
 
-    Creates an ACH Authorization linked to the customer (not loan-specific).
+    Creates a Bank Account linked to the customer.
 
     Args:
         customer: Customer name
@@ -489,9 +531,8 @@ def setup_bank_account(customer, routing_number, account_number, account_type, i
         check_type: 'Personal' or 'Business' (optional)
 
     Returns:
-        dict with success, bank_name, account_last4, authorization_name
+        dict with success, bank_name, account_last4, bank_account_name
     """
-    # Validate inputs
     if not customer or not routing_number or not account_number:
         frappe.throw(_("Customer, routing number, and account number are required"))
 
@@ -504,15 +545,12 @@ def setup_bank_account(customer, routing_number, account_number, account_type, i
     if account_type not in ("Checking", "Savings"):
         frappe.throw(_("Account type must be Checking or Savings"))
 
-    # Rate limit: max 5 bank account additions per customer per day
     _check_rate_limit(f"bank_account:{customer}", limit=5)
 
-    # Get customer name for ACHQ
     customer_name = frappe.db.get_value("Customer", customer, "customer_name")
     if not customer_name:
         frappe.throw(_("Customer not found"))
 
-    # Create token and verify with ACHQ
     client = ACHQClient()
     result = client.tokenize_and_verify(
         routing_number=routing_number,
@@ -529,35 +567,27 @@ def setup_bank_account(customer, routing_number, account_number, account_type, i
 
     verify_status = result.get("verify_status", "UNK")
 
-    # Check verification status
     if verify_status == "NEG":
         frappe.throw(_("Bank account verification failed. This account cannot be used for autopay."))
 
-    # Check if UNK is allowed
     settings = frappe.get_single("ACH Settings")
     if verify_status == "UNK" and not settings.allow_unknown_accounts:
         frappe.throw(_("Bank account could not be verified. Please contact support."))
 
-    # Convert is_default to boolean
     is_default = is_default in [True, 1, "1", "true", "True"]
 
-    # Create ACH Authorization (customer-level, not loan-specific)
-    auth = frappe.new_doc("ACH Authorization")
-    auth.customer = customer
-    auth.is_default = 1 if is_default else 0
-    auth.status = "Active"
-    auth.token_source = "Manual"
-    auth.bank_name = result.get("bank_name", "")
-    auth.account_type = account_type
-    auth.bank_account_last4 = result.get("account_last4", "")
-    auth.routing_number_last4 = result.get("routing_last4", "")
-    auth.achq_token = result.get("token")
-    auth.verification_status = verify_status
-    auth.consent_captured = 1
-    auth.authorization_ip = frappe.local.request_ip if hasattr(frappe.local, 'request_ip') else ""
-    auth.authorization_date = now_datetime()
-    auth.sec_code = settings.default_sec_code
-    auth.insert()
+    ba = _create_bank_account(
+        customer=customer,
+        bank_name=result.get("bank_name", ""),
+        account_type=account_type,
+        token=result.get("token"),
+        token_source="Manual",
+        verify_status=verify_status,
+        account_last4=result.get("account_last4", ""),
+        routing_last4=result.get("routing_last4", ""),
+        is_default=is_default,
+        settings=settings,
+    )
 
     frappe.db.commit()
 
@@ -565,35 +595,35 @@ def setup_bank_account(customer, routing_number, account_number, account_type, i
         "success": True,
         "bank_name": result.get("bank_name", ""),
         "account_last4": result.get("account_last4", ""),
-        "authorization_name": auth.name,
+        "bank_account_name": ba.name,
         "verification_status": verify_status,
-        "is_default": auth.is_default,
+        "is_default": ba.is_default,
         "message": "Bank account successfully linked for autopay"
     }
 
 
 @frappe.whitelist()
-def pause_authorization(authorization_name, reason=None):
-    """Pause an ACH authorization."""
-    auth = frappe.get_doc("ACH Authorization", authorization_name)
-    auth.pause(reason)
-    return {"success": True, "message": "Authorization paused"}
+def pause_bank_account(bank_account_name, reason=None):
+    """Pause ACH on a bank account."""
+    from dcr.api.bank_account_ach import pause
+    pause(bank_account_name, reason)
+    return {"success": True, "message": "Bank account paused"}
 
 
 @frappe.whitelist()
-def resume_authorization(authorization_name):
-    """Resume a paused ACH authorization."""
-    auth = frappe.get_doc("ACH Authorization", authorization_name)
-    auth.resume()
-    return {"success": True, "message": "Authorization resumed"}
+def resume_bank_account(bank_account_name):
+    """Resume ACH on a paused bank account."""
+    from dcr.api.bank_account_ach import resume
+    resume(bank_account_name)
+    return {"success": True, "message": "Bank account resumed"}
 
 
 @frappe.whitelist()
-def revoke_authorization(authorization_name, reason=None):
-    """Revoke an ACH authorization."""
-    auth = frappe.get_doc("ACH Authorization", authorization_name)
-    auth.revoke(reason)
-    return {"success": True, "message": "Authorization revoked"}
+def revoke_bank_account(bank_account_name, reason=None):
+    """Revoke ACH on a bank account."""
+    from dcr.api.bank_account_ach import revoke
+    revoke(bank_account_name, reason)
+    return {"success": True, "message": "Bank account revoked"}
 
 
 # =============================================================================
@@ -603,7 +633,7 @@ def revoke_authorization(authorization_name, reason=None):
 @frappe.whitelist()
 def get_customer_accounts(customer):
     """
-    Get all bank accounts for a customer.
+    Get all ACH-enabled bank accounts for a customer.
 
     Args:
         customer: Customer name
@@ -612,17 +642,22 @@ def get_customer_accounts(customer):
         dict with accounts list
     """
     accounts = frappe.get_all(
-        "ACH Authorization",
+        "Bank Account",
         filters={
-            "customer": customer,
-            "status": ["in", ["Active", "Paused"]]
+            "party_type": "Customer",
+            "party": customer,
+            "ach_status": ["in", ["Active", "Paused"]]
         },
         fields=[
-            "name", "status", "bank_name", "bank_account_last4",
-            "account_type", "is_default", "token_source", "authorization_date"
+            "name", "ach_status as status", "bank", "bank_account_last4",
+            "is_default", "token_source", "authorization_date"
         ],
         order_by="is_default desc, authorization_date desc"
     )
+
+    # Resolve bank names
+    for acc in accounts:
+        acc["bank_name"] = frappe.db.get_value("Bank", acc.get("bank"), "bank_name") if acc.get("bank") else ""
 
     return {
         "success": True,
@@ -632,46 +667,44 @@ def get_customer_accounts(customer):
 
 
 @frappe.whitelist()
-def set_default_account(authorization_name):
+def set_default_account(bank_account_name):
     """
     Set a bank account as the default for the customer.
 
     Args:
-        authorization_name: ACH Authorization name
+        bank_account_name: Bank Account name
 
     Returns:
         dict with success
     """
-    auth = frappe.get_doc("ACH Authorization", authorization_name)
-    auth.set_as_default()
+    from dcr.api.bank_account_ach import set_as_default
+    set_as_default(bank_account_name)
     return {"success": True, "message": "Account set as default"}
 
 
 @frappe.whitelist()
-def set_loan_account(loan, authorization_name):
+def set_loan_account(loan, bank_account_name):
     """
     Set a specific bank account for a loan (override default).
 
     Args:
         loan: Loan name
-        authorization_name: ACH Authorization name (or empty to clear override)
+        bank_account_name: Bank Account name (or empty to clear override)
 
     Returns:
         dict with success
     """
     loan_doc = frappe.get_doc("Loan", loan)
 
-    if authorization_name:
-        # Validate the authorization belongs to the loan's customer
-        auth = frappe.get_doc("ACH Authorization", authorization_name)
-        if auth.customer != loan_doc.applicant:
+    if bank_account_name:
+        ba = frappe.get_doc("Bank Account", bank_account_name)
+        if ba.party != loan_doc.applicant:
             frappe.throw(_("This bank account does not belong to this customer"))
-        if auth.status != "Active":
+        if ba.get("ach_status") != "Active":
             frappe.throw(_("This bank account is not active"))
 
-        loan_doc.ach_payment_account = authorization_name
+        loan_doc.ach_payment_account = bank_account_name
     else:
-        # Clear the override
         loan_doc.ach_payment_account = None
 
     loan_doc.save()
@@ -691,33 +724,33 @@ def get_loan_account_info(loan):
     Returns:
         dict with account info and resolution source
     """
-    from dcr.dcr.doctype.ach_authorization.ach_authorization import get_loan_payment_account
+    from dcr.api.bank_account_ach import get_loan_payment_account
 
     loan_doc = frappe.get_doc("Loan", loan)
-    auth = get_loan_payment_account(loan_doc)
+    ba = get_loan_payment_account(loan_doc)
 
-    if not auth:
+    if not ba:
         return {
             "has_account": False,
             "resolution": "none",
             "message": "No payment account configured"
         }
 
-    # Determine resolution source
     if loan_doc.get("ach_payment_account"):
         resolution = "loan_override"
     else:
         resolution = "customer_default"
 
+    bank_name = frappe.db.get_value("Bank", ba.bank, "bank_name") if ba.bank else ""
+
     return {
         "has_account": True,
-        "authorization_name": auth.name,
-        "bank_name": auth.bank_name,
-        "account_last4": auth.bank_account_last4,
-        "account_type": auth.account_type,
-        "status": auth.status,
-        "is_default": auth.is_default,
-        "token_source": auth.token_source,
+        "bank_account_name": ba.name,
+        "bank_name": bank_name,
+        "account_last4": ba.bank_account_last4,
+        "status": ba.get("ach_status"),
+        "is_default": ba.is_default,
+        "token_source": ba.token_source,
         "resolution": resolution
     }
 
@@ -800,7 +833,7 @@ def process_plaid_callback(public_token, account_id, customer, is_default=True):
     1. Exchange public_token for access_token
     2. Create processor_token for ACHQ
     3. Get account details
-    4. Create ACH Authorization
+    4. Create Bank Account
 
     Args:
         public_token: Plaid public_token from Link callback
@@ -897,36 +930,33 @@ def process_plaid_callback(public_token, account_id, customer, is_default=True):
             except (requests.RequestException, KeyError, ValueError):
                 pass  # Bank name is optional
 
-        # Convert is_default to boolean
         is_default = is_default in [True, 1, "1", "true", "True"]
 
-        # Step 4: Create ACH Authorization
-        auth = frappe.new_doc("ACH Authorization")
-        auth.customer = customer
-        auth.is_default = 1 if is_default else 0
-        auth.status = "Active"
-        auth.token_source = "Plaid"
-        auth.bank_name = bank_name or account_info.get("name", "")
-        auth.account_type = "Checking" if account_info.get("subtype") == "checking" else "Savings"
-        auth.bank_account_last4 = account_info.get("mask", "")[-4:] if account_info.get("mask") else ""
-        auth.routing_number_last4 = ""  # Not available from Plaid directly
-        auth.achq_token = processor_token
-        auth.verification_status = "POS"  # Plaid-verified accounts are considered positive
-        auth.consent_captured = 1
-        auth.authorization_ip = frappe.local.request_ip if hasattr(frappe.local, 'request_ip') else ""
-        auth.authorization_date = now_datetime()
-        auth.sec_code = settings.default_sec_code
-        auth.insert()
+        resolved_bank_name = bank_name or account_info.get("name", "")
+        account_last4 = account_info.get("mask", "")[-4:] if account_info.get("mask") else ""
+
+        # Step 4: Create Bank Account
+        ba = _create_bank_account(
+            customer=customer,
+            bank_name=resolved_bank_name,
+            account_type="Checking" if account_info.get("subtype") == "checking" else "Savings",
+            token=processor_token,
+            token_source="Plaid",
+            verify_status="POS",  # Plaid-verified accounts are considered positive
+            account_last4=account_last4,
+            routing_last4="",  # Not available from Plaid directly
+            is_default=is_default,
+            settings=settings,
+        )
 
         frappe.db.commit()
 
         return {
             "success": True,
-            "authorization_name": auth.name,
-            "bank_name": auth.bank_name,
-            "account_last4": auth.bank_account_last4,
-            "account_type": auth.account_type,
-            "is_default": auth.is_default,
+            "bank_account_name": ba.name,
+            "bank_name": resolved_bank_name,
+            "account_last4": account_last4,
+            "is_default": ba.is_default,
             "message": "Bank account successfully connected via Plaid"
         }
 

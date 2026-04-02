@@ -6,6 +6,7 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "bank_account",
   "ach_authorization",
   "loan",
   "customer",
@@ -36,13 +37,20 @@
  ],
  "fields": [
   {
-   "fieldname": "ach_authorization",
+   "fieldname": "bank_account",
    "fieldtype": "Link",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "ACH Authorization",
+   "label": "Bank Account",
+   "options": "Bank Account"
+  },
+  {
+   "fieldname": "ach_authorization",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "ACH Authorization (Legacy)",
    "options": "ACH Authorization",
-   "reqd": 1
+   "read_only": 1
   },
   {
    "fieldname": "loan",

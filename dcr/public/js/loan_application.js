@@ -159,7 +159,7 @@ function send_flooring_packet(frm) {
         }
 
         frappe.confirm(
-            __('Send Flooring Packet (Info Sheet + Exhibit A + ACH Approval) to {0} ({1}) for signature?',
+            __('Send Flooring Packet (Info Sheet + Exhibit A + Auto-Pay Authorization) to {0} ({1}) for signature?',
                 [frm.doc.applicant, r.email_id]),
             function() {
                 frappe.call({
