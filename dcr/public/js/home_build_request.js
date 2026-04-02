@@ -36,7 +36,7 @@ frappe.ui.form.on('Home Build Request', {
         });
 
         // Hide default Send Email button
-        frm.page.remove_inner_button('Send Email');
+        setTimeout(() => frm.page.remove_inner_button('Send Email'), 0);
 
         // Create buttons only on submitted HBR
         if (frm.doc.docstatus !== 1) return;

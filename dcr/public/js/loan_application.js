@@ -71,7 +71,7 @@ frappe.ui.form.on('Loan Application', {
         }
 
         // Hide default Send Email button — custom Email dropdown handles it
-        frm.page.remove_inner_button('Send Email');
+        setTimeout(() => frm.page.remove_inner_button('Send Email'), 0);
 
         // Buttons require submission + HBR link
         if (frm.doc.docstatus !== 1) return;
