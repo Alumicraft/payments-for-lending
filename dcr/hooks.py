@@ -53,6 +53,7 @@ doctype_js = {
     "Home Build Request": "public/js/home_build_request.js",
     "MIFA": "public/js/mifa.js",
     "Factory Assignment": "public/js/factory_assignment.js",
+    "Loan Disbursement": "public/js/loan_disbursement.js",
 }
 
 # Document Events
