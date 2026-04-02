@@ -473,6 +473,26 @@ def _validate_account_number(account_number):
         frappe.throw(_("Account number must be between 4 and 17 digits"))
 
 
+def _send_connected_email(customer, bank_name, account_last4):
+    """Send confirmation email to dealer that bank account is connected."""
+    try:
+        customer_email = frappe.db.get_value("Customer", customer, "email_id")
+        if not customer_email:
+            return
+        customer_name = frappe.db.get_value("Customer", customer, "customer_name")
+
+        from dcr.api.dcr_email import send_autopay_connected
+        send_autopay_connected(
+            customer_name=customer_name or customer,
+            bank_name=bank_name,
+            account_last4=account_last4,
+            to_email=customer_email,
+            reference_name=customer,
+        )
+    except Exception:
+        frappe.log_error("Failed to send autopay connected email", "ACH Setup")
+
+
 def _get_or_create_bank(bank_name):
     """Find or create a Bank doctype record for the given bank name."""
     if not bank_name:
@@ -590,6 +610,8 @@ def setup_bank_account(customer, routing_number, account_number, account_type, i
     )
 
     frappe.db.commit()
+
+    _send_connected_email(customer, result.get("bank_name", ""), result.get("account_last4", ""))
 
     return {
         "success": True,
@@ -950,6 +972,8 @@ def process_plaid_callback(public_token, account_id, customer, is_default=True):
         )
 
         frappe.db.commit()
+
+        _send_connected_email(customer, resolved_bank_name, account_last4)
 
         return {
             "success": True,

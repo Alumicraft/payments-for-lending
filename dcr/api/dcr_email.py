@@ -323,6 +323,26 @@ def send_autopay_update(customer_name, setup_url, to_email, reference_name=None)
     )
 
 
+# ============================================================================
+# 15. Autopay Connected Confirmation
+# ============================================================================
+
+def send_autopay_connected(customer_name, bank_name, account_last4, to_email, reference_name=None):
+    """Send confirmation that bank account has been successfully connected for auto-pay."""
+    return _send(
+        doctype="Customer",
+        docname=reference_name,
+        to_email=to_email,
+        subject="Auto-Pay Bank Account Connected",
+        template="autopay-connected",
+        extra_data={
+            "customer_name": customer_name,
+            "bank_name": bank_name,
+            "account_last4": account_last4,
+        },
+    )
+
+
 @frappe.whitelist()
 def send_autopay_update_email(customer):
     """Whitelisted method — send autopay update email to a dealer."""
