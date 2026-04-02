@@ -75,7 +75,7 @@ function show_autopay_indicator(frm) {
                     'red'
                 );
                 // Bind after headline renders
-                frm.dashboard.$body.find('.resend-autopay-email').on('click', function() {
+                frm.$wrapper.find('.resend-autopay-email').on('click', function() {
                     $(this).prop('disabled', true).text('Sending...');
                     frappe.call({
                         method: 'dcr.api.dcr_email.send_autopay_update_email',
@@ -89,7 +89,7 @@ function show_autopay_indicator(frm) {
                             }
                         },
                         always: function() {
-                            frm.dashboard.$body.find('.resend-autopay-email').prop('disabled', false).text('Resend Setup Email');
+                            frm.$wrapper.find('.resend-autopay-email').prop('disabled', false).text('Resend Setup Email');
                         }
                     });
                 });
