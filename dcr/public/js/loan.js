@@ -52,10 +52,14 @@ frappe.ui.form.on('Loan', {
 
 
 function show_autopay_indicator(frm) {
+    // Clear any existing headline first to prevent duplicates
+    frm.dashboard.clear_headline();
+
     frappe.call({
         method: 'dcr.api.achq_integration.get_loan_account_info',
         args: { loan: frm.doc.name },
         callback: function(r) {
+            frm.dashboard.clear_headline();
             if (r.message && r.message.has_account) {
                 var info = r.message;
                 frm.dashboard.set_headline(
