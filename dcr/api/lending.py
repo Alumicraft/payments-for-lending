@@ -165,7 +165,7 @@ def on_loan_after_insert(doc, method):
         doc.db_set("ach_payment_account", existing.name, update_modified=False)
         frappe.msgprint(
             _("Auto-Pay linked to {0} ending in {1}").format(
-                bank_name, existing.bank_account_last4
+                bank_name, existing.custom_account_last_four
             ),
             indicator="green",
             alert=True
