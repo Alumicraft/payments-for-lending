@@ -64,7 +64,7 @@ def generate_plaid_token(customer):
     """Generate HMAC token for a Plaid setup URL."""
     import hashlib
     import hmac as hmac_mod
-    secret = frappe.local.conf.get("secret_key") or frappe.generate_hash()
+    secret = frappe.local.conf.get("encryption_key") or frappe.local.conf.get("secret_key")
     return hmac_mod.new(
         secret.encode(), customer.encode(), hashlib.sha256
     ).hexdigest()[:20]
