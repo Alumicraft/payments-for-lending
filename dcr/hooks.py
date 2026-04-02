@@ -74,6 +74,10 @@ override_doctype_dashboards = {
     "Customer": "dcr.overrides.customer_dashboard.get_data"
 }
 
+override_doctype_class = {
+    "Loan Repayment Schedule": "dcr.overrides.loan_repayment_schedule.CustomLoanRepaymentSchedule",
+}
+
 # Scheduled Tasks
 scheduler_events = {
     "daily": [
