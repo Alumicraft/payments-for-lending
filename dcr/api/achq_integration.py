@@ -503,8 +503,8 @@ def _create_bank_account(customer, bank_name, account_type, token, token_source,
     ba.custom_ach_status = "Active"
     ba.custom_achq_token = token
     ba.custom_token_source = token_source
-    ba.custom_bank_account_last4 = account_last4
-    ba.custom_routing_number_last4 = routing_last4
+    ba.custom_account_last_four = account_last4
+    ba.custom_routing_last_four = routing_last4
     ba.custom_verification_status = verify_status
     ba.custom_consent_captured = 1
     ba.custom_authorization_ip = frappe.local.request_ip if hasattr(frappe.local, 'request_ip') else ""
@@ -649,7 +649,7 @@ def get_customer_accounts(customer):
             "custom_ach_status": ["in", ["Active", "Paused"]]
         },
         fields=[
-            "name", "custom_ach_status as status", "bank", "custom_bank_account_last4 as bank_account_last4",
+            "name", "custom_ach_status as status", "bank", "custom_account_last_four as bank_account_last4",
             "is_default", "custom_token_source as token_source", "custom_authorization_date as authorization_date"
         ],
         order_by="is_default desc, custom_authorization_date desc"
@@ -747,7 +747,7 @@ def get_loan_account_info(loan):
         "has_account": True,
         "bank_account_name": ba.name,
         "bank_name": bank_name,
-        "account_last4": ba.custom_bank_account_last4,
+        "account_last4": ba.custom_account_last_four,
         "status": ba.get("custom_ach_status"),
         "is_default": ba.is_default,
         "token_source": ba.custom_token_source,

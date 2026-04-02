@@ -56,7 +56,7 @@ def execute():
         # Idempotency check
         existing_ba = frappe.db.get_value(
             "Bank Account",
-            {"custom_ach_authorization_legacy": auth.name},
+            {"custom_legacy_ach_auth": auth.name},
             "name"
         )
         if existing_ba:
@@ -92,8 +92,8 @@ def execute():
         ba.custom_ach_status = ach_status
         ba.custom_achq_token = tokens.get(auth.name, "")
         ba.custom_token_source = auth.token_source
-        ba.custom_bank_account_last4 = auth.bank_account_last4
-        ba.custom_routing_number_last4 = auth.routing_number_last4
+        ba.custom_account_last_four = auth.bank_account_last4
+        ba.custom_routing_last_four = auth.routing_number_last4
         ba.custom_verification_status = auth.verification_status
         ba.custom_consent_captured = auth.consent_captured
         ba.custom_authorization_ip = auth.authorization_ip
@@ -101,7 +101,7 @@ def execute():
         ba.custom_sec_code = auth.sec_code
         ba.custom_revocation_date = auth.revocation_date
         ba.custom_revocation_reason = auth.revocation_reason
-        ba.custom_ach_authorization_legacy = auth.name
+        ba.custom_legacy_ach_auth = auth.name
 
         ba.flags.ignore_validate = True  # Skip validate hook during migration
         ba.insert(ignore_permissions=True)
