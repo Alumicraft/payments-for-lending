@@ -49,7 +49,7 @@ class CustomLoanRepaymentSchedule(LoanRepaymentSchedule):
         product_rate = self.get_loan_product_value(
             "custom_contract_interest_rate", "custom_rate_of_interest"
         )
-        return flt(product_rate if product_rate is not None else self.rate_of_interest)
+        return flt(product_rate or self.rate_of_interest)
 
     def get_default_interest_rate(self) -> float:
         """Expose default-rate config (used by downstream delinquency/default logic)."""
