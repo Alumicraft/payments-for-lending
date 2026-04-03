@@ -46,10 +46,11 @@ class CustomLoanRepaymentSchedule(LoanRepaymentSchedule):
 
     def get_contract_interest_rate(self) -> float:
         """Use product-specific contract rate when configured, else loan rate."""
-        product_rate = self.get_loan_product_value(
-            "custom_contract_interest_rate", "custom_rate_of_interest"
-        )
-        return flt(product_rate or self.rate_of_interest)
+        for field in ("custom_contract_interest_rate", "custom_rate_of_interest"):
+            val = frappe.db.get_value("Loan Product", self.loan_product, field)
+            if flt(val) > 0:
+                return flt(val)
+        return flt(self.rate_of_interest)
 
     def get_default_interest_rate(self) -> float:
         """Expose default-rate config (used by downstream delinquency/default logic)."""
