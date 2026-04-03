@@ -57,7 +57,7 @@ class CustomLoanRepaymentSchedule(LoanRepaymentSchedule):
         return flt(product_default_rate) if product_default_rate is not None else 0.0
 
     def make_dcr_repayment_schedule(self, schedule_field: str) -> None:
-        principal = flt(self.current_principal_amount)
+        principal = flt(getattr(self, "current_principal_amount", None) or self.loan_amount)
         monthly_rate = self.get_contract_interest_rate() / 1200
         interest_only_months = int(
             flt(
