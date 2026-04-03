@@ -94,6 +94,7 @@ class CustomLoanRepaymentSchedule(LoanRepaymentSchedule):
                 interest_amount=interest_amount,
                 total_payment=total_payment,
                 balance_loan_amount=balance_loan_amount,
+                days=30,
             )
 
             principal = balance_loan_amount
