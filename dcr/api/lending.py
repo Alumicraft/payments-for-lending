@@ -165,7 +165,9 @@ def on_loan_validate(doc, method):
 
 
 def on_loan_after_insert(doc, method):
-    """Auto-link bank account or send setup email on loan creation."""
+    """Populate deal reference fields, rebate, and auto-link bank account."""
+    _populate_deal_reference(doc)
+
     if not doc.applicant:
         return
 
@@ -185,6 +187,40 @@ def on_loan_after_insert(doc, method):
         )
     else:
         _send_setup_email_if_needed(doc)
+
+
+def _populate_deal_reference(doc):
+    """Copy deal reference fields from Loan Application and fetch rebate from Factory Assignment."""
+    if not doc.loan_application:
+        return
+
+    la_fields = frappe.db.get_value(
+        "Loan Application", doc.loan_application,
+        ["home_build_request", "home_serial_no", "buyer_name", "factory"],
+        as_dict=True
+    )
+    if not la_fields:
+        return
+
+    updates = {}
+    for field, value in la_fields.items():
+        if value and not doc.get(field):
+            updates[field] = value
+
+    # Fetch rebate percentage from Factory Assignment (dealer + factory pair)
+    factory = updates.get("factory") or doc.get("factory")
+    if not doc.get("rebate_percentage") and doc.applicant and factory:
+        rebate = frappe.db.get_value(
+            "Factory Assignment",
+            {"customer": doc.applicant, "factory": factory, "docstatus": 1, "active": 1},
+            "rebate_percentage"
+        )
+        if rebate is not None:
+            updates["rebate_percentage"] = rebate
+
+    if updates:
+        for field, value in updates.items():
+            doc.db_set(field, value, update_modified=False)
 
 
 def on_loan_on_update(doc, method):
