@@ -209,14 +209,14 @@ def _populate_deal_reference(doc):
 
     # Fetch rebate percentage from Factory Assignment (dealer + factory pair)
     factory = updates.get("factory") or doc.get("factory")
-    if not doc.get("rebate_percentage") and doc.applicant and factory:
+    if not doc.get("custom_rebate_percentage") and doc.applicant and factory:
         rebate = frappe.db.get_value(
             "Factory Assignment",
             {"customer": doc.applicant, "factory": factory, "docstatus": 1, "active": 1},
             "rebate_percentage"
         )
         if rebate is not None:
-            updates["rebate_percentage"] = rebate
+            updates["custom_rebate_percentage"] = rebate
 
     if updates:
         for field, value in updates.items():
