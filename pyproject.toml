@@ -14,3 +14,8 @@ build-backend = "flit_core.buildapi"
 
 [tool.flit.module]
 name = "dcr"
+
+[tool.bench.frappe-dependencies]
+frappe = ">=15.0.0,<17.0.0"
+erpnext = ">=15.0.0,<17.0.0"
+lending = ">=15.0.0,<17.0.0"

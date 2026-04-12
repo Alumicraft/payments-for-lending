@@ -132,14 +132,12 @@ class ACHTransaction(Document):
             self.initiated_date = now_datetime()
             self.settlement_date = add_days(today(), 5)
             self.save()
-            frappe.db.commit()
             return True
         else:
             self.status = "Failed"
             self.failure_code = result.get("error_code")
             self.failure_reason = result.get("error_message")
             self.save()
-            frappe.db.commit()
             return False
 
     def mark_success(self, achq_status=None):

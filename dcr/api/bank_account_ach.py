@@ -152,7 +152,8 @@ def _cancel_pending_transactions(bank_account_name):
             "bank_account": bank_account_name,
             "status": ["in", ["Scheduled", "Initiated"]]
         },
-        pluck="name"
+        pluck="name",
+        order_by="creation desc"
     )
 
     # Also check old ach_authorization field for backward compatibility
@@ -163,7 +164,8 @@ def _cancel_pending_transactions(bank_account_name):
             "status": ["in", ["Scheduled", "Initiated"]],
             "bank_account": ["in", ["", None]]
         },
-        pluck="name"
+        pluck="name",
+        order_by="creation desc"
     )
 
     for txn_name in set(pending + pending_legacy):
