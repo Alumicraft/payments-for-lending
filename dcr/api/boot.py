@@ -125,6 +125,48 @@ def _nest_sidebar_items(bootinfo):
 
 
 @frappe.whitelist()
+def debug_sidebar_restore():
+	"""Temporary debug endpoint — remove after fixing."""
+	name_map = {}
+	for row in frappe.db.sql("SELECT name FROM `tabWorkspace Sidebar`", as_dict=True):
+		name_map[row.name.lower()] = row.name
+
+	db_counts = {}
+	for row in frappe.db.sql(
+		"SELECT parent, COUNT(*) as cnt "
+		"FROM `tabWorkspace Sidebar Item` "
+		"GROUP BY parent",
+		as_dict=True,
+	):
+		db_counts[row.parent] = row.cnt
+
+	sidebar_name = name_map.get("contacts")
+	boot_data = getattr(frappe.local, "boot", None)
+	boot_count = None
+	if boot_data and hasattr(boot_data, "workspace_sidebar_item"):
+		ws = boot_data.workspace_sidebar_item.get("contacts", {})
+		boot_count = len(ws.get("items", []))
+
+	raw_items = []
+	if sidebar_name:
+		raw_items = frappe.db.sql(
+			"SELECT label, type FROM `tabWorkspace Sidebar Item` "
+			"WHERE parent = %s ORDER BY idx",
+			sidebar_name,
+			as_dict=True,
+		)
+
+	return {
+		"name_map_has_contacts": "contacts" in name_map,
+		"sidebar_name": sidebar_name,
+		"db_count": db_counts.get(sidebar_name, "NOT_FOUND") if sidebar_name else "NO_NAME",
+		"boot_count": boot_count,
+		"raw_items_count": len(raw_items),
+		"raw_items": raw_items,
+	}
+
+
+@frappe.whitelist()
 def get_layout_with_icons():
 	"""Override get_layout to merge icon image data into saved layouts.
 	The DesktopLayout saves a JSON snapshot that loses logo_url/icon_image
