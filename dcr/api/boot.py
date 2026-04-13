@@ -11,6 +11,11 @@ def boot_session(bootinfo):
 		if item.get("icon_url") and item.get("icon"):
 			item["icon"] = None
 
+	# Frappe v16 get_sidebar_items() drops Sidebar Item Group and child
+	# items from boot data. Restore them from the database before any
+	# other processing.
+	_restore_missing_sidebar_items(bootinfo)
+
 	# Remove broken workspace sidebar items that have null link_to.
 	# These cause TypeError in frappe.router.slug which kills the desktop.
 	sidebar_items = getattr(bootinfo, "workspace_sidebar_item", None) or {}
@@ -23,6 +28,46 @@ def boot_session(bootinfo):
 
 	# Restructure flat sidebar items into nested structure for v16 renderer
 	_nest_sidebar_items(bootinfo)
+
+
+def _restore_missing_sidebar_items(bootinfo):
+	"""Frappe v16 get_sidebar_items() drops Sidebar Item Group and child
+	items from boot data. Re-read from the database when items are missing."""
+	sidebar_data = getattr(bootinfo, "workspace_sidebar_item", None) or {}
+	if not sidebar_data:
+		return
+
+	# Build lookup: lowercase name → actual document name
+	name_map = {}
+	for name in frappe.get_all("Workspace Sidebar", pluck="name"):
+		name_map[name.lower()] = name
+
+	# Batch: item counts per sidebar document
+	db_counts = {}
+	for row in frappe.db.sql(
+		"SELECT parent, COUNT(*) as cnt "
+		"FROM `tabWorkspace Sidebar Item` "
+		"GROUP BY parent",
+		as_dict=True,
+	):
+		db_counts[row.parent] = row.cnt
+
+	for ws_key, sidebar in sidebar_data.items():
+		sidebar_name = name_map.get(ws_key)
+		if not sidebar_name:
+			continue
+
+		boot_count = len(sidebar.get("items") or [])
+		if db_counts.get(sidebar_name, 0) <= boot_count:
+			continue
+
+		# Items were dropped — restore full list from database
+		sidebar["items"] = frappe.get_all(
+			"Workspace Sidebar Item",
+			filters={"parent": sidebar_name},
+			fields="*",
+			order_by="idx",
+		)
 
 
 def _nest_sidebar_items(bootinfo):
@@ -49,10 +94,10 @@ def _nest_sidebar_items(bootinfo):
 		current_section = None
 
 		for item in items:
-			# Mark Sidebar Item Group items as standard so TypeLink.make()
+			# Mark non-link item types as standard so TypeLink.make()
 			# doesn't skip them (the guard exempts standard items).
 			# Side effect: hides drag/settings controls in sidebar edit mode.
-			if item.get("type") == "Sidebar Item Group":
+			if item.get("type") in ("Sidebar Item Group", "Spacer"):
 				item["standard"] = True
 
 			if item.get("type") == "Section Break":
