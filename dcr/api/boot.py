@@ -16,9 +16,13 @@ def boot_session(bootinfo):
 	# other processing.
 	_restore_missing_sidebar_items(bootinfo)
 
+	# DEBUG: snapshot item types/counts at each stage
+	sidebar_items = getattr(bootinfo, "workspace_sidebar_item", None) or {}
+	contacts = sidebar_items.get("contacts", {})
+	contacts["_dcr_stage1_after_restore"] = [item.get("type") for item in (contacts.get("items") or [])]
+
 	# Remove broken workspace sidebar items that have null link_to.
 	# These cause TypeError in frappe.router.slug which kills the desktop.
-	sidebar_items = getattr(bootinfo, "workspace_sidebar_item", None) or {}
 	for name, sidebar in sidebar_items.items():
 		if sidebar.get("items"):
 			sidebar["items"] = [
@@ -26,8 +30,15 @@ def boot_session(bootinfo):
 				if item.get("type") != "Link" or item.get("link_to") or item.get("link_type") == "URL"
 			]
 
+	contacts["_dcr_stage2_after_filter"] = [item.get("type") for item in (contacts.get("items") or [])]
+
 	# Restructure flat sidebar items into nested structure for v16 renderer
 	_nest_sidebar_items(bootinfo)
+
+	contacts["_dcr_stage3_after_nest"] = [item.get("type") for item in (contacts.get("items") or [])]
+	for item in (contacts.get("items") or []):
+		if item.get("type") == "Section Break":
+			contacts["_dcr_section_nested"] = len(item.get("nested_items", []))
 
 
 def _restore_missing_sidebar_items(bootinfo):
