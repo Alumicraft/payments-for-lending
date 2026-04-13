@@ -39,9 +39,21 @@ def _fix_sidebar_items(bootinfo):
 	sidebar_items = getattr(bootinfo, "workspace_sidebar_item", None) or {}
 
 	for _name, sidebar in sidebar_items.items():
-		for item in (sidebar.get("items") or []):
+		items = sidebar.get("items")
+		if not items:
+			continue
+
+		for item in items:
 			if item.get("type") in ("Sidebar Item Group", "Spacer"):
 				item["standard"] = True
+
+		# Remove Section Break items — the TypeSectionBreak renderer is
+		# broken in v16 (creates zero DOM elements or a bare chevron with
+		# no label). Keeping them in a flat list adds a confusing toggle.
+		sidebar["items"] = [
+			item for item in items
+			if item.get("type") != "Section Break"
+		]
 
 
 @frappe.whitelist()
