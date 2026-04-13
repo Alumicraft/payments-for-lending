@@ -1,21 +1,26 @@
-// Patch desktop icons that have custom images in boot data but render
-// as letter squares due to stale layout cache missing logo_url/icon_image.
-$(document).on("page-change", function () {
-	if (frappe.get_route_str() !== "") return;
-	// Desktop page — wait for icons to render, then patch
-	setTimeout(function () {
-		var boot_icons = frappe.boot.desktop_icons || [];
-		document.querySelectorAll(".desktop-icon").forEach(function (el) {
-			var label = el.getAttribute("data-id");
-			var boot_icon = boot_icons.find(function (i) { return i.label === label; });
-			var url = boot_icon && (boot_icon.logo_url || boot_icon.icon_image);
-			if (url && !el.getAttribute("data-logo")) {
-				var container = el.querySelector(".icon-container");
-				if (container) {
-					container.innerHTML = '<img class="app-icon" src="' + url + '" alt="' + label + '" />';
-					el.setAttribute("data-logo", url);
-				}
+// Intercept frappe.desktop_icons assignment to merge image data from
+// boot before the desktop template renders. This prevents the flash
+// of letter squares that the post-render DOM patch caused.
+(function () {
+	var _desktop_icons;
+	Object.defineProperty(frappe, "desktop_icons", {
+		get: function () { return _desktop_icons; },
+		set: function (val) {
+			if (Array.isArray(val) && frappe.boot && frappe.boot.desktop_icons) {
+				var boot_map = {};
+				frappe.boot.desktop_icons.forEach(function (i) {
+					if (i.logo_url || i.icon_image) boot_map[i.label] = i;
+				});
+				val.forEach(function (item) {
+					var boot = boot_map[item.label];
+					if (boot) {
+						if (!item.logo_url) item.logo_url = boot.logo_url;
+						if (!item.icon_image) item.icon_image = boot.icon_image;
+					}
+				});
 			}
-		});
-	}, 300);
-});
+			_desktop_icons = val;
+		},
+		configurable: true,
+	});
+})();
