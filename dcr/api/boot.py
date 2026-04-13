@@ -22,51 +22,26 @@ def boot_session(bootinfo):
 			]
 
 	# Restructure flat sidebar items into nested structure for v16 renderer
-	_nest_sidebar_items(bootinfo)
+	_fix_sidebar_items(bootinfo)
 
 
-def _nest_sidebar_items(bootinfo):
-	"""Restructure flat sidebar items to nest children under Section Breaks,
-	and mark Sidebar Item Group / Spacer items as standard to bypass the
-	TypeLink.make() early-return rendering guard (frappe/frappe#37872, #35881)."""
+def _fix_sidebar_items(bootinfo):
+	"""Mark non-link sidebar item types as standard to bypass the
+	TypeLink.make() early-return rendering guard (frappe/frappe#37872).
+
+	The guard skips items without a path unless they are 'standard' or
+	type 'Section Break'.  Spacer and Sidebar Item Group items have no
+	link_to, so get_path() returns null and the guard kills rendering.
+
+	Note: Section Break nesting is intentionally NOT done here because
+	Frappe v16's TypeSectionBreak renderer is broken — it creates zero
+	DOM elements even with correctly populated nested_items."""
 	sidebar_items = getattr(bootinfo, "workspace_sidebar_item", None) or {}
 
 	for _name, sidebar in sidebar_items.items():
-		items = sidebar.get("items")
-		if not items:
-			continue
-
-		# Idempotency: skip if any Section Break already has nested_items populated
-		already_nested = any(
-			item.get("type") == "Section Break"
-			and item.get("nested_items")
-			for item in items
-		)
-		if already_nested:
-			continue
-
-		new_items = []
-		current_section = None
-
-		for item in items:
-			# Mark non-link item types as standard so TypeLink.make()
-			# doesn't skip them (the guard exempts standard items).
-			# Side effect: hides drag/settings controls in sidebar edit mode.
+		for item in (sidebar.get("items") or []):
 			if item.get("type") in ("Sidebar Item Group", "Spacer"):
 				item["standard"] = True
-
-			if item.get("type") == "Section Break":
-				current_section = item
-				if not item.get("nested_items"):
-					item["nested_items"] = []
-				new_items.append(item)
-			elif current_section is not None:
-				current_section["nested_items"].append(item)
-			else:
-				# Items before first Section Break stay top-level
-				new_items.append(item)
-
-		sidebar["items"] = new_items
 
 
 @frappe.whitelist()
