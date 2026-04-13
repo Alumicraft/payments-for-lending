@@ -74,9 +74,17 @@ def get_layout_with_icons():
 	"""Override get_layout to merge icon image data into saved layouts.
 	The DesktopLayout saves a JSON snapshot that loses logo_url/icon_image
 	fields, so we merge them back from the actual Desktop Icon records."""
-	from frappe.desk.doctype.desktop_layout.desktop_layout import get_layout as _get_layout
+	import json
 
-	layout = _get_layout()
+	layout = None
+	try:
+		doc = frappe.get_doc("Desktop Layout", frappe.session.user)
+		if doc.layout:
+			layout = json.loads(doc.layout)
+	except frappe.DoesNotExistError:
+		frappe.clear_last_message()
+		return None
+
 	if not layout:
 		return layout
 
