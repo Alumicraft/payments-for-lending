@@ -37,12 +37,18 @@ def _restore_missing_sidebar_items(bootinfo):
 	if not sidebar_data:
 		return
 
-	# Build lookup: lowercase name → actual document name
-	name_map = {}
-	for name in frappe.get_all("Workspace Sidebar", pluck="name"):
-		name_map[name.lower()] = name
+	# Internal child-table fields to strip from raw SQL results
+	_internal = frozenset({
+		"name", "owner", "creation", "modified", "modified_by",
+		"parent", "parenttype", "parentfield", "doctype", "docstatus", "idx",
+	})
 
-	# Batch: item counts per sidebar document
+	# Build lookup: lowercase sidebar name → document name (direct SQL)
+	name_map = {}
+	for row in frappe.db.sql("SELECT name FROM `tabWorkspace Sidebar`", as_dict=True):
+		name_map[row.name.lower()] = row.name
+
+	# Item counts per sidebar (direct SQL)
 	db_counts = {}
 	for row in frappe.db.sql(
 		"SELECT parent, COUNT(*) as cnt "
@@ -61,13 +67,17 @@ def _restore_missing_sidebar_items(bootinfo):
 		if db_counts.get(sidebar_name, 0) <= boot_count:
 			continue
 
-		# Items were dropped — restore full list from database
-		sidebar["items"] = frappe.get_all(
-			"Workspace Sidebar Item",
-			filters={"parent": sidebar_name},
-			fields="*",
-			order_by="idx",
+		# Items were dropped — restore full list via direct SQL
+		raw = frappe.db.sql(
+			"SELECT * FROM `tabWorkspace Sidebar Item` "
+			"WHERE parent = %s ORDER BY idx",
+			sidebar_name,
+			as_dict=True,
 		)
+		sidebar["items"] = [
+			{k: v for k, v in row.items() if k not in _internal}
+			for row in raw
+		]
 
 
 def _nest_sidebar_items(bootinfo):
