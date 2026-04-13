@@ -11,18 +11,9 @@ def boot_session(bootinfo):
 		if item.get("icon_url") and item.get("icon"):
 			item["icon"] = None
 
-	# Frappe v16 get_sidebar_items() drops Sidebar Item Group and child
-	# items from boot data. Restore them from the database before any
-	# other processing.
-	_restore_missing_sidebar_items(bootinfo)
-
-	# DEBUG: snapshot item types/counts at each stage
-	sidebar_items = getattr(bootinfo, "workspace_sidebar_item", None) or {}
-	contacts = sidebar_items.get("contacts", {})
-	contacts["_dcr_stage1_after_restore"] = [item.get("type") for item in (contacts.get("items") or [])]
-
 	# Remove broken workspace sidebar items that have null link_to.
 	# These cause TypeError in frappe.router.slug which kills the desktop.
+	sidebar_items = getattr(bootinfo, "workspace_sidebar_item", None) or {}
 	for name, sidebar in sidebar_items.items():
 		if sidebar.get("items"):
 			sidebar["items"] = [
@@ -30,82 +21,14 @@ def boot_session(bootinfo):
 				if item.get("type") != "Link" or item.get("link_to") or item.get("link_type") == "URL"
 			]
 
-	contacts["_dcr_stage2_after_filter"] = [item.get("type") for item in (contacts.get("items") or [])]
-
 	# Restructure flat sidebar items into nested structure for v16 renderer
 	_nest_sidebar_items(bootinfo)
-
-	contacts["_dcr_stage3_after_nest"] = [item.get("type") for item in (contacts.get("items") or [])]
-	for item in (contacts.get("items") or []):
-		if item.get("type") == "Section Break":
-			contacts["_dcr_section_nested"] = len(item.get("nested_items", []))
-
-
-def _restore_missing_sidebar_items(bootinfo):
-	"""Frappe v16 get_sidebar_items() drops Sidebar Item Group and child
-	items from boot data. Re-read from the database when items are missing."""
-	sidebar_data = getattr(bootinfo, "workspace_sidebar_item", None) or {}
-	if not sidebar_data:
-		return
-
-	# Internal child-table fields to strip from raw SQL results
-	_internal = frozenset({
-		"name", "owner", "creation", "modified", "modified_by",
-		"parent", "parenttype", "parentfield", "doctype", "docstatus", "idx",
-	})
-
-	# Build lookup: lowercase sidebar name → document name (direct SQL)
-	name_map = {}
-	for row in frappe.db.sql("SELECT name FROM `tabWorkspace Sidebar`", as_dict=True):
-		name_map[row.name.lower()] = row.name
-
-	# Item counts per sidebar (direct SQL)
-	db_counts = {}
-	for row in frappe.db.sql(
-		"SELECT parent, COUNT(*) as cnt "
-		"FROM `tabWorkspace Sidebar Item` "
-		"GROUP BY parent",
-		as_dict=True,
-	):
-		db_counts[row.parent] = row.cnt
-
-	for ws_key, sidebar in sidebar_data.items():
-		sidebar_name = name_map.get(ws_key)
-		if not sidebar_name:
-			sidebar["_dcr_skip"] = "no_name"
-			continue
-
-		boot_count = len(sidebar.get("items") or [])
-		db_count = db_counts.get(sidebar_name, 0)
-		sidebar["_dcr_boot"] = boot_count
-		sidebar["_dcr_db"] = db_count
-
-		if db_count <= boot_count:
-			sidebar["_dcr_skip"] = "count_ok"
-			continue
-
-		# Items were dropped — restore full list via direct SQL
-		try:
-			raw = frappe.db.sql(
-				"SELECT * FROM `tabWorkspace Sidebar Item` "
-				"WHERE parent = %s ORDER BY idx",
-				sidebar_name,
-				as_dict=True,
-			)
-			sidebar["_dcr_raw"] = len(raw)
-			sidebar["items"] = [
-				{k: v for k, v in row.items() if k not in _internal}
-				for row in raw
-			]
-			sidebar["_dcr_restored"] = len(sidebar["items"])
-		except Exception as e:
-			sidebar["_dcr_error"] = str(e)
 
 
 def _nest_sidebar_items(bootinfo):
 	"""Restructure flat sidebar items to nest children under Section Breaks,
-	and mark Sidebar Item Group items as standard to bypass the TypeLink.make()
-	early-return rendering guard (frappe/frappe#37872, #35881)."""
+	and mark Sidebar Item Group / Spacer items as standard to bypass the
+	TypeLink.make() early-return rendering guard (frappe/frappe#37872, #35881)."""
 	sidebar_items = getattr(bootinfo, "workspace_sidebar_item", None) or {}
 
 	for _name, sidebar in sidebar_items.items():
@@ -144,48 +67,6 @@ def _nest_sidebar_items(bootinfo):
 				new_items.append(item)
 
 		sidebar["items"] = new_items
-
-
-@frappe.whitelist()
-def debug_sidebar_restore():
-	"""Temporary debug endpoint — remove after fixing."""
-	name_map = {}
-	for row in frappe.db.sql("SELECT name FROM `tabWorkspace Sidebar`", as_dict=True):
-		name_map[row.name.lower()] = row.name
-
-	db_counts = {}
-	for row in frappe.db.sql(
-		"SELECT parent, COUNT(*) as cnt "
-		"FROM `tabWorkspace Sidebar Item` "
-		"GROUP BY parent",
-		as_dict=True,
-	):
-		db_counts[row.parent] = row.cnt
-
-	sidebar_name = name_map.get("contacts")
-	boot_data = getattr(frappe.local, "boot", None)
-	boot_count = None
-	if boot_data and hasattr(boot_data, "workspace_sidebar_item"):
-		ws = boot_data.workspace_sidebar_item.get("contacts", {})
-		boot_count = len(ws.get("items", []))
-
-	raw_items = []
-	if sidebar_name:
-		raw_items = frappe.db.sql(
-			"SELECT label, type FROM `tabWorkspace Sidebar Item` "
-			"WHERE parent = %s ORDER BY idx",
-			sidebar_name,
-			as_dict=True,
-		)
-
-	return {
-		"name_map_has_contacts": "contacts" in name_map,
-		"sidebar_name": sidebar_name,
-		"db_count": db_counts.get(sidebar_name, "NOT_FOUND") if sidebar_name else "NO_NAME",
-		"boot_count": boot_count,
-		"raw_items_count": len(raw_items),
-		"raw_items": raw_items,
-	}
 
 
 @frappe.whitelist()
