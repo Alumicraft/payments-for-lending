@@ -11,6 +11,16 @@ def boot_session(bootinfo):
 		if item.get("icon_url") and item.get("icon"):
 			item["icon"] = None
 
+	# Remove broken workspace sidebar items that have null link_to.
+	# These cause TypeError in frappe.router.slug which kills the desktop.
+	sidebar_items = getattr(bootinfo, "workspace_sidebar_item", None) or {}
+	for name, sidebar in sidebar_items.items():
+		if sidebar.get("items"):
+			sidebar["items"] = [
+				item for item in sidebar["items"]
+				if item.get("type") != "Link" or item.get("link_to") or item.get("link_type") == "URL"
+			]
+
 
 @frappe.whitelist()
 def get_layout_with_icons():
