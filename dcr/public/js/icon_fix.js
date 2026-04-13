@@ -14,8 +14,8 @@
 				val.forEach(function (item) {
 					var boot = boot_map[item.label];
 					if (boot) {
-						if (!item.logo_url) item.logo_url = boot.logo_url;
-						if (!item.icon_image) item.icon_image = boot.icon_image;
+						if (boot.logo_url) item.logo_url = boot.logo_url;
+						if (boot.icon_image) item.icon_image = boot.icon_image;
 					}
 				});
 			}
