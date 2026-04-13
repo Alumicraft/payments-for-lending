@@ -6,7 +6,7 @@ app_email = "hello@example.com"
 app_license = "MIT"
 required_apps = ["frappe", "erpnext", "lending"]
 
-app_include_js = "public/js/icon_fix.js"
+boot_session = "dcr.api.boot.boot_session"
 
 after_install = "dcr.setup.after_install"
 after_migrate = "dcr.setup.after_install"
