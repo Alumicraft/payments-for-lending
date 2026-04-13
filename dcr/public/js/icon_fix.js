@@ -23,4 +23,26 @@
 		},
 		configurable: true,
 	});
+
+	// Guard against null link_to crashing frappe.router.slug in get_route.
+	// Broken workspace sidebar items with null link_to cause TypeError
+	// that kills the entire desktop page.
+	var _origSlug = frappe.router && frappe.router.slug;
+	if (_origSlug) {
+		frappe.router.slug = function (name) {
+			if (name == null) return "";
+			return _origSlug.call(this, name);
+		};
+	} else {
+		// router not loaded yet, patch when ready
+		$(document).on("startup", function () {
+			if (frappe.router && frappe.router.slug) {
+				var orig = frappe.router.slug;
+				frappe.router.slug = function (name) {
+					if (name == null) return "";
+					return orig.call(this, name);
+				};
+			}
+		});
+	}
 })();
