@@ -8,6 +8,10 @@ required_apps = ["frappe", "erpnext", "lending"]
 
 boot_session = "dcr.api.boot.boot_session"
 
+override_whitelisted_methods = {
+    "frappe.desk.doctype.desktop_layout.desktop_layout.get_layout": "dcr.api.boot.get_layout_with_icons"
+}
+
 after_install = "dcr.setup.after_install"
 after_migrate = "dcr.setup.after_install"
 
