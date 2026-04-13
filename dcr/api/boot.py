@@ -61,23 +61,34 @@ def _restore_missing_sidebar_items(bootinfo):
 	for ws_key, sidebar in sidebar_data.items():
 		sidebar_name = name_map.get(ws_key)
 		if not sidebar_name:
+			sidebar["_dcr_skip"] = "no_name"
 			continue
 
 		boot_count = len(sidebar.get("items") or [])
-		if db_counts.get(sidebar_name, 0) <= boot_count:
+		db_count = db_counts.get(sidebar_name, 0)
+		sidebar["_dcr_boot"] = boot_count
+		sidebar["_dcr_db"] = db_count
+
+		if db_count <= boot_count:
+			sidebar["_dcr_skip"] = "count_ok"
 			continue
 
 		# Items were dropped — restore full list via direct SQL
-		raw = frappe.db.sql(
-			"SELECT * FROM `tabWorkspace Sidebar Item` "
-			"WHERE parent = %s ORDER BY idx",
-			sidebar_name,
-			as_dict=True,
-		)
-		sidebar["items"] = [
-			{k: v for k, v in row.items() if k not in _internal}
-			for row in raw
-		]
+		try:
+			raw = frappe.db.sql(
+				"SELECT * FROM `tabWorkspace Sidebar Item` "
+				"WHERE parent = %s ORDER BY idx",
+				sidebar_name,
+				as_dict=True,
+			)
+			sidebar["_dcr_raw"] = len(raw)
+			sidebar["items"] = [
+				{k: v for k, v in row.items() if k not in _internal}
+				for row in raw
+			]
+			sidebar["_dcr_restored"] = len(sidebar["items"])
+		except Exception as e:
+			sidebar["_dcr_error"] = str(e)
 
 
 def _nest_sidebar_items(bootinfo):
