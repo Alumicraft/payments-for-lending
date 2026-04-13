@@ -21,6 +21,53 @@ def boot_session(bootinfo):
 				if item.get("type") != "Link" or item.get("link_to") or item.get("link_type") == "URL"
 			]
 
+	# Restructure flat sidebar items into nested structure for v16 renderer
+	_nest_sidebar_items(bootinfo)
+
+
+def _nest_sidebar_items(bootinfo):
+	"""Restructure flat sidebar items to nest children under Section Breaks,
+	and mark Sidebar Item Group items as standard to bypass the TypeLink.make()
+	early-return rendering guard (frappe/frappe#37872, #35881)."""
+	sidebar_items = getattr(bootinfo, "workspace_sidebar_item", None) or {}
+
+	for _name, sidebar in sidebar_items.items():
+		items = sidebar.get("items")
+		if not items:
+			continue
+
+		# Idempotency: skip if any Section Break already has nested_items populated
+		already_nested = any(
+			item.get("type") == "Section Break"
+			and item.get("nested_items")
+			for item in items
+		)
+		if already_nested:
+			continue
+
+		new_items = []
+		current_section = None
+
+		for item in items:
+			# Mark Sidebar Item Group items as standard so TypeLink.make()
+			# doesn't skip them (the guard exempts standard items).
+			# Side effect: hides drag/settings controls in sidebar edit mode.
+			if item.get("type") == "Sidebar Item Group":
+				item["standard"] = True
+
+			if item.get("type") == "Section Break":
+				current_section = item
+				if not item.get("nested_items"):
+					item["nested_items"] = []
+				new_items.append(item)
+			elif current_section is not None:
+				current_section["nested_items"].append(item)
+			else:
+				# Items before first Section Break stay top-level
+				new_items.append(item)
+
+		sidebar["items"] = new_items
+
 
 @frappe.whitelist()
 def get_layout_with_icons():
