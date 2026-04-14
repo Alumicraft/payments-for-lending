@@ -88,13 +88,10 @@
 			}
 		}
 
-		// Track click for active state — run multiple times to override
-		// Frappe's own active-state logic which runs on various timers
+		// Track click for active state — MutationObserver will enforce it
 		_last_clicked = { label: label, link_to: item.link_to };
-		var apply = function () { set_active(container); };
-		setTimeout(apply, 400);
-		setTimeout(apply, 1000);
-		setTimeout(apply, 2000);
+		// Clear after 5 seconds so observer stops overriding
+		setTimeout(function () { _last_clicked = null; }, 5000);
 	}
 
 	// -- Active state on route change --
@@ -162,6 +159,19 @@
 		_initialized = true;
 
 		sb.addEventListener("click", on_click, true);
+
+		// MutationObserver: when Frappe sets .active on the wrong item,
+		// override it if we have a _last_clicked target
+		var _overriding = false;
+		var observer = new MutationObserver(function () {
+			if (!_last_clicked || _overriding) return;
+			var correct = find_dom_by_label(_last_clicked.label);
+			if (!correct || correct.classList.contains("active")) return;
+			_overriding = true;
+			set_active(correct);
+			setTimeout(function () { _overriding = false; }, 50);
+		});
+		observer.observe(sb, { attributes: true, attributeFilter: ["class"], subtree: true });
 
 		var on_route = function () {
 			setTimeout(function () { fix_active_retry(5); }, 300);
