@@ -1,0 +1,70 @@
+{
+ "actions": [],
+ "creation": "2026-04-14 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "issingle": 1,
+ "field_order": [
+  "mapbox_access_token",
+  "map_style_url",
+  "column_break_defaults",
+  "default_latitude",
+  "default_longitude",
+  "default_zoom"
+ ],
+ "fields": [
+  {
+   "fieldname": "mapbox_access_token",
+   "fieldtype": "Password",
+   "label": "Mapbox Access Token",
+   "reqd": 1
+  },
+  {
+   "default": "mapbox://styles/mapbox/streets-v12",
+   "fieldname": "map_style_url",
+   "fieldtype": "Data",
+   "label": "Map Style URL"
+  },
+  {
+   "fieldname": "column_break_defaults",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "34.0",
+   "fieldname": "default_latitude",
+   "fieldtype": "Float",
+   "label": "Default Latitude",
+   "precision": "6"
+  },
+  {
+   "default": "-115.0",
+   "fieldname": "default_longitude",
+   "fieldtype": "Float",
+   "label": "Default Longitude",
+   "precision": "6"
+  },
+  {
+   "default": "6",
+   "fieldname": "default_zoom",
+   "fieldtype": "Int",
+   "label": "Default Zoom"
+  }
+ ],
+ "links": [],
+ "modified": "2026-04-14 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "DCR",
+ "name": "Map Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
