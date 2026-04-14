@@ -41,11 +41,13 @@
 	}
 
 	function set_active(container) {
+		// Frappe uses .active-sidebar on .standard-sidebar-item (not .active on container)
 		var sb = document.querySelector(".body-sidebar-container");
 		if (!sb) return;
-		var all = sb.querySelectorAll(".sidebar-item-container");
-		for (var i = 0; i < all.length; i++) all[i].classList.remove("active");
-		container.classList.add("active");
+		var all = sb.querySelectorAll(".standard-sidebar-item");
+		for (var i = 0; i < all.length; i++) all[i].classList.remove("active-sidebar");
+		var target = container.querySelector(".standard-sidebar-item") || container;
+		target.classList.add("active-sidebar");
 	}
 
 	function find_dom_by_label(label) {
@@ -166,7 +168,9 @@
 		var observer = new MutationObserver(function () {
 			if (!_last_clicked || _overriding) return;
 			var correct = find_dom_by_label(_last_clicked.label);
-			if (!correct || correct.classList.contains("active")) return;
+			if (!correct) return;
+			var correctInner = correct.querySelector(".standard-sidebar-item") || correct;
+			if (correctInner.classList.contains("active-sidebar")) return;
 			_overriding = true;
 			set_active(correct);
 			setTimeout(function () { _overriding = false; }, 50);
