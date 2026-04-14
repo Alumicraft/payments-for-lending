@@ -26,16 +26,10 @@ def boot_session(bootinfo):
 
 
 def _fix_sidebar_items(bootinfo):
-	"""Mark non-link sidebar item types as standard to bypass the
-	TypeLink.make() early-return rendering guard (frappe/frappe#37872).
-
-	The guard skips items without a path unless they are 'standard' or
-	type 'Section Break'.  Spacer and Sidebar Item Group items have no
-	link_to, so get_path() returns null and the guard kills rendering.
-
-	Note: Section Break nesting is intentionally NOT done here because
-	Frappe v16's TypeSectionBreak renderer is broken — it creates zero
-	DOM elements even with correctly populated nested_items."""
+	"""Fix sidebar item rendering for Frappe v16:
+	1. Mark Spacer/Sidebar Item Group as standard (bypass TypeLink guard)
+	2. Nest items under Section Breaks (populate nested_items)
+	"""
 	sidebar_items = getattr(bootinfo, "workspace_sidebar_item", None) or {}
 
 	for _name, sidebar in sidebar_items.items():
@@ -43,26 +37,33 @@ def _fix_sidebar_items(bootinfo):
 		if not items:
 			continue
 
+		# Idempotency: skip if already nested
+		already_nested = any(
+			item.get("type") == "Section Break"
+			and item.get("nested_items")
+			for item in items
+		)
+		if already_nested:
+			continue
+
+		new_items = []
+		current_section = None
+
 		for item in items:
 			if item.get("type") in ("Sidebar Item Group", "Spacer"):
 				item["standard"] = True
 
-			# Child items in flat mode crash TypeLink.make() which does:
-			#   this.item.child && this.item.parent.indent
-			# parent is only set when nested inside a Section Break.
-			# Move the flag to _dcr_child so our sidebar_fix.js can
-			# still identify children without Frappe crashing.
-			if item.get("child"):
-				item["_dcr_child"] = True
-				item["child"] = 0
+			if item.get("type") == "Section Break":
+				current_section = item
+				if not item.get("nested_items"):
+					item["nested_items"] = []
+				new_items.append(item)
+			elif current_section is not None:
+				current_section["nested_items"].append(item)
+			else:
+				new_items.append(item)
 
-		# Remove Section Break items — the TypeSectionBreak renderer is
-		# broken in v16 (creates zero DOM elements or a bare chevron with
-		# no label). Keeping them in a flat list adds a confusing toggle.
-		sidebar["items"] = [
-			item for item in items
-			if item.get("type") != "Section Break"
-		]
+		sidebar["items"] = new_items
 
 
 @frappe.whitelist()
