@@ -88,9 +88,13 @@
 			}
 		}
 
-		// Track click for active state
+		// Track click for active state — run multiple times to override
+		// Frappe's own active-state logic which runs on various timers
 		_last_clicked = { label: label, link_to: item.link_to };
-		setTimeout(function () { set_active(container); }, 400);
+		var apply = function () { set_active(container); };
+		setTimeout(apply, 400);
+		setTimeout(apply, 1000);
+		setTimeout(apply, 2000);
 	}
 
 	// -- Active state on route change --
