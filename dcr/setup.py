@@ -26,4 +26,15 @@ def after_install():
                 "customer_group_name": group_name,
             }).insert(ignore_permissions=True)
 
+    # Workspaces — deploys/migrations can delete these; ensure they exist.
+    for ws in ("Overview", "Deals", "Accounting", "Contacts", "Access"):
+        if not frappe.db.exists("Workspace", ws):
+            frappe.get_doc({
+                "doctype": "Workspace",
+                "label": ws,
+                "title": ws,
+                "public": 1,
+                "module": "DCR",
+            }).insert(ignore_permissions=True)
+
     frappe.db.commit()
