@@ -90,9 +90,20 @@
 			}
 		}
 
-		// Track click for active state — MutationObserver will enforce it
+		// Track click — poll to enforce correct active state
+		// (MutationObserver fails if Frappe rebuilds the entire sidebar DOM)
 		_last_clicked = { label: label, link_to: item.link_to };
-		// Clear after 5 seconds so observer stops overriding
+		var _attempts = 0;
+		var _poll = setInterval(function () {
+			_attempts++;
+			if (_attempts > 25 || !_last_clicked) { clearInterval(_poll); return; }
+			var el = find_dom_by_label(_last_clicked.label);
+			if (!el) return;
+			var inner = el.querySelector(".standard-sidebar-item");
+			if (inner && !inner.classList.contains("active-sidebar")) {
+				set_active(el);
+			}
+		}, 200);
 		setTimeout(function () { _last_clicked = null; }, 5000);
 	}
 
