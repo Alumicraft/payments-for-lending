@@ -14,6 +14,24 @@
   "home_type",
   "financing_type",
   "property_type",
+  "delivery_section",
+  "community_name",
+  "delivery_address",
+  "column_break_delivery",
+  "city",
+  "state",
+  "zip",
+  "space_number",
+  "community_details_section",
+  "contact_name",
+  "contact_phone",
+  "column_break_community",
+  "gated",
+  "access_code",
+  "space_rent",
+  "geo_section",
+  "latitude",
+  "longitude",
   "home_section",
   "model_name",
   "factory",
@@ -21,23 +39,6 @@
   "home_serial_no",
   "quote_no",
   "home_invoice_plus_freight",
-  "park_section",
-  "park",
-  "space_number",
-  "park_space_rent",
-  "park_details_section",
-  "park_address_line1",
-  "park_address_line2",
-  "column_break_park_details",
-  "park_city",
-  "park_state",
-  "park_zip",
-  "park_contact_section",
-  "park_contact_name",
-  "column_break_park_contact",
-  "park_phone",
-  "park_gated",
-  "park_access_code",
   "buyer_section",
   "home_buyer",
   "financials_section",
@@ -127,6 +128,102 @@
    "reqd": 1
   },
   {
+   "fieldname": "delivery_section",
+   "fieldtype": "Section Break",
+   "label": "Delivery Location"
+  },
+  {
+   "fieldname": "community_name",
+   "fieldtype": "Data",
+   "label": "Community Name"
+  },
+  {
+   "fieldname": "delivery_address",
+   "fieldtype": "Data",
+   "label": "Delivery Address"
+  },
+  {
+   "fieldname": "column_break_delivery",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "city",
+   "fieldtype": "Data",
+   "label": "City"
+  },
+  {
+   "fieldname": "state",
+   "fieldtype": "Data",
+   "label": "State"
+  },
+  {
+   "fieldname": "zip",
+   "fieldtype": "Data",
+   "label": "ZIP"
+  },
+  {
+   "fieldname": "space_number",
+   "fieldtype": "Data",
+   "label": "Space No"
+  },
+  {
+   "fieldname": "community_details_section",
+   "fieldtype": "Section Break",
+   "label": "Community Details",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "contact_name",
+   "fieldtype": "Data",
+   "label": "Contact Name"
+  },
+  {
+   "fieldname": "contact_phone",
+   "fieldtype": "Data",
+   "label": "Contact Phone",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "column_break_community",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "gated",
+   "fieldtype": "Check",
+   "label": "Gated"
+  },
+  {
+   "fieldname": "access_code",
+   "fieldtype": "Data",
+   "label": "Access Code",
+   "depends_on": "eval:doc.gated"
+  },
+  {
+   "fieldname": "space_rent",
+   "fieldtype": "Currency",
+   "label": "Monthly Space Rent"
+  },
+  {
+   "fieldname": "geo_section",
+   "fieldtype": "Section Break",
+   "label": "Geolocation",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "latitude",
+   "fieldtype": "Float",
+   "label": "Latitude",
+   "precision": "6",
+   "read_only": 1
+  },
+  {
+   "fieldname": "longitude",
+   "fieldtype": "Float",
+   "label": "Longitude",
+   "precision": "6",
+   "read_only": 1
+  },
+  {
    "fieldname": "home_section",
    "fieldtype": "Section Break",
    "label": "Deal Reference"
@@ -165,113 +262,6 @@
    "fieldname": "quote_no",
    "fieldtype": "Data",
    "label": "Factory Quote No"
-  },
-  {
-   "fieldname": "park_section",
-   "fieldtype": "Section Break",
-   "label": "Park",
-   "depends_on": "eval:doc.property_type=='Park'"
-  },
-  {
-   "fieldname": "park",
-   "fieldtype": "Link",
-   "label": "Park",
-   "options": "Park"
-  },
-  {
-   "fieldname": "space_number",
-   "fieldtype": "Data",
-   "label": "Space No"
-  },
-  {
-   "fetch_from": "park.space_rent",
-   "fieldname": "park_space_rent",
-   "fieldtype": "Currency",
-   "label": "Monthly Space Rent"
-  },
-  {
-   "fieldname": "park_details_section",
-   "fieldtype": "Section Break",
-   "label": "Park Details",
-   "depends_on": "eval:doc.property_type=='Park'"
-  },
-  {
-   "fetch_from": "park.address_line1",
-   "fieldname": "park_address_line1",
-   "fieldtype": "Data",
-   "label": "Address Line 1",
-   "read_only": 1
-  },
-  {
-   "fetch_from": "park.address_line2",
-   "fieldname": "park_address_line2",
-   "fieldtype": "Data",
-   "label": "Address Line 2",
-   "read_only": 1
-  },
-  {
-   "fieldname": "column_break_park_details",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fetch_from": "park.city",
-   "fieldname": "park_city",
-   "fieldtype": "Data",
-   "label": "City",
-   "read_only": 1
-  },
-  {
-   "fetch_from": "park.state",
-   "fieldname": "park_state",
-   "fieldtype": "Data",
-   "label": "State",
-   "read_only": 1
-  },
-  {
-   "fetch_from": "park.zip",
-   "fieldname": "park_zip",
-   "fieldtype": "Data",
-   "label": "ZIP",
-   "read_only": 1
-  },
-  {
-   "fieldname": "park_contact_section",
-   "fieldtype": "Section Break",
-   "label": "Park Contact",
-   "depends_on": "eval:doc.property_type=='Park'"
-  },
-  {
-   "fetch_from": "park.contact_name",
-   "fieldname": "park_contact_name",
-   "fieldtype": "Data",
-   "label": "Contact Name",
-   "read_only": 1
-  },
-  {
-   "fieldname": "column_break_park_contact",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fetch_from": "park.office_phone",
-   "fieldname": "park_phone",
-   "fieldtype": "Data",
-   "label": "Phone",
-   "options": "Phone",
-   "read_only": 1
-  },
-  {
-   "fetch_from": "park.gated",
-   "fieldname": "park_gated",
-   "fieldtype": "Check",
-   "label": "Gated",
-   "read_only": 1
-  },
-  {
-   "fetch_from": "park.access_code",
-   "fieldname": "park_access_code",
-   "fieldtype": "Data",
-   "label": "Access Code",
-   "read_only": 1
   },
   {
    "fieldname": "buyer_section",
