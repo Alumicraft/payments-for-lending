@@ -164,7 +164,7 @@
 		var container = e.target.closest(".sidebar-item-container");
 		if (!container) return;
 
-		var sidebar_el = document.querySelector(".workspace-sidebar");
+		var sidebar_el = document.querySelector(".body-sidebar-container");
 		if (!sidebar_el) return;
 
 		var label = get_label_from_container(container);
@@ -218,7 +218,7 @@
 	// -- Active state on route change --
 
 	function fix_active_state() {
-		var sidebar_el = document.querySelector(".workspace-sidebar");
+		var sidebar_el = document.querySelector(".body-sidebar-container");
 		if (!sidebar_el) return;
 
 		// If a sidebar item was just clicked, honor it
@@ -303,7 +303,7 @@
 	// -- Init with retry --
 
 	function init() {
-		var sidebar_el = document.querySelector(".workspace-sidebar");
+		var sidebar_el = document.querySelector(".body-sidebar-container");
 		if (!sidebar_el) return false;
 
 		if (_initialized) return true;
