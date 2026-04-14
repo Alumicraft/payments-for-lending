@@ -32,8 +32,9 @@
 		if (frappe.app && frappe.app.sidebar && frappe.app.sidebar.current_workspace) {
 			return frappe.app.sidebar.current_workspace;
 		}
-		var el = document.querySelector("[data-workspace]");
-		if (el) return el.getAttribute("data-workspace");
+		// Frappe v16 uses data-title on .body-sidebar, not data-workspace
+		var el = document.querySelector(".body-sidebar[data-title]");
+		if (el) return el.getAttribute("data-title").toLowerCase();
 		return null;
 	}
 
