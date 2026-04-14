@@ -21,13 +21,16 @@ def boot_session(bootinfo):
 				if item.get("type") != "Link" or item.get("link_to") or item.get("link_type") == "URL"
 			]
 
-	# Mark Spacer items as standard to bypass TypeLink.make() early-return
-	# guard (Spacers have no link_to → no path → guard kills rendering).
+	# Fix sidebar item rendering quirks:
+	# - Spacer: needs standard=True to bypass TypeLink.make() guard
+	# - Section Break: needs indent=1 for icon+label style (vs bare divider)
 	sidebar_items = getattr(bootinfo, "workspace_sidebar_item", None) or {}
 	for _name, sidebar in sidebar_items.items():
 		for item in (sidebar.get("items") or []):
 			if item.get("type") == "Spacer":
 				item["standard"] = True
+			if item.get("type") == "Section Break" and not item.get("indent"):
+				item["indent"] = 1
 
 	# Note: sidebar Section Breaks and dropdowns are handled by config, not code.
 	# Use Section Break type with a label + Child Item checked on children.
