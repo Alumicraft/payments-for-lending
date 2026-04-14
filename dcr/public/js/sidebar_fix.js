@@ -1,25 +1,30 @@
 /**
- * DCR Sidebar Fix
+ * DCR Sidebar Fix — Frappe v16
  *
- * 1. Applies sidebar item `filters` as route_options on click
- *    (Frappe ignores the filters field during navigation)
- * 2. Blocks Sidebar Item Group clicks from navigating (prevents 404)
- * 3. Corrects active-state highlighting for duplicate-doctype items
+ * 1. Collapsible groups: Sidebar Item Group items toggle child visibility
+ * 2. Filter application: sidebar item filters → frappe.route_options
+ * 3. Active state: correct highlighting for duplicate-doctype items
+ *
+ * DOM selectors (verified for v16):
+ *   Sidebar container: .body-sidebar-container
+ *   Item container:    .sidebar-item-container[item-name="..."]
+ *   Item anchor:       .item-anchor
+ *   Item label:        .sidebar-item-label
+ *   Workspace name:    .body-sidebar[data-title]
  */
 (function () {
 	"use strict";
 
 	var _initialized = false;
 	var _last_clicked = null;
+	var _groups = {};
+
+	// -- Helpers --
 
 	function parse_filters(str) {
 		if (!str) return [];
-		try {
-			var result = JSON.parse(str);
-			return Array.isArray(result) ? result : [];
-		} catch (e) {
-			return [];
-		}
+		try { var r = JSON.parse(str); return Array.isArray(r) ? r : []; }
+		catch (e) { return []; }
 	}
 
 	function get_workspace_name() {
@@ -32,116 +37,159 @@
 	}
 
 	function get_sidebar_items() {
-		var ws_name = get_workspace_name();
-		if (!ws_name) return [];
-		var ws = (frappe.boot.workspace_sidebar_item || {})[ws_name];
-		if (!ws || !ws.items) return [];
-		// Flatten: include top-level + nested items
-		var all = [];
-		for (var i = 0; i < ws.items.length; i++) {
-			all.push(ws.items[i]);
-			var nested = ws.items[i].nested_items || [];
-			for (var j = 0; j < nested.length; j++) {
-				all.push(nested[j]);
-			}
-		}
-		return all;
+		var ws = get_workspace_name();
+		if (!ws) return [];
+		var data = (frappe.boot.workspace_sidebar_item || {})[ws];
+		return (data && data.items) ? data.items : [];
 	}
 
-	function get_label_from_container(container) {
-		var el = container.querySelector(".sidebar-item-label");
-		if (el) return el.textContent.trim();
+	function find_item_by_label(label) {
+		var items = get_sidebar_items();
+		for (var i = 0; i < items.length; i++) {
+			if (items[i].label === label) return { item: items[i], index: i };
+		}
 		return null;
 	}
 
-	function set_active(sidebar_el, container) {
-		var all = sidebar_el.querySelectorAll(".sidebar-item-container");
-		for (var i = 0; i < all.length; i++) {
-			all[i].classList.remove("active");
-		}
+	function set_active(container) {
+		var sb = document.querySelector(".body-sidebar-container");
+		if (!sb) return;
+		var all = sb.querySelectorAll(".sidebar-item-container");
+		for (var i = 0; i < all.length; i++) all[i].classList.remove("active");
 		container.classList.add("active");
 	}
 
-	function find_container_by_label(sidebar_el, label) {
-		var containers = sidebar_el.querySelectorAll(".sidebar-item-container");
-		for (var i = 0; i < containers.length; i++) {
-			if (get_label_from_container(containers[i]) === label) return containers[i];
+	function find_dom_by_label(label) {
+		var sb = document.querySelector(".body-sidebar-container");
+		if (!sb) return null;
+		var els = sb.querySelectorAll(".sidebar-item-container");
+		for (var i = 0; i < els.length; i++) {
+			var lbl = els[i].querySelector(".sidebar-item-label");
+			if (lbl && lbl.textContent.trim() === label) return els[i];
 		}
 		return null;
 	}
 
-	// -- Click handler --
+	// -- Collapsible groups --
 
-	function on_sidebar_click(e) {
+	function setup_groups() {
+		var items = get_sidebar_items();
+		for (var i = 0; i < items.length; i++) {
+			if (items[i].type !== "Sidebar Item Group") continue;
+
+			var group = items[i];
+			var child_labels = [];
+			for (var j = i + 1; j < items.length; j++) {
+				if (items[j]._dcr_child) child_labels.push(items[j].label);
+				else break;
+			}
+			if (!child_labels.length) continue;
+
+			var group_el = find_dom_by_label(group.label);
+			if (!group_el) continue;
+
+			var child_els = [];
+			for (var k = 0; k < child_labels.length; k++) {
+				var cel = find_dom_by_label(child_labels[k]);
+				if (cel) {
+					cel.style.paddingLeft = "15px";
+					child_els.push(cel);
+				}
+			}
+			if (!child_els.length) continue;
+
+			// Add text chevron inside the anchor
+			var anchor = group_el.querySelector(".item-anchor");
+			if (!anchor) continue;
+
+			var chevron = document.createElement("span");
+			chevron.textContent = "\u25BE"; // ▾
+			chevron.style.cssText = "margin-left:auto;font-size:12px;opacity:0.6;transition:transform 0.2s;display:inline-block;";
+			anchor.appendChild(chevron);
+
+			// Restore collapsed state
+			var key = "dcr_group_" + group.label;
+			var collapsed = localStorage.getItem(key) === "true";
+
+			if (collapsed) {
+				for (var m = 0; m < child_els.length; m++) child_els[m].style.display = "none";
+				chevron.style.transform = "rotate(-90deg)";
+			}
+
+			_groups[group.label] = {
+				children: child_els,
+				chevron: chevron,
+				collapsed: collapsed,
+				key: key,
+			};
+		}
+	}
+
+	function toggle_group(label) {
+		var g = _groups[label];
+		if (!g) return;
+		g.collapsed = !g.collapsed;
+		localStorage.setItem(g.key, g.collapsed ? "true" : "false");
+		for (var i = 0; i < g.children.length; i++) {
+			g.children[i].style.display = g.collapsed ? "none" : "";
+		}
+		g.chevron.style.transform = g.collapsed ? "rotate(-90deg)" : "";
+	}
+
+	// -- Click handler (capture phase) --
+
+	function on_click(e) {
 		var container = e.target.closest(".sidebar-item-container");
 		if (!container) return;
 
-		var sidebar_el = document.querySelector(".body-sidebar-container");
-		if (!sidebar_el) return;
+		var lbl_el = container.querySelector(".sidebar-item-label");
+		if (!lbl_el) return;
+		var label = lbl_el.textContent.trim();
 
-		var label = get_label_from_container(container);
-		if (!label) return;
+		var found = find_item_by_label(label);
+		if (!found) return;
+		var item = found.item;
 
-		var items = get_sidebar_items();
-		var item = null;
-		for (var i = 0; i < items.length; i++) {
-			if (items[i].label === label) { item = items[i]; break; }
-		}
-		if (!item) return;
-
-		// Block Sidebar Item Group navigation (404 error)
+		// Sidebar Item Group → toggle, block navigation
 		if (item.type === "Sidebar Item Group") {
 			e.preventDefault();
 			e.stopPropagation();
+			toggle_group(label);
 			return;
 		}
 
-		// Apply filters as route_options
+		// Link → apply filters
 		if (item.type === "Link" && item.filters) {
 			var filters = parse_filters(item.filters);
-			if (filters.length > 0) {
+			if (filters.length) {
 				var opts = {};
 				for (var i = 0; i < filters.length; i++) {
 					var f = filters[i];
-					if (f[2] === "=") {
-						opts[f[1]] = f[3];
-					} else {
-						opts[f[1]] = [f[2], f[3]];
-					}
+					opts[f[1]] = f[2] === "=" ? f[3] : [f[2], f[3]];
 				}
 				frappe.route_options = opts;
 			}
 		}
 
-		// Track click for active state
-		_last_clicked = { label: label, link_to: item.link_to };
-		setTimeout(function () {
-			set_active(sidebar_el, container);
-		}, 400);
+		// Track click + set active
+		if (item.type === "Link") {
+			_last_clicked = { label: label, link_to: item.link_to };
+			setTimeout(function () { set_active(container); }, 400);
+		}
 	}
 
 	// -- Active state on route change --
 
-	function fix_active_state() {
-		var sidebar_el = document.querySelector(".body-sidebar-container");
-		if (!sidebar_el) return;
-
+	function fix_active() {
 		if (_last_clicked) {
-			var current_doctype = null;
-			if (typeof cur_list !== "undefined" && cur_list) {
-				current_doctype = cur_list.doctype;
-			}
-			if (current_doctype && current_doctype === _last_clicked.link_to) {
-				var target = find_container_by_label(sidebar_el, _last_clicked.label);
-				if (target) {
-					set_active(sidebar_el, target);
-					return;
-				}
+			var dt = (typeof cur_list !== "undefined" && cur_list) ? cur_list.doctype : null;
+			if (dt && dt === _last_clicked.link_to) {
+				var el = find_dom_by_label(_last_clicked.label);
+				if (el) { set_active(el); return; }
 			}
 			_last_clicked = null;
 		}
 
-		// Fallback: match by list filters
 		if (typeof cur_list === "undefined" || !cur_list || !cur_list.doctype) return;
 
 		var items = get_sidebar_items();
@@ -153,86 +201,67 @@
 		}
 		if (matches.length <= 1) return;
 
-		var current_filters = [];
-		try { current_filters = cur_list.filter_area.get(); } catch (e) { return; }
+		var cur_filters = [];
+		try { cur_filters = cur_list.filter_area.get(); } catch (e) { return; }
 
-		var best_match = null;
-		var best_score = -1;
-
+		var best = null, best_score = -1;
 		for (var i = 0; i < matches.length; i++) {
-			var item_filters = parse_filters(matches[i].filters);
-			if (item_filters.length === 0 && current_filters.length === 0) {
-				if (0 > best_score) { best_score = 0; best_match = matches[i]; }
+			var mf = parse_filters(matches[i].filters);
+			if (!mf.length && !cur_filters.length) {
+				if (0 > best_score) { best_score = 0; best = matches[i]; }
 				continue;
 			}
-			if (item_filters.length === 0) continue;
-
-			var score = 0;
-			var all_match = true;
-			for (var j = 0; j < item_filters.length; j++) {
-				var f = item_filters[j];
-				var found = false;
-				for (var k = 0; k < current_filters.length; k++) {
-					var cf = current_filters[k];
-					if (cf[1] === f[1] && cf[2] === f[2] && String(cf[3]) === String(f[3])) {
-						found = true; break;
-					}
+			if (!mf.length) continue;
+			var score = 0, ok = true;
+			for (var j = 0; j < mf.length; j++) {
+				var f = mf[j], found = false;
+				for (var k = 0; k < cur_filters.length; k++) {
+					var cf = cur_filters[k];
+					if (cf[1] === f[1] && cf[2] === f[2] && String(cf[3]) === String(f[3])) { found = true; break; }
 				}
-				if (found) { score++; } else { all_match = false; break; }
+				if (found) score++; else { ok = false; break; }
 			}
-			if (all_match && score > best_score) {
-				best_score = score;
-				best_match = matches[i];
-			}
+			if (ok && score > best_score) { best_score = score; best = matches[i]; }
 		}
-
-		if (best_match) {
-			var el = find_container_by_label(sidebar_el, best_match.label);
-			if (el) set_active(sidebar_el, el);
+		if (best) {
+			var el = find_dom_by_label(best.label);
+			if (el) set_active(el);
 		}
 	}
 
-	function fix_active_with_retry(retries) {
-		if (retries <= 0) return;
-		if (typeof cur_list !== "undefined" && cur_list && cur_list.filter_area) {
-			fix_active_state();
-		} else {
-			setTimeout(function () { fix_active_with_retry(retries - 1); }, 200);
-		}
+	function fix_active_retry(n) {
+		if (n <= 0) return;
+		if (typeof cur_list !== "undefined" && cur_list && cur_list.filter_area) fix_active();
+		else setTimeout(function () { fix_active_retry(n - 1); }, 200);
 	}
 
-	// -- Init with retry --
+	// -- Init --
 
 	function init() {
-		var sidebar_el = document.querySelector(".body-sidebar-container");
-		if (!sidebar_el) return false;
+		var sb = document.querySelector(".body-sidebar-container");
+		if (!sb) return false;
 		if (_initialized) return true;
 		_initialized = true;
 
-		sidebar_el.addEventListener("click", on_sidebar_click, true);
+		sb.addEventListener("click", on_click, true);
+		setup_groups();
 
-		var on_change = function () {
-			setTimeout(function () { fix_active_with_retry(5); }, 300);
+		var on_route = function () {
+			setTimeout(function () { fix_active_retry(5); }, 300);
 		};
-
 		if (frappe.router && typeof frappe.router.on === "function") {
-			frappe.router.on("change", on_change);
+			frappe.router.on("change", on_route);
 		} else {
-			$(document).on("page-change", on_change);
+			$(document).on("page-change", on_route);
 		}
-
-		setTimeout(function () { fix_active_with_retry(5); }, 300);
+		setTimeout(function () { fix_active_retry(5); }, 300);
 		return true;
 	}
 
-	function try_init(retries) {
-		if (retries <= 0) return;
-		if (!init()) {
-			setTimeout(function () { try_init(retries - 1); }, 500);
-		}
+	function try_init(n) {
+		if (n <= 0) return;
+		if (!init()) setTimeout(function () { try_init(n - 1); }, 500);
 	}
 
-	$(document).ready(function () {
-		try_init(10);
-	});
+	$(document).ready(function () { try_init(10); });
 })();

@@ -26,9 +26,10 @@ def boot_session(bootinfo):
 
 
 def _fix_sidebar_items(bootinfo):
-	"""Fix sidebar item rendering for Frappe v16:
-	1. Mark Spacer/Sidebar Item Group as standard (bypass TypeLink guard)
-	2. Nest items under Section Breaks (populate nested_items)
+	"""Fix sidebar item rendering for Frappe v16.
+	- Mark Spacer/Sidebar Item Group as standard (bypass TypeLink guard)
+	- Strip Section Breaks (renderer is broken — creates zero DOM elements)
+	- Move child flag to _dcr_child (prevents parent.indent TypeError)
 	"""
 	sidebar_items = getattr(bootinfo, "workspace_sidebar_item", None) or {}
 
@@ -37,33 +38,17 @@ def _fix_sidebar_items(bootinfo):
 		if not items:
 			continue
 
-		# Idempotency: skip if already nested
-		already_nested = any(
-			item.get("type") == "Section Break"
-			and item.get("nested_items")
-			for item in items
-		)
-		if already_nested:
-			continue
-
-		new_items = []
-		current_section = None
-
 		for item in items:
 			if item.get("type") in ("Sidebar Item Group", "Spacer"):
 				item["standard"] = True
+			if item.get("child"):
+				item["_dcr_child"] = True
+				item["child"] = 0
 
-			if item.get("type") == "Section Break":
-				current_section = item
-				if not item.get("nested_items"):
-					item["nested_items"] = []
-				new_items.append(item)
-			elif current_section is not None:
-				current_section["nested_items"].append(item)
-			else:
-				new_items.append(item)
-
-		sidebar["items"] = new_items
+		sidebar["items"] = [
+			item for item in items
+			if item.get("type") != "Section Break"
+		]
 
 
 @frappe.whitelist()
