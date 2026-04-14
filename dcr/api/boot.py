@@ -21,8 +21,8 @@ def boot_session(bootinfo):
 				if item.get("type") != "Link" or item.get("link_to") or item.get("link_type") == "URL"
 			]
 
-	# Restructure flat sidebar items into nested structure for v16 renderer
-	_fix_sidebar_items(bootinfo)
+	# Temporarily disabled to isolate whether our code breaks Section Breaks
+	# _fix_sidebar_items(bootinfo)
 
 
 def _fix_sidebar_items(bootinfo):
