@@ -1,25 +1,14 @@
 /**
  * DCR Sidebar Fix — Frappe v16
  *
- * 1. Collapsible groups: Sidebar Item Group items toggle child visibility
- * 2. Filter application: sidebar item filters → frappe.route_options
- * 3. Active state: correct highlighting for duplicate-doctype items
- *
- * DOM selectors (verified for v16):
- *   Sidebar container: .body-sidebar-container
- *   Item container:    .sidebar-item-container[item-name="..."]
- *   Item anchor:       .item-anchor
- *   Item label:        .sidebar-item-label
- *   Workspace name:    .body-sidebar[data-title]
+ * 1. Applies sidebar item filters as frappe.route_options on click
+ * 2. Corrects active-state highlighting for duplicate-doctype items
  */
 (function () {
 	"use strict";
 
 	var _initialized = false;
 	var _last_clicked = null;
-	var _groups = {};
-
-	// -- Helpers --
 
 	function parse_filters(str) {
 		if (!str) return [];
@@ -36,19 +25,19 @@
 		return null;
 	}
 
-	function get_sidebar_items() {
+	function get_all_items() {
 		var ws = get_workspace_name();
 		if (!ws) return [];
 		var data = (frappe.boot.workspace_sidebar_item || {})[ws];
-		return (data && data.items) ? data.items : [];
-	}
-
-	function find_item_by_label(label) {
-		var items = get_sidebar_items();
-		for (var i = 0; i < items.length; i++) {
-			if (items[i].label === label) return { item: items[i], index: i };
+		if (!data || !data.items) return [];
+		// Flatten top-level + nested items
+		var all = [];
+		for (var i = 0; i < data.items.length; i++) {
+			all.push(data.items[i]);
+			var nested = data.items[i].nested_items || [];
+			for (var j = 0; j < nested.length; j++) all.push(nested[j]);
 		}
-		return null;
+		return all;
 	}
 
 	function set_active(container) {
@@ -70,96 +59,24 @@
 		return null;
 	}
 
-	// -- Collapsible groups --
-
-	function setup_groups() {
-		var items = get_sidebar_items();
-		for (var i = 0; i < items.length; i++) {
-			if (items[i].type !== "Sidebar Item Group") continue;
-
-			var group = items[i];
-			var child_labels = [];
-			for (var j = i + 1; j < items.length; j++) {
-				if (items[j]._dcr_child) child_labels.push(items[j].label);
-				else break;
-			}
-			if (!child_labels.length) continue;
-
-			var group_el = find_dom_by_label(group.label);
-			if (!group_el) continue;
-
-			var child_els = [];
-			for (var k = 0; k < child_labels.length; k++) {
-				var cel = find_dom_by_label(child_labels[k]);
-				if (cel) {
-					cel.style.paddingLeft = "15px";
-					child_els.push(cel);
-				}
-			}
-			if (!child_els.length) continue;
-
-			// Add text chevron inside the anchor
-			var anchor = group_el.querySelector(".item-anchor");
-			if (!anchor) continue;
-
-			var chevron = document.createElement("span");
-			chevron.textContent = "\u25BE"; // ▾
-			chevron.style.cssText = "margin-left:auto;font-size:12px;opacity:0.6;transition:transform 0.2s;display:inline-block;";
-			anchor.appendChild(chevron);
-
-			// Restore collapsed state
-			var key = "dcr_group_" + group.label;
-			var collapsed = localStorage.getItem(key) === "true";
-
-			if (collapsed) {
-				for (var m = 0; m < child_els.length; m++) child_els[m].style.display = "none";
-				chevron.style.transform = "rotate(-90deg)";
-			}
-
-			_groups[group.label] = {
-				children: child_els,
-				chevron: chevron,
-				collapsed: collapsed,
-				key: key,
-			};
-		}
-	}
-
-	function toggle_group(label) {
-		var g = _groups[label];
-		if (!g) return;
-		g.collapsed = !g.collapsed;
-		localStorage.setItem(g.key, g.collapsed ? "true" : "false");
-		for (var i = 0; i < g.children.length; i++) {
-			g.children[i].style.display = g.collapsed ? "none" : "";
-		}
-		g.chevron.style.transform = g.collapsed ? "rotate(-90deg)" : "";
-	}
-
 	// -- Click handler (capture phase) --
 
 	function on_click(e) {
 		var container = e.target.closest(".sidebar-item-container");
 		if (!container) return;
-
 		var lbl_el = container.querySelector(".sidebar-item-label");
 		if (!lbl_el) return;
 		var label = lbl_el.textContent.trim();
 
-		var found = find_item_by_label(label);
-		if (!found) return;
-		var item = found.item;
-
-		// Sidebar Item Group → toggle, block navigation
-		if (item.type === "Sidebar Item Group") {
-			e.preventDefault();
-			e.stopPropagation();
-			toggle_group(label);
-			return;
+		var items = get_all_items();
+		var item = null;
+		for (var i = 0; i < items.length; i++) {
+			if (items[i].label === label) { item = items[i]; break; }
 		}
+		if (!item || item.type !== "Link") return;
 
-		// Link → apply filters
-		if (item.type === "Link" && item.filters) {
+		// Apply filters as route_options
+		if (item.filters) {
 			var filters = parse_filters(item.filters);
 			if (filters.length) {
 				var opts = {};
@@ -171,11 +88,9 @@
 			}
 		}
 
-		// Track click + set active
-		if (item.type === "Link") {
-			_last_clicked = { label: label, link_to: item.link_to };
-			setTimeout(function () { set_active(container); }, 400);
-		}
+		// Track click for active state
+		_last_clicked = { label: label, link_to: item.link_to };
+		setTimeout(function () { set_active(container); }, 400);
 	}
 
 	// -- Active state on route change --
@@ -191,13 +106,11 @@
 		}
 
 		if (typeof cur_list === "undefined" || !cur_list || !cur_list.doctype) return;
-
-		var items = get_sidebar_items();
+		var items = get_all_items();
 		var matches = [];
 		for (var i = 0; i < items.length; i++) {
-			if (items[i].type === "Link" && items[i].link_to === cur_list.doctype) {
+			if (items[i].type === "Link" && items[i].link_to === cur_list.doctype)
 				matches.push(items[i]);
-			}
 		}
 		if (matches.length <= 1) return;
 
@@ -217,7 +130,8 @@
 				var f = mf[j], found = false;
 				for (var k = 0; k < cur_filters.length; k++) {
 					var cf = cur_filters[k];
-					if (cf[1] === f[1] && cf[2] === f[2] && String(cf[3]) === String(f[3])) { found = true; break; }
+					if (cf[1] === f[1] && cf[2] === f[2] && String(cf[3]) === String(f[3]))
+					{ found = true; break; }
 				}
 				if (found) score++; else { ok = false; break; }
 			}
@@ -244,16 +158,15 @@
 		_initialized = true;
 
 		sb.addEventListener("click", on_click, true);
-		setup_groups();
 
 		var on_route = function () {
 			setTimeout(function () { fix_active_retry(5); }, 300);
 		};
-		if (frappe.router && typeof frappe.router.on === "function") {
+		if (frappe.router && typeof frappe.router.on === "function")
 			frappe.router.on("change", on_route);
-		} else {
+		else
 			$(document).on("page-change", on_route);
-		}
+
 		setTimeout(function () { fix_active_retry(5); }, 300);
 		return true;
 	}

@@ -27,9 +27,15 @@ def boot_session(bootinfo):
 
 def _fix_sidebar_items(bootinfo):
 	"""Fix sidebar item rendering for Frappe v16.
-	- Mark Spacer/Sidebar Item Group as standard (bypass TypeLink guard)
-	- Strip Section Breaks (renderer is broken — creates zero DOM elements)
-	- Move child flag to _dcr_child (prevents parent.indent TypeError)
+
+	Working Section Breaks (from standard workspaces) have label, icon,
+	and indent=1. Custom sidebars using Sidebar Item Group inside a
+	Section Break have label=null and indent=0, which renders as a bare
+	divider instead of a collapsible section.
+
+	Fix: copy the Sidebar Item Group's label to the Section Break, set
+	indent=1, and nest subsequent items. Only clear child flag on
+	top-level items (nested items need it for the renderer).
 	"""
 	sidebar_items = getattr(bootinfo, "workspace_sidebar_item", None) or {}
 
@@ -38,17 +44,58 @@ def _fix_sidebar_items(bootinfo):
 		if not items:
 			continue
 
-		for item in items:
-			if item.get("type") in ("Sidebar Item Group", "Spacer"):
-				item["standard"] = True
-			if item.get("child"):
-				item["_dcr_child"] = True
-				item["child"] = 0
+		# Idempotency: skip if already nested
+		if any(
+			item.get("type") == "Section Break" and item.get("nested_items")
+			for item in items
+		):
+			continue
 
-		sidebar["items"] = [
-			item for item in items
-			if item.get("type") != "Section Break"
-		]
+		# Mark Spacer as standard (bypass TypeLink guard)
+		for item in items:
+			if item.get("type") == "Spacer":
+				item["standard"] = True
+
+		# Nest items under Section Breaks, merge Sidebar Item Group label
+		new_items = []
+		current_section = None
+		i = 0
+		while i < len(items):
+			item = items[i]
+
+			if item.get("type") == "Section Break":
+				current_section = item
+				if not item.get("nested_items"):
+					item["nested_items"] = []
+
+				# If next item is a Sidebar Item Group, merge its label
+				# into the Section Break (matches how standard workspaces work)
+				if i + 1 < len(items) and items[i + 1].get("type") == "Sidebar Item Group":
+					group = items[i + 1]
+					if not item.get("label"):
+						item["label"] = group.get("label")
+					if not item.get("icon"):
+						item["icon"] = group.get("icon")
+					i += 1  # skip the group item
+
+				# Set indent=1 for full collapsible rendering
+				item["indent"] = 1
+				new_items.append(item)
+
+			elif current_section is not None:
+				# Nested items keep child flag (renderer sets parent ref)
+				current_section["nested_items"].append(item)
+
+			else:
+				# Top-level items: clear child flag to prevent
+				# parent.indent TypeError in TypeLink.make()
+				if item.get("child"):
+					item["child"] = 0
+				new_items.append(item)
+
+			i += 1
+
+		sidebar["items"] = new_items
 
 
 @frappe.whitelist()
