@@ -47,6 +47,15 @@ def _fix_sidebar_items(bootinfo):
 			if item.get("type") in ("Sidebar Item Group", "Spacer"):
 				item["standard"] = True
 
+			# Child items in flat mode crash TypeLink.make() which does:
+			#   this.item.child && this.item.parent.indent
+			# parent is only set when nested inside a Section Break.
+			# Move the flag to _dcr_child so our sidebar_fix.js can
+			# still identify children without Frappe crashing.
+			if item.get("child"):
+				item["_dcr_child"] = True
+				item["child"] = 0
+
 		# Remove Section Break items — the TypeSectionBreak renderer is
 		# broken in v16 (creates zero DOM elements or a bare chevron with
 		# no label). Keeping them in a flat list adds a confusing toggle.

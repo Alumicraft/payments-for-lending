@@ -100,7 +100,7 @@
 
 			// Collect subsequent child items (child flag set)
 			for (var j = i + 1; j < items.length; j++) {
-				if (items[j].child || items[j].child_item) {
+				if (items[j]._dcr_child || items[j].child || items[j].child_item) {
 					children.push(items[j]);
 				} else {
 					break;
