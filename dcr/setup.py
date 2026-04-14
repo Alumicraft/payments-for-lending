@@ -37,4 +37,27 @@ def after_install():
                 "module": "DCR",
             }).insert(ignore_permissions=True)
 
+    # Number Card: Users Online
+    card_name = "Users Online"
+    if not frappe.db.exists("Number Card", card_name):
+        frappe.get_doc({
+            "doctype": "Number Card",
+            "name": card_name,
+            "label": card_name,
+            "type": "Custom",
+            "method": "dcr.api.sessions.get_active_sessions",
+            "is_public": 1,
+            "owner": "Administrator",
+        }).insert(ignore_permissions=True)
+
+    # Ensure the card is on the Access workspace
+    access_ws = frappe.get_doc("Workspace", "Access")
+    card_linked = any(
+        row.number_card_name == card_name
+        for row in access_ws.get("number_cards", [])
+    )
+    if not card_linked:
+        access_ws.append("number_cards", {"number_card_name": card_name})
+        access_ws.save(ignore_permissions=True)
+
     frappe.db.commit()
