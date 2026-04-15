@@ -91,27 +91,18 @@ def ensure_heatmap_block():
     var container = root_element.querySelector('#dcr-heatmap');
     if (!container) return;
 
-    // Full-bleed: zero out padding/margin on all ancestors up to page-container
-    var el = container.parentElement;
-    while (el && el !== document.body) {
-        el.style.padding = '0';
-        el.style.margin = '0';
-        el.style.maxWidth = 'none';
-        el.style.width = '100%';
-        if (el.classList && el.classList.contains('page-container')) break;
-        el = el.parentElement;
-    }
-    // Also target known Frappe workspace containers
-    var targets = container.closest ? [
-        container.closest('.layout-main-section'),
-        container.closest('.layout-main-section-wrapper'),
-        container.closest('.layout-main'),
-        container.closest('.page-content')
-    ] : [];
-    for (var i = 0; i < targets.length; i++) {
-        if (targets[i]) {
-            targets[i].style.padding = '0';
-            targets[i].style.margin = '0';
+    // Full-bleed: target Frappe containers via document (outside shadow DOM)
+    var selectors = {
+        '.layout-main-section': { padding: '0' },
+        '.layout-main-section-wrapper': { width: '100%', padding: '0', margin: '0' },
+        '.editor-js-container': { margin: '0' },
+        '.codex-editor__redactor': { paddingBottom: '0' }
+    };
+    for (var sel in selectors) {
+        var target = document.querySelector(sel);
+        if (target) {
+            var styles = selectors[sel];
+            for (var prop in styles) target.style[prop] = styles[prop];
         }
     }
 
