@@ -146,7 +146,7 @@ def ensure_heatmap_block():
                 var _pinsLoaded = false;
                 function syncTheme() {
                     var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-                    map.setConfigProperty('basemap', 'lightPreset', isDark ? 'night' : 'day');
+                    try { map.setConfigProperty('basemap', 'lightPreset', isDark ? 'night' : 'day'); } catch(e) {}
                     if (_pinsLoaded) {
                         var layer = map.getLayer('unclustered-point');
                         if (layer) {
