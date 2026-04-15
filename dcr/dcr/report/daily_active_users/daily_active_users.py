@@ -23,4 +23,12 @@ def execute(filters=None):
         ORDER BY DATE(creation)
     """, (from_date, to_date), as_dict=True)
 
-    return columns, data
+    chart = {
+        "data": {
+            "labels": [str(row.date) for row in data],
+            "datasets": [{"name": "Active Users", "values": [row.active_users for row in data]}],
+        },
+        "type": "line",
+    }
+
+    return columns, data, None, chart
