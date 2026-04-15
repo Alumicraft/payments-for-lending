@@ -230,7 +230,7 @@ def ensure_heatmap_block():
                         + '<strong>' + (p.community_name || 'Unknown') + '</strong><br>'
                         + '<span style="color:#666;">' + (p.address || '') + '</span><br>'
                         + '<span style="font-weight:600;">' + p.hbr_count + ' deal' + (p.hbr_count > 1 ? 's' : '') + '</span><br>'
-                        + '<a href="/app/home-build-request?community_name=' + encodeURIComponent(p.community_name) + '" style="color:#2490ef;">View deals</a>'
+                        + '<a href="/app/home-build-request?delivery_address=' + encodeURIComponent(p.address) + '" style="color:#2490ef;">View deals</a>'
                         + '</div>';
                     new mapboxgl.Popup({ offset: 15 })
                         .setLngLat(e.features[0].geometry.coordinates)
