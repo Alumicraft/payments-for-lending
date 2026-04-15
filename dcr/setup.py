@@ -91,21 +91,24 @@ def ensure_heatmap_block():
     var container = root_element.querySelector('#dcr-heatmap');
     if (!container) return;
 
-    // Full-bleed: target Frappe containers via document (outside shadow DOM)
-    var selectors = {
-        '.layout-main-section': { padding: '0' },
-        '.layout-main-section-wrapper': { width: '100%', padding: '0', margin: '0' },
-        '.editor-js-container': { margin: '0' },
-        '.codex-editor__redactor': { paddingBottom: '0' },
-        '.ce-block__content': { maxWidth: '100%', padding: '0' },
-        '.ce-block.col-xs-12': { padding: '0' },
-        '.widget.custom-block-widget-box': { padding: '0' }
-    };
-    for (var sel in selectors) {
-        var target = document.querySelector(sel);
-        if (target) {
-            var styles = selectors[sel];
-            for (var prop in styles) target.style[prop] = styles[prop];
+    // Full-bleed: only on dedicated Map workspace (don't break other dashboards)
+    var isMapPage = (frappe.get_route() || []).join('/').toLowerCase().indexOf('map') !== -1;
+    if (isMapPage) {
+        var selectors = {
+            '.layout-main-section': { padding: '0' },
+            '.layout-main-section-wrapper': { width: '100%', padding: '0', margin: '0' },
+            '.editor-js-container': { margin: '0' },
+            '.codex-editor__redactor': { paddingBottom: '0' },
+            '.ce-block__content': { maxWidth: '100%', padding: '0' },
+            '.ce-block.col-xs-12': { padding: '0' },
+            '.widget.custom-block-widget-box': { padding: '0' }
+        };
+        for (var sel in selectors) {
+            var target = document.querySelector(sel);
+            if (target) {
+                var styles = selectors[sel];
+                for (var prop in styles) target.style[prop] = styles[prop];
+            }
         }
     }
 
