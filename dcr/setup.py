@@ -84,15 +84,18 @@ def ensure_heatmap_block():
     html_content = """<style>
 .mapboxgl-ctrl-bottom-left, .mapboxgl-ctrl-bottom-right { transform: translateY(150%); }
 </style>
-<div id="dcr-heatmap" style="width:100%; height:100vh; border-radius: var(--border-radius-lg); overflow: hidden;"></div>"""
+<div id="dcr-heatmap" style="width:100%; height:100vh; overflow: hidden;"></div>"""
 
     js_content = r"""
 (function() {
     var container = root_element.querySelector('#dcr-heatmap');
     if (!container) return;
 
-    // Full-bleed: only on dedicated Map workspace (don't break other dashboards)
+    // Full-bleed on Map workspace, rounded corners elsewhere
     var isMapPage = (frappe.get_route() || []).join('/').toLowerCase().indexOf('map') !== -1;
+    if (!isMapPage) {
+        container.style.borderRadius = 'var(--border-radius-lg)';
+    }
     if (isMapPage) {
         var selectors = {
             '.layout-main-section': { padding: '0' },
