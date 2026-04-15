@@ -26,7 +26,8 @@ def after_install():
                 "customer_group_name": group_name,
             }).insert(ignore_permissions=True)
 
-    # Workspaces — deploys/migrations can delete these; ensure they exist.
+    # Workspaces — created without a module so Frappe does not treat them
+    # as "orphan" standard content and delete them during migrations.
     for ws in ("Overview", "Deals", "Accounting", "Contacts", "Access"):
         if not frappe.db.exists("Workspace", ws):
             frappe.get_doc({
@@ -34,7 +35,6 @@ def after_install():
                 "label": ws,
                 "title": ws,
                 "public": 1,
-                "module": "DCR",
             }).insert(ignore_permissions=True)
 
     # Number Card: Users Online
@@ -58,6 +58,7 @@ def after_install():
             "chart_name": chart_name,
             "chart_type": "Report",
             "report_name": "Daily Active Users",
+            "filters_json": "{}",
             "type": "Line",
             "is_public": 1,
             "owner": "Administrator",
