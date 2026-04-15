@@ -84,7 +84,7 @@ def ensure_heatmap_block():
     html_content = """<style>
 .mapboxgl-ctrl-bottom-left, .mapboxgl-ctrl-bottom-right { transform: translateY(150%); }
 </style>
-<div id="dcr-heatmap" style="width:100%; height:calc(100vh - 140px); min-height:400px;"></div>"""
+<div id="dcr-heatmap" style="width:100%; height:calc(100vh - 140px); min-height:400px; border-radius: var(--border-radius-lg); overflow: hidden;"></div>"""
 
     js_content = r"""
 (function() {
