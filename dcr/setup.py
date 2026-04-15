@@ -86,4 +86,206 @@ def after_install():
     if changed:
         access_ws.save(ignore_permissions=True)
 
+    ensure_heatmap_block()
+
     frappe.db.commit()
+
+
+def ensure_heatmap_block():
+    """Create or update the workspace heatmap Custom HTML Block."""
+    block_name = "HBR Heatmap"
+
+    html_content = '<div id="dcr-heatmap" style="width:100%; height:calc(100vh - 140px); min-height:400px;"></div>'
+
+    js_content = r"""
+(function() {
+    var container = root_element.querySelector('#dcr-heatmap');
+    if (!container) return;
+
+    // Full-bleed: break out of workspace padding
+    var parent = root_element.closest('.widget-group') || root_element.parentElement;
+    if (parent) {
+        var cs = getComputedStyle(parent);
+        var pl = parseInt(cs.paddingLeft) || 0;
+        var pr = parseInt(cs.paddingRight) || 0;
+        if (pl || pr) {
+            root_element.style.marginLeft = '-' + pl + 'px';
+            root_element.style.marginRight = '-' + pr + 'px';
+            root_element.style.width = 'calc(100% + ' + (pl + pr) + 'px)';
+        }
+    }
+
+    // Load Mapbox GL JS
+    function loadMapbox(cb) {
+        if (window.mapboxgl) { cb(); return; }
+        var css = document.createElement('link');
+        css.rel = 'stylesheet';
+        css.href = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css';
+        document.head.appendChild(css);
+        var s = document.createElement('script');
+        s.src = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js';
+        s.onload = cb;
+        document.head.appendChild(s);
+    }
+
+    function initMap() {
+        frappe.call({
+            method: 'dcr.api.map.get_map_settings',
+            callback: function(r) {
+                if (!r.message || !r.message.access_token) {
+                    container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#8d99a6;font-size:14px;">Configure Map Settings to enable the heatmap</div>';
+                    return;
+                }
+                var cfg = r.message;
+                mapboxgl.accessToken = cfg.access_token;
+                var map = new mapboxgl.Map({
+                    container: container,
+                    style: cfg.map_style_url,
+                    center: [cfg.default_longitude, cfg.default_latitude],
+                    zoom: cfg.default_zoom
+                });
+                map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+                map.on('load', function() { loadData(map); });
+            }
+        });
+    }
+
+    function loadData(map) {
+        frappe.call({
+            method: 'dcr.api.map.get_heatmap_data',
+            callback: function(r) {
+                if (!r.message || !r.message.length) return;
+                var geojson = {
+                    type: 'FeatureCollection',
+                    features: r.message.map(function(d) {
+                        return {
+                            type: 'Feature',
+                            geometry: { type: 'Point', coordinates: [d.longitude, d.latitude] },
+                            properties: {
+                                community_name: d.community_name,
+                                address: d.address,
+                                hbr_count: d.hbr_count
+                            }
+                        };
+                    })
+                };
+
+                // Heatmap layer
+                map.addSource('hbr-locations', { type: 'geojson', data: geojson });
+                map.addLayer({
+                    id: 'hbr-heat',
+                    type: 'heatmap',
+                    source: 'hbr-locations',
+                    paint: {
+                        'heatmap-weight': ['interpolate', ['linear'], ['get', 'hbr_count'], 1, 0.3, 10, 1],
+                        'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 1, 12, 3],
+                        'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 0, 15, 12, 30],
+                        'heatmap-opacity': 0.6
+                    }
+                });
+
+                // Cluster source
+                map.addSource('hbr-clusters', {
+                    type: 'geojson',
+                    data: geojson,
+                    cluster: true,
+                    clusterMaxZoom: 14,
+                    clusterRadius: 50,
+                    clusterProperties: {
+                        total_count: ['+', ['get', 'hbr_count']]
+                    }
+                });
+
+                // Cluster circles
+                map.addLayer({
+                    id: 'clusters',
+                    type: 'circle',
+                    source: 'hbr-clusters',
+                    filter: ['has', 'point_count'],
+                    paint: {
+                        'circle-color': ['step', ['get', 'total_count'], '#51bbd6', 5, '#f1f075', 15, '#f28cb1'],
+                        'circle-radius': ['step', ['get', 'total_count'], 18, 5, 24, 15, 32],
+                        'circle-stroke-width': 2,
+                        'circle-stroke-color': '#fff'
+                    }
+                });
+
+                // Cluster count labels
+                map.addLayer({
+                    id: 'cluster-count',
+                    type: 'symbol',
+                    source: 'hbr-clusters',
+                    filter: ['has', 'point_count'],
+                    layout: {
+                        'text-field': ['to-string', ['get', 'total_count']],
+                        'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+                        'text-size': 12
+                    }
+                });
+
+                // Individual points
+                map.addLayer({
+                    id: 'unclustered-point',
+                    type: 'circle',
+                    source: 'hbr-clusters',
+                    filter: ['!', ['has', 'point_count']],
+                    paint: {
+                        'circle-color': '#11b4da',
+                        'circle-radius': 8,
+                        'circle-stroke-width': 2,
+                        'circle-stroke-color': '#fff'
+                    }
+                });
+
+                // Popup on click - individual points
+                map.on('click', 'unclustered-point', function(e) {
+                    var p = e.features[0].properties;
+                    var html = '<div style="font-family:Inter,sans-serif;font-size:13px;">'
+                        + '<strong>' + (p.community_name || 'Unknown') + '</strong><br>'
+                        + '<span style="color:#666;">' + (p.address || '') + '</span><br>'
+                        + '<span style="font-weight:600;">' + p.hbr_count + ' deal' + (p.hbr_count > 1 ? 's' : '') + '</span><br>'
+                        + '<a href="/app/home-build-request?community_name=' + encodeURIComponent(p.community_name) + '" style="color:#2490ef;">View deals</a>'
+                        + '</div>';
+                    new mapboxgl.Popup({ offset: 15 })
+                        .setLngLat(e.features[0].geometry.coordinates)
+                        .setHTML(html)
+                        .addTo(map);
+                });
+
+                // Zoom into cluster on click
+                map.on('click', 'clusters', function(e) {
+                    map.getSource('hbr-clusters').getClusterExpansionZoom(
+                        e.features[0].properties.cluster_id,
+                        function(err, zoom) {
+                            if (err) return;
+                            map.easeTo({ center: e.features[0].geometry.coordinates, zoom: zoom });
+                        }
+                    );
+                });
+
+                // Cursor styles
+                map.on('mouseenter', 'clusters', function() { map.getCanvas().style.cursor = 'pointer'; });
+                map.on('mouseleave', 'clusters', function() { map.getCanvas().style.cursor = ''; });
+                map.on('mouseenter', 'unclustered-point', function() { map.getCanvas().style.cursor = 'pointer'; });
+                map.on('mouseleave', 'unclustered-point', function() { map.getCanvas().style.cursor = ''; });
+            }
+        });
+    }
+
+    loadMapbox(initMap);
+})();
+"""
+
+    if frappe.db.exists("Custom HTML Block", block_name):
+        block = frappe.get_doc("Custom HTML Block", block_name)
+        block.html = html_content
+        block.script = js_content
+        block.save(ignore_permissions=True)
+    else:
+        frappe.get_doc({
+            "doctype": "Custom HTML Block",
+            "name": block_name,
+            "html": html_content,
+            "script": js_content,
+            "private": 0,
+        }).insert(ignore_permissions=True)
