@@ -17,6 +17,7 @@
   "delivery_section",
   "community_name",
   "delivery_address",
+  "address_line_2",
   "column_break_delivery",
   "city",
   "state",
@@ -141,6 +142,11 @@
    "fieldname": "delivery_address",
    "fieldtype": "Data",
    "label": "Delivery Address"
+  },
+  {
+   "fieldname": "address_line_2",
+   "fieldtype": "Data",
+   "label": "Address Line 2"
   },
   {
    "fieldname": "column_break_delivery",

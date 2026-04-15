@@ -250,6 +250,27 @@ function set_address_fields_read_only(frm, read_only) {
     for (var i = 0; i < _address_fields.length; i++) {
         frm.set_df_property(_address_fields[i], 'read_only', read_only ? 1 : 0);
     }
+    // Show/hide clear button on delivery_address
+    var $wrapper = frm.fields_dict.delivery_address && frm.fields_dict.delivery_address.$wrapper;
+    if (!$wrapper) return;
+    $wrapper.find('.address-clear-btn').remove();
+    if (read_only && !frm.doc.docstatus) {
+        var $btn = $('<span class="address-clear-btn" title="Clear address">&times;</span>').css({
+            position: 'absolute',
+            right: '8px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            cursor: 'pointer',
+            fontSize: '18px',
+            color: '#8d99a6',
+            zIndex: 10,
+            lineHeight: 1
+        }).on('click', function() {
+            frm.set_value('delivery_address', '');
+            clear_address_fields(frm);
+        });
+        $wrapper.find('.control-input').css('position', 'relative').append($btn);
+    }
 }
 
 function clear_address_fields(frm) {
