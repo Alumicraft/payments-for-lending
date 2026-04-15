@@ -42,9 +42,6 @@ DOC_REQUIREMENTS = {
 
 class HomeBuildRequest(Document):
     def validate(self):
-        if self.financing_type == "Floored" and not self.property_type:
-            frappe.throw(_("Property Type is required"))
-
         # Warn if factory has no approved Factory Assignment for this dealer
         if self.factory and self.customer:
             has_fa = frappe.db.exists("Factory Assignment", {
