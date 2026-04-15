@@ -268,13 +268,13 @@ def ensure_heatmap_block():
     if frappe.db.exists("Custom HTML Block", block_name):
         block = frappe.get_doc("Custom HTML Block", block_name)
         block.html = html_content
-        block.script = js_content
+        block.javascript = js_content
         block.save(ignore_permissions=True)
     else:
         frappe.get_doc({
             "doctype": "Custom HTML Block",
             "name": block_name,
             "html": html_content,
-            "script": js_content,
+            "javascript": js_content,
             "private": 0,
         }).insert(ignore_permissions=True)
