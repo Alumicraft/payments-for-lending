@@ -58,10 +58,12 @@ def after_install():
             "chart_name": chart_name,
             "chart_type": "Report",
             "report_name": "Daily Active Users",
+            "x_field": "date",
             "filters_json": "{}",
             "type": "Line",
             "is_public": 1,
             "owner": "Administrator",
+            "y_axis": [{"y_field": "active_users", "parentfield": "y_axis"}],
         }).insert(ignore_permissions=True)
 
     # NOTE: Number Card and Dashboard Chart are created above but NOT
