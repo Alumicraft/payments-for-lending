@@ -88,19 +88,13 @@ def ensure_heatmap_block():
     var container = root_element.querySelector('#dcr-heatmap');
     if (!container) return;
 
-    // Full-bleed: break out of workspace padding
-    // root_element may be a shadow root — traverse via the container's parentElement
+    // Full-bleed: zero out padding on all ancestors up to layout-main-section
     var el = container.parentElement;
     while (el && el !== document.body) {
-        var cs = getComputedStyle(el);
-        var pl = parseInt(cs.paddingLeft) || 0;
-        var pr = parseInt(cs.paddingRight) || 0;
-        if (pl > 10 || pr > 10) {
-            container.style.marginLeft = '-' + pl + 'px';
-            container.style.marginRight = '-' + pr + 'px';
-            container.style.width = 'calc(100% + ' + (pl + pr) + 'px)';
-            break;
-        }
+        el.style.padding = '0';
+        el.style.margin = '0';
+        el.style.maxWidth = 'none';
+        if (el.classList && el.classList.contains('layout-main-section')) break;
         el = el.parentElement;
     }
 
