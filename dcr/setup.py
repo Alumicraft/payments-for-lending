@@ -81,7 +81,10 @@ def ensure_heatmap_block():
     """Create or update the workspace heatmap Custom HTML Block."""
     block_name = "HBR Heatmap"
 
-    html_content = '<div id="dcr-heatmap" style="width:100%; height:calc(100vh - 140px); min-height:400px;"></div>'
+    html_content = """<style>
+.mapboxgl-ctrl-bottom-left, .mapboxgl-ctrl-bottom-right { transform: translateY(150%); }
+</style>
+<div id="dcr-heatmap" style="width:100%; height:calc(100vh - 140px); min-height:400px;"></div>"""
 
     js_content = r"""
 (function() {
