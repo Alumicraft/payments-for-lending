@@ -1,5 +1,5 @@
 import frappe
-from frappe.utils import add_days, today
+from frappe.utils import add_days, getdate, today
 
 
 def execute(filters=None):
@@ -11,7 +11,7 @@ def execute(filters=None):
     from_date = (filters or {}).get("from_date") or add_days(today(), -30)
     to_date = (filters or {}).get("to_date") or today()
 
-    data = frappe.db.sql("""
+    rows = frappe.db.sql("""
         SELECT
             DATE(creation) as date,
             COUNT(DISTINCT user) as active_users
@@ -23,10 +23,20 @@ def execute(filters=None):
         ORDER BY DATE(creation)
     """, (from_date, to_date), as_dict=True)
 
+    # Build lookup and zero-fill missing days
+    counts = {str(row.date): row.active_users for row in rows}
+    data = []
+    current = getdate(from_date)
+    end = getdate(to_date)
+    while current <= end:
+        date_str = str(current)
+        data.append({"date": date_str, "active_users": counts.get(date_str, 0)})
+        current = getdate(add_days(current, 1))
+
     chart = {
         "data": {
-            "labels": [str(row.date) for row in data],
-            "datasets": [{"name": "Active Users", "values": [row.active_users for row in data]}],
+            "labels": [row["date"] for row in data],
+            "datasets": [{"name": "Active Users", "values": [row["active_users"] for row in data]}],
         },
         "type": "line",
     }
