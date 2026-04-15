@@ -89,16 +89,19 @@ def ensure_heatmap_block():
     if (!container) return;
 
     // Full-bleed: break out of workspace padding
-    var parent = root_element.closest('.widget-group') || root_element.parentElement;
-    if (parent) {
-        var cs = getComputedStyle(parent);
+    // root_element may be a shadow root — traverse via the container's parentElement
+    var el = container.parentElement;
+    while (el && el !== document.body) {
+        var cs = getComputedStyle(el);
         var pl = parseInt(cs.paddingLeft) || 0;
         var pr = parseInt(cs.paddingRight) || 0;
-        if (pl || pr) {
-            root_element.style.marginLeft = '-' + pl + 'px';
-            root_element.style.marginRight = '-' + pr + 'px';
-            root_element.style.width = 'calc(100% + ' + (pl + pr) + 'px)';
+        if (pl > 10 || pr > 10) {
+            container.style.marginLeft = '-' + pl + 'px';
+            container.style.marginRight = '-' + pr + 'px';
+            container.style.width = 'calc(100% + ' + (pl + pr) + 'px)';
+            break;
         }
+        el = el.parentElement;
     }
 
     // Load Mapbox GL JS
