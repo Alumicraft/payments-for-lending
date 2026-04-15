@@ -46,8 +46,9 @@
   {
    "default": "6",
    "fieldname": "default_zoom",
-   "fieldtype": "Int",
-   "label": "Default Zoom"
+   "fieldtype": "Float",
+   "label": "Default Zoom",
+   "precision": "1"
   }
  ],
  "links": [],
