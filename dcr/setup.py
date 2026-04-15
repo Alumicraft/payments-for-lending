@@ -91,14 +91,28 @@ def ensure_heatmap_block():
     var container = root_element.querySelector('#dcr-heatmap');
     if (!container) return;
 
-    // Full-bleed: zero out padding on all ancestors up to layout-main-section
+    // Full-bleed: zero out padding/margin on all ancestors up to page-container
     var el = container.parentElement;
     while (el && el !== document.body) {
         el.style.padding = '0';
         el.style.margin = '0';
         el.style.maxWidth = 'none';
-        if (el.classList && el.classList.contains('layout-main-section')) break;
+        el.style.width = '100%';
+        if (el.classList && el.classList.contains('page-container')) break;
         el = el.parentElement;
+    }
+    // Also target known Frappe workspace containers
+    var targets = container.closest ? [
+        container.closest('.layout-main-section'),
+        container.closest('.layout-main-section-wrapper'),
+        container.closest('.layout-main'),
+        container.closest('.page-content')
+    ] : [];
+    for (var i = 0; i < targets.length; i++) {
+        if (targets[i]) {
+            targets[i].style.padding = '0';
+            targets[i].style.margin = '0';
+        }
     }
 
     // Load Mapbox GL JS
