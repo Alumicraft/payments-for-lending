@@ -8,8 +8,8 @@ def execute(filters=None):
         {"label": "Active Users", "fieldname": "active_users", "fieldtype": "Int", "width": 120},
     ]
 
-    from_date = filters.get("from_date") if filters else add_days(today(), -30)
-    to_date = filters.get("to_date") if filters else today()
+    from_date = (filters or {}).get("from_date") or add_days(today(), -30)
+    to_date = (filters or {}).get("to_date") or today()
 
     data = frappe.db.sql("""
         SELECT
