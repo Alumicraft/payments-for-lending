@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>DCR Heatmap Preview</title>
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
+<style>
+  body { margin: 0; padding: 0; font-family: Inter, -apple-system, sans-serif; }
+  #map { width: 100vw; height: 100vh; }
+  .setup-prompt {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: #fff; padding: 32px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    text-align: center; z-index: 10; max-width: 400px;
+  }
+  .setup-prompt input {
+    width: 100%; padding: 10px 12px; margin: 12px 0; border: 1px solid #d1d8dd;
+    border-radius: 4px; font-size: 14px; box-sizing: border-box;
+  }
+  .setup-prompt button {
+    background: #2490ef; color: #fff; border: none; padding: 10px 24px;
+    border-radius: 4px; font-size: 14px; cursor: pointer;
+  }
+  .setup-prompt button:hover { background: #1a73e8; }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="setup-prompt" id="prompt">
+  <h3 style="margin:0 0 8px 0;">DCR Heatmap Preview</h3>
+  <p style="color:#666; font-size:13px; margin:0 0 16px 0;">Enter your Mapbox access token to preview the map. Uses sample data.</p>
+  <input type="text" id="token-input" placeholder="pk.eyJ1Ijo...">
+  <button onclick="startMap()">Load Map</button>
+</div>
+
+<script>
+// Sample data — Southwest US park communities
+var SAMPLE_DATA = [
+  { community_name: "Oak Forest MHP", address: "123 Main St, Westlake Village, CA 93065", latitude: 34.1416, longitude: -118.8209, hbr_count: 12 },
+  { community_name: "Pine Valley Estates", address: "456 Oak Ave, Simi Valley, CA 93063", latitude: 34.2694, longitude: -118.7815, hbr_count: 7 },
+  { community_name: "Desert Palms", address: "789 Palm Dr, Palm Springs, CA 92262", latitude: 33.8303, longitude: -116.5453, hbr_count: 15 },
+  { community_name: "Sunrise Village", address: "321 Sunrise Blvd, Las Vegas, NV 89101", latitude: 36.1699, longitude: -115.1398, hbr_count: 4 },
+  { community_name: "Mountain View Park", address: "555 Mountain Rd, Phoenix, AZ 85001", latitude: 33.4484, longitude: -112.0740, hbr_count: 9 },
+  { community_name: "Riverside Estates", address: "888 River Ln, Riverside, CA 92501", latitude: 33.9533, longitude: -117.3962, hbr_count: 6 },
+  { community_name: "Mesa Grande", address: "222 Mesa Dr, Mesa, AZ 85201", latitude: 33.4152, longitude: -111.8315, hbr_count: 11 },
+  { community_name: "Valley Vista", address: "444 Valley Rd, Tucson, AZ 85701", latitude: 32.2226, longitude: -110.9747, hbr_count: 3 },
+  { community_name: "Sunland Terrace", address: "666 Sunland Ave, San Bernardino, CA 92401", latitude: 34.1083, longitude: -117.2898, hbr_count: 8 },
+  { community_name: "Golden Shores", address: "777 Shore Dr, Lake Havasu City, AZ 86403", latitude: 34.4839, longitude: -114.3224, hbr_count: 5 },
+  { community_name: "Camelback Village", address: "999 Camelback Rd, Scottsdale, AZ 85251", latitude: 33.5092, longitude: -111.9261, hbr_count: 10 },
+  { community_name: "Silver Creek", address: "111 Creek Way, Henderson, NV 89002", latitude: 36.0395, longitude: -114.9817, hbr_count: 2 },
+  { community_name: "Oasis Park", address: "333 Oasis Blvd, Indio, CA 92201", latitude: 33.7206, longitude: -116.2156, hbr_count: 14 },
+];
+
+function startMap() {
+  var token = document.getElementById('token-input').value.trim();
+  if (!token) return;
+  document.getElementById('prompt').style.display = 'none';
+
+  mapboxgl.accessToken = token;
+  var map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/streets-v12',
+    center: [-115.0, 34.0],
+    zoom: 6
+  });
+  map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+  map.on('load', function() { loadData(map); });
+}
+
+function loadData(map) {
+  var geojson = {
+    type: 'FeatureCollection',
+    features: SAMPLE_DATA.map(function(d) {
+      return {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [d.longitude, d.latitude] },
+        properties: {
+          community_name: d.community_name,
+          address: d.address,
+          hbr_count: d.hbr_count
+        }
+      };
+    })
+  };
+
+  // Heatmap layer
+  map.addSource('hbr-locations', { type: 'geojson', data: geojson });
+  map.addLayer({
+    id: 'hbr-heat',
+    type: 'heatmap',
+    source: 'hbr-locations',
+    paint: {
+      'heatmap-weight': ['interpolate', ['linear'], ['get', 'hbr_count'], 1, 0.3, 10, 1],
+      'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 1, 12, 3],
+      'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 0, 15, 12, 30],
+      'heatmap-opacity': 0.6
+    }
+  });
+
+  // Cluster source
+  map.addSource('hbr-clusters', {
+    type: 'geojson',
+    data: geojson,
+    cluster: true,
+    clusterMaxZoom: 14,
+    clusterRadius: 50,
+    clusterProperties: {
+      total_count: ['+', ['get', 'hbr_count']]
+    }
+  });
+
+  // Cluster circles
+  map.addLayer({
+    id: 'clusters',
+    type: 'circle',
+    source: 'hbr-clusters',
+    filter: ['has', 'point_count'],
+    paint: {
+      'circle-color': ['step', ['get', 'total_count'], '#51bbd6', 5, '#f1f075', 15, '#f28cb1'],
+      'circle-radius': ['step', ['get', 'total_count'], 18, 5, 24, 15, 32],
+      'circle-stroke-width': 2,
+      'circle-stroke-color': '#fff'
+    }
+  });
+
+  // Cluster count labels
+  map.addLayer({
+    id: 'cluster-count',
+    type: 'symbol',
+    source: 'hbr-clusters',
+    filter: ['has', 'point_count'],
+    layout: {
+      'text-field': ['to-string', ['get', 'total_count']],
+      'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+      'text-size': 12
+    }
+  });
+
+  // Individual points
+  map.addLayer({
+    id: 'unclustered-point',
+    type: 'circle',
+    source: 'hbr-clusters',
+    filter: ['!', ['has', 'point_count']],
+    paint: {
+      'circle-color': '#11b4da',
+      'circle-radius': 8,
+      'circle-stroke-width': 2,
+      'circle-stroke-color': '#fff'
+    }
+  });
+
+  // Popup on click - individual points
+  map.on('click', 'unclustered-point', function(e) {
+    var p = e.features[0].properties;
+    var html = '<div style="font-family:Inter,sans-serif;font-size:13px;">'
+      + '<strong>' + (p.community_name || 'Unknown') + '</strong><br>'
+      + '<span style="color:#666;">' + (p.address || '') + '</span><br>'
+      + '<span style="font-weight:600;">' + p.hbr_count + ' deal' + (p.hbr_count > 1 ? 's' : '') + '</span><br>'
+      + '<a href="#" style="color:#2490ef;">View deals</a>'
+      + '</div>';
+    new mapboxgl.Popup({ offset: 15 })
+      .setLngLat(e.features[0].geometry.coordinates)
+      .setHTML(html)
+      .addTo(map);
+  });
+
+  // Zoom into cluster on click
+  map.on('click', 'clusters', function(e) {
+    map.getSource('hbr-clusters').getClusterExpansionZoom(
+      e.features[0].properties.cluster_id,
+      function(err, zoom) {
+        if (err) return;
+        map.easeTo({ center: e.features[0].geometry.coordinates, zoom: zoom });
+      }
+    );
+  });
+
+  // Cursor styles
+  map.on('mouseenter', 'clusters', function() { map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', 'clusters', function() { map.getCanvas().style.cursor = ''; });
+  map.on('mouseenter', 'unclustered-point', function() { map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', 'unclustered-point', function() { map.getCanvas().style.cursor = ''; });
+}
+</script>
+</body>
+</html>

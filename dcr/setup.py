@@ -142,10 +142,17 @@ def ensure_heatmap_block():
                 });
                 map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
-                // Day/night mode based on Frappe theme
+                // Day/night mode + icon swap based on Frappe theme
+                var _pinsLoaded = false;
                 function syncTheme() {
                     var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
                     map.setConfigProperty('basemap', 'lightPreset', isDark ? 'night' : 'day');
+                    if (_pinsLoaded) {
+                        var layer = map.getLayer('unclustered-point');
+                        if (layer) {
+                            map.setLayoutProperty('unclustered-point', 'icon-image', isDark ? 'house-pin-dark' : 'house-pin-light');
+                        }
+                    }
                 }
                 map.on('style.load', syncTheme);
 
@@ -236,22 +243,33 @@ def ensure_heatmap_block():
                     }
                 });
 
-                // Individual points — custom house marker
-                map.loadImage('/assets/dcr/images/map-pin.png', function(error, image) {
-                    if (error) { console.error('Failed to load map pin:', error); return; }
-                    map.addImage('house-pin', image);
+                // Individual points — load both light/dark house markers
+                var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                var loaded = 0;
+                function onPinLoaded() {
+                    loaded++;
+                    if (loaded < 2) return;
+                    _pinsLoaded = true;
                     map.addLayer({
                         id: 'unclustered-point',
                         type: 'symbol',
                         source: 'hbr-clusters',
                         filter: ['!', ['has', 'point_count']],
                         layout: {
-                            'icon-image': 'house-pin',
+                            'icon-image': isDark ? 'house-pin-dark' : 'house-pin-light',
                             'icon-size': 0.35,
                             'icon-anchor': 'bottom',
                             'icon-allow-overlap': true
                         }
                     });
+                }
+                map.loadImage('/assets/dcr/images/map-pin-light.png', function(err, img) {
+                    if (!err) map.addImage('house-pin-light', img);
+                    onPinLoaded();
+                });
+                map.loadImage('/assets/dcr/images/map-pin-dark.png', function(err, img) {
+                    if (!err) map.addImage('house-pin-dark', img);
+                    onPinLoaded();
                 });
 
                 // Popup on click - individual points
