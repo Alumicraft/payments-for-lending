@@ -141,6 +141,20 @@ def ensure_heatmap_block():
                     zoom: cfg.default_zoom
                 });
                 map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+                // Day/night mode based on Frappe theme
+                function syncTheme() {
+                    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                    map.setConfigProperty('basemap', 'lightPreset', isDark ? 'night' : 'day');
+                }
+                map.on('style.load', syncTheme);
+
+                // Watch for Frappe theme changes
+                var themeObserver = new MutationObserver(syncTheme);
+                themeObserver.observe(document.documentElement, {
+                    attributes: true, attributeFilter: ['data-theme']
+                });
+
                 map.on('load', function() { loadData(map); });
             }
         });
