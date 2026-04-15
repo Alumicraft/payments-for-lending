@@ -63,28 +63,11 @@ def after_install():
             "owner": "Administrator",
         }).insert(ignore_permissions=True)
 
-    # Ensure Number Card + Chart are on the Access workspace
-    access_ws = frappe.get_doc("Workspace", "Access")
-    changed = False
-
-    card_linked = any(
-        row.number_card_name == card_name
-        for row in access_ws.get("number_cards", [])
-    )
-    if not card_linked:
-        access_ws.append("number_cards", {"number_card_name": card_name})
-        changed = True
-
-    chart_linked = any(
-        row.chart_name == chart_name
-        for row in access_ws.get("charts", [])
-    )
-    if not chart_linked:
-        access_ws.append("charts", {"chart_name": chart_name})
-        changed = True
-
-    if changed:
-        access_ws.save(ignore_permissions=True)
+    # NOTE: Number Card and Dashboard Chart are created above but NOT
+    # added to the workspace programmatically.  Calling .save() on a
+    # Workspace rebuilds its child tables from the `content` JSON field,
+    # which wipes any cards/charts placed via the Workspace Builder.
+    # Add them manually: Workspace Builder → Access → drag in the card/chart.
 
     ensure_heatmap_block()
 
