@@ -199,9 +199,9 @@ def ensure_heatmap_block():
                     source: 'hbr-clusters',
                     filter: ['has', 'point_count'],
                     paint: {
-                        'circle-color': ['step', ['get', 'total_count'], '#51bbd6', 5, '#f1f075', 15, '#f28cb1'],
-                        'circle-radius': ['step', ['get', 'total_count'], 18, 5, 24, 15, 32],
-                        'circle-stroke-width': 2,
+                        'circle-color': '#007AFF',
+                        'circle-radius': ['step', ['get', 'total_count'], 20, 5, 26, 15, 34],
+                        'circle-stroke-width': 3,
                         'circle-stroke-color': '#fff'
                     }
                 });
@@ -215,22 +215,29 @@ def ensure_heatmap_block():
                     layout: {
                         'text-field': ['to-string', ['get', 'total_count']],
                         'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-                        'text-size': 12
+                        'text-size': 13
+                    },
+                    paint: {
+                        'text-color': '#ffffff'
                     }
                 });
 
-                // Individual points
-                map.addLayer({
-                    id: 'unclustered-point',
-                    type: 'circle',
-                    source: 'hbr-clusters',
-                    filter: ['!', ['has', 'point_count']],
-                    paint: {
-                        'circle-color': '#11b4da',
-                        'circle-radius': 8,
-                        'circle-stroke-width': 2,
-                        'circle-stroke-color': '#fff'
-                    }
+                // Individual points — custom house marker
+                map.loadImage('/assets/dcr/images/map-pin.png', function(error, image) {
+                    if (error) { console.error('Failed to load map pin:', error); return; }
+                    map.addImage('house-pin', image);
+                    map.addLayer({
+                        id: 'unclustered-point',
+                        type: 'symbol',
+                        source: 'hbr-clusters',
+                        filter: ['!', ['has', 'point_count']],
+                        layout: {
+                            'icon-image': 'house-pin',
+                            'icon-size': 0.35,
+                            'icon-anchor': 'bottom',
+                            'icon-allow-overlap': true
+                        }
+                    });
                 });
 
                 // Popup on click - individual points
