@@ -157,33 +157,109 @@ function populate_checklist(frm) {
     });
 }
 
+var _mapbox_token = null;
+var _address_fields = ['city', 'state', 'zip', 'latitude', 'longitude'];
+
 function setup_address_autofill(frm) {
     var $input = frm.fields_dict.delivery_address && frm.fields_dict.delivery_address.$input;
     if (!$input || _mapbox_bound[frm.doc.name]) return;
     _mapbox_bound[frm.doc.name] = true;
 
+    // If address already has auto-filled data, lock the dependent fields
+    if (frm.doc.latitude && frm.doc.longitude) {
+        set_address_fields_read_only(frm, true);
+    }
+
     var _debounce = null;
 
     $input.on('input', function() {
         var query = $input.val();
-        if (!query || query.length < 3) return;
+
+        // If field is cleared, reset all auto-filled fields
+        if (!query) {
+            clear_address_fields(frm);
+            return;
+        }
+
+        if (query.length < 3) return;
 
         clearTimeout(_debounce);
         _debounce = setTimeout(function() {
-            frappe.call({
-                method: 'dcr.api.map.search_address',
-                args: { query: query },
-                callback: function(r) {
-                    if (!r.message || !r.message.length) return;
-                    show_address_dropdown(frm, $input, r.message);
-                }
+            get_mapbox_token(function(token) {
+                if (!token) return;
+                search_mapbox(token, query, function(suggestions) {
+                    if (suggestions.length) show_address_dropdown(frm, $input, suggestions, token);
+                });
             });
         }, 300);
     });
 }
 
-function show_address_dropdown(frm, $input, suggestions) {
-    // Remove existing dropdown
+function get_mapbox_token(callback) {
+    if (_mapbox_token) { callback(_mapbox_token); return; }
+    frappe.call({
+        method: 'dcr.api.map.get_map_settings',
+        callback: function(r) {
+            if (r.message && r.message.access_token) {
+                _mapbox_token = r.message.access_token;
+                callback(_mapbox_token);
+            } else {
+                callback(null);
+            }
+        }
+    });
+}
+
+function search_mapbox(token, query, callback) {
+    // Client-side search — avoids server token URL restriction issues
+    var url = 'https://api.mapbox.com/search/searchbox/v1/suggest'
+        + '?q=' + encodeURIComponent(query)
+        + '&access_token=' + token
+        + '&language=en&country=US&types=address&limit=5';
+
+    fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+        callback(data.suggestions || []);
+    }).catch(function() { callback([]); });
+}
+
+function retrieve_mapbox(token, mapbox_id, callback) {
+    var url = 'https://api.mapbox.com/search/searchbox/v1/retrieve/' + mapbox_id
+        + '?access_token=' + token;
+
+    fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+        var features = data.features || [];
+        if (features.length) {
+            var props = features[0].properties || {};
+            var coords = (features[0].geometry || {}).coordinates || [0, 0];
+            callback({
+                full_address: props.full_address || '',
+                address: props.address || '',
+                city: props.place || '',
+                state: props.region_code || props.region || '',
+                zip: props.postcode || '',
+                latitude: coords[1] || 0,
+                longitude: coords[0] || 0
+            });
+        } else {
+            callback(null);
+        }
+    }).catch(function() { callback(null); });
+}
+
+function set_address_fields_read_only(frm, read_only) {
+    for (var i = 0; i < _address_fields.length; i++) {
+        frm.set_df_property(_address_fields[i], 'read_only', read_only ? 1 : 0);
+    }
+}
+
+function clear_address_fields(frm) {
+    for (var i = 0; i < _address_fields.length; i++) {
+        frm.set_value(_address_fields[i], '');
+    }
+    set_address_fields_read_only(frm, false);
+}
+
+function show_address_dropdown(frm, $input, suggestions, token) {
     $input.parent().find('.mapbox-dropdown').remove();
 
     var $dropdown = $('<ul class="mapbox-dropdown"></ul>').css({
@@ -203,18 +279,28 @@ function show_address_dropdown(frm, $input, suggestions) {
 
     for (var i = 0; i < suggestions.length; i++) {
         (function(s) {
+            var label = s.full_address || s.name || '';
             var $li = $('<li></li>')
-                .text(s.full_address)
+                .text(label)
                 .css({ padding: '8px 12px', cursor: 'pointer', fontSize: '13px' })
                 .on('mousedown', function(e) {
                     e.preventDefault();
-                    frm.set_value('delivery_address', s.address || '');
-                    frm.set_value('city', s.city || '');
-                    frm.set_value('state', s.state || '');
-                    frm.set_value('zip', s.zip || '');
-                    frm.set_value('latitude', s.latitude || 0);
-                    frm.set_value('longitude', s.longitude || 0);
                     $dropdown.remove();
+
+                    // Retrieve full details for the selected suggestion
+                    var mid = s.mapbox_id;
+                    if (!mid) return;
+
+                    retrieve_mapbox(token, mid, function(result) {
+                        if (!result) return;
+                        frm.set_value('delivery_address', result.address || '');
+                        frm.set_value('city', result.city || '');
+                        frm.set_value('state', result.state || '');
+                        frm.set_value('zip', result.zip || '');
+                        frm.set_value('latitude', result.latitude || 0);
+                        frm.set_value('longitude', result.longitude || 0);
+                        set_address_fields_read_only(frm, true);
+                    });
                 })
                 .on('mouseenter', function() { $(this).css('background', '#f5f7fa'); })
                 .on('mouseleave', function() { $(this).css('background', '#fff'); });
@@ -224,7 +310,6 @@ function show_address_dropdown(frm, $input, suggestions) {
 
     $input.parent().css('position', 'relative').append($dropdown);
 
-    // Close on blur
     $input.one('blur', function() {
         setTimeout(function() { $dropdown.remove(); }, 200);
     });
