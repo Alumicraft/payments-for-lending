@@ -7,6 +7,8 @@
  * - Create → Supplier Quotation button (after submission)
  */
 
+var _mapbox_bound = {};
+
 frappe.ui.form.on('Home Build Request', {
     refresh: function(frm) {
         // Factory filter
@@ -34,6 +36,11 @@ frappe.ui.form.on('Home Build Request', {
                 }
             };
         });
+
+        // Mapbox address autofill (only on draft forms)
+        if (!frm.doc.docstatus) {
+            setup_address_autofill(frm);
+        }
 
         // Create buttons only on submitted HBR
         if (frm.doc.docstatus !== 1) return;
@@ -147,5 +154,78 @@ function populate_checklist(frm) {
                 indicator: 'blue'
             });
         }
+    });
+}
+
+function setup_address_autofill(frm) {
+    var $input = frm.fields_dict.delivery_address && frm.fields_dict.delivery_address.$input;
+    if (!$input || _mapbox_bound[frm.doc.name]) return;
+    _mapbox_bound[frm.doc.name] = true;
+
+    var _debounce = null;
+
+    $input.on('input', function() {
+        var query = $input.val();
+        if (!query || query.length < 3) return;
+
+        clearTimeout(_debounce);
+        _debounce = setTimeout(function() {
+            frappe.call({
+                method: 'dcr.api.map.search_address',
+                args: { query: query },
+                callback: function(r) {
+                    if (!r.message || !r.message.length) return;
+                    show_address_dropdown(frm, $input, r.message);
+                }
+            });
+        }, 300);
+    });
+}
+
+function show_address_dropdown(frm, $input, suggestions) {
+    // Remove existing dropdown
+    $input.parent().find('.mapbox-dropdown').remove();
+
+    var $dropdown = $('<ul class="mapbox-dropdown"></ul>').css({
+        position: 'absolute',
+        zIndex: 100,
+        background: '#fff',
+        border: '1px solid #d1d8dd',
+        borderRadius: '4px',
+        maxHeight: '200px',
+        overflowY: 'auto',
+        width: '100%',
+        listStyle: 'none',
+        padding: 0,
+        margin: '4px 0 0 0',
+        boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+    });
+
+    for (var i = 0; i < suggestions.length; i++) {
+        (function(s) {
+            var $li = $('<li></li>')
+                .text(s.full_address)
+                .css({ padding: '8px 12px', cursor: 'pointer', fontSize: '13px' })
+                .on('mousedown', function(e) {
+                    e.preventDefault();
+                    frm.set_value('delivery_address', s.address || '');
+                    frm.set_value('city', s.city || '');
+                    frm.set_value('state', s.state || '');
+                    frm.set_value('zip', s.zip || '');
+                    frm.set_value('latitude', s.latitude || 0);
+                    frm.set_value('longitude', s.longitude || 0);
+                    $dropdown.remove();
+                })
+                .on('mouseenter', function() { $(this).css('background', '#f5f7fa'); })
+                .on('mouseleave', function() { $(this).css('background', '#fff'); });
+            $dropdown.append($li);
+        })(suggestions[i]);
+    }
+
+    $input.parent().css('position', 'relative').append($dropdown);
+
+    // Close on blur
+    $input.one('blur', function() {
+        setTimeout(function() { $dropdown.remove(); }, 200);
     });
 }
