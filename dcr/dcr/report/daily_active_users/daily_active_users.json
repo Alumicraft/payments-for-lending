@@ -13,7 +13,7 @@
   "name": "Daily Active Users",
   "owner": "Administrator",
   "prepared_report": 0,
-  "ref_doctype": "Authentication Log",
+  "ref_doctype": "Activity Log",
   "report_name": "Daily Active Users",
   "report_type": "Script Report",
   "roles": [

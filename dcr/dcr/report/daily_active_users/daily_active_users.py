@@ -15,8 +15,8 @@ def execute(filters=None):
         SELECT
             DATE(creation) as date,
             COUNT(DISTINCT user) as active_users
-        FROM `tabAuthentication Log`
-        WHERE status = 'Success'
+        FROM `tabActivity Log`
+        WHERE operation = 'Login'
           AND DATE(creation) BETWEEN %s AND %s
           AND user != 'Guest'
         GROUP BY DATE(creation)
