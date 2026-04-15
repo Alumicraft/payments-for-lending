@@ -16,8 +16,7 @@ def execute(filters=None):
             DATE(creation) as date,
             COUNT(DISTINCT user) as active_users
         FROM `tabActivity Log`
-        WHERE operation = 'Login'
-          AND DATE(creation) BETWEEN %s AND %s
+        WHERE DATE(creation) BETWEEN %s AND %s
           AND user != 'Guest'
         GROUP BY DATE(creation)
         ORDER BY DATE(creation)
