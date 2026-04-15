@@ -84,7 +84,7 @@ def ensure_heatmap_block():
     html_content = """<style>
 .mapboxgl-ctrl-bottom-left, .mapboxgl-ctrl-bottom-right { transform: translateY(150%); }
 </style>
-<div id="dcr-heatmap" style="width:100%; height:100vh; overflow: hidden;"></div>"""
+<div id="dcr-heatmap" style="width:100%; overflow: hidden;"></div>"""
 
     js_content = r"""
 (function() {
@@ -114,6 +114,14 @@ def ensure_heatmap_block():
             }
         }
     }
+
+    // Dynamic height: fill from container top to bottom of viewport
+    function setHeight() {
+        var rect = container.getBoundingClientRect();
+        container.style.height = (window.innerHeight - rect.top) + 'px';
+    }
+    setHeight();
+    window.addEventListener('resize', setHeight);
 
     // Load Mapbox GL JS
     function loadMapbox(cb) {
