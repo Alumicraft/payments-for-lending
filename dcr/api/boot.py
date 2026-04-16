@@ -1,9 +1,26 @@
 import frappe
 
+# Fallback for after_migrate not firing on Frappe Cloud deploys. We run the
+# block sync once per worker process — cheap when the block is already current,
+# and guarantees the desk reflects the latest setup.py after a deploy restarts
+# the workers.
+_MAP_BLOCK_SYNCED = False
+
 
 def boot_session(bootinfo):
 	"""Fix field name mismatch: sidebar renderer reads icon_url but
 	Desktop Icon provides logo_url/icon_image."""
+	global _MAP_BLOCK_SYNCED
+	if not _MAP_BLOCK_SYNCED:
+		try:
+			from dcr.setup import ensure_map_block
+			ensure_map_block()
+		except Exception:
+			frappe.log_error(frappe.get_traceback(), "ensure_map_block (boot_session)")
+		finally:
+			# Set even on failure so we don't retry every session on a broken worker.
+			_MAP_BLOCK_SYNCED = True
+
 	for item in (bootinfo.desktop_icons or []):
 		url = item.get("logo_url") or item.get("icon_image")
 		if url and not item.get("icon_url"):
