@@ -158,7 +158,6 @@ function populate_checklist(frm) {
 }
 
 var _mapbox_token = null;
-var _mapbox_session = null;
 var _address_fields = ['city', 'state', 'zip', 'latitude', 'longitude'];
 
 function setup_address_autofill(frm) {
@@ -189,7 +188,7 @@ function setup_address_autofill(frm) {
             get_mapbox_token(function(token) {
                 if (!token) return;
                 search_mapbox(token, query, function(suggestions) {
-                    if (suggestions.length) show_address_dropdown(frm, $input, suggestions, token);
+                    if (suggestions.length) show_address_dropdown(frm, $input, suggestions);
                 });
             });
         }, 300);
@@ -211,53 +210,34 @@ function get_mapbox_token(callback) {
     });
 }
 
-function get_session_token() {
-    if (!_mapbox_session) {
-        // Generate a UUID v4 for Mapbox session tracking
-        _mapbox_session = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            var r = Math.random() * 16 | 0;
-            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-        });
-    }
-    return _mapbox_session;
-}
-
 function search_mapbox(token, query, callback) {
-    // Client-side search — avoids server token URL restriction issues
-    var url = 'https://api.mapbox.com/search/searchbox/v1/suggest'
-        + '?q=' + encodeURIComponent(query)
-        + '&access_token=' + token
-        + '&session_token=' + get_session_token()
-        + '&language=en&country=US&types=address&limit=5';
-
-    fetch(url).then(function(r) { return r.json(); }).then(function(data) {
-        callback(data.suggestions || []);
-    }).catch(function() { callback([]); });
-}
-
-function retrieve_mapbox(token, mapbox_id, callback) {
-    var url = 'https://api.mapbox.com/search/searchbox/v1/retrieve/' + mapbox_id
+    // Geocoding API v5 — simpler, no session tokens needed
+    var url = 'https://api.mapbox.com/geocoding/v5/mapbox.places/'
+        + encodeURIComponent(query) + '.json'
         + '?access_token=' + token
-        + '&session_token=' + get_session_token();
+        + '&country=US&types=address&limit=5&autocomplete=true';
 
     fetch(url).then(function(r) { return r.json(); }).then(function(data) {
-        var features = data.features || [];
-        if (features.length) {
-            var props = features[0].properties || {};
-            var coords = (features[0].geometry || {}).coordinates || [0, 0];
-            callback({
-                full_address: props.full_address || '',
-                address: props.address || '',
-                city: props.place || '',
-                state: props.region_code || props.region || '',
-                zip: props.postcode || '',
+        var results = (data.features || []).map(function(f) {
+            var coords = f.geometry.coordinates || [0, 0];
+            var ctx = {};
+            (f.context || []).forEach(function(c) {
+                if (c.id.indexOf('place') === 0) ctx.city = c.text;
+                if (c.id.indexOf('region') === 0) ctx.state = c.short_code ? c.short_code.replace('US-', '') : c.text;
+                if (c.id.indexOf('postcode') === 0) ctx.zip = c.text;
+            });
+            return {
+                full_address: f.place_name || '',
+                address: f.address ? f.address + ' ' + (f.text || '') : f.text || '',
+                city: ctx.city || '',
+                state: ctx.state || '',
+                zip: ctx.zip || '',
                 latitude: coords[1] || 0,
                 longitude: coords[0] || 0
-            });
-        } else {
-            callback(null);
-        }
-    }).catch(function() { callback(null); });
+            };
+        });
+        callback(results);
+    }).catch(function() { callback([]); });
 }
 
 function set_address_fields_read_only(frm, read_only) {
@@ -294,7 +274,7 @@ function clear_address_fields(frm) {
     set_address_fields_read_only(frm, false);
 }
 
-function show_address_dropdown(frm, $input, suggestions, token) {
+function show_address_dropdown(frm, $input, suggestions) {
     $input.parent().find('.mapbox-dropdown').remove();
 
     var $dropdown = $('<ul class="mapbox-dropdown"></ul>').css({
@@ -314,28 +294,19 @@ function show_address_dropdown(frm, $input, suggestions, token) {
 
     for (var i = 0; i < suggestions.length; i++) {
         (function(s) {
-            var label = s.full_address || s.name || '';
             var $li = $('<li></li>')
-                .text(label)
+                .text(s.full_address)
                 .css({ padding: '8px 12px', cursor: 'pointer', fontSize: '13px' })
                 .on('mousedown', function(e) {
                     e.preventDefault();
                     $dropdown.remove();
-
-                    // Retrieve full details for the selected suggestion
-                    var mid = s.mapbox_id;
-                    if (!mid) return;
-
-                    retrieve_mapbox(token, mid, function(result) {
-                        if (!result) return;
-                        frm.set_value('delivery_address', result.address || '');
-                        frm.set_value('city', result.city || '');
-                        frm.set_value('state', result.state || '');
-                        frm.set_value('zip', result.zip || '');
-                        frm.set_value('latitude', result.latitude || 0);
-                        frm.set_value('longitude', result.longitude || 0);
-                        set_address_fields_read_only(frm, true);
-                    });
+                    frm.set_value('delivery_address', s.address || '');
+                    frm.set_value('city', s.city || '');
+                    frm.set_value('state', s.state || '');
+                    frm.set_value('zip', s.zip || '');
+                    frm.set_value('latitude', s.latitude || 0);
+                    frm.set_value('longitude', s.longitude || 0);
+                    set_address_fields_read_only(frm, true);
                 })
                 .on('mouseenter', function() { $(this).css('background', '#f5f7fa'); })
                 .on('mouseleave', function() { $(this).css('background', '#fff'); });
