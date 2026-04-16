@@ -158,6 +158,7 @@ function populate_checklist(frm) {
 }
 
 var _mapbox_token = null;
+var _mapbox_session = null;
 var _address_fields = ['city', 'state', 'zip', 'latitude', 'longitude'];
 
 function setup_address_autofill(frm) {
@@ -210,11 +211,23 @@ function get_mapbox_token(callback) {
     });
 }
 
+function get_session_token() {
+    if (!_mapbox_session) {
+        // Generate a UUID v4 for Mapbox session tracking
+        _mapbox_session = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = Math.random() * 16 | 0;
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+    }
+    return _mapbox_session;
+}
+
 function search_mapbox(token, query, callback) {
     // Client-side search — avoids server token URL restriction issues
     var url = 'https://api.mapbox.com/search/searchbox/v1/suggest'
         + '?q=' + encodeURIComponent(query)
         + '&access_token=' + token
+        + '&session_token=' + get_session_token()
         + '&language=en&country=US&types=address&limit=5';
 
     fetch(url).then(function(r) { return r.json(); }).then(function(data) {
@@ -224,7 +237,8 @@ function search_mapbox(token, query, callback) {
 
 function retrieve_mapbox(token, mapbox_id, callback) {
     var url = 'https://api.mapbox.com/search/searchbox/v1/retrieve/' + mapbox_id
-        + '?access_token=' + token;
+        + '?access_token=' + token
+        + '&session_token=' + get_session_token();
 
     fetch(url).then(function(r) { return r.json(); }).then(function(data) {
         var features = data.features || [];
