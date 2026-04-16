@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DCR Map Preview</title>
+<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, Inter, sans-serif; }
+  body { display: flex; flex-direction: column; background: #f8fafc; color: #0f172a; }
+  body[data-theme="dark"] { background: #0f172a; color: #e2e8f0; }
+  #toolbar {
+    padding: 10px 16px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    background: #fff;
+  }
+  body[data-theme="dark"] #toolbar { background: #1e293b; border-color: #334155; }
+  #toolbar button {
+    padding: 6px 12px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    border-radius: 6px;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+  }
+  body[data-theme="dark"] #toolbar button { background: #0f172a; border-color: #475569; color: #e2e8f0; }
+  #toolbar .hint { color: #64748b; font-size: 12px; margin-left: auto; }
+  #map { flex: 1; }
+  /* Dark mode controls — mirrors what the real block does in shadow DOM */
+  body[data-theme="dark"] .mapboxgl-ctrl-group { background: #1e293b; box-shadow: 0 0 0 2px rgba(0,0,0,0.2); }
+  body[data-theme="dark"] .mapboxgl-ctrl-group button { background-color: transparent; color: #e2e8f0; }
+  body[data-theme="dark"] .mapboxgl-ctrl-group button:not(:disabled):hover { background-color: #334155 !important; }
+  body[data-theme="dark"] .mapboxgl-ctrl-group button + button { border-top: 1px solid #334155; }
+  body[data-theme="dark"] .mapboxgl-ctrl-group button.active { background-color: #1e3a5f !important; color: #93c5fd; }
+  body[data-theme="dark"] .mapboxgl-ctrl-icon { filter: invert(1) brightness(1.1); }
+  body:not([data-theme="dark"]) .mapboxgl-ctrl-group button.active { background-color: #e7f1ff !important; color: #1d4ed8; }
+</style>
+</head>
+<body data-theme="light">
+
+<div id="toolbar">
+  <strong>DCR Map Preview</strong>
+  <button id="toggle-theme">Toggle theme</button>
+  <button id="toggle-3d">3D</button>
+  <button id="recenter">Recenter</button>
+  <span class="hint">Zoom in to break clusters apart and verify pin counts match the badge</span>
+</div>
+<div id="map"></div>
+
+<script>
+// Paste your Mapbox public token here:
+const MAPBOX_TOKEN = prompt('Mapbox access token (pk.…):') || '';
+if (!MAPBOX_TOKEN) {
+  document.body.innerHTML = '<div style="padding:40px;font-family:sans-serif;">Need a Mapbox public token (pk.…) to preview. Reload and paste it into the prompt.</div>';
+  throw new Error('no token');
+}
+
+mapboxgl.accessToken = MAPBOX_TOKEN;
+
+const DEFAULT_CENTER = [-115.0, 34.0];
+const DEFAULT_ZOOM = 6;
+
+// --- MOCK DATA ----------------------------------------------------------
+// Southwest-US "communities" we'll scatter pins around. Each entry becomes a
+// group; within the group, pins are jittered a few hundred meters apart so
+// zooming in separates them. The COUNT is how many individual HBRs to
+// generate — that's what the cluster badge will show at wide zoom.
+const COMMUNITIES = [
+  { name: 'Sunridge Estates',    city: 'Phoenix, AZ',      center: [-112.0740, 33.4484], count: 12 },
+  { name: 'Coyote Ridge Park',   city: 'Tucson, AZ',       center: [-110.9747, 32.2226], count: 7 },
+  { name: 'Desert Vista Homes',  city: 'Las Vegas, NV',    center: [-115.1398, 36.1699], count: 18 },
+  { name: 'Valley Oaks',         city: 'Albuquerque, NM',  center: [-106.6504, 35.0844], count: 4 },
+  { name: 'Mesa Verde',          city: 'El Paso, TX',      center: [-106.4850, 31.7619], count: 9 },
+  { name: 'Palm Springs Manor',  city: 'Palm Springs, CA', center: [-116.5453, 33.8303], count: 3 },
+  { name: 'Joshua Tree Village', city: 'Joshua Tree, CA',  center: [-116.3126, 34.1347], count: 2 },
+  { name: 'Saguaro Heights',     city: 'Mesa, AZ',         center: [-111.8315, 33.4152], count: 5 },
+  { name: 'Rio Rancho Plaza',    city: 'Rio Rancho, NM',   center: [-106.6630, 35.2328], count: 1 },
+  { name: 'Red Rock Meadows',    city: 'Sedona, AZ',       center: [-111.7610, 34.8697], count: 6 },
+];
+
+function jitterCoord(center, meters = 300) {
+  // Rough conversion: 1° lat ≈ 111,000m; lng scales by cos(lat)
+  const dLat = (Math.random() - 0.5) * (meters / 111000) * 2;
+  const dLng = (Math.random() - 0.5) * (meters / (111000 * Math.cos(center[1] * Math.PI / 180))) * 2;
+  return [center[0] + dLng, center[1] + dLat];
+}
+
+// Build features — one feature per HBR, at a jittered address near the
+// community center. Each gets a synthetic street address so the popup has
+// something to show.
+const features = [];
+COMMUNITIES.forEach((c) => {
+  for (let i = 0; i < c.count; i++) {
+    const coord = jitterCoord(c.center, 400);
+    features.push({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: coord },
+      properties: {
+        community_name: c.name,
+        address: `${100 + i * 7} ${c.name.split(' ')[0]} Ln, ${c.city}`,
+        hbr_count: 1,
+      },
+    });
+  }
+});
+
+const geojson = { type: 'FeatureCollection', features };
+
+// --- MAP SETUP ----------------------------------------------------------
+const map = new mapboxgl.Map({
+  container: 'map',
+  style: 'mapbox://styles/mapbox/standard',
+  center: DEFAULT_CENTER,
+  zoom: DEFAULT_ZOOM,
+});
+
+map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+let _pinsLoaded = false;
+
+function syncTheme() {
+  const isDark = document.body.getAttribute('data-theme') === 'dark';
+  try { map.setConfigProperty('basemap', 'lightPreset', isDark ? 'night' : 'day'); } catch (e) {}
+  if (_pinsLoaded) {
+    const icon = isDark ? 'house-pin-dark' : 'house-pin-light';
+    ['unclustered-point', 'clusters'].forEach((id) => {
+      if (map.getLayer(id)) map.setLayoutProperty(id, 'icon-image', icon);
+    });
+  }
+}
+map.on('style.load', syncTheme);
+
+map.on('load', () => {
+  // Heatmap
+  map.addSource('hbr-locations', { type: 'geojson', data: geojson });
+  map.addLayer({
+    id: 'hbr-heat',
+    type: 'heatmap',
+    source: 'hbr-locations',
+    paint: {
+      'heatmap-weight': ['interpolate', ['linear'], ['get', 'hbr_count'], 1, 0.3, 10, 1],
+      'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 1, 12, 3],
+      'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 0, 15, 12, 30],
+      'heatmap-opacity': 0.6,
+    },
+  });
+
+  // Cluster source
+  map.addSource('hbr-clusters', {
+    type: 'geojson',
+    data: geojson,
+    cluster: true,
+    clusterMaxZoom: 14,
+    clusterRadius: 50,
+    clusterProperties: { total_count: ['+', ['get', 'hbr_count']] },
+  });
+
+  // Load pin images, then add layers
+  const isDark = document.body.getAttribute('data-theme') === 'dark';
+  let loaded = 0;
+  const onPinLoaded = () => {
+    loaded++;
+    if (loaded < 2) return;
+    _pinsLoaded = true;
+
+    map.addLayer({
+      id: 'clusters',
+      type: 'symbol',
+      source: 'hbr-clusters',
+      filter: ['has', 'point_count'],
+      minzoom: 6,
+      layout: {
+        'icon-image': isDark ? 'house-pin-dark' : 'house-pin-light',
+        'icon-size': 0.212,
+        'icon-anchor': 'bottom',
+        'icon-allow-overlap': true,
+      },
+    });
+
+    map.addLayer({
+      id: 'cluster-badge-bg',
+      type: 'circle',
+      source: 'hbr-clusters',
+      filter: ['has', 'point_count'],
+      minzoom: 6,
+      paint: {
+        'circle-color': '#ef4444',
+        'circle-radius': ['step', ['get', 'total_count'], 8, 10, 10],
+        'circle-stroke-width': 1.5,
+        'circle-stroke-color': '#ffffff',
+        'circle-translate': [12, -30],
+      },
+    });
+
+    map.addLayer({
+      id: 'cluster-badge-text',
+      type: 'symbol',
+      source: 'hbr-clusters',
+      filter: ['has', 'point_count'],
+      minzoom: 6,
+      layout: {
+        'text-field': [
+          'case',
+          ['>=', ['get', 'total_count'], 100], '99+',
+          ['to-string', ['get', 'total_count']],
+        ],
+        'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+        'text-size': 10,
+        'text-allow-overlap': true,
+        'text-ignore-placement': true,
+      },
+      paint: {
+        'text-color': '#ffffff',
+        'text-translate': [12, -30],
+      },
+    });
+
+    map.addLayer({
+      id: 'unclustered-point',
+      type: 'symbol',
+      source: 'hbr-clusters',
+      filter: ['!', ['has', 'point_count']],
+      minzoom: 6.5,
+      layout: {
+        'icon-image': isDark ? 'house-pin-dark' : 'house-pin-light',
+        'icon-size': 0.212,
+        'icon-anchor': 'bottom',
+        'icon-allow-overlap': true,
+      },
+    });
+  };
+
+  // These paths assume the preview lives one level above dcr/public/images/.
+  map.loadImage('dcr/public/images/map-pin-light.png', (err, img) => {
+    if (!err) map.addImage('house-pin-light', img);
+    onPinLoaded();
+  });
+  map.loadImage('dcr/public/images/map-pin-dark.png', (err, img) => {
+    if (!err) map.addImage('house-pin-dark', img);
+    onPinLoaded();
+  });
+
+  // Cluster click → expand
+  function handleClusterClick(e) {
+    map.getSource('hbr-clusters').getClusterExpansionZoom(
+      e.features[0].properties.cluster_id,
+      (err, zoom) => {
+        if (err) return;
+        map.easeTo({ center: e.features[0].geometry.coordinates, zoom });
+      }
+    );
+  }
+  ['clusters', 'cluster-badge-bg', 'cluster-badge-text'].forEach((id) => {
+    map.on('click', id, handleClusterClick);
+    map.on('mouseenter', id, () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', id, () => { map.getCanvas().style.cursor = ''; });
+  });
+
+  // Single pin popup
+  map.on('click', 'unclustered-point', (e) => {
+    const p = e.features[0].properties;
+    const html = `<div style="font-family:Inter,sans-serif;font-size:13px;">
+      <strong>${p.community_name || 'Unknown'}</strong><br>
+      <span style="color:#666;">${p.address || ''}</span><br>
+      <span style="font-weight:600;">${p.hbr_count} deal${p.hbr_count > 1 ? 's' : ''}</span>
+    </div>`;
+    new mapboxgl.Popup({ offset: 15 })
+      .setLngLat(e.features[0].geometry.coordinates)
+      .setHTML(html)
+      .addTo(map);
+  });
+  map.on('mouseenter', 'unclustered-point', () => { map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', 'unclustered-point', () => { map.getCanvas().style.cursor = ''; });
+});
+
+// --- TOOLBAR BUTTONS ----------------------------------------------------
+document.getElementById('toggle-theme').onclick = () => {
+  const cur = document.body.getAttribute('data-theme');
+  document.body.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+  syncTheme();
+};
+
+document.getElementById('toggle-3d').onclick = (ev) => {
+  const is3D = map.getPitch() > 0;
+  if (is3D) {
+    map.easeTo({ pitch: 0, bearing: 0 });
+    ev.target.classList.remove('active');
+    ev.target.textContent = '3D';
+  } else {
+    map.easeTo({ pitch: 60, bearing: -15 });
+    ev.target.classList.add('active');
+    ev.target.textContent = '2D';
+  }
+};
+
+document.getElementById('recenter').onclick = () => {
+  map.easeTo({
+    center: DEFAULT_CENTER,
+    zoom: DEFAULT_ZOOM,
+    pitch: 0,
+    bearing: 0,
+    duration: 2500,
+  });
+};
+</script>
+</body>
+</html>

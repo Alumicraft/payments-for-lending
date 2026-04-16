@@ -364,10 +364,12 @@ def ensure_map_block():
                     var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
                     try { map.setConfigProperty('basemap', 'lightPreset', isDark ? 'night' : 'day'); } catch(e) {}
                     if (_pinsLoaded) {
-                        var layer = map.getLayer('unclustered-point');
-                        if (layer) {
-                            map.setLayoutProperty('unclustered-point', 'icon-image', isDark ? 'house-pin-dark' : 'house-pin-light');
-                        }
+                        var icon = isDark ? 'house-pin-dark' : 'house-pin-light';
+                        ['unclustered-point', 'clusters'].forEach(function(id) {
+                            if (map.getLayer(id)) {
+                                map.setLayoutProperty(id, 'icon-image', icon);
+                            }
+                        });
                     }
 
                     // Theme the Mapbox controls (zoom, compass, 3D, recenter).
@@ -470,45 +472,74 @@ def ensure_map_block():
                     }
                 });
 
-                // Cluster circles
-                map.addLayer({
-                    id: 'clusters',
-                    type: 'circle',
-                    source: 'hbr-clusters',
-                    filter: ['has', 'point_count'],
-                    minzoom: 6,
-                    paint: {
-                        'circle-color': 'rgba(0, 122, 255, 0.75)',
-                        'circle-radius': ['step', ['get', 'total_count'], 14, 5, 18, 15, 24],
-                        'circle-stroke-width': 2,
-                        'circle-stroke-color': 'rgba(255, 255, 255, 0.9)'
-                    }
-                });
-
-                // Cluster count labels
-                map.addLayer({
-                    id: 'cluster-count',
-                    type: 'symbol',
-                    source: 'hbr-clusters',
-                    filter: ['has', 'point_count'],
-                    minzoom: 6,
-                    layout: {
-                        'text-field': ['to-string', ['get', 'total_count']],
-                        'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-                        'text-size': 13
-                    },
-                    paint: {
-                        'text-color': '#ffffff'
-                    }
-                });
-
-                // Individual points — load both light/dark house markers
+                // Cluster + unclustered layers all depend on the house pin
+                // image, so they get added once the image finishes loading.
                 var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
                 var loaded = 0;
                 function onPinLoaded() {
                     loaded++;
                     if (loaded < 2) return;
                     _pinsLoaded = true;
+
+                    // Cluster: same house pin as singles
+                    map.addLayer({
+                        id: 'clusters',
+                        type: 'symbol',
+                        source: 'hbr-clusters',
+                        filter: ['has', 'point_count'],
+                        minzoom: 6,
+                        layout: {
+                            'icon-image': isDark ? 'house-pin-dark' : 'house-pin-light',
+                            'icon-size': 0.212,
+                            'icon-anchor': 'bottom',
+                            'icon-allow-overlap': true
+                        }
+                    });
+
+                    // Red notification badge on the top-right of the pin.
+                    // The circle- and text-translate offsets are in screen
+                    // pixels relative to the feature point; the pin is ~28px
+                    // wide × ~37px tall, anchored at bottom, so [12, -30]
+                    // lands near the top-right corner.
+                    map.addLayer({
+                        id: 'cluster-badge-bg',
+                        type: 'circle',
+                        source: 'hbr-clusters',
+                        filter: ['has', 'point_count'],
+                        minzoom: 6,
+                        paint: {
+                            'circle-color': '#ef4444',
+                            'circle-radius': ['step', ['get', 'total_count'], 8, 10, 10],
+                            'circle-stroke-width': 1.5,
+                            'circle-stroke-color': '#ffffff',
+                            'circle-translate': [12, -30]
+                        }
+                    });
+
+                    map.addLayer({
+                        id: 'cluster-badge-text',
+                        type: 'symbol',
+                        source: 'hbr-clusters',
+                        filter: ['has', 'point_count'],
+                        minzoom: 6,
+                        layout: {
+                            'text-field': [
+                                'case',
+                                ['>=', ['get', 'total_count'], 100], '99+',
+                                ['to-string', ['get', 'total_count']]
+                            ],
+                            'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+                            'text-size': 10,
+                            'text-allow-overlap': true,
+                            'text-ignore-placement': true
+                        },
+                        paint: {
+                            'text-color': '#ffffff',
+                            'text-translate': [12, -30]
+                        }
+                    });
+
+                    // Individual (unclustered) pin
                     map.addLayer({
                         id: 'unclustered-point',
                         type: 'symbol',
@@ -547,8 +578,9 @@ def ensure_map_block():
                         .addTo(map);
                 });
 
-                // Zoom into cluster on click
-                map.on('click', 'clusters', function(e) {
+                // Expand cluster on click — wired to the pin, badge bg, and
+                // badge text layers so tapping any of them works.
+                function handleClusterClick(e) {
                     map.getSource('hbr-clusters').getClusterExpansionZoom(
                         e.features[0].properties.cluster_id,
                         function(err, zoom) {
@@ -556,11 +588,12 @@ def ensure_map_block():
                             map.easeTo({ center: e.features[0].geometry.coordinates, zoom: zoom });
                         }
                     );
+                }
+                ['clusters', 'cluster-badge-bg', 'cluster-badge-text'].forEach(function(id) {
+                    map.on('click', id, handleClusterClick);
+                    map.on('mouseenter', id, function() { map.getCanvas().style.cursor = 'pointer'; });
+                    map.on('mouseleave', id, function() { map.getCanvas().style.cursor = ''; });
                 });
-
-                // Cursor styles
-                map.on('mouseenter', 'clusters', function() { map.getCanvas().style.cursor = 'pointer'; });
-                map.on('mouseleave', 'clusters', function() { map.getCanvas().style.cursor = ''; });
                 map.on('mouseenter', 'unclustered-point', function() { map.getCanvas().style.cursor = 'pointer'; });
                 map.on('mouseleave', 'unclustered-point', function() { map.getCanvas().style.cursor = ''; });
             }
