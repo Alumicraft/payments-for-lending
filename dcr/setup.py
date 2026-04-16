@@ -72,23 +72,50 @@ def after_install():
     # which wipes any cards/charts placed via the Workspace Builder.
     # Add them manually: Workspace Builder → Access → drag in the card/chart.
 
-    ensure_heatmap_block()
+    ensure_map_block()
 
     frappe.db.commit()
 
 
-def ensure_heatmap_block():
-    """Create or update the workspace heatmap Custom HTML Block."""
-    block_name = "HBR Heatmap"
+def ensure_map_block():
+    """Create or update the workspace map Custom HTML Block."""
+    block_name = "Map"
+    legacy_block_name = "HBR Heatmap"
+
+    # One-time migration from legacy name. rename_doc updates the doc's name;
+    # the workspace's `content` JSON stores the block name as a raw string
+    # reference, so we patch that separately.
+    if (
+        frappe.db.exists("Custom HTML Block", legacy_block_name)
+        and not frappe.db.exists("Custom HTML Block", block_name)
+    ):
+        frappe.rename_doc(
+            "Custom HTML Block", legacy_block_name, block_name,
+            force=True, merge=False,
+        )
+        legacy_workspaces = frappe.get_all(
+            "Workspace",
+            filters={"content": ["like", f"%{legacy_block_name}%"]},
+            pluck="name",
+        )
+        for ws in legacy_workspaces:
+            content = frappe.db.get_value("Workspace", ws, "content") or ""
+            if legacy_block_name in content:
+                frappe.db.set_value(
+                    "Workspace", ws, "content",
+                    content.replace(f'"{legacy_block_name}"', f'"{block_name}"'),
+                )
+                frappe.clear_document_cache("Workspace", ws)
+        frappe.db.commit()
 
     html_content = """<style>
 .mapboxgl-ctrl-bottom-left, .mapboxgl-ctrl-bottom-right { transform: translateY(150%); }
 </style>
-<div id="dcr-heatmap" style="width:100%; overflow: hidden;"></div>"""
+<div id="dcr-map" style="width:100%; overflow: hidden;"></div>"""
 
     js_content = r"""
 (function() {
-    var container = root_element.querySelector('#dcr-heatmap');
+    var container = root_element.querySelector('#dcr-map');
     if (!container) return;
 
     // Full-bleed on Map workspace, rounded corners elsewhere
