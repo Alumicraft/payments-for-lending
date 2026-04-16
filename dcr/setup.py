@@ -316,11 +316,11 @@ def ensure_map_block():
                         if (is3D) {
                             m.easeTo({ pitch: 0, bearing: 0 });
                             btn.textContent = '3D';
-                            btn.style.background = '';
+                            btn.classList.remove('active');
                         } else {
                             m.easeTo({ pitch: 60, bearing: -15 });
                             btn.textContent = '2D';
-                            btn.style.background = '#e7f1ff';
+                            btn.classList.add('active');
                         }
                     };
                     this._container.appendChild(btn);
@@ -368,6 +368,47 @@ def ensure_map_block():
                         if (layer) {
                             map.setLayoutProperty('unclustered-point', 'icon-image', isDark ? 'house-pin-dark' : 'house-pin-light');
                         }
+                    }
+
+                    // Theme the Mapbox controls (zoom, compass, 3D, recenter).
+                    // Lives inside the shadow root so these rules actually reach
+                    // the controls — desk-level CSS can't pierce the shadow.
+                    var shadowRoot = container.getRootNode();
+                    if (shadowRoot && shadowRoot.appendChild) {
+                        var styleEl = shadowRoot.querySelector && shadowRoot.querySelector('#dcr-map-ctrl-theme');
+                        if (!styleEl) {
+                            styleEl = document.createElement('style');
+                            styleEl.id = 'dcr-map-ctrl-theme';
+                            shadowRoot.appendChild(styleEl);
+                        }
+                        styleEl.textContent = isDark ? [
+                            '.mapboxgl-ctrl-group {',
+                            '  background: #1e293b !important;',
+                            '  box-shadow: 0 0 0 2px rgba(0,0,0,0.2);',
+                            '}',
+                            '.mapboxgl-ctrl-group button {',
+                            '  background-color: transparent;',
+                            '  color: #e2e8f0;',
+                            '}',
+                            '.mapboxgl-ctrl-group button:not(:disabled):hover {',
+                            '  background-color: #334155 !important;',
+                            '}',
+                            '.mapboxgl-ctrl-group button + button {',
+                            '  border-top: 1px solid #334155;',
+                            '}',
+                            '.mapboxgl-ctrl-group button.active {',
+                            '  background-color: #1e3a5f !important;',
+                            '  color: #93c5fd;',
+                            '}',
+                            '.mapboxgl-ctrl-icon {',
+                            '  filter: invert(1) brightness(1.1);',
+                            '}'
+                        ].join('\n') : [
+                            '.mapboxgl-ctrl-group button.active {',
+                            '  background-color: #e7f1ff !important;',
+                            '  color: #1d4ed8;',
+                            '}'
+                        ].join('\n');
                     }
                 }
                 map.on('style.load', syncTheme);
