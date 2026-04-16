@@ -285,6 +285,7 @@ def ensure_heatmap_block():
                         type: 'symbol',
                         source: 'hbr-clusters',
                         filter: ['!', ['has', 'point_count']],
+                        minzoom: 6.5,
                         layout: {
                             'icon-image': isDark ? 'house-pin-dark' : 'house-pin-light',
                             'icon-size': 0.35,
