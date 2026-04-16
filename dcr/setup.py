@@ -402,16 +402,26 @@ def ensure_heatmap_block():
 })();
 """
 
+    # Detect the correct fieldname for JS (differs by Frappe version)
+    js_field = None
+    for candidate in ("script", "javascript", "js"):
+        if frappe.db.has_column("Custom HTML Block", candidate):
+            js_field = candidate
+            break
+
     if frappe.db.exists("Custom HTML Block", block_name):
-        frappe.db.set_value("Custom HTML Block", block_name, {
-            "html": html_content,
-            "script": js_content,
-        }, update_modified=False)
+        updates = {"html": html_content}
+        if js_field:
+            updates[js_field] = js_content
+        frappe.db.set_value("Custom HTML Block", block_name, updates, update_modified=False)
+        frappe.db.commit()
     else:
-        frappe.get_doc({
+        new_doc = {
             "doctype": "Custom HTML Block",
             "name": block_name,
             "html": html_content,
-            "script": js_content,
             "private": 0,
-        }).insert(ignore_permissions=True)
+        }
+        if js_field:
+            new_doc[js_field] = js_content
+        frappe.get_doc(new_doc).insert(ignore_permissions=True)
