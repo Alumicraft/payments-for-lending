@@ -415,6 +415,8 @@ def ensure_heatmap_block():
             updates[js_field] = js_content
         frappe.db.set_value("Custom HTML Block", block_name, updates, update_modified=False)
         frappe.db.commit()
+        # Clear Frappe's cached document so next request serves fresh content
+        frappe.clear_document_cache("Custom HTML Block", block_name)
     else:
         new_doc = {
             "doctype": "Custom HTML Block",
