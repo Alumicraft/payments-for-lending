@@ -109,6 +109,15 @@ def ensure_heatmap_block():
             '.widget.custom-block-widget-box { padding: 0 !important; }'
         ].join('\n');
         document.head.appendChild(style);
+
+        // Remove fullbleed styles when navigating away
+        frappe.router.on('change', function() {
+            var stillMap = (frappe.get_route() || []).join('/').toLowerCase().indexOf('map') !== -1;
+            if (!stillMap) {
+                var el = document.getElementById('dcr-map-fullbleed');
+                if (el) el.remove();
+            }
+        });
     }
 
     // Dynamic height: fill from container top to bottom of viewport
