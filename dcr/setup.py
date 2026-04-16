@@ -250,10 +250,10 @@ def ensure_heatmap_block():
                     source: 'hbr-clusters',
                     filter: ['has', 'point_count'],
                     paint: {
-                        'circle-color': '#007AFF',
-                        'circle-radius': ['step', ['get', 'total_count'], 20, 5, 26, 15, 34],
-                        'circle-stroke-width': 3,
-                        'circle-stroke-color': '#fff'
+                        'circle-color': 'rgba(0, 122, 255, 0.75)',
+                        'circle-radius': ['step', ['get', 'total_count'], 14, 5, 18, 15, 24],
+                        'circle-stroke-width': 2,
+                        'circle-stroke-color': 'rgba(255, 255, 255, 0.9)'
                     }
                 });
 
