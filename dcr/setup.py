@@ -288,7 +288,7 @@ def ensure_heatmap_block():
                         minzoom: 6.5,
                         layout: {
                             'icon-image': isDark ? 'house-pin-dark' : 'house-pin-light',
-                            'icon-size': 0.35,
+                            'icon-size': 0.212,
                             'icon-anchor': 'bottom',
                             'icon-allow-overlap': true
                         }
