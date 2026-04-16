@@ -280,16 +280,17 @@ function show_address_dropdown(frm, $input, suggestions) {
     var $dropdown = $('<ul class="mapbox-dropdown"></ul>').css({
         position: 'absolute',
         zIndex: 100,
-        background: '#fff',
-        border: '1px solid #d1d8dd',
-        borderRadius: '4px',
+        background: 'var(--fg-color)',
+        color: 'var(--text-color)',
+        border: '1px solid var(--border-color)',
+        borderRadius: 'var(--border-radius)',
         maxHeight: '200px',
         overflowY: 'auto',
         width: '100%',
         listStyle: 'none',
         padding: 0,
         margin: '4px 0 0 0',
-        boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+        boxShadow: 'var(--shadow-sm)'
     });
 
     for (var i = 0; i < suggestions.length; i++) {
@@ -308,8 +309,8 @@ function show_address_dropdown(frm, $input, suggestions) {
                     frm.set_value('longitude', s.longitude || 0);
                     set_address_fields_read_only(frm, true);
                 })
-                .on('mouseenter', function() { $(this).css('background', '#f5f7fa'); })
-                .on('mouseleave', function() { $(this).css('background', '#fff'); });
+                .on('mouseenter', function() { $(this).css('background', 'var(--hover-color)'); })
+                .on('mouseleave', function() { $(this).css('background', 'transparent'); });
             $dropdown.append($li);
         })(suggestions[i]);
     }
