@@ -172,6 +172,64 @@ def ensure_heatmap_block():
                 });
                 map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
+                // 3D toggle control
+                var ThreeDControl = function() {};
+                ThreeDControl.prototype.onAdd = function(m) {
+                    this._map = m;
+                    this._container = document.createElement('div');
+                    this._container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group';
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.title = 'Toggle 3D';
+                    btn.style.fontWeight = '600';
+                    btn.style.fontSize = '11px';
+                    btn.textContent = '3D';
+                    btn.onclick = function() {
+                        var is3D = m.getPitch() > 0;
+                        if (is3D) {
+                            m.easeTo({ pitch: 0, bearing: 0 });
+                            btn.textContent = '3D';
+                            btn.style.background = '';
+                        } else {
+                            m.easeTo({ pitch: 60, bearing: -15 });
+                            btn.textContent = '2D';
+                            btn.style.background = '#e7f1ff';
+                        }
+                    };
+                    this._container.appendChild(btn);
+                    return this._container;
+                };
+                ThreeDControl.prototype.onRemove = function() {
+                    this._container.parentNode.removeChild(this._container);
+                    this._map = undefined;
+                };
+                map.addControl(new ThreeDControl(), 'top-right');
+
+                // Recenter control
+                var RecenterControl = function() {};
+                RecenterControl.prototype.onAdd = function(m) {
+                    this._container = document.createElement('div');
+                    this._container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group';
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.title = 'Recenter';
+                    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:auto;"><path d="M3 11L12 3L21 11V20C21 20.5523 20.5523 21 20 21H15V14H9V21H4C3.44772 21 3 20.5523 3 20V11Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/></svg>';
+                    btn.onclick = function() {
+                        m.easeTo({
+                            center: [cfg.default_longitude, cfg.default_latitude],
+                            zoom: cfg.default_zoom,
+                            pitch: 0,
+                            bearing: 0
+                        });
+                    };
+                    this._container.appendChild(btn);
+                    return this._container;
+                };
+                RecenterControl.prototype.onRemove = function() {
+                    this._container.parentNode.removeChild(this._container);
+                };
+                map.addControl(new RecenterControl(), 'top-right');
+
                 // Day/night mode + icon swap based on Frappe theme
                 var _pinsLoaded = false;
                 function syncTheme() {
@@ -249,6 +307,7 @@ def ensure_heatmap_block():
                     type: 'circle',
                     source: 'hbr-clusters',
                     filter: ['has', 'point_count'],
+                    minzoom: 6,
                     paint: {
                         'circle-color': 'rgba(0, 122, 255, 0.75)',
                         'circle-radius': ['step', ['get', 'total_count'], 14, 5, 18, 15, 24],
@@ -263,6 +322,7 @@ def ensure_heatmap_block():
                     type: 'symbol',
                     source: 'hbr-clusters',
                     filter: ['has', 'point_count'],
+                    minzoom: 6,
                     layout: {
                         'text-field': ['to-string', ['get', 'total_count']],
                         'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
