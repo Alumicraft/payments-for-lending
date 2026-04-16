@@ -346,7 +346,8 @@ def ensure_map_block():
                             center: [cfg.default_longitude, cfg.default_latitude],
                             zoom: cfg.default_zoom,
                             pitch: 0,
-                            bearing: 0
+                            bearing: 0,
+                            duration: 2500
                         });
                     };
                     this._container.appendChild(btn);
