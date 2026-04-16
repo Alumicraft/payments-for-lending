@@ -113,9 +113,37 @@ def force_refresh_map_block():
             js_field = candidate
             break
 
+    def workspace_refs():
+        """Return {workspace_name: {mentions_map, mentions_legacy, snippet}} for
+        any Workspace whose content references either block name."""
+        out = {}
+        for name in ("Map", "HBR Heatmap"):
+            rows = frappe.get_all(
+                "Workspace",
+                filters={"content": ["like", f"%{name}%"]},
+                pluck="name",
+            )
+            for ws in rows:
+                if ws in out:
+                    continue
+                content = frappe.db.get_value("Workspace", ws, "content") or ""
+                idx = content.find("HBR Heatmap")
+                if idx == -1:
+                    idx = content.find("Map")
+                snippet = content[max(0, idx - 40):idx + 80] if idx != -1 else ""
+                out[ws] = {
+                    "mentions_map": "Map" in content,
+                    "mentions_legacy": "HBR Heatmap" in content,
+                    "snippet": snippet,
+                }
+        return out
+
     before = {
-        "Map": snapshot("Map"),
-        "HBR Heatmap": snapshot("HBR Heatmap"),
+        "blocks": {
+            "Map": snapshot("Map"),
+            "HBR Heatmap": snapshot("HBR Heatmap"),
+        },
+        "workspaces": workspace_refs(),
     }
 
     error = None
@@ -127,8 +155,11 @@ def force_refresh_map_block():
         frappe.log_error(frappe.get_traceback(), "force_refresh_map_block")
 
     after = {
-        "Map": snapshot("Map"),
-        "HBR Heatmap": snapshot("HBR Heatmap"),
+        "blocks": {
+            "Map": snapshot("Map"),
+            "HBR Heatmap": snapshot("HBR Heatmap"),
+        },
+        "workspaces": workspace_refs(),
     }
 
     return {
@@ -144,9 +175,8 @@ def ensure_map_block():
     block_name = "Map"
     legacy_block_name = "HBR Heatmap"
 
-    # One-time migration from legacy name. rename_doc updates the doc's name;
-    # the workspace's `content` JSON stores the block name as a raw string
-    # reference, so we patch that separately.
+    # One-time migration from legacy name — rename the doc if the legacy name
+    # is still present.
     if (
         frappe.db.exists("Custom HTML Block", legacy_block_name)
         and not frappe.db.exists("Custom HTML Block", block_name)
@@ -155,19 +185,27 @@ def ensure_map_block():
             "Custom HTML Block", legacy_block_name, block_name,
             force=True, merge=False,
         )
-        legacy_workspaces = frappe.get_all(
-            "Workspace",
-            filters={"content": ["like", f"%{legacy_block_name}%"]},
-            pluck="name",
-        )
-        for ws in legacy_workspaces:
-            content = frappe.db.get_value("Workspace", ws, "content") or ""
-            if legacy_block_name in content:
-                frappe.db.set_value(
-                    "Workspace", ws, "content",
-                    content.replace(f'"{legacy_block_name}"', f'"{block_name}"'),
-                )
-                frappe.clear_document_cache("Workspace", ws)
+
+    # Patch Workspace content unconditionally. The workspace's `content` JSON
+    # stores the block name as a raw string reference, and the rename above
+    # does NOT propagate into that field. We keep this outside the rename
+    # branch so a workspace left pointing at the legacy name (because the
+    # rename ran successfully on an earlier migrate but the content patch
+    # didn't match) still gets healed on the next boot.
+    legacy_workspaces = frappe.get_all(
+        "Workspace",
+        filters={"content": ["like", f"%{legacy_block_name}%"]},
+        pluck="name",
+    )
+    for ws in legacy_workspaces:
+        content = frappe.db.get_value("Workspace", ws, "content") or ""
+        if legacy_block_name in content:
+            frappe.db.set_value(
+                "Workspace", ws, "content",
+                content.replace(legacy_block_name, block_name),
+            )
+            frappe.clear_document_cache("Workspace", ws)
+    if legacy_workspaces:
         frappe.db.commit()
 
     html_content = """<style>
