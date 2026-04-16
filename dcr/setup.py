@@ -413,10 +413,26 @@ def ensure_heatmap_block():
         updates = {"html": html_content}
         if js_field:
             updates[js_field] = js_content
-        frappe.db.set_value("Custom HTML Block", block_name, updates, update_modified=False)
+        # IMPORTANT: update_modified must be True (default) so the block's
+        # `modified` timestamp bumps. Frappe's desk HTTP cache keys off
+        # `modified` — without a bump, browsers get the stale rendered HTML
+        # even though the DB row is new.
+        frappe.db.set_value("Custom HTML Block", block_name, updates)
         frappe.db.commit()
-        # Clear Frappe's cached document so next request serves fresh content
+        # Clear Frappe's in-process doc cache
         frappe.clear_document_cache("Custom HTML Block", block_name)
+        # Bust any Workspace that embeds this block — the workspace render
+        # is cached by its own `modified`, so we need to touch every workspace
+        # referencing this block in its content JSON.
+        workspaces = frappe.get_all(
+            "Workspace",
+            filters={"content": ["like", f"%{block_name}%"]},
+            pluck="name",
+        )
+        for ws in workspaces:
+            frappe.db.set_value("Workspace", ws, "modified", frappe.utils.now())
+            frappe.clear_document_cache("Workspace", ws)
+        frappe.db.commit()
     else:
         new_doc = {
             "doctype": "Custom HTML Block",
