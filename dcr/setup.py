@@ -3,6 +3,12 @@ import frappe
 
 def after_install():
     """Ensure DCR module definition and required groups exist."""
+    # Map block first — isolated so any later setup failure cannot block it.
+    try:
+        ensure_map_block()
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "ensure_map_block failed")
+
     if not frappe.db.exists("Module Def", "DCR"):
         frappe.get_doc({
             "doctype": "Module Def",
@@ -72,9 +78,65 @@ def after_install():
     # which wipes any cards/charts placed via the Workspace Builder.
     # Add them manually: Workspace Builder → Access → drag in the card/chart.
 
-    ensure_map_block()
-
     frappe.db.commit()
+
+
+@frappe.whitelist()
+def force_refresh_map_block():
+    """Diagnostic: force re-run ensure_map_block and return live DB state.
+
+    Call from browser console:
+      frappe.call('dcr.setup.force_refresh_map_block').then(r => console.log(r.message))
+    """
+    frappe.only_for("System Manager")
+
+    def snapshot(name):
+        if not frappe.db.exists("Custom HTML Block", name):
+            return None
+        row = frappe.db.get_value(
+            "Custom HTML Block", name,
+            ["modified", "html", "script"], as_dict=True,
+        )
+        script = row.script or ""
+        return {
+            "name": name,
+            "modified": str(row.modified),
+            "html_preview": (row.html or "")[:120],
+            "script_length": len(script),
+            "script_head": script[:180],
+            "script_tail": script[-180:] if len(script) > 180 else "",
+        }
+
+    js_field = None
+    for candidate in ("script", "javascript", "js"):
+        if frappe.db.has_column("Custom HTML Block", candidate):
+            js_field = candidate
+            break
+
+    before = {
+        "Map": snapshot("Map"),
+        "HBR Heatmap": snapshot("HBR Heatmap"),
+    }
+
+    error = None
+    try:
+        ensure_map_block()
+        frappe.db.commit()
+    except Exception as e:
+        error = f"{type(e).__name__}: {e}"
+        frappe.log_error(frappe.get_traceback(), "force_refresh_map_block")
+
+    after = {
+        "Map": snapshot("Map"),
+        "HBR Heatmap": snapshot("HBR Heatmap"),
+    }
+
+    return {
+        "js_field_detected": js_field,
+        "before": before,
+        "after": after,
+        "error": error,
+    }
 
 
 def ensure_map_block():
