@@ -15,6 +15,7 @@
 frappe.ui.form.on('Loan', {
     refresh: function(frm) {
         if (frm.is_new()) {
+            prefill_deal_reference(frm);
             return;
         }
 
@@ -49,6 +50,31 @@ frappe.ui.form.on('Loan', {
         }
     }
 });
+
+
+function prefill_deal_reference(frm) {
+    // When a new Loan form opens (from "Create Loan" on a Loan Application),
+    // fill in deal-reference fields right away so the user sees them before
+    // the first save. Mirrors dcr.api.lending._populate_deal_reference which
+    // runs again on validate as the authoritative source of truth.
+    if (!frm.doc.loan_application) return;
+
+    frappe.call({
+        method: 'dcr.api.lending.get_loan_deal_reference',
+        args: {
+            loan_application: frm.doc.loan_application,
+            applicant: frm.doc.applicant
+        },
+        callback: function(r) {
+            if (!r.message) return;
+            Object.keys(r.message).forEach(function(field) {
+                if (r.message[field] && !frm.doc[field]) {
+                    frm.set_value(field, r.message[field]);
+                }
+            });
+        }
+    });
+}
 
 
 function show_autopay_indicator(frm) {

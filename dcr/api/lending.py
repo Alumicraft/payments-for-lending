@@ -180,36 +180,67 @@ def on_loan_after_insert(doc, method):
         _send_setup_email_if_needed(doc)
 
 
-def _populate_deal_reference(doc):
-    """Copy deal reference fields from Loan Application and fetch rebate from
-    Factory Assignment. Runs on every validate — only fills fields that are
-    currently empty, so any manual override is preserved.
+def _compute_deal_reference(loan_application, applicant, current=None):
+    """Work out what the deal reference fields should be, given the source
+    Loan Application and the customer. Returns {field: value} only for fields
+    that are currently empty (respecting any manual override on the doc).
     """
-    if not doc.loan_application:
-        return
+    updates = {}
+    if not loan_application:
+        return updates
 
     la_fields = frappe.db.get_value(
-        "Loan Application", doc.loan_application,
+        "Loan Application", loan_application,
         ["home_build_request", "home_serial_no", "buyer_name", "factory"],
         as_dict=True
     )
     if not la_fields:
-        return
+        return updates
+
+    current = current or {}
 
     for field, value in la_fields.items():
-        if value and not doc.get(field):
-            doc.set(field, value)
+        if value and not current.get(field):
+            updates[field] = value
 
     # Fetch rebate percentage from Factory Assignment (dealer + factory pair)
-    factory = doc.get("factory")
-    if not doc.get("custom_rebate_percentage") and doc.applicant and factory:
+    factory = updates.get("factory") or current.get("factory")
+    if factory and applicant and not current.get("custom_rebate_percentage"):
         rebate = frappe.db.get_value(
             "Factory Assignment",
-            {"customer": doc.applicant, "factory": factory, "docstatus": 1, "active": 1},
+            {"customer": applicant, "factory": factory, "docstatus": 1, "active": 1},
             "rebate_percentage"
         )
         if rebate is not None:
-            doc.set("custom_rebate_percentage", rebate)
+            updates["custom_rebate_percentage"] = rebate
+
+    return updates
+
+
+def _populate_deal_reference(doc):
+    """Server-side: populate deal reference fields on the Loan doc during
+    validate. Only fills fields that are currently empty.
+    """
+    current = {
+        "home_build_request": doc.get("home_build_request"),
+        "home_serial_no": doc.get("home_serial_no"),
+        "buyer_name": doc.get("buyer_name"),
+        "factory": doc.get("factory"),
+        "custom_rebate_percentage": doc.get("custom_rebate_percentage"),
+    }
+    for field, value in _compute_deal_reference(
+        doc.loan_application, doc.applicant, current
+    ).items():
+        doc.set(field, value)
+
+
+@frappe.whitelist()
+def get_loan_deal_reference(loan_application, applicant=None):
+    """Client-side helper — lets the new-Loan form pre-populate deal
+    reference fields the moment it opens (before first save). Mirrors the
+    logic run server-side in _populate_deal_reference.
+    """
+    return _compute_deal_reference(loan_application, applicant)
 
 
 def on_loan_on_update(doc, method):
