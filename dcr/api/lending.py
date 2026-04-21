@@ -140,17 +140,10 @@ def validate_advance_date(factory, requested_date):
 
 
 def on_loan_validate(doc, method):
-    """Populate home_build_request from Loan Application.
-    Block submission if no active bank account is linked.
+    """Populate deal reference fields from Loan Application on every save,
+    and block submission if no active bank account is linked.
     """
-    if not doc.loan_application:
-        return
-    if not doc.home_build_request:
-        hbr = frappe.db.get_value(
-            "Loan Application", doc.loan_application, "home_build_request"
-        )
-        if hbr:
-            doc.home_build_request = hbr
+    _populate_deal_reference(doc)
 
     # Block submission without bank account
     if doc.docstatus == 1:
@@ -165,9 +158,7 @@ def on_loan_validate(doc, method):
 
 
 def on_loan_after_insert(doc, method):
-    """Populate deal reference fields, rebate, and auto-link bank account."""
-    _populate_deal_reference(doc)
-
+    """Auto-link default bank account on Loan creation."""
     if not doc.applicant:
         return
 
@@ -190,7 +181,10 @@ def on_loan_after_insert(doc, method):
 
 
 def _populate_deal_reference(doc):
-    """Copy deal reference fields from Loan Application and fetch rebate from Factory Assignment."""
+    """Copy deal reference fields from Loan Application and fetch rebate from
+    Factory Assignment. Runs on every validate — only fills fields that are
+    currently empty, so any manual override is preserved.
+    """
     if not doc.loan_application:
         return
 
@@ -202,13 +196,12 @@ def _populate_deal_reference(doc):
     if not la_fields:
         return
 
-    updates = {}
     for field, value in la_fields.items():
         if value and not doc.get(field):
-            updates[field] = value
+            doc.set(field, value)
 
     # Fetch rebate percentage from Factory Assignment (dealer + factory pair)
-    factory = updates.get("factory") or doc.get("factory")
+    factory = doc.get("factory")
     if not doc.get("custom_rebate_percentage") and doc.applicant and factory:
         rebate = frappe.db.get_value(
             "Factory Assignment",
@@ -216,11 +209,7 @@ def _populate_deal_reference(doc):
             "rebate_percentage"
         )
         if rebate is not None:
-            updates["custom_rebate_percentage"] = rebate
-
-    if updates:
-        for field, value in updates.items():
-            doc.db_set(field, value, update_modified=False)
+            doc.set("custom_rebate_percentage", rebate)
 
 
 def on_loan_on_update(doc, method):
