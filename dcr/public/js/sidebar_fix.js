@@ -3,6 +3,12 @@
  *
  * 1. Applies sidebar item filters as frappe.route_options on click
  * 2. Corrects active-state highlighting for duplicate-doctype items
+ * 3. Prevents unwanted workspace switching when navigating to a DocType
+ *    that lives in a different module's workspace. Upstream issue:
+ *    frappe/frappe#36317. Frappe's set_workspace_sidebar compares URL
+ *    slugs against sidebar item link_to values (title case), so the
+ *    "keep current sidebar" short-circuit never fires and it falls
+ *    through to module-based workspace resolution.
  */
 (function () {
 	"use strict";
@@ -163,6 +169,64 @@
 		else setTimeout(function () { fix_active_retry(n - 1); }, 200);
 	}
 
+	// -- Prevent unwanted workspace switching --
+	// Frappe's set_workspace_sidebar uses URL slugs (e.g. "home-build-request")
+	// to look up sidebars by `link_to` (e.g. "Home Build Request"), so it
+	// never finds a match and falls through to module-based switching. Patch
+	// it to only run its original logic when the user is explicitly
+	// navigating to a workspace URL.
+	function patch_workspace_switch() {
+		if (!frappe.app || !frappe.app.sidebar) return false;
+		var sb = frappe.app.sidebar;
+		if (sb._dcr_workspace_patched) return true;
+
+		var original = sb.set_workspace_sidebar.bind(sb);
+
+		sb.set_workspace_sidebar = function (router) {
+			try {
+				var route = frappe.get_route() || [];
+				var map = frappe.boot.workspace_sidebar_item || {};
+				var slug = "";
+
+				// Explicit workspace navigation looks like:
+				//   /app/<workspace>                 -> route = ["workspace"]
+				//   /app/Workspaces/<workspace>      -> route[0] = "Workspaces"
+				//   /app/Workspaces/private/<name>   -> route[0] = "Workspaces"
+				if (route.length === 1) {
+					slug = (route[0] || "").toLowerCase();
+				} else if (route.length >= 2 && (route[0] || "").toLowerCase() === "workspaces") {
+					return original(router);
+				}
+
+				var is_workspace_nav = slug && !!map[slug];
+
+				// Let Frappe run its normal logic on first load (no
+				// current sidebar yet) or when the user explicitly
+				// navigates to a workspace.
+				if (is_workspace_nav || !sb.sidebar_title) {
+					return original(router);
+				}
+
+				// Otherwise keep the user on their current workspace —
+				// just refresh which sidebar item is highlighted.
+				sb.set_active_workspace_item();
+			} catch (e) {
+				console.log("DCR sidebar patch error:", e);
+				return original(router);
+			}
+		};
+
+		sb._dcr_workspace_patched = true;
+		return true;
+	}
+
+	function try_patch_workspace_switch(n) {
+		if (n <= 0) return;
+		if (!patch_workspace_switch()) {
+			setTimeout(function () { try_patch_workspace_switch(n - 1); }, 300);
+		}
+	}
+
 	// -- Init --
 
 	function init() {
@@ -170,6 +234,8 @@
 		if (!sb) return false;
 		if (_initialized) return true;
 		_initialized = true;
+
+		try_patch_workspace_switch(20);
 
 		sb.addEventListener("click", on_click, true);
 
