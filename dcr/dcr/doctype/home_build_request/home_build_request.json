@@ -213,21 +213,24 @@
    "fieldname": "geo_section",
    "fieldtype": "Section Break",
    "label": "Geolocation",
-   "collapsible": 1
+   "collapsible": 1,
+   "hidden": 1
   },
   {
    "fieldname": "latitude",
    "fieldtype": "Float",
    "label": "Latitude",
    "precision": "6",
-   "read_only": 1
+   "read_only": 1,
+   "hidden": 1
   },
   {
    "fieldname": "longitude",
    "fieldtype": "Float",
    "label": "Longitude",
    "precision": "6",
-   "read_only": 1
+   "read_only": 1,
+   "hidden": 1
   },
   {
    "fieldname": "home_section",
