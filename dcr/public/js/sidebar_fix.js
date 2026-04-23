@@ -289,8 +289,19 @@
 	function pick_correct_workspace() {
 		try {
 			var route = frappe.get_route() || [];
-			if (route.length < 2) return null; // workspace URL; trust Frappe
-			var entity = route[1];
+			var map = frappe.boot.workspace_sidebar_item || {};
+
+			// Workspace URL — trust Frappe.
+			if (route.length === 1 && route[0] && map[route[0].toLowerCase()]) {
+				return null;
+			}
+
+			// Doctype entity — for list view ["List", "<DocType>"], form view
+			// ["Form", "<DocType>", "<name>"], or a bare slug like
+			// ["home-build-request"] pre-conversion.
+			var entity = null;
+			if (route.length >= 2) entity = route[1];
+			else if (route.length === 1) entity = route[0];
 			if (!entity) return null;
 
 			var candidates = find_candidate_workspaces(entity);
@@ -307,14 +318,21 @@
 	}
 
 	function save_last_workspace() {
+		// Only save when the user is explicitly on a workspace URL. Saving
+		// whatever sidebar_title currently is on a doctype page can persist
+		// a buggy swap (e.g. "Access") and make every refresh keep it.
 		try {
-			if (frappe.app && frappe.app.sidebar && frappe.app.sidebar.sidebar_title) {
-				localStorage.setItem("dcr_last_workspace", frappe.app.sidebar.sidebar_title);
-			}
+			var route = frappe.get_route() || [];
+			if (route.length !== 1 || !route[0]) return;
+			var map = frappe.boot.workspace_sidebar_item || {};
+			var data = map[route[0].toLowerCase()];
+			if (!data) return;
+			var label = data.label || route[0];
+			localStorage.setItem("dcr_last_workspace", label);
 		} catch (e) {}
 	}
 
-	function fix_initial_workspace() {
+	function enforce_correct_workspace() {
 		if (!frappe.app || !frappe.app.sidebar) return;
 		var sb = frappe.app.sidebar;
 		var correct = pick_correct_workspace();
@@ -322,15 +340,15 @@
 		if (sb.sidebar_title === correct) return;
 		var setup = sb._dcr_original_setup;
 		if (typeof setup !== "function") return;
-		try { setup(correct); } catch (e) { console.log("DCR fix_initial_workspace error:", e); }
+		try { setup(correct); } catch (e) { console.log("DCR enforce_correct_workspace error:", e); }
 	}
 
-	function fix_initial_workspace_retry(n) {
+	function enforce_retry(n) {
 		if (n <= 0) return;
 		if (frappe.app && frappe.app.sidebar && frappe.app.sidebar._dcr_workspace_patched) {
-			fix_initial_workspace();
+			enforce_correct_workspace();
 		} else {
-			setTimeout(function () { fix_initial_workspace_retry(n - 1); }, 300);
+			setTimeout(function () { enforce_retry(n - 1); }, 300);
 		}
 	}
 
@@ -343,7 +361,7 @@
 		_initialized = true;
 
 		try_patch_workspace_switch(20);
-		fix_initial_workspace_retry(20);
+		enforce_retry(20);
 		$(window).on("beforeunload", save_last_workspace);
 
 		sb.addEventListener("click", on_click, true);
@@ -365,9 +383,14 @@
 
 		var on_route = function () {
 			setTimeout(function () { fix_active_retry(5); }, 300);
-			// Keep our "last workspace" hint fresh so a hard refresh
-			// from a doctype view picks the right sidebar.
-			setTimeout(save_last_workspace, 500);
+			// If Frappe's buggy swap slipped past our patch at any point,
+			// correct the workspace after each navigation.
+			setTimeout(enforce_correct_workspace, 200);
+			setTimeout(enforce_correct_workspace, 600);
+			// Remember the workspace only when the user is explicitly on
+			// a workspace URL (save_last_workspace guards against doctype
+			// routes internally).
+			setTimeout(save_last_workspace, 300);
 		};
 		if (frappe.router && typeof frappe.router.on === "function")
 			frappe.router.on("change", on_route);
