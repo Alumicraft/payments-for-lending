@@ -385,6 +385,11 @@
  "is_submittable": 1,
  "links": [
   {
+   "group": "Orders",
+   "link_doctype": "Purchase Invoice",
+   "link_fieldname": "custom_home_build_request"
+  },
+  {
    "group": "Lending",
    "link_doctype": "Loan Application",
    "link_fieldname": "home_build_request"
