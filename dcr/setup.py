@@ -227,13 +227,25 @@ def ensure_map_block():
         var style = document.createElement('style');
         style.id = 'dcr-map-fullbleed';
         style.textContent = [
-            '.layout-main-section { padding: 0 !important; }',
-            '.layout-main-section-wrapper { width: 100% !important; padding: 0 !important; margin: 0 !important; }',
-            '.editor-js-container { margin: 0 !important; }',
+            // Kill max-width on every layout container Frappe v16 might put
+            // around the content when the workspace is NOT in full-width
+            // mode. This way the user doesn't have to toggle Full Width on
+            // the Map workspace for the map to stretch edge-to-edge.
+            'body .layout-main-section-wrapper,',
+            'body .layout-main-section,',
+            'body .layout-main-section > .container,',
+            'body .layout-main-section > .container-fluid,',
+            'body .layout-main-section .workspace-body {',
+            '  max-width: none !important;',
+            '  width: 100% !important;',
+            '  padding: 0 !important;',
+            '  margin: 0 !important;',
+            '}',
+            '.editor-js-container { margin: 0 !important; max-width: none !important; }',
             '.codex-editor__redactor { padding-bottom: 0 !important; }',
-            '.ce-block__content { max-width: 100% !important; padding: 0 !important; }',
+            '.ce-block__content { max-width: none !important; width: 100% !important; padding: 0 !important; }',
             '.ce-block.col-xs-12 { padding: 0 !important; }',
-            '.widget.custom-block-widget-box { padding: 0 !important; }'
+            '.widget.custom-block-widget-box { padding: 0 !important; max-width: none !important; }'
         ].join('\n');
         document.head.appendChild(style);
 
