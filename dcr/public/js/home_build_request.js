@@ -64,7 +64,7 @@ frappe.ui.form.on('Home Build Request', {
         frm.add_custom_button(__('Purchase Invoice'), function() {
             frappe.new_doc('Purchase Invoice', {
                 supplier: frm.doc.factory,
-                custom_home_build_request: frm.doc.name
+                home_build_request: frm.doc.name
             });
         }, __('Create'));
     },

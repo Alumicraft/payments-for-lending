@@ -387,7 +387,7 @@
   {
    "group": "Orders",
    "link_doctype": "Purchase Invoice",
-   "link_fieldname": "custom_home_build_request"
+   "link_fieldname": "home_build_request"
   },
   {
    "group": "Lending",
