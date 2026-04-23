@@ -386,11 +386,6 @@
  "links": [
   {
    "group": "Orders",
-   "link_doctype": "Purchase Order",
-   "link_fieldname": "home_build_request"
-  },
-  {
-   "group": "Orders",
    "link_doctype": "Purchase Invoice",
    "link_fieldname": "home_build_request"
   },
