@@ -248,6 +248,7 @@
 		};
 
 		sb._dcr_workspace_patched = true;
+		sb._dcr_original_setup = original_setup;
 		return true;
 	}
 
@@ -255,6 +256,81 @@
 		if (n <= 0) return;
 		if (!patch_workspace_switch()) {
 			setTimeout(function () { try_patch_workspace_switch(n - 1); }, 300);
+		}
+	}
+
+	// -- Pick the right workspace on (hard) refresh --
+	// On reload Frappe has no remembered workspace, so its module-based
+	// fallback picks whichever workspace "owns" the doctype — usually the
+	// wrong one (Access/Buying/Lending instead of Deals/Contacts). Choose
+	// a candidate ourselves based on which workspaces actually list the
+	// current doctype, preferring the last workspace the user was on.
+
+	function find_candidate_workspaces(entity) {
+		var map = frappe.boot.workspace_sidebar_item || {};
+		var out = [];
+		Object.keys(map).forEach(function (key) {
+			var data = map[key];
+			if (!data || !data.items) return;
+			var matched = false;
+			for (var i = 0; i < data.items.length && !matched; i++) {
+				var item = data.items[i];
+				if (item && item.link_to === entity) { matched = true; break; }
+				var nested = (item && item.nested_items) || [];
+				for (var j = 0; j < nested.length; j++) {
+					if (nested[j] && nested[j].link_to === entity) { matched = true; break; }
+				}
+			}
+			if (matched) out.push(data.label || key);
+		});
+		return out;
+	}
+
+	function pick_correct_workspace() {
+		try {
+			var route = frappe.get_route() || [];
+			if (route.length < 2) return null; // workspace URL; trust Frappe
+			var entity = route[1];
+			if (!entity) return null;
+
+			var candidates = find_candidate_workspaces(entity);
+			if (!candidates.length) return null;
+			if (candidates.length === 1) return candidates[0];
+
+			var last = null;
+			try { last = localStorage.getItem("dcr_last_workspace"); } catch (e) {}
+			if (last && candidates.indexOf(last) !== -1) return last;
+			return candidates[0];
+		} catch (e) {
+			return null;
+		}
+	}
+
+	function save_last_workspace() {
+		try {
+			if (frappe.app && frappe.app.sidebar && frappe.app.sidebar.sidebar_title) {
+				localStorage.setItem("dcr_last_workspace", frappe.app.sidebar.sidebar_title);
+			}
+		} catch (e) {}
+	}
+
+	function fix_initial_workspace() {
+		if (!frappe.app || !frappe.app.sidebar) return;
+		var sb = frappe.app.sidebar;
+		var correct = pick_correct_workspace();
+		if (!correct) return;
+		if (sb.sidebar_title === correct) return;
+		var setup = sb._dcr_original_setup;
+		if (typeof setup !== "function") return;
+		try { setup(correct); } catch (e) { console.log("DCR fix_initial_workspace error:", e); }
+	}
+
+	function fix_initial_workspace_retry(n) {
+		if (n <= 0) return;
+		if (frappe.app && frappe.app.sidebar && frappe.app.sidebar._dcr_workspace_patched) {
+			fix_initial_workspace();
+		} else {
+			setTimeout(function () { fix_initial_workspace_retry(n - 1); }, 300);
 		}
 	}
 
@@ -267,6 +343,8 @@
 		_initialized = true;
 
 		try_patch_workspace_switch(20);
+		fix_initial_workspace_retry(20);
+		$(window).on("beforeunload", save_last_workspace);
 
 		sb.addEventListener("click", on_click, true);
 
@@ -287,6 +365,9 @@
 
 		var on_route = function () {
 			setTimeout(function () { fix_active_retry(5); }, 300);
+			// Keep our "last workspace" hint fresh so a hard refresh
+			// from a doctype view picks the right sidebar.
+			setTimeout(save_last_workspace, 500);
 		};
 		if (frappe.router && typeof frappe.router.on === "function")
 			frappe.router.on("change", on_route);
