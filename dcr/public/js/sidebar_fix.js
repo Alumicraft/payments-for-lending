@@ -179,8 +179,11 @@
 		if (!frappe.app || !frappe.app.sidebar) return false;
 		var sb = frappe.app.sidebar;
 		if (sb._dcr_workspace_patched) return true;
+		if (typeof sb.set_workspace_sidebar !== "function") return false;
+		if (typeof sb.setup !== "function") return false;
 
 		var original = sb.set_workspace_sidebar.bind(sb);
+		var original_setup = sb.setup.bind(sb);
 
 		sb.set_workspace_sidebar = function (router) {
 			try {
@@ -214,6 +217,34 @@
 				console.log("DCR sidebar patch error:", e);
 				return original(router);
 			}
+		};
+
+		// Safety net: Frappe also invokes sidebar.setup(workspace) from
+		// several other paths (toggle → set_sidebar_for_page, localStorage
+		// replay in set_workspace_sidebar, module fallback, etc). If any
+		// of those fire during a doctype navigation, block the rebuild
+		// and just refresh highlighting instead.
+		sb.setup = function (workspace_title) {
+			try {
+				var route = frappe.get_route() || [];
+				var is_doctype_view =
+					route.indexOf("List") !== -1 ||
+					route.indexOf("Form") !== -1 ||
+					route.indexOf("query-report") !== -1 ||
+					route.indexOf("dashboard-view") !== -1 ||
+					route.indexOf("Tree") !== -1;
+
+				if (is_doctype_view && sb.sidebar_title &&
+					workspace_title !== sb.sidebar_title) {
+					if (typeof sb.set_active_workspace_item === "function") {
+						sb.set_active_workspace_item();
+					}
+					return;
+				}
+			} catch (e) {
+				console.log("DCR sidebar setup-patch error:", e);
+			}
+			return original_setup(workspace_title);
 		};
 
 		sb._dcr_workspace_patched = true;
