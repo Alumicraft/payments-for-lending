@@ -266,19 +266,26 @@
 	// a candidate ourselves based on which workspaces actually list the
 	// current doctype, preferring the last workspace the user was on.
 
+	function normalize(s) {
+		// Compare entities/labels regardless of slug vs title case.
+		// "Home Build Request" and "home-build-request" → "homebuildrequest"
+		return (s || "").toLowerCase().replace(/[\s_-]+/g, "");
+	}
+
 	function find_candidate_workspaces(entity) {
 		var map = frappe.boot.workspace_sidebar_item || {};
 		var out = [];
+		var target = normalize(entity);
 		Object.keys(map).forEach(function (key) {
 			var data = map[key];
 			if (!data || !data.items) return;
 			var matched = false;
 			for (var i = 0; i < data.items.length && !matched; i++) {
 				var item = data.items[i];
-				if (item && item.link_to === entity) { matched = true; break; }
+				if (item && normalize(item.link_to) === target) { matched = true; break; }
 				var nested = (item && item.nested_items) || [];
 				for (var j = 0; j < nested.length; j++) {
-					if (nested[j] && nested[j].link_to === entity) { matched = true; break; }
+					if (nested[j] && normalize(nested[j].link_to) === target) { matched = true; break; }
 				}
 			}
 			if (matched) out.push(data.label || key);
@@ -332,23 +339,73 @@
 		} catch (e) {}
 	}
 
-	function enforce_correct_workspace() {
+	function enforce_correct_workspace(reason) {
 		if (!frappe.app || !frappe.app.sidebar) return;
 		var sb = frappe.app.sidebar;
 		var correct = pick_correct_workspace();
+		console.info("[DCR sidebar] enforce", reason || "", {
+			route: frappe.get_route(),
+			current: sb.sidebar_title,
+			correct: correct,
+			last: localStorage.getItem("dcr_last_workspace"),
+			patched: !!sb._dcr_workspace_patched
+		});
 		if (!correct) return;
 		if (sb.sidebar_title === correct) return;
 		var setup = sb._dcr_original_setup;
+		if (typeof setup !== "function") {
+			// Patch hasn't installed yet — fall back to the live setup,
+			// which may be our patched version. The patched version blocks
+			// switches on doctype views, so prefer the cached original
+			// when available.
+			if (typeof sb.setup === "function") setup = sb.setup.bind(sb);
+		}
 		if (typeof setup !== "function") return;
-		try { setup(correct); } catch (e) { console.log("DCR enforce_correct_workspace error:", e); }
+		try {
+			console.info("[DCR sidebar] correcting", sb.sidebar_title, "→", correct);
+			setup(correct);
+		} catch (e) {
+			console.log("[DCR sidebar] enforce error:", e);
+		}
 	}
 
 	function enforce_retry(n) {
 		if (n <= 0) return;
 		if (frappe.app && frappe.app.sidebar && frappe.app.sidebar._dcr_workspace_patched) {
-			enforce_correct_workspace();
+			enforce_correct_workspace("init");
 		} else {
 			setTimeout(function () { enforce_retry(n - 1); }, 300);
+		}
+	}
+
+	function watch_sidebar_title() {
+		// Last-resort safety net: if anything (Frappe internals, async
+		// setup, our own slow correction) flips .body-sidebar's data-title
+		// to the wrong workspace, revert it the moment the DOM mutates.
+		var el = document.querySelector(".body-sidebar");
+		if (!el) return false;
+		if (el._dcr_title_watched) return true;
+		el._dcr_title_watched = true;
+
+		var reverting = false;
+		var observer = new MutationObserver(function () {
+			if (reverting) return;
+			var current = el.getAttribute("data-title");
+			var correct = pick_correct_workspace();
+			if (!correct || current === correct) return;
+			console.info("[DCR sidebar] data-title swap detected", current, "→ reverting to", correct);
+			reverting = true;
+			enforce_correct_workspace("title-mutation");
+			setTimeout(function () { reverting = false; }, 100);
+		});
+		observer.observe(el, { attributes: true, attributeFilter: ["data-title"] });
+		return true;
+	}
+
+	function try_watch_sidebar_title(n) {
+		if (n <= 0) return;
+		if (!watch_sidebar_title()) {
+			setTimeout(function () { try_watch_sidebar_title(n - 1); }, 300);
 		}
 	}
 
@@ -362,7 +419,9 @@
 
 		try_patch_workspace_switch(20);
 		enforce_retry(20);
+		try_watch_sidebar_title(20);
 		$(window).on("beforeunload", save_last_workspace);
+		console.info("[DCR sidebar] init", { route: frappe.get_route() });
 
 		sb.addEventListener("click", on_click, true);
 
@@ -385,8 +444,8 @@
 			setTimeout(function () { fix_active_retry(5); }, 300);
 			// If Frappe's buggy swap slipped past our patch at any point,
 			// correct the workspace after each navigation.
-			setTimeout(enforce_correct_workspace, 200);
-			setTimeout(enforce_correct_workspace, 600);
+			setTimeout(function () { enforce_correct_workspace("route-200"); }, 200);
+			setTimeout(function () { enforce_correct_workspace("route-600"); }, 600);
 			// Remember the workspace only when the user is explicitly on
 			// a workspace URL (save_last_workspace guards against doctype
 			// routes internally).
