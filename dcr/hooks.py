@@ -47,14 +47,6 @@ fixtures = [
                 "Loan Application-repayment_amount-default",
                 "Loan Application-total_payable_amount-default",
                 "Loan Application-total_payable_interest-default",
-                "Loan Application-applicant_contact_info_section-hidden",
-                "Loan Application-applicant_address_details_section-hidden",
-                "Loan Application-co_applicants_section-hidden",
-                "Loan Application-applicant_email_address-mandatory_depends_on",
-                "Loan Application-applicant_phone_number-mandatory_depends_on",
-                "Loan Application-applicant_name-label",
-                "Loan Application-applicant_name-read_only",
-                "Loan Application-applicant_name-fetch_from",
             ]]
         ]
     },
