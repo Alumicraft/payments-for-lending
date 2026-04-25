@@ -79,6 +79,7 @@
    "in_list_view": 1,
    "label": "Amount",
    "options": "USD",
+   "placeholder": "0.00",
    "reqd": 1
   },
   {
