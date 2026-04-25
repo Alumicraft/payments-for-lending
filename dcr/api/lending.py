@@ -116,10 +116,23 @@ def validate_loan_application(doc, method):
 
     loan_amount = doc.get("loan_amount") or 0
     sales_price = doc.get("custom_projected_sales_price") or 0
+    rate = doc.get("rate_of_interest") or 0
 
+    # Monthly interest = (rate / 100) × loan_amount / 12. Recomputed on
+    # every save so it tracks rate_of_interest / loan_amount changes.
+    doc.monthly_interest_amount = (
+        (rate / 100) * loan_amount / 12 if rate and loan_amount else None
+    )
+
+    # Projected equity / LTV — only meaningful when both inputs are set.
+    # Explicitly clear if either becomes empty so a stale calc from a
+    # previous save doesn't stick around.
     if loan_amount and sales_price:
         doc.custom_projected_equity = sales_price - loan_amount
         doc.custom_projected_ltv = (loan_amount / sales_price) * 100
+    else:
+        doc.custom_projected_equity = None
+        doc.custom_projected_ltv = None
 
 
 def validate_advance_date(factory, requested_date):
