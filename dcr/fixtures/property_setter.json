@@ -238,5 +238,85 @@
     "property": "default",
     "property_type": "Text",
     "value": "0"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-applicant_contact_info_section-hidden",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "applicant_contact_info_section",
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-applicant_address_details_section-hidden",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "applicant_address_details_section",
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-co_applicants_section-hidden",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "co_applicants_section",
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-applicant_email_address-mandatory_depends_on",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "applicant_email_address",
+    "property": "mandatory_depends_on",
+    "property_type": "Data",
+    "value": ""
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-applicant_phone_number-mandatory_depends_on",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "applicant_phone_number",
+    "property": "mandatory_depends_on",
+    "property_type": "Data",
+    "value": ""
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-applicant_name-label",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "applicant_name",
+    "property": "label",
+    "property_type": "Data",
+    "value": "Applicant Name"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-applicant_name-read_only",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "applicant_name",
+    "property": "read_only",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-applicant_name-fetch_from",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "applicant_name",
+    "property": "fetch_from",
+    "property_type": "Small Text",
+    "value": "applicant.customer_name"
   }
 ]
