@@ -40,7 +40,8 @@
   {
    "fieldname": "received_date",
    "fieldtype": "Date",
-   "label": "Received Date"
+   "label": "Received Date",
+   "placeholder": "YYYY-MM-DD"
   }
  ],
  "index_web_pages_for_search": 1,

@@ -41,6 +41,7 @@
    "fieldtype": "Date",
    "in_list_view": 1,
    "label": "MIFA Date",
+   "placeholder": "YYYY-MM-DD",
    "reqd": 1
   },
   {
@@ -75,6 +76,7 @@
    "fieldname": "effective_date",
    "fieldtype": "Date",
    "label": "Effective Date",
+   "placeholder": "YYYY-MM-DD",
    "description": "Effective date of agreement (may differ from MIFA date)"
   },
   {

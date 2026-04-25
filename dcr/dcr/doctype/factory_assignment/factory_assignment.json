@@ -39,6 +39,7 @@
    "fieldname": "assignment_date",
    "fieldtype": "Date",
    "label": "Assignment Date",
+   "placeholder": "YYYY-MM-DD",
    "reqd": 1
   },
   {
@@ -52,6 +53,7 @@
    "fieldname": "rebate_percentage",
    "fieldtype": "Percent",
    "label": "Rebate Percentage",
+   "placeholder": "0.00",
    "description": "Per dealer-factory rebate rate"
   },
   {
@@ -74,7 +76,8 @@
   {
    "fieldname": "loa_date",
    "fieldtype": "Date",
-   "label": "LOA Date"
+   "label": "LOA Date",
+   "placeholder": "YYYY-MM-DD"
   }
  ],
  "index_web_pages_for_search": 1,

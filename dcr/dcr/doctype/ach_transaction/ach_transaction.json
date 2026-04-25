@@ -95,7 +95,8 @@
    "fieldname": "scheduled_date",
    "fieldtype": "Date",
    "in_list_view": 1,
-   "label": "Scheduled Date"
+   "label": "Scheduled Date",
+   "placeholder": "YYYY-MM-DD"
   },
   {
    "fieldname": "achq_section",
@@ -160,7 +161,8 @@
   {
    "fieldname": "next_retry_date",
    "fieldtype": "Date",
-   "label": "Next Retry Date"
+   "label": "Next Retry Date",
+   "placeholder": "YYYY-MM-DD"
   },
   {
    "fieldname": "original_transaction",

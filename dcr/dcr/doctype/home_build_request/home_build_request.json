@@ -166,7 +166,8 @@
   {
    "fieldname": "zip",
    "fieldtype": "Data",
-   "label": "ZIP"
+   "label": "ZIP",
+   "placeholder": "12345"
   },
   {
    "fieldname": "space_number",
