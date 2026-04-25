@@ -9,14 +9,16 @@ def get_dealer_outstanding_balance(customer):
 
     Pure ERPNext query — no external API.
     """
-    result = frappe.db.get_list("Loan",
-        filters={
-            "applicant": customer,
-            "status": ["in", ["Disbursed", "Active"]]
-        },
-        fields=["sum(outstanding_amount) as total"]
+    result = frappe.db.sql(
+        """
+        SELECT COALESCE(SUM(outstanding_amount), 0) AS total
+        FROM `tabLoan`
+        WHERE applicant = %s AND status IN ('Disbursed', 'Active')
+        """,
+        (customer,),
+        as_dict=True,
     )
-    return result[0].total or 0 if result else 0
+    return result[0].total if result else 0
 
 
 def is_dealer_current(customer):
