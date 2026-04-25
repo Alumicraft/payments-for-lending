@@ -71,6 +71,11 @@ frappe.ui.form.on('Home Build Request', {
                 home_build_request: frm.doc.name
             });
         }, __('Create'));
+
+        // The site's `emails` bench app injects a "Send Email" button on
+        // every submitted form. HBR doesn't have a buyer/dealer email
+        // workflow tied to the document itself, so hide it.
+        suppress_send_email_button(frm);
     },
     customer: function(frm) {
         if (frm.doc.customer) {
@@ -127,6 +132,32 @@ frappe.ui.form.on('Home Build Request', {
     },
     property_type: function(frm) { populate_checklist(frm); },
 });
+
+
+function suppress_send_email_button(frm) {
+    // The `emails` bench app adds its button asynchronously after refresh,
+    // so retry the DOM lookup until we find and hide it (or give up).
+    var labels = ['send email', 'new email', 'email'];
+    function hide() {
+        var hit = false;
+        // Top-level toolbar buttons (.standard-actions / .custom-actions).
+        frm.$wrapper.find('.btn').each(function() {
+            var t = ($(this).text() || '').trim().toLowerCase();
+            if (labels.indexOf(t) !== -1) { $(this).hide(); hit = true; }
+        });
+        // Items inside any toolbar dropdown menu.
+        frm.$wrapper.find('.dropdown-menu a').each(function() {
+            var t = ($(this).text() || '').trim().toLowerCase();
+            if (labels.indexOf(t) !== -1) { $(this).parent().hide(); hit = true; }
+        });
+        return hit;
+    }
+    var attempts = 0;
+    var iv = setInterval(function() {
+        attempts += 1;
+        if (hide() || attempts > 12) clearInterval(iv);
+    }, 250);
+}
 
 
 function update_connections_visibility(frm) {
