@@ -136,7 +136,8 @@
   {
    "fieldname": "community_name",
    "fieldtype": "Data",
-   "label": "Community Name"
+   "label": "Community Name",
+   "depends_on": "eval:doc.property_type=='Park'"
   },
   {
    "fieldname": "delivery_address",
@@ -170,13 +171,15 @@
   {
    "fieldname": "space_number",
    "fieldtype": "Data",
-   "label": "Space No"
+   "label": "Space No",
+   "depends_on": "eval:doc.property_type=='Park'"
   },
   {
    "fieldname": "community_details_section",
    "fieldtype": "Section Break",
    "label": "Community Details",
-   "collapsible": 1
+   "collapsible": 1,
+   "depends_on": "eval:doc.property_type=='Park'"
   },
   {
    "fieldname": "contact_name",
