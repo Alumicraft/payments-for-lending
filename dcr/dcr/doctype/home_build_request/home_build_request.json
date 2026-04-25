@@ -210,7 +210,8 @@
   {
    "fieldname": "space_rent",
    "fieldtype": "Currency",
-   "label": "Monthly Space Rent"
+   "label": "Monthly Space Rent",
+   "options": "USD"
   },
   {
    "fieldname": "geo_section",
@@ -256,7 +257,8 @@
   {
    "fieldname": "home_invoice_plus_freight",
    "fieldtype": "Currency",
-   "label": "Quoted Amount"
+   "label": "Quoted Amount",
+   "options": "USD"
   },
   {
    "fieldname": "column_break_home",
@@ -296,12 +298,14 @@
   {
    "fieldname": "customer_deposit",
    "fieldtype": "Currency",
-   "label": "Deposit In Escrow"
+   "label": "Deposit In Escrow",
+   "options": "USD"
   },
   {
    "fieldname": "selling_price",
    "fieldtype": "Currency",
-   "label": "Selling Price"
+   "label": "Selling Price",
+   "options": "USD"
   },
   {
    "fieldname": "column_break_financials",

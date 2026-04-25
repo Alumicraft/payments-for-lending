@@ -78,6 +78,7 @@
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Amount",
+   "options": "USD",
    "reqd": 1
   },
   {

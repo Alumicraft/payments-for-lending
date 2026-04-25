@@ -52,6 +52,7 @@
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Credit Limit",
+   "options": "USD",
    "reqd": 1,
    "description": "Source of truth for available_credit calculations"
   },
