@@ -42,6 +42,10 @@ frappe.ui.form.on('Home Build Request', {
             setup_address_autofill(frm);
         }
 
+        // Hide Lending connections (Loan Application / Loan / Loan
+        // Disbursement) on Cash deals — those only exist for Floored.
+        update_connections_visibility(frm);
+
         // Create buttons only on submitted HBR
         if (frm.doc.docstatus !== 1) return;
 
@@ -117,9 +121,40 @@ frappe.ui.form.on('Home Build Request', {
         });
     },
     home_type: function(frm) { populate_checklist(frm); },
-    financing_type: function(frm) { populate_checklist(frm); },
+    financing_type: function(frm) {
+        populate_checklist(frm);
+        update_connections_visibility(frm);
+    },
     property_type: function(frm) { populate_checklist(frm); },
 });
+
+
+function update_connections_visibility(frm) {
+    // Frappe renders the connections panel asynchronously — wait a beat,
+    // then retry a few times until the cards are in the DOM.
+    var lending_doctypes = ['Loan Application', 'Loan', 'Loan Disbursement'];
+    var hide_lending = frm.doc.financing_type === 'Cash';
+
+    function apply() {
+        var $wrapper = frm.dashboard && frm.dashboard.wrapper;
+        if (!$wrapper || !$wrapper.length) return false;
+        var any = false;
+        lending_doctypes.forEach(function(dt) {
+            var $cards = $wrapper.find('.document-link[data-doctype="' + dt + '"]');
+            if ($cards.length) {
+                $cards.toggle(!hide_lending);
+                any = true;
+            }
+        });
+        return any;
+    }
+
+    var attempts = 0;
+    var iv = setInterval(function() {
+        attempts += 1;
+        if (apply() || attempts > 10) clearInterval(iv);
+    }, 300);
+}
 
 
 function populate_checklist(frm) {
