@@ -44,9 +44,9 @@ fixtures = [
                 "Loan Application-loan_product-fetch_from",
                 "Loan Application-rate_of_interest-fetch_from",
                 "Loan Application-rate_of_interest-default",
-                "Loan Application-repayment_amount-default",
-                "Loan Application-total_payable_amount-default",
-                "Loan Application-total_payable_interest-default",
+                "Loan Application-repayment_amount-placeholder",
+                "Loan Application-total_payable_amount-placeholder",
+                "Loan Application-total_payable_interest-placeholder",
             ]]
         ]
     },

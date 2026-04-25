@@ -431,7 +431,6 @@
  "modified_by": "Administrator",
  "module": "DCR",
  "name": "Home Build Request",
- "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
