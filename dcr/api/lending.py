@@ -128,7 +128,6 @@ def validate_loan_application(doc, method):
     # interest-only schedule).
     if rate and loan_amount:
         monthly_interest = (rate / 100) * loan_amount / 12
-        doc.monthly_interest_amount = monthly_interest
         doc.repayment_amount = monthly_interest
         if periods:
             doc.total_payable_interest = monthly_interest * periods
@@ -137,7 +136,6 @@ def validate_loan_application(doc, method):
             doc.total_payable_interest = None
             doc.total_payable_amount = None
     else:
-        doc.monthly_interest_amount = None
         doc.repayment_amount = None
         doc.total_payable_interest = None
         doc.total_payable_amount = None

@@ -288,15 +288,5 @@
     "property": "placeholder",
     "property_type": "Data",
     "value": "Not signed"
-  },
-  {
-    "doctype": "Property Setter",
-    "name": "Loan Application-monthly_interest_amount-hidden",
-    "doc_type": "Loan Application",
-    "doctype_or_field": "DocField",
-    "field_name": "monthly_interest_amount",
-    "property": "hidden",
-    "property_type": "Check",
-    "value": "1"
   }
 ]

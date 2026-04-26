@@ -23,7 +23,7 @@ frappe.ui.form.on('Loan Application', {
     refresh: function(frm) {
         // Force-show read-only fields (Frappe v15 hides empty read-only fields on new forms)
         ['rate_of_interest', 'buyer_name', 'available_credit', 'outstanding_loan_balance',
-         'monthly_interest_amount', 'custom_current_yn', 'repayment_amount',
+         'custom_current_yn', 'repayment_amount',
          'total_payable_amount', 'total_payable_interest', 'custom_projected_equity',
          'custom_projected_ltv', 'custom_monthly_space_rent'].forEach(function(fn) {
             var field = frm.fields_dict[fn];
@@ -184,7 +184,6 @@ function calculate_monthly_interest(frm) {
 
     if (rate && amount) {
         var monthly = (rate / 100) * amount / 12;
-        frm.set_value('monthly_interest_amount', monthly);
         frm.set_value('repayment_amount', monthly);
         if (periods) {
             var total_interest = monthly * periods;
@@ -195,7 +194,6 @@ function calculate_monthly_interest(frm) {
             frm.set_value('total_payable_amount', null);
         }
     } else {
-        frm.set_value('monthly_interest_amount', null);
         frm.set_value('repayment_amount', null);
         frm.set_value('total_payable_interest', null);
         frm.set_value('total_payable_amount', null);
