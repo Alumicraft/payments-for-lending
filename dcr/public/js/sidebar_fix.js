@@ -433,6 +433,10 @@
 		enforce_retry(20);
 		try_watch_sidebar_title(20);
 		$(window).on("beforeunload", save_last_workspace);
+		// Capture the initial workspace on hard refresh — frappe.router
+		// emits its first "change" event before our handler attaches, so
+		// save_last_workspace would otherwise never fire on cold load.
+		setTimeout(save_last_workspace, 800);
 		console.info("[DCR sidebar] init", { route: frappe.get_route() });
 
 		sb.addEventListener("click", on_click, true);

@@ -12,6 +12,7 @@
  */
 
 body[data-route^="Workspaces/"] .container.page-body,
+body[data-route^="Workspaces/"] .layout-main,
 body[data-route^="Workspaces/"] .layout-main-section-wrapper,
 body[data-route^="Workspaces/"] .layout-main-section,
 body[data-route^="Workspaces/"] .layout-main-section > .container,
