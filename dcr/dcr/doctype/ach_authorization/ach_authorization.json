@@ -1,11 +1,12 @@
 {
  "actions": [],
- "autoname": "format:ACH-AUTH-{#####}",
+ "autoname": "naming_series:",
  "creation": "2024-01-01 00:00:00.000000",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "naming_series",
   "customer",
   "is_default",
   "status",
@@ -29,6 +30,13 @@
   "revocation_reason"
  ],
  "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "ACH-AUTH-.YYYY.-.#####\n",
+   "set_only_once": 1
+  },
   {
    "fieldname": "customer",
    "fieldtype": "Link",
@@ -170,7 +178,7 @@
  "modified_by": "Administrator",
  "module": "DCR",
  "name": "ACH Authorization",
- "naming_rule": "Expression",
+ "naming_rule": "Naming Series",
  "owner": "Administrator",
  "permissions": [
   {
