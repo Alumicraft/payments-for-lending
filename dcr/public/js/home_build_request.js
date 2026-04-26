@@ -4,7 +4,7 @@
  * Features:
  * - Auto-populates Document Checklist on field change
  * - Create → Loan Application button (Floored deals, after submission)
- * - Create → Supplier Quotation button (after submission)
+ * - Create → Purchase Order / Purchase Invoice (all deals, after submission)
  */
 
 var _mapbox_bound = {};
@@ -63,6 +63,14 @@ frappe.ui.form.on('Home Build Request', {
                 }, __('Create'));
             }
         });
+
+        // Create → Purchase Order (all deals)
+        frm.add_custom_button(__('Purchase Order'), function() {
+            frappe.new_doc('Purchase Order', {
+                supplier: frm.doc.factory,
+                custom_home_build_request: frm.doc.name
+            });
+        }, __('Create'));
 
         // Create → Purchase Invoice (all deals)
         frm.add_custom_button(__('Purchase Invoice'), function() {
