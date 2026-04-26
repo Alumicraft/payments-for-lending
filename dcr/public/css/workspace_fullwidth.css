@@ -11,6 +11,10 @@
  * are killed below.
  */
 
+body[data-route^="Workspaces/"] .main-section,
+body[data-route^="Workspaces/"] .page-container,
+body[data-route^="Workspaces/"] .page-wrapper,
+body[data-route^="Workspaces/"] .page-content,
 body[data-route^="Workspaces/"] .container.page-body,
 body[data-route^="Workspaces/"] .layout-main,
 body[data-route^="Workspaces/"] .layout-main-section-wrapper,
