@@ -23,12 +23,22 @@
         "body .layout-main-section,",
         "body .layout-main-section > .container,",
         "body .layout-main-section > .container-fluid,",
-        "body .layout-main-section .workspace-body {",
+        "body .layout-main-section .workspace-body,",
+        "body .layout-main-section .workspace-content,",
+        "body .layout-main-section .codex-editor,",
+        "body .layout-main-section .codex-editor__redactor,",
+        "body .layout-main-section .editor-js-container,",
+        "body .layout-main-section .ce-block,",
+        "body .layout-main-section .ce-block__content,",
+        "body .layout-main-section .widget-group,",
+        "body .layout-main-section .widget-group-body,",
+        "body .layout-main-section .widget,",
+        "body .layout-main-section .number-card,",
+        "body .layout-main-section .chart-container,",
+        "body .layout-main-section .dashboard-section {",
         "  max-width: none !important;",
         "  width: 100% !important;",
-        "}",
-        ".editor-js-container { max-width: none !important; }",
-        ".ce-block__content { max-width: none !important; width: 100% !important; }"
+        "}"
     ].join("\n");
 
     function on_workspace_route() {

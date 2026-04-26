@@ -238,5 +238,65 @@
     "property": "placeholder",
     "property_type": "Data",
     "value": "0.00"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-buyer_name-fetch_from",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "buyer_name",
+    "property": "fetch_from",
+    "property_type": "Small Text",
+    "value": "home_build_request.home_buyer"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-applicant_email_address-fetch_from",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "applicant_email_address",
+    "property": "fetch_from",
+    "property_type": "Small Text",
+    "value": "applicant.email_id"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-applicant_phone_number-fetch_from",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "applicant_phone_number",
+    "property": "fetch_from",
+    "property_type": "Small Text",
+    "value": "applicant.mobile_no"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-dcr_documents_section-depends_on",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "dcr_documents_section",
+    "property": "depends_on",
+    "property_type": "Data",
+    "value": "eval:doc.signed_packet || doc.docstatus === 1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-signed_packet-placeholder",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "signed_packet",
+    "property": "placeholder",
+    "property_type": "Data",
+    "value": "Not signed"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-monthly_interest_amount-hidden",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "monthly_interest_amount",
+    "property": "hidden",
+    "property_type": "Check",
+    "value": "1"
   }
 ]

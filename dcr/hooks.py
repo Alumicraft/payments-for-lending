@@ -47,6 +47,12 @@ fixtures = [
                 "Loan Application-repayment_amount-placeholder",
                 "Loan Application-total_payable_amount-placeholder",
                 "Loan Application-total_payable_interest-placeholder",
+                "Loan Application-buyer_name-fetch_from",
+                "Loan Application-applicant_email_address-fetch_from",
+                "Loan Application-applicant_phone_number-fetch_from",
+                "Loan Application-dcr_documents_section-depends_on",
+                "Loan Application-signed_packet-placeholder",
+                "Loan Application-monthly_interest_amount-hidden",
             ]]
         ]
     },
