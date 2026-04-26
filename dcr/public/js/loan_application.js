@@ -136,6 +136,10 @@ frappe.ui.form.on('Loan Application', {
         calculate_monthly_interest(frm);
     },
 
+    repayment_periods: function(frm) {
+        calculate_monthly_interest(frm);
+    },
+
     custom_projected_sales_price: function(frm) {
         calculate_preapproval_fields(frm);
     }
@@ -170,10 +174,32 @@ function render_hbr_documents(frm) {
 
 
 function calculate_monthly_interest(frm) {
+    // DCR floor-plan loans are interest-only — monthly payment is just
+    // the accruing interest, principal balloons at payoff. Mirrors the
+    // server-side override in validate_loan_application so the preview
+    // matches what saves.
     var rate = frm.doc.rate_of_interest || 0;
     var amount = frm.doc.loan_amount || 0;
-    var value = (rate && amount) ? (rate / 100) * amount / 12 : null;
-    frm.set_value('monthly_interest_amount', value);
+    var periods = frm.doc.repayment_periods || 0;
+
+    if (rate && amount) {
+        var monthly = (rate / 100) * amount / 12;
+        frm.set_value('monthly_interest_amount', monthly);
+        frm.set_value('repayment_amount', monthly);
+        if (periods) {
+            var total_interest = monthly * periods;
+            frm.set_value('total_payable_interest', total_interest);
+            frm.set_value('total_payable_amount', amount + total_interest);
+        } else {
+            frm.set_value('total_payable_interest', null);
+            frm.set_value('total_payable_amount', null);
+        }
+    } else {
+        frm.set_value('monthly_interest_amount', null);
+        frm.set_value('repayment_amount', null);
+        frm.set_value('total_payable_interest', null);
+        frm.set_value('total_payable_amount', null);
+    }
 }
 
 

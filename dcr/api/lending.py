@@ -118,12 +118,29 @@ def validate_loan_application(doc, method):
     loan_amount = doc.get("loan_amount") or 0
     sales_price = doc.get("custom_projected_sales_price") or 0
     rate = doc.get("rate_of_interest") or 0
+    periods = doc.get("repayment_periods") or 0
 
-    # Monthly interest = (rate / 100) × loan_amount / 12. Recomputed on
-    # every save so it tracks rate_of_interest / loan_amount changes.
-    doc.monthly_interest_amount = (
-        (rate / 100) * loan_amount / 12 if rate and loan_amount else None
-    )
+    # DCR floor-plan loans are interest-only: dealer pays just the
+    # accruing interest each period; principal balloons at payoff.
+    # Override Frappe Lending's stock EMI/amortizing calc so the
+    # Loan Application preview matches what the actual Loan will use
+    # (see dcr/overrides/loan_repayment_schedule.py for the loan-side
+    # interest-only schedule).
+    if rate and loan_amount:
+        monthly_interest = (rate / 100) * loan_amount / 12
+        doc.monthly_interest_amount = monthly_interest
+        doc.repayment_amount = monthly_interest
+        if periods:
+            doc.total_payable_interest = monthly_interest * periods
+            doc.total_payable_amount = loan_amount + doc.total_payable_interest
+        else:
+            doc.total_payable_interest = None
+            doc.total_payable_amount = None
+    else:
+        doc.monthly_interest_amount = None
+        doc.repayment_amount = None
+        doc.total_payable_interest = None
+        doc.total_payable_amount = None
 
     # Projected equity / LTV — only meaningful when both inputs are set.
     # Explicitly clear if either becomes empty so a stale calc from a
