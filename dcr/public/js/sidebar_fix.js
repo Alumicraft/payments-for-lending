@@ -335,20 +335,31 @@
 		}
 	}
 
-	function save_last_workspace() {
+	function save_last_workspace(reason) {
 		// Only save when the user is explicitly on a workspace URL. Saving
 		// whatever sidebar_title currently is on a doctype page can persist
 		// a buggy swap (e.g. "Access") and make every refresh keep it.
 		try {
 			var route = frappe.get_route() || [];
 			var slug = workspace_slug_from_route(route);
-			if (!slug) return;
+			if (!slug) {
+				console.info("[DCR sidebar] save skip", reason || "", { route: route });
+				return false;
+			}
 			var map = frappe.boot.workspace_sidebar_item || {};
 			var data = map[slug];
-			if (!data) return;
+			if (!data) {
+				console.info("[DCR sidebar] save no-map", reason || "", { slug: slug, mapKeys: Object.keys(map).length });
+				return false;
+			}
 			var label = data.label || slug;
 			localStorage.setItem("dcr_last_workspace", label);
-		} catch (e) {}
+			console.info("[DCR sidebar] saved", reason || "", label);
+			return true;
+		} catch (e) {
+			console.log("[DCR sidebar] save error:", e);
+			return false;
+		}
 	}
 
 	function enforce_correct_workspace(reason) {
@@ -432,11 +443,16 @@
 		try_patch_workspace_switch(20);
 		enforce_retry(20);
 		try_watch_sidebar_title(20);
-		$(window).on("beforeunload", save_last_workspace);
+		$(window).on("beforeunload", function () { save_last_workspace("beforeunload"); });
 		// Capture the initial workspace on hard refresh — frappe.router
 		// emits its first "change" event before our handler attaches, so
 		// save_last_workspace would otherwise never fire on cold load.
-		setTimeout(save_last_workspace, 800);
+		// Multiple delayed attempts because frappe.get_route() may not be
+		// populated yet at any single fixed offset; once one succeeds the
+		// rest are no-ops (or harmlessly re-save the same label).
+		[200, 600, 1500, 3000].forEach(function (ms) {
+			setTimeout(function () { save_last_workspace("init+" + ms); }, ms);
+		});
 		console.info("[DCR sidebar] init", { route: frappe.get_route() });
 
 		sb.addEventListener("click", on_click, true);
@@ -465,7 +481,7 @@
 			// Remember the workspace only when the user is explicitly on
 			// a workspace URL (save_last_workspace guards against doctype
 			// routes internally).
-			setTimeout(save_last_workspace, 300);
+			setTimeout(function () { save_last_workspace("route-change"); }, 300);
 		};
 		if (frappe.router && typeof frappe.router.on === "function")
 			frappe.router.on("change", on_route);
