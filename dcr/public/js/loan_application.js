@@ -160,6 +160,7 @@ function render_hbr_documents(frm) {
         (hbr.doc_checklist || []).forEach(function(r) {
             var row = frm.add_child('custom_hbr_documents');
             row.document_type = r.document_type;
+            row.waived = r.waived;
             row.attachment = r.attachment;
             row.received_date = r.received_date;
         });
