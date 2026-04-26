@@ -143,51 +143,27 @@ frappe.ui.form.on('Loan Application', {
 
 
 function render_hbr_documents(frm) {
-    // Populates the LA's custom_hbr_documents HTML field with a
-    // read-only mirror of the HBR's Document Checklist child table.
-    // Each attachment cell links to the file. Single source of truth
-    // stays the HBR — this is just a viewer.
-    var field = frm.fields_dict.custom_hbr_documents;
-    if (!field || !field.$wrapper) return;
+    // Mirrors the HBR's Document Checklist child table into the LA's
+    // custom_hbr_documents Table field. Same child doctype, so the grid
+    // renders identically to HBR's. Read-only is enforced by the field
+    // itself (set read_only=1 in Customize Form). The field should be
+    // is_virtual=1 so Frappe doesn't persist these mirrored rows on save.
+    if (!frm.fields_dict.custom_hbr_documents) return; // field not added yet
     if (!frm.doc.home_build_request) {
-        field.$wrapper.empty();
+        frm.clear_table('custom_hbr_documents');
+        frm.refresh_field('custom_hbr_documents');
         return;
     }
 
     frappe.db.get_doc('Home Build Request', frm.doc.home_build_request).then(function(hbr) {
-        var rows = (hbr.doc_checklist || []);
-        var html = '';
-        if (!rows.length) {
-            html = '<div class="text-muted" style="padding:8px 0;">No documents required for this HBR.</div>';
-        } else {
-            html =
-                '<div class="frappe-control" style="margin-top:4px;">' +
-                  '<div class="form-grid">' +
-                    '<div class="grid-heading-row" style="display:grid;grid-template-columns:2fr 1fr 2fr;padding:8px 12px;background:var(--gray-100);font-weight:600;font-size:12px;color:var(--text-color);border:1px solid var(--border-color);border-radius:var(--border-radius) var(--border-radius) 0 0;">' +
-                      '<div>Document Type</div><div>Received</div><div>Attachment</div>' +
-                    '</div>';
-            rows.forEach(function(r, i) {
-                var date = r.received_date
-                    ? frappe.datetime.str_to_user(r.received_date)
-                    : '<span class="text-muted">—</span>';
-                var attach = r.attachment
-                    ? '<a href="' + frappe.utils.escape_html(r.attachment) + '" target="_blank">' +
-                          frappe.utils.escape_html(r.attachment.split('/').pop()) +
-                      '</a>'
-                    : '<span class="text-muted">(not attached)</span>';
-                var border = (i === rows.length - 1)
-                    ? 'border:1px solid var(--border-color);border-top:none;border-radius:0 0 var(--border-radius) var(--border-radius);'
-                    : 'border:1px solid var(--border-color);border-top:none;';
-                html +=
-                    '<div class="grid-row" style="display:grid;grid-template-columns:2fr 1fr 2fr;padding:8px 12px;font-size:13px;' + border + '">' +
-                      '<div>' + frappe.utils.escape_html(r.document_type || '—') + '</div>' +
-                      '<div>' + date + '</div>' +
-                      '<div>' + attach + '</div>' +
-                    '</div>';
-            });
-            html += '</div></div>';
-        }
-        field.$wrapper.html(html);
+        frm.clear_table('custom_hbr_documents');
+        (hbr.doc_checklist || []).forEach(function(r) {
+            var row = frm.add_child('custom_hbr_documents');
+            row.document_type = r.document_type;
+            row.attachment = r.attachment;
+            row.received_date = r.received_date;
+        });
+        frm.refresh_field('custom_hbr_documents');
     });
 }
 
