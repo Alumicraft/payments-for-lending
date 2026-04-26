@@ -7,11 +7,12 @@ from frappe.utils import getdate, add_days, today
 def get_dealer_outstanding_balance(customer):
     """Get total outstanding loan balance for a dealer.
 
-    Pure ERPNext query — no external API.
+    Frappe Lending doesn't store an `outstanding_amount` column on Loan;
+    the unpaid principal is computed as loan_amount - total_principal_paid.
     """
     result = frappe.db.sql(
         """
-        SELECT COALESCE(SUM(outstanding_amount), 0) AS total
+        SELECT COALESCE(SUM(loan_amount - COALESCE(total_principal_paid, 0)), 0) AS total
         FROM `tabLoan`
         WHERE applicant = %s AND status IN ('Disbursed', 'Active')
         """,
