@@ -53,6 +53,8 @@ fixtures = [
                 "Loan Application-applicant_phone_number-fetch_from",
                 "Loan Application-dcr_documents_section-depends_on",
                 "Loan Application-signed_packet-placeholder",
+                "Loan Application-applicant_email_address-read_only",
+                "Loan Application-applicant_phone_number-read_only",
             ]]
         ]
     },

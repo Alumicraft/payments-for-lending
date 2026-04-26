@@ -288,5 +288,25 @@
     "property": "placeholder",
     "property_type": "Data",
     "value": "Not signed"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-applicant_email_address-read_only",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "applicant_email_address",
+    "property": "read_only",
+    "property_type": "Check",
+    "value": "0"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-applicant_phone_number-read_only",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "applicant_phone_number",
+    "property": "read_only",
+    "property_type": "Check",
+    "value": "0"
   }
 ]
