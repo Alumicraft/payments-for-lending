@@ -8,3 +8,4 @@ dcr.patches.migrate_ach_to_bank_account
 dcr.patches.retire_ach_authorization
 dcr.patches.remove_park_doctype
 dcr.patches.flip_la_default_to_placeholder
+dcr.patches.tidy_la_connections
