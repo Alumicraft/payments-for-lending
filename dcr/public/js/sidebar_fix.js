@@ -293,15 +293,26 @@
 		return out;
 	}
 
+	function workspace_slug_from_route(route) {
+		// Frappe v16 routes a workspace as ["Workspaces", "<Name>"]; older
+		// builds used a bare ["<slug>"]. Return the lowercase slug for
+		// either form, or null if this isn't a workspace route.
+		if (!route || !route.length) return null;
+		if (route.length === 1 && route[0]) return route[0].toLowerCase();
+		if (route.length >= 2 && (route[0] || "").toLowerCase() === "workspaces" && route[1]) {
+			return route[1].toLowerCase();
+		}
+		return null;
+	}
+
 	function pick_correct_workspace() {
 		try {
 			var route = frappe.get_route() || [];
 			var map = frappe.boot.workspace_sidebar_item || {};
 
 			// Workspace URL — trust Frappe.
-			if (route.length === 1 && route[0] && map[route[0].toLowerCase()]) {
-				return null;
-			}
+			var ws_slug = workspace_slug_from_route(route);
+			if (ws_slug && map[ws_slug]) return null;
 
 			// Doctype entity — for list view ["List", "<DocType>"], form view
 			// ["Form", "<DocType>", "<name>"], or a bare slug like
@@ -330,11 +341,12 @@
 		// a buggy swap (e.g. "Access") and make every refresh keep it.
 		try {
 			var route = frappe.get_route() || [];
-			if (route.length !== 1 || !route[0]) return;
+			var slug = workspace_slug_from_route(route);
+			if (!slug) return;
 			var map = frappe.boot.workspace_sidebar_item || {};
-			var data = map[route[0].toLowerCase()];
+			var data = map[slug];
 			if (!data) return;
-			var label = data.label || route[0];
+			var label = data.label || slug;
 			localStorage.setItem("dcr_last_workspace", label);
 		} catch (e) {}
 	}
