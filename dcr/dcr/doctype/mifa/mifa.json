@@ -1,11 +1,10 @@
 {
  "actions": [],
- "autoname": "naming_series:",
+ "autoname": "format:MIFA-{####}",
  "creation": "2024-01-01 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "naming_series",
   "customer",
   "loan_product",
   "mifa_date",
@@ -21,13 +20,6 @@
   "dealer_signer_title"
  ],
  "fields": [
-  {
-   "fieldname": "naming_series",
-   "fieldtype": "Select",
-   "label": "Series",
-   "options": "MIFA-.YYYY.-.#####\n",
-   "set_only_once": 1
-  },
   {
    "fieldname": "customer",
    "fieldtype": "Link",
@@ -127,7 +119,7 @@
  "modified_by": "Administrator",
  "module": "DCR",
  "name": "MIFA",
- "naming_rule": "Naming Series",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

@@ -1,11 +1,10 @@
 {
  "actions": [],
- "autoname": "naming_series:",
+ "autoname": "format:FA-{####}",
  "creation": "2024-01-01 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "naming_series",
   "customer",
   "factory",
   "assignment_date",
@@ -17,13 +16,6 @@
   "loa_date"
  ],
  "fields": [
-  {
-   "fieldname": "naming_series",
-   "fieldtype": "Select",
-   "label": "Series",
-   "options": "FA-.YYYY.-.#####\n",
-   "set_only_once": 1
-  },
   {
    "fieldname": "customer",
    "fieldtype": "Link",
@@ -101,7 +93,7 @@
  "modified_by": "Administrator",
  "module": "DCR",
  "name": "Factory Assignment",
- "naming_rule": "Naming Series",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
