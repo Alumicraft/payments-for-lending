@@ -78,7 +78,51 @@ def after_install():
     # which wipes any cards/charts placed via the Workspace Builder.
     # Add them manually: Workspace Builder → Access → drag in the card/chart.
 
+    # The patches.txt entry runs the LA-connections cleanup once; the
+    # standard Lending app re-syncs Loan Application's DocType Links on
+    # every migrate, which resets our changes. Re-apply post-migrate.
+    try:
+        tidy_la_connections()
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "tidy_la_connections (after_install)")
+
     frappe.db.commit()
+
+
+def tidy_la_connections():
+    """Mirror dcr.patches.tidy_la_connections so it survives re-syncs.
+
+    - Hide stock "Loan Security Assignment" link (DCR runs unsecured loans).
+    - Group the stock "Loan" link under "Lending" so the LA connections
+      panel renders with a header matching HBR's grouping.
+    """
+    lsa_links = frappe.get_all(
+        "DocType Link",
+        filters={
+            "parent": "Loan Application",
+            "parenttype": "DocType",
+            "link_doctype": "Loan Security Assignment",
+        },
+        pluck="name",
+    )
+    for name in lsa_links:
+        if not frappe.db.get_value("DocType Link", name, "hidden"):
+            frappe.db.set_value("DocType Link", name, "hidden", 1)
+
+    loan_links = frappe.get_all(
+        "DocType Link",
+        filters={
+            "parent": "Loan Application",
+            "parenttype": "DocType",
+            "link_doctype": "Loan",
+        },
+        pluck="name",
+    )
+    for name in loan_links:
+        if frappe.db.get_value("DocType Link", name, "group") != "Lending":
+            frappe.db.set_value("DocType Link", name, "group", "Lending")
+
+    frappe.clear_cache(doctype="Loan Application")
 
 
 @frappe.whitelist()
