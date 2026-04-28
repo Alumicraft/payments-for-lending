@@ -47,19 +47,58 @@
   <button id="toggle-theme">Toggle theme</button>
   <button id="toggle-3d">3D</button>
   <button id="recenter">Recenter</button>
+  <button id="clear-token" style="margin-left:8px;opacity:.7;">Clear token</button>
   <span class="hint">Zoom in to break clusters apart and verify pin counts match the badge</span>
 </div>
+
+<div id="token-gate" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,.85);align-items:center;justify-content:center;">
+  <form id="token-form" style="background:#fff;padding:24px 28px;border-radius:12px;min-width:420px;box-shadow:0 20px 40px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:12px;">
+    <strong style="font-size:16px;">Mapbox public token</strong>
+    <div style="color:#64748b;font-size:13px;">Paste your <code>pk.…</code> token. It's cached in localStorage so you only need to do this once.</div>
+    <input id="token-input" type="text" placeholder="pk.eyJ1..." style="padding:10px;border:1px solid #cbd5e1;border-radius:6px;font:inherit;font-family:monospace;" autofocus>
+    <button type="submit" style="padding:10px;background:#2563eb;color:#fff;border:0;border-radius:6px;font:inherit;font-weight:600;cursor:pointer;">Load map</button>
+  </form>
+</div>
+
 <div id="map"></div>
 
 <script>
-// Paste your Mapbox public token here:
-const MAPBOX_TOKEN = prompt('Mapbox access token (pk.…):') || '';
-if (!MAPBOX_TOKEN) {
-  document.body.innerHTML = '<div style="padding:40px;font-family:sans-serif;">Need a Mapbox public token (pk.…) to preview. Reload and paste it into the prompt.</div>';
-  throw new Error('no token');
+const TOKEN_KEY = 'dcr-map-preview-token';
+let MAPBOX_TOKEN = localStorage.getItem(TOKEN_KEY) || '';
+
+const gate = document.getElementById('token-gate');
+const form = document.getElementById('token-form');
+const input = document.getElementById('token-input');
+
+document.getElementById('clear-token').onclick = () => {
+  localStorage.removeItem(TOKEN_KEY);
+  location.reload();
+};
+
+function startMap(token) {
+  MAPBOX_TOKEN = token;
+  mapboxgl.accessToken = token;
+  gate.style.display = 'none';
+  initMap();
 }
 
-mapboxgl.accessToken = MAPBOX_TOKEN;
+if (MAPBOX_TOKEN) {
+  mapboxgl.accessToken = MAPBOX_TOKEN;
+  // Init deferred to bottom of script so the rest of the code is defined.
+} else {
+  gate.style.display = 'flex';
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    const t = input.value.trim();
+    if (!t.startsWith('pk.')) { alert('That doesn\'t look like a pk.… token'); return; }
+    localStorage.setItem(TOKEN_KEY, t);
+    startMap(t);
+  };
+}
+
+let map;
+
+function initMap() {
 
 const DEFAULT_CENTER = [-115.0, 34.0];
 const DEFAULT_ZOOM = 6;
@@ -111,7 +150,7 @@ COMMUNITIES.forEach((c) => {
 const geojson = { type: 'FeatureCollection', features };
 
 // --- MAP SETUP ----------------------------------------------------------
-const map = new mapboxgl.Map({
+map = new mapboxgl.Map({
   container: 'map',
   style: 'mapbox://styles/mapbox/standard',
   center: DEFAULT_CENTER,
@@ -125,11 +164,11 @@ let _pinsLoaded = false;
 function syncTheme() {
   const isDark = document.body.getAttribute('data-theme') === 'dark';
   try { map.setConfigProperty('basemap', 'lightPreset', isDark ? 'night' : 'day'); } catch (e) {}
-  if (_pinsLoaded) {
-    const icon = isDark ? 'house-pin-dark' : 'house-pin-light';
-    ['unclustered-point', 'clusters'].forEach((id) => {
-      if (map.getLayer(id)) map.setLayoutProperty(id, 'icon-image', icon);
-    });
+  if (_pinsLoaded && map.getLayer('unclustered-point')) {
+    map.setLayoutProperty(
+      'unclustered-point', 'icon-image',
+      isDark ? 'house-pin-dark' : 'house-pin-light'
+    );
   }
 }
 map.on('style.load', syncTheme);
@@ -149,17 +188,7 @@ map.on('load', () => {
     },
   });
 
-  // Cluster source
-  map.addSource('hbr-clusters', {
-    type: 'geojson',
-    data: geojson,
-    cluster: true,
-    clusterMaxZoom: 14,
-    clusterRadius: 50,
-    clusterProperties: { total_count: ['+', ['get', 'hbr_count']] },
-  });
-
-  // Load pin images, then add layers
+  // Load pin images, then add the pin layer (no clustering)
   const isDark = document.body.getAttribute('data-theme') === 'dark';
   let loaded = 0;
   const onPinLoaded = () => {
@@ -168,62 +197,9 @@ map.on('load', () => {
     _pinsLoaded = true;
 
     map.addLayer({
-      id: 'clusters',
-      type: 'symbol',
-      source: 'hbr-clusters',
-      filter: ['has', 'point_count'],
-      minzoom: 6,
-      layout: {
-        'icon-image': isDark ? 'house-pin-dark' : 'house-pin-light',
-        'icon-size': 0.212,
-        'icon-anchor': 'bottom',
-        'icon-allow-overlap': true,
-      },
-    });
-
-    map.addLayer({
-      id: 'cluster-badge-bg',
-      type: 'circle',
-      source: 'hbr-clusters',
-      filter: ['has', 'point_count'],
-      minzoom: 6,
-      paint: {
-        'circle-color': '#ef4444',
-        'circle-radius': ['step', ['get', 'total_count'], 8, 10, 10],
-        'circle-stroke-width': 1.5,
-        'circle-stroke-color': '#ffffff',
-        'circle-translate': [12, -30],
-      },
-    });
-
-    map.addLayer({
-      id: 'cluster-badge-text',
-      type: 'symbol',
-      source: 'hbr-clusters',
-      filter: ['has', 'point_count'],
-      minzoom: 6,
-      layout: {
-        'text-field': [
-          'case',
-          ['>=', ['get', 'total_count'], 100], '99+',
-          ['to-string', ['get', 'total_count']],
-        ],
-        'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-        'text-size': 10,
-        'text-allow-overlap': true,
-        'text-ignore-placement': true,
-      },
-      paint: {
-        'text-color': '#ffffff',
-        'text-translate': [12, -30],
-      },
-    });
-
-    map.addLayer({
       id: 'unclustered-point',
       type: 'symbol',
-      source: 'hbr-clusters',
-      filter: ['!', ['has', 'point_count']],
+      source: 'hbr-locations',
       minzoom: 6.5,
       layout: {
         'icon-image': isDark ? 'house-pin-dark' : 'house-pin-light',
@@ -242,22 +218,6 @@ map.on('load', () => {
   map.loadImage('dcr/public/images/map-pin-dark.png', (err, img) => {
     if (!err) map.addImage('house-pin-dark', img);
     onPinLoaded();
-  });
-
-  // Cluster click → expand
-  function handleClusterClick(e) {
-    map.getSource('hbr-clusters').getClusterExpansionZoom(
-      e.features[0].properties.cluster_id,
-      (err, zoom) => {
-        if (err) return;
-        map.easeTo({ center: e.features[0].geometry.coordinates, zoom });
-      }
-    );
-  }
-  ['clusters', 'cluster-badge-bg', 'cluster-badge-text'].forEach((id) => {
-    map.on('click', id, handleClusterClick);
-    map.on('mouseenter', id, () => { map.getCanvas().style.cursor = 'pointer'; });
-    map.on('mouseleave', id, () => { map.getCanvas().style.cursor = ''; });
   });
 
   // Single pin popup
@@ -306,6 +266,11 @@ document.getElementById('recenter').onclick = () => {
     duration: 2500,
   });
 };
+
+} // end initMap
+
+// If we had a cached token, fire up the map right away.
+if (MAPBOX_TOKEN) initMap();
 </script>
 </body>
 </html>
