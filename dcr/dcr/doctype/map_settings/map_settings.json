@@ -10,7 +10,9 @@
   "column_break_defaults",
   "default_latitude",
   "default_longitude",
-  "default_zoom"
+  "default_zoom",
+  "block_zoom",
+  "puck_full_zoom_threshold"
  ],
  "fields": [
   {
@@ -48,6 +50,22 @@
    "fieldname": "default_zoom",
    "fieldtype": "Float",
    "label": "Default Zoom",
+   "precision": "1"
+  },
+  {
+   "default": "4.5",
+   "description": "Zoom level when the map is rendered as a workspace block (smaller widget). The full-bleed Map workspace uses Default Zoom.",
+   "fieldname": "block_zoom",
+   "fieldtype": "Float",
+   "label": "Block Zoom",
+   "precision": "1"
+  },
+  {
+   "default": "12",
+   "description": "Below this zoom level, home pins render as small pucks. At or above, they render as full icons.",
+   "fieldname": "puck_full_zoom_threshold",
+   "fieldtype": "Float",
+   "label": "Puck → Full Icon Zoom Threshold",
    "precision": "1"
   }
  ],

@@ -58,7 +58,7 @@ class TestParseMapboxResponse(unittest.TestCase):
 
 
 class TestAggregateHeatmapData(unittest.TestCase):
-    """Test the aggregation logic that groups HBRs by location."""
+    """Test the aggregation logic that groups HBRs by location + space."""
 
     def test_aggregate_groups_by_coordinates(self):
         from dcr.api.map import _aggregate_locations
@@ -99,6 +99,157 @@ class TestAggregateHeatmapData(unittest.TestCase):
         ]
         result = _aggregate_locations(rows)
         self.assertEqual(len(result), 0)
+
+    def test_space_number_separates_pins_at_same_address(self):
+        """Two homes in the same park at different spaces become two pins."""
+        from dcr.api.map import _aggregate_locations
+
+        rows = [
+            {"name": "HBR-001", "community_name": "Sunridge",
+             "delivery_address": "100 Park Ln", "city": "Phoenix",
+             "state": "AZ", "zip": "85001", "space_number": "12",
+             "latitude": 33.4484, "longitude": -112.074},
+            {"name": "HBR-002", "community_name": "Sunridge",
+             "delivery_address": "100 Park Ln", "city": "Phoenix",
+             "state": "AZ", "zip": "85001", "space_number": "14",
+             "latitude": 33.4484, "longitude": -112.074},
+        ]
+        result = _aggregate_locations(rows)
+        self.assertEqual(len(result), 2)
+        spaces = sorted(r["space_number"] for r in result)
+        self.assertEqual(spaces, ["12", "14"])
+
+    def test_no_space_number_stacks_into_one_pin(self):
+        """Same address, both with no space number → stacked."""
+        from dcr.api.map import _aggregate_locations
+
+        rows = [
+            {"name": "HBR-001", "delivery_address": "1 Private Lane",
+             "latitude": 33.0, "longitude": -112.0},
+            {"name": "HBR-002", "delivery_address": "1 Private Lane",
+             "latitude": 33.0, "longitude": -112.0},
+        ]
+        result = _aggregate_locations(rows)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["hbr_count"], 2)
+        self.assertEqual(len(result[0]["homes"]), 2)
+
+    def test_address_normalization_groups_case_and_whitespace(self):
+        """Same address with case/whitespace differences groups together."""
+        from dcr.api.map import _aggregate_locations
+
+        rows = [
+            {"name": "HBR-001", "delivery_address": "123 Main St",
+             "latitude": 34.0, "longitude": -118.0},
+            {"name": "HBR-002", "delivery_address": "123  main st",
+             "latitude": 34.0, "longitude": -118.0},
+        ]
+        result = _aggregate_locations(rows)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["hbr_count"], 2)
+
+    def test_jitter_is_deterministic(self):
+        """Same inputs produce the same offsets across calls."""
+        from dcr.api.map import _aggregate_locations
+
+        def build():
+            return [
+                {"name": "HBR-001", "delivery_address": "100 Park",
+                 "space_number": "12", "latitude": 33.0, "longitude": -112.0},
+                {"name": "HBR-002", "delivery_address": "100 Park",
+                 "space_number": "14", "latitude": 33.0, "longitude": -112.0},
+            ]
+        a = _aggregate_locations(build())
+        b = _aggregate_locations(build())
+        a_sorted = sorted(a, key=lambda r: r["space_number"])
+        b_sorted = sorted(b, key=lambda r: r["space_number"])
+        for ra, rb in zip(a_sorted, b_sorted):
+            self.assertAlmostEqual(ra["latitude"], rb["latitude"])
+            self.assertAlmostEqual(ra["longitude"], rb["longitude"])
+
+    def test_jitter_separates_collisions(self):
+        """Two groups at identical coords end up at distinct coords post-jitter."""
+        from dcr.api.map import _aggregate_locations
+
+        rows = [
+            {"name": "HBR-001", "delivery_address": "100 Park",
+             "space_number": "12", "latitude": 33.0, "longitude": -112.0},
+            {"name": "HBR-002", "delivery_address": "100 Park",
+             "space_number": "14", "latitude": 33.0, "longitude": -112.0},
+        ]
+        result = _aggregate_locations(rows)
+        self.assertEqual(len(result), 2)
+        self.assertNotEqual(
+            (result[0]["latitude"], result[0]["longitude"]),
+            (result[1]["latitude"], result[1]["longitude"]),
+        )
+
+    def test_solo_pin_is_not_jittered(self):
+        """A single pin at a unique cell stays at its original coords."""
+        from dcr.api.map import _aggregate_locations
+
+        rows = [
+            {"name": "HBR-001", "delivery_address": "1 Solo St",
+             "latitude": 35.0, "longitude": -110.0},
+        ]
+        result = _aggregate_locations(rows)
+        self.assertEqual(len(result), 1)
+        self.assertAlmostEqual(result[0]["latitude"], 35.0)
+        self.assertAlmostEqual(result[0]["longitude"], -110.0)
+
+
+class TestStatusDerivation(unittest.TestCase):
+    """Status priority: Cancelled → Draft → Delivered → Ordered → Pending."""
+
+    def _row(self, **kwargs):
+        base = {
+            "name": "HBR-X", "delivery_address": "1 Main St",
+            "latitude": 34.0, "longitude": -118.0,
+        }
+        base.update(kwargs)
+        return base
+
+    def test_cancelled_when_docstatus_is_2(self):
+        from dcr.api.map import _aggregate_locations
+        rows = [self._row(docstatus=2, has_active_po=1)]
+        self.assertEqual(_aggregate_locations(rows)[0]["status"], "Cancelled")
+
+    def test_cancelled_when_only_cancelled_po(self):
+        from dcr.api.map import _aggregate_locations
+        rows = [self._row(docstatus=1, has_cancelled_po=1)]
+        self.assertEqual(_aggregate_locations(rows)[0]["status"], "Cancelled")
+
+    def test_draft_when_docstatus_is_0(self):
+        from dcr.api.map import _aggregate_locations
+        rows = [self._row(docstatus=0)]
+        self.assertEqual(_aggregate_locations(rows)[0]["status"], "Draft")
+
+    def test_delivered_when_purchase_receipt_exists(self):
+        from dcr.api.map import _aggregate_locations
+        rows = [self._row(docstatus=1, has_active_po=1, has_pr=1)]
+        self.assertEqual(_aggregate_locations(rows)[0]["status"], "Delivered")
+
+    def test_ordered_when_active_po_no_receipt(self):
+        from dcr.api.map import _aggregate_locations
+        rows = [self._row(docstatus=1, has_active_po=1)]
+        self.assertEqual(_aggregate_locations(rows)[0]["status"], "Ordered")
+
+    def test_pending_when_submitted_no_po(self):
+        from dcr.api.map import _aggregate_locations
+        rows = [self._row(docstatus=1)]
+        self.assertEqual(_aggregate_locations(rows)[0]["status"], "Pending")
+
+    def test_stack_status_picks_highest_priority(self):
+        """Pin combining Ordered + Delivered colors Ordered (active wins)."""
+        from dcr.api.map import _aggregate_locations
+        rows = [
+            self._row(name="A", docstatus=1, has_active_po=1, has_pr=1),
+            self._row(name="B", docstatus=1, has_active_po=1),
+        ]
+        result = _aggregate_locations(rows)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["status"], "Ordered")
+        self.assertEqual(len(result[0]["homes"]), 2)
 
 
 if __name__ == "__main__":

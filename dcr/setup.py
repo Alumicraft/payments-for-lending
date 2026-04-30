@@ -86,7 +86,48 @@ def after_install():
     except Exception:
         frappe.log_error(frappe.get_traceback(), "tidy_la_connections (after_install)")
 
+    try:
+        ensure_supplier_geo_fields()
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "ensure_supplier_geo_fields failed")
+
     frappe.db.commit()
+
+
+def ensure_supplier_geo_fields():
+    """Create hidden latitude/longitude custom fields on Supplier.
+
+    Used by the map block to plot factory icons. Hidden because they are
+    populated automatically from the supplier's primary address — users
+    should not edit them directly.
+    """
+    from frappe.custom.doctype.custom_field.custom_field import create_custom_field
+
+    fields = [
+        {
+            "fieldname": "latitude",
+            "label": "Latitude",
+            "fieldtype": "Float",
+            "precision": "6",
+            "hidden": 1,
+            "read_only": 1,
+            "no_copy": 1,
+            "insert_after": "supplier_group",
+        },
+        {
+            "fieldname": "longitude",
+            "label": "Longitude",
+            "fieldtype": "Float",
+            "precision": "6",
+            "hidden": 1,
+            "read_only": 1,
+            "no_copy": 1,
+            "insert_after": "latitude",
+        },
+    ]
+    for f in fields:
+        if not frappe.db.exists("Custom Field", {"dt": "Supplier", "fieldname": f["fieldname"]}):
+            create_custom_field("Supplier", f)
 
 
 def tidy_la_connections():
@@ -347,11 +388,15 @@ def ensure_map_block():
                 }
                 var cfg = r.message;
                 mapboxgl.accessToken = cfg.access_token;
+                // Block view zooms out a bit so the smaller widget still
+                // shows context; full-bleed Map workspace uses default_zoom.
+                var initialZoom = isMapPage ? cfg.default_zoom : (cfg.block_zoom || cfg.default_zoom);
+                var puckFullThreshold = cfg.puck_full_zoom_threshold || 12;
                 var map = new mapboxgl.Map({
                     container: container,
                     style: cfg.map_style_url,
                     center: [cfg.default_longitude, cfg.default_latitude],
-                    zoom: cfg.default_zoom
+                    zoom: initialZoom
                 });
                 map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
@@ -400,7 +445,7 @@ def ensure_map_block():
                     btn.onclick = function() {
                         m.easeTo({
                             center: [cfg.default_longitude, cfg.default_latitude],
-                            zoom: cfg.default_zoom,
+                            zoom: initialZoom,
                             pitch: 0,
                             bearing: 0,
                             duration: 2500
@@ -475,7 +520,10 @@ def ensure_map_block():
                     attributes: true, attributeFilter: ['data-theme']
                 });
 
-                map.on('load', function() { loadData(map); });
+                map.on('load', function() {
+                    loadData(map);
+                    loadFactories(map);
+                });
             }
         });
     }
@@ -494,7 +542,12 @@ def ensure_map_block():
                             properties: {
                                 community_name: d.community_name,
                                 address: d.address,
-                                hbr_count: d.hbr_count
+                                space_number: d.space_number || '',
+                                hbr_count: d.hbr_count,
+                                status: d.status || 'Pending',
+                                // Stringified so feature-state can survive
+                                // through Mapbox; parsed in popup handler.
+                                homes_json: JSON.stringify(d.homes || [])
                             }
                         };
                     })
@@ -515,8 +568,13 @@ def ensure_map_block():
                 });
 
                 // Pin layer — one symbol per backend feature, no clustering.
-                // Backend already aggregates by address into a single feature
-                // with hbr_count, so each pin = one address.
+                // Backend aggregates by (coords, address, space_number) into
+                // one feature, so each pin = one home or one stacked address.
+                //
+                // ICON SWAP — once status icons ship, replace the literal
+                // 'icon-image' below with a step+match expression keyed off
+                // ['get', 'status'] and puckFullThreshold. See spec
+                // 2026-04-30-map-icons-and-trails.md.
                 var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
                 var loaded = 0;
                 function onPinLoaded() {
@@ -564,6 +622,58 @@ def ensure_map_block():
                 // Cursor on hover
                 map.on('mouseenter', 'unclustered-point', function() { map.getCanvas().style.cursor = 'pointer'; });
                 map.on('mouseleave', 'unclustered-point', function() { map.getCanvas().style.cursor = ''; });
+            }
+        });
+    }
+
+    function loadFactories(map) {
+        frappe.call({
+            method: 'dcr.api.map.get_factory_locations',
+            callback: function(r) {
+                if (!r.message || !r.message.length) return;
+                var geojson = {
+                    type: 'FeatureCollection',
+                    features: r.message.map(function(d) {
+                        return {
+                            type: 'Feature',
+                            geometry: { type: 'Point', coordinates: [d.longitude, d.latitude] },
+                            properties: {
+                                name: d.name,
+                                supplier_name: d.supplier_name
+                            }
+                        };
+                    })
+                };
+                map.addSource('factory-locations', { type: 'geojson', data: geojson });
+                // Placeholder rendering — solid amber circle with white halo.
+                // Replace with a symbol layer once factory-{light,dark}.png
+                // assets land. See spec 2026-04-30-map-icons-and-trails.md.
+                map.addLayer({
+                    id: 'factory-point',
+                    type: 'circle',
+                    source: 'factory-locations',
+                    paint: {
+                        'circle-radius': 8,
+                        'circle-color': '#f59e0b',
+                        'circle-stroke-color': '#ffffff',
+                        'circle-stroke-width': 2
+                    }
+                });
+
+                map.on('click', 'factory-point', function(e) {
+                    var p = e.features[0].properties;
+                    var html = '<div style="font-family:Inter,sans-serif;font-size:13px;">'
+                        + '<strong>' + (p.supplier_name || p.name) + '</strong><br>'
+                        + '<span style="color:#666;">Factory</span><br>'
+                        + '<a href="/app/supplier/' + encodeURIComponent(p.name) + '" style="color:#2490ef;">Open</a>'
+                        + '</div>';
+                    new mapboxgl.Popup({ offset: 12 })
+                        .setLngLat(e.features[0].geometry.coordinates)
+                        .setHTML(html)
+                        .addTo(map);
+                });
+                map.on('mouseenter', 'factory-point', function() { map.getCanvas().style.cursor = 'pointer'; });
+                map.on('mouseleave', 'factory-point', function() { map.getCanvas().style.cursor = ''; });
             }
         });
     }

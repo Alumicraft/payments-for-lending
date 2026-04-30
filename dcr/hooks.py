@@ -87,6 +87,12 @@ doc_events = {
     "Bank Account": {
         "validate": "dcr.api.bank_account_ach.validate_single_default"
     },
+    "Supplier": {
+        "on_update": "dcr.api.map.geocode_supplier",
+    },
+    "Address": {
+        "on_update": "dcr.api.map.geocode_address_suppliers",
+    },
 }
 
 # Whitelisted Methods
