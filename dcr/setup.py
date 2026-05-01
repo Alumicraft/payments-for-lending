@@ -629,6 +629,10 @@ def ensure_map_block():
                             '}'
                         ].join('\n');
                     }
+                    var legendEl = container.querySelector('.dcr-legend');
+                    if (legendEl) {
+                        legendEl.classList.toggle('dcr-legend--dark', isDark);
+                    }
                 }
                 map.on('style.load', syncTheme);
 
@@ -1024,6 +1028,94 @@ def ensure_map_block():
         setTrailFeatures(feats.slice(0, 100));
     };
 
+    // ========== LEGEND + STATUS FILTER =================================
+    var STATUS_LIST = ['Pending', 'Ordered', 'Delivered'];
+    var FILTER_KEY = 'dcr-map-status-filter';
+
+    function loadStatusFilter() {
+        try {
+            var raw = localStorage.getItem(FILTER_KEY);
+            if (raw) {
+                var v = JSON.parse(raw);
+                if (Array.isArray(v)) return v.filter(function(s) { return STATUS_LIST.indexOf(s) !== -1; });
+            }
+        } catch(_) {}
+        return STATUS_LIST.slice();  // default: all on
+    }
+    function saveStatusFilter(active) {
+        try { localStorage.setItem(FILTER_KEY, JSON.stringify(active)); } catch(_) {}
+        window._dcrMapActiveStatuses = active.slice();
+    }
+
+    function countByStatus(features) {
+        var c = { Pending: 0, Ordered: 0, Delivered: 0 };
+        features.forEach(function(f) {
+            try {
+                JSON.parse(f.properties.homes_json || '[]').forEach(function(h) {
+                    if (c[h.status] != null) c[h.status]++;
+                });
+            } catch(_) {}
+        });
+        return c;
+    }
+
+    function buildLegend(map, geojson) {
+        var prior = container.querySelector('.dcr-legend');
+        if (prior) prior.remove();
+
+        var active = loadStatusFilter();
+        window._dcrMapActiveStatuses = active.slice();
+        var counts = countByStatus(geojson.features);
+        var theme = currentTheme();
+        var isBlock = !isMapPage;
+
+        var el = document.createElement('div');
+        el.className = 'dcr-legend' + (theme === 'dark' ? ' dcr-legend--dark' : '') + (isBlock ? ' dcr-legend--block' : '');
+        var rows = STATUS_LIST.map(function(s) {
+            var on = active.indexOf(s) !== -1;
+            return '<div class="dcr-legend__row' + (on ? '' : ' is-off') + '" data-status="' + s + '">'
+                + '<span class="dcr-legend__swatch dot--' + s.toLowerCase() + '"></span>'
+                + '<span>' + s + '</span>'
+                + '<span class="dcr-legend__count">' + (counts[s] || 0) + '</span>'
+                + (isBlock ? '' : '<input type="checkbox" class="dcr-legend__check" ' + (on ? 'checked' : '') + ' tabindex="-1">')
+                + '</div>';
+        }).join('');
+        var footer = isBlock ? '' :
+            '<div class="dcr-legend__footer"><a data-act="all">Show all</a><a data-act="none">Hide all</a></div>';
+        el.innerHTML = (isBlock ? '' : '<div class="dcr-legend__title">Deal status</div>') + rows + footer;
+        container.appendChild(el);
+
+        if (!isBlock) {
+            el.addEventListener('click', function(e) {
+                var row = e.target.closest('.dcr-legend__row');
+                var act = e.target.getAttribute('data-act');
+                if (row) {
+                    var s = row.getAttribute('data-status');
+                    var idx = active.indexOf(s);
+                    if (idx === -1) active.push(s); else active.splice(idx, 1);
+                } else if (act === 'all') {
+                    active = STATUS_LIST.slice();
+                } else if (act === 'none') {
+                    active = [];
+                } else {
+                    return;
+                }
+                saveStatusFilter(active);
+                applyStatusFilter(map);
+                buildLegend(map, geojson);  // re-render to refresh checks/counts
+            });
+        }
+    }
+
+    function applyStatusFilter(map) {
+        var active = window._dcrMapActiveStatuses || STATUS_LIST.slice();
+        if (map.getLayer('unclustered-point')) {
+            map.setFilter('unclustered-point',
+                ['in', ['get', 'status'], ['literal', active]]);
+        }
+        // Heatmap stays as-is — it's a coarse density overlay, not status-aware.
+    }
+
     function loadData(map) {
         frappe.call({
             method: 'dcr.api.map.get_heatmap_data',
@@ -1084,6 +1176,7 @@ def ensure_map_block():
                     _pinsLoaded = true;
                     addHomeLayer();
                 }
+                saveStatusFilter(loadStatusFilter());  // hydrate global before addHomeLayer
                 STATUSES.forEach(function(status) {
                     THEMES.forEach(function(theme) {
                         STYLES.forEach(function(style) {
@@ -1114,6 +1207,10 @@ def ensure_map_block():
                         },
                         filter: currentStatusFilter()
                     });
+                    // Build legend once the layer exists. setTimeout(0) to
+                    // let Mapbox finish the addLayer microtasks before we
+                    // call setFilter on it.
+                    setTimeout(function() { buildLegend(map, geojson); }, 0);
                 }
 
                 map.on('click', 'unclustered-point', function(e) {
