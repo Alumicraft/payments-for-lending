@@ -578,6 +578,36 @@ def ensure_map_block():
                 };
                 map.addControl(new RecenterControl(), 'top-right');
 
+                // Satellite toggle — flips between Mapbox Standard and
+                // Standard Satellite. Custom layers are wiped by setStyle,
+                // so we re-load them on the subsequent style.load.
+                var SatelliteControl = function() {};
+                SatelliteControl.prototype.onAdd = function(m) {
+                    this._map = m;
+                    this._container = document.createElement('div');
+                    this._container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group';
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.title = 'Toggle satellite';
+                    btn.style.fontWeight = '600';
+                    btn.style.fontSize = '11px';
+                    btn.textContent = 'Sat';
+                    var streetsStyle = cfg.map_style_url || 'mapbox://styles/mapbox/standard';
+                    var satelliteStyle = 'mapbox://styles/mapbox/standard-satellite';
+                    btn.onclick = function() {
+                        var isSat = btn.classList.contains('active');
+                        m.setStyle(isSat ? streetsStyle : satelliteStyle);
+                        btn.textContent = isSat ? 'Sat' : 'Map';
+                        btn.classList.toggle('active');
+                    };
+                    this._container.appendChild(btn);
+                    return this._container;
+                };
+                SatelliteControl.prototype.onRemove = function() {
+                    this._container.parentNode.removeChild(this._container);
+                };
+                map.addControl(new SatelliteControl(), 'top-right');
+
                 // Day/night mode + icon swap based on Frappe theme
                 var _pinsLoaded = false;
                 function syncTheme() {
@@ -643,9 +673,23 @@ def ensure_map_block():
                     attributes: true, attributeFilter: ['data-theme']
                 });
 
+                var _initialLoadDone = false;
                 map.on('load', function() {
+                    _initialLoadDone = true;
                     loadData(map);
                     loadFactories(map);
+                });
+
+                // setStyle wipes all custom sources/layers/icons. Re-add them
+                // when style.load fires AFTER the initial load. The
+                // !getSource guard avoids re-running on the initial style.load
+                // (which fires before map.on('load') and loadData).
+                map.on('style.load', function() {
+                    if (_initialLoadDone && !map.getSource('hbr-locations')) {
+                        _pinsLoaded = false;
+                        loadData(map);
+                        loadFactories(map);
+                    }
                 });
 
                 map.on('click', function(e) {
@@ -1014,9 +1058,9 @@ def ensure_map_block():
                         window._dcrMapActiveStatuses || ['Pending','Ordered','Delivered']]],
                     paint: {
                         'heatmap-weight': ['interpolate', ['linear'], ['get', 'hbr_count'], 1, 0.3, 10, 1],
-                        'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 1, 12, 3],
-                        'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 0, 15, 12, 30],
-                        'heatmap-opacity': 0.6
+                        'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 1, 12, 5],
+                        'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 0, 30, 12, 80],
+                        'heatmap-opacity': 0.7
                     }
                 });
 
