@@ -533,6 +533,8 @@ def ensure_map_block():
     }
 
     // Puck under threshold, full pin at/above. Status drives the suffix.
+    // Match keys are Title Case (matches GeoJSON properties.status); image
+    // suffixes are lowercase (match disk filenames). Don't swap the cases.
     function iconImageExpr(theme, threshold) {
         var prefix = function(style) {
             return [
