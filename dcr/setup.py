@@ -456,6 +456,16 @@ def ensure_map_block():
     setHeight();
     window.addEventListener('resize', setHeight);
 
+    // Idempotent doc-level listener registration. Frappe re-runs this IIFE
+    // whenever the workspace remounts; without this, every navigation back
+    // to the Map workspace would attach a fresh handler.
+    function registerDocListener(key, type, handler) {
+        var existing = window['_dcr' + key];
+        if (existing) document.removeEventListener(type, existing);
+        document.addEventListener(type, handler);
+        window['_dcr' + key] = handler;
+    }
+
     // Load Mapbox GL JS
     function loadMapbox(cb) {
         // Inject CSS into shadow root so it reaches the controls
@@ -626,8 +636,32 @@ def ensure_map_block():
                 });
 
                 map.on('load', function() {
+                    map.addSource('dcr-trails', {
+                        type: 'geojson',
+                        data: { type: 'FeatureCollection', features: [] }
+                    });
+                    map.addLayer({
+                        id: 'dcr-trails',
+                        type: 'line',
+                        source: 'dcr-trails',
+                        layout: { 'line-cap': 'round', 'line-join': 'round' },
+                        paint: {
+                            'line-color': ['get', 'color'],
+                            'line-width': 2.5,
+                            'line-dasharray': [0, 4, 3]
+                        }
+                    });
                     loadData(map);
                     loadFactories(map);
+                });
+
+                map.on('click', function(e) {
+                    var hits = map.queryRenderedFeatures(e.point, {
+                        layers: ['unclustered-point', 'factory-point']
+                    });
+                    if (hits.length) return;  // pin click already handled
+                    if (_activePopup) _activePopup.remove();
+                    setTrailFeatures([]);
                 });
             }
         });
@@ -819,8 +853,9 @@ def ensure_map_block():
             +  '</div>';
     }
 
-    // Delegate clicks inside any open popup
-    document.addEventListener('click', function(e) {
+    // Delegate clicks inside any open popup. Registered idempotently so
+    // SPA re-mount doesn't accumulate handlers.
+    registerDocListener('PopupClick', 'click', function(e) {
         var t = e.target.closest('[data-act]');
         if (!t || !_activePopup) return;
         var act = t.getAttribute('data-act');
@@ -840,10 +875,17 @@ def ensure_map_block():
             var idx = parseInt(t.getAttribute('data-idx'), 10);
             if (p2 && homes && homes[idx]) drillIntoHome(p2, homes[idx]);
         } else if (act === 'show-trail' && name) {
-            // Task 8 fills this
             if (window._dcrShowTrailForHome) window._dcrShowTrailForHome(name);
         } else if (act === 'show-all-trails' && name) {
             if (window._dcrShowFactoryFan) window._dcrShowFactoryFan(name);
+        }
+    });
+
+    // Esc dismisses popup + trail
+    registerDocListener('PopupKey', 'keydown', function(e) {
+        if (e.key === 'Escape') {
+            if (_activePopup) _activePopup.remove();
+            setTrailFeatures([]);
         }
     });
 
@@ -856,6 +898,126 @@ def ensure_map_block():
         p._dcrProps = groupProps;
         p._dcrHomes = [home];
     }
+
+    // ========== TRAIL HELPERS =========================================
+    // Great-circle interpolation (slerp on the unit sphere). N segments → N+1 points.
+    function greatCircleLine(start, end, n) {
+        var lon1 = start[0] * Math.PI / 180, lat1 = start[1] * Math.PI / 180;
+        var lon2 = end[0]   * Math.PI / 180, lat2 = end[1]   * Math.PI / 180;
+        var d = 2 * Math.asin(Math.sqrt(
+            Math.pow(Math.sin((lat2-lat1)/2), 2) +
+            Math.cos(lat1)*Math.cos(lat2)*Math.pow(Math.sin((lon2-lon1)/2), 2)
+        ));
+        if (d === 0) return [start, end];
+        var coords = [];
+        for (var i = 0; i <= n; i++) {
+            var f = i / n;
+            var A = Math.sin((1-f)*d)/Math.sin(d);
+            var B = Math.sin(f*d)/Math.sin(d);
+            var x = A*Math.cos(lat1)*Math.cos(lon1) + B*Math.cos(lat2)*Math.cos(lon2);
+            var y = A*Math.cos(lat1)*Math.sin(lon1) + B*Math.cos(lat2)*Math.sin(lon2);
+            var z = A*Math.sin(lat1) + B*Math.sin(lat2);
+            var lat = Math.atan2(z, Math.sqrt(x*x + y*y));
+            var lon = Math.atan2(y, x);
+            coords.push([lon * 180 / Math.PI, lat * 180 / Math.PI]);
+        }
+        return coords;
+    }
+
+    var STATUS_COLOR = {
+        Pending:   '#687178',
+        Ordered:   '#FF7B00',
+        Delivered: '#007AFF'
+    };
+
+    // ========== TRAIL SOURCE/LAYER ====================================
+    var _trailRAF = null;
+    var _trailOffset = 0;
+    var _factoryByName = {};
+
+    window._dcrIndexFactory = function(d) {
+        // Called from loadFactories' GeoJSON map step.
+        if (!d || !d.name) return;
+        _factoryByName[d.name] = d;
+    };
+
+    function setTrailFeatures(features) {
+        var src = window._dcrMap && window._dcrMap.getSource('dcr-trails');
+        if (!src) return;
+        src.setData({ type: 'FeatureCollection', features: features });
+        if (features.length && !_trailRAF) startTrailAnimation();
+        if (!features.length && _trailRAF) stopTrailAnimation();
+    }
+    function startTrailAnimation() {
+        function step() {
+            _trailOffset = (_trailOffset + 0.4) % 7;
+            try {
+                window._dcrMap.setPaintProperty('dcr-trails', 'line-dasharray',
+                    [_trailOffset, 4, 3]);
+            } catch(_) {}
+            _trailRAF = requestAnimationFrame(step);
+        }
+        _trailRAF = requestAnimationFrame(step);
+    }
+    function stopTrailAnimation() {
+        if (_trailRAF) cancelAnimationFrame(_trailRAF);
+        _trailRAF = null;
+        _trailOffset = 0;
+    }
+    window._dcrClearTrail = function() { setTrailFeatures([]); };
+
+    function trailFeatureForHome(homeProps, home) {
+        if (!home || !home.factory) return null;
+        var fac = _factoryByName[home.factory];
+        if (!fac) return null;
+        var start = [Number(homeProps.longitude) || 0, Number(homeProps.latitude) || 0];
+        var end   = [fac.longitude, fac.latitude];
+        var coords = greatCircleLine(start, end, 24);
+        return {
+            type: 'Feature',
+            geometry: { type: 'LineString', coordinates: coords },
+            properties: { color: STATUS_COLOR[home.status] || STATUS_COLOR.Pending }
+        };
+    }
+
+    window._dcrShowTrailForHome = function(homeName) {
+        if (!_activePopup) return;
+        var props = _activePopup._dcrProps;
+        var homes = _activePopup._dcrHomes || [];
+        var home = null;
+        for (var i = 0; i < homes.length; i++) {
+            if (homes[i] && homes[i].name === homeName) { home = homes[i]; break; }
+        }
+        if (!home || !props) return;
+        var feat = trailFeatureForHome(props, home);
+        setTrailFeatures(feat ? [feat] : []);
+    };
+
+    window._dcrShowFactoryFan = function(supplierName) {
+        var src = window._dcrMap && window._dcrMap.getSource('hbr-locations');
+        if (!src) return;
+        var data = (src._data) || (src.serialize && src.serialize().data);
+        if (!data) return;
+        var fac = _factoryByName[supplierName];
+        if (!fac) return;
+        var active = window._dcrMapActiveStatuses || ['Pending', 'Ordered', 'Delivered'];
+        var feats = [];
+        (data.features || []).forEach(function(f) {
+            var homes;
+            try { homes = JSON.parse(f.properties.homes_json || '[]'); } catch(_) { return; }
+            homes.forEach(function(h) {
+                if (h.factory !== supplierName) return;
+                if (active.indexOf(h.status) === -1) return;
+                var feat = trailFeatureForHome({
+                    latitude: f.geometry.coordinates[1],
+                    longitude: f.geometry.coordinates[0]
+                }, h);
+                if (feat) feats.push(feat);
+            });
+        });
+        // Cap at 100 (spec). Order is whatever the source returned — fine for v1.
+        setTrailFeatures(feats.slice(0, 100));
+    };
 
     function loadData(map) {
         frappe.call({
