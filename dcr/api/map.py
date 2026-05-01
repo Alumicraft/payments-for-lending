@@ -117,13 +117,7 @@ def get_heatmap_data():
                 SELECT 1 FROM `tabPurchase Order` po
                 WHERE po.custom_home_build_request = hbr.name
                   AND po.docstatus = 2
-            ) AS has_cancelled_po,
-            COALESCE((
-                SELECT SUM(po.grand_total)
-                FROM `tabPurchase Order` po
-                WHERE po.custom_home_build_request = hbr.name
-                  AND po.docstatus = 1
-            ), 0) AS hbr_value
+            ) AS has_cancelled_po
         FROM `tabHome Build Request` hbr
         LEFT JOIN `tabCustomer` cust ON cust.name = hbr.customer
         LEFT JOIN `tabSupplier` fact ON fact.name = hbr.factory
@@ -286,13 +280,11 @@ def _aggregate_locations(rows):
                 "latitude": lat,
                 "longitude": lng,
                 "hbr_count": 0,
-                "total_value": 0,
                 "status": None,
                 "homes": [],
             }
         status = _derive_status(row)
         groups[key]["hbr_count"] += 1
-        groups[key]["total_value"] += float(row.get("hbr_value") or 0)
         groups[key]["homes"].append({
             "name": row.get("name"),
             "status": status,

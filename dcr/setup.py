@@ -400,9 +400,9 @@ def ensure_map_block():
 .dcr-legend--block .dcr-legend__row { display: flex; gap: 6px; padding: 0; cursor: default; }
 .dcr-legend--block .dcr-legend__check, .dcr-legend--block .dcr-legend__count { display: none; }
 
-/* Search control */
-.dcr-search { position: relative; font-family: 'Inter', -apple-system, sans-serif; }
-.dcr-search__input { width: 280px; height: 36px; padding: 0 36px 0 14px; font: inherit; font-size: 13px; border: 0; border-radius: 8px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.05); outline: none; color: #1F272E; }
+/* Search — floats over the map, top-center */
+.dcr-search { position: absolute; top: 24px; left: 50%; transform: translateX(-50%); z-index: 10; font-family: 'Inter', -apple-system, sans-serif; }
+.dcr-search__input { width: 360px; max-width: 80vw; height: 38px; padding: 0 36px 0 14px; font: inherit; font-size: 13px; border: 0; border-radius: 8px; background: #fff; box-shadow: 0 4px 14px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06); outline: none; color: #1F272E; }
 .dcr-search__input::placeholder { color: #94a3b8; }
 .dcr-search__input:focus { box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 0 0 2px #2490EF; }
 .dcr-search__icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #94a3b8; }
@@ -425,15 +425,6 @@ def ensure_map_block():
 .dcr-search--dark .dcr-search__label { color: #F2F4F5; }
 .dcr-search--dark .dcr-search__sub { color: #A6ADB4; }
 
-/* Heat-by toggle in legend footer */
-.dcr-legend__heat { margin-top: 8px; padding-top: 6px; border-top: 1px solid #ECEDEE; display: flex; align-items: center; gap: 6px; font-size: 11px; }
-.dcr-legend--dark .dcr-legend__heat { border-top-color: #2D3137; }
-.dcr-legend__heat-label { color: #687178; }
-.dcr-legend--dark .dcr-legend__heat-label { color: #A6ADB4; }
-.dcr-legend__heat-opt { padding: 2px 8px; border-radius: 4px; cursor: pointer; user-select: none; color: #687178; }
-.dcr-legend--dark .dcr-legend__heat-opt { color: #A6ADB4; }
-.dcr-legend__heat-opt.is-on { background: #2490EF; color: #fff; }
-.dcr-legend--dark .dcr-legend__heat-opt.is-on { background: #4DA8FF; color: #0E1116; }
 </style>
 <div id="dcr-map" style="width:100%; overflow: hidden; position: relative;"></div>"""
 
@@ -500,33 +491,6 @@ def ensure_map_block():
     function heatmapOpacityExpr(isDark) {
         var peak = isDark ? 0.25 : 0.5;
         return ['interpolate', ['linear'], ['zoom'], 9, peak, 10, 0];
-    }
-
-    // ========== HEAT WEIGHT TOGGLE ====================================
-    // Heatmap can weight by deal count (default) or total dollar value.
-    // Persisted in localStorage; toggle lives in the legend footer.
-    var HEAT_KEY = 'dcr-map-heat-weight';
-    function loadHeatMode() {
-        try { return localStorage.getItem(HEAT_KEY) === 'value' ? 'value' : 'count'; }
-        catch(_) { return 'count'; }
-    }
-    function saveHeatMode(mode) {
-        try { localStorage.setItem(HEAT_KEY, mode); } catch(_) {}
-        window._dcrHeatMode = mode;
-    }
-    function heatWeightExpr() {
-        var mode = window._dcrHeatMode || loadHeatMode();
-        if (mode === 'value') {
-            // total_value is in dollars; tune so a $50k group reads ~0.3 and
-            // a $500k group caps at 1.0.
-            return ['interpolate', ['linear'], ['get', 'total_value'], 50000, 0.3, 500000, 1];
-        }
-        return ['interpolate', ['linear'], ['get', 'hbr_count'], 1, 0.3, 10, 1];
-    }
-    function applyHeatMode(map) {
-        if (map.getLayer('hbr-heat')) {
-            map.setPaintProperty('hbr-heat', 'heatmap-weight', heatWeightExpr());
-        }
     }
 
     // ========== SEARCH INDEX + CONTROL ================================
@@ -600,9 +564,12 @@ def ensure_map_block():
         });
     }
 
-    function SearchControl() {}
-    SearchControl.prototype.onAdd = function(m) {
-        this._map = m;
+    // Mount the search box directly on the map container (not as a Mapbox
+    // control — those live inside .mapboxgl-ctrl-* wrappers with
+    // pointer-events: none, which can swallow input clicks). Full-bleed only.
+    function mountSearch(m) {
+        if (!isMapPage) return;
+        if (container.querySelector('.dcr-search')) return;  // already mounted
         var wrap = document.createElement('div');
         wrap.className = 'dcr-search';
         var input = document.createElement('input');
@@ -677,12 +644,8 @@ def ensure_map_block():
             attributes: true, attributeFilter: ['data-theme']
         });
 
-        this._container = wrap;
-        return wrap;
-    };
-    SearchControl.prototype.onRemove = function() {
-        if (this._container && this._container.parentNode) this._container.parentNode.removeChild(this._container);
-    };
+        container.appendChild(wrap);
+    }
 
     // ========== URL STATE =============================================
     // Hash format: #z=10.5&l=-118,38&s=Pending,Ordered&v=sat
@@ -906,7 +869,7 @@ def ensure_map_block():
                     this._container.parentNode.removeChild(this._container);
                 };
                 map.addControl(new SatelliteControl(), 'top-right');
-                map.addControl(new SearchControl(), 'top-left');
+                mountSearch(map);
 
                 // URL state: read on load, write on view changes
                 var initialUrl = readUrlState();
@@ -1298,27 +1261,13 @@ def ensure_map_block():
         }).join('');
         var footer = isBlock ? '' :
             '<div class="dcr-legend__footer"><button type="button" data-act="all">Show all</button><button type="button" data-act="none">Hide all</button></div>';
-        var heatMode = window._dcrHeatMode || loadHeatMode();
-        var heatToggle = isBlock ? '' :
-            '<div class="dcr-legend__heat">'
-            + '<span class="dcr-legend__heat-label">Heat by</span>'
-            + '<span class="dcr-legend__heat-opt' + (heatMode === 'count' ? ' is-on' : '') + '" data-heat="count">count</span>'
-            + '<span class="dcr-legend__heat-opt' + (heatMode === 'value' ? ' is-on' : '') + '" data-heat="value">value</span>'
-            + '</div>';
-        el.innerHTML = (isBlock ? '' : '<div class="dcr-legend__title">Deal status</div>') + rows + footer + heatToggle;
+        el.innerHTML = (isBlock ? '' : '<div class="dcr-legend__title">Deal status</div>') + rows + footer;
         container.appendChild(el);
 
         if (!isBlock) {
             el.addEventListener('click', function(e) {
                 var row = e.target.closest('.dcr-legend__row');
                 var act = e.target.getAttribute('data-act');
-                var heat = e.target.getAttribute('data-heat');
-                if (heat) {
-                    saveHeatMode(heat);
-                    applyHeatMode(map);
-                    buildLegend(map, geojson);
-                    return;
-                }
                 if (row) {
                     var s = row.getAttribute('data-status');
                     var idx = active.indexOf(s);
@@ -1373,7 +1322,6 @@ def ensure_map_block():
                                 latitude: d.latitude,
                                 longitude: d.longitude,
                                 hbr_count: d.hbr_count,
-                                total_value: d.total_value || 0,
                                 status: d.status || 'Pending',
                                 // Stringified so feature-state can survive
                                 // through Mapbox; parsed in popup handler.
@@ -1396,7 +1344,7 @@ def ensure_map_block():
                     filter: ['in', ['get', 'status'], ['literal',
                         window._dcrMapActiveStatuses || ['Pending','Ordered','Delivered']]],
                     paint: {
-                        'heatmap-weight': heatWeightExpr(),
+                        'heatmap-weight': ['interpolate', ['linear'], ['get', 'hbr_count'], 1, 0.3, 10, 1],
                         'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 0.5, 12, 2],
                         'heatmap-radius': 40,
                         // Fade the heatmap out as the pin layer kicks in.
