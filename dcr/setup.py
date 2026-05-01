@@ -701,7 +701,9 @@ def ensure_map_block():
     function iconSizeExpr(threshold) {
         // Pucks are smaller assets, render at 0.5; full pins at 0.212 (matches
         // existing scale tuned for the previous pin asset).
-        return ['step', ['zoom'], 0.5, threshold, 0.212];
+        // Sizes are 3× the "intended visual" because addImage uses pixelRatio:3
+        // for the 3× exported assets — Mapbox divides by pixelRatio at render.
+        return ['step', ['zoom'], 1.5, threshold, 0.636];
     }
 
     function iconAnchorExpr(threshold) {
@@ -1288,7 +1290,7 @@ def ensure_map_block():
                                 'icon-image': ['case',
                                     ['==', ['literal', currentTheme()], 'dark'],
                                     'factory-pin-dark', 'factory-pin-light'],
-                                'icon-size': 0.5,
+                                'icon-size': 1.5,  // 3× to neutralize pixelRatio:3
                                 'icon-anchor': 'bottom',
                                 'icon-allow-overlap': true
                             }
