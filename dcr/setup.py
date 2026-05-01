@@ -460,6 +460,13 @@ def ensure_map_block():
     // sibling closure) can reach it. Set from get_map_settings; default 10.
     var puckFullThreshold = 10;
 
+    // Heat reads softer on dark basemaps; peak 0.25 vs 0.5 light. Hoisted
+    // here for the same reason as puckFullThreshold — loadData uses it.
+    function heatmapOpacityExpr(isDark) {
+        var peak = isDark ? 0.25 : 0.5;
+        return ['interpolate', ['linear'], ['zoom'], 9, peak, 10, 0];
+    }
+
     // Idempotent doc-level listener registration. Frappe re-runs this IIFE
     // whenever the workspace remounts; without this, every navigation back
     // to the Map workspace would attach a fresh handler.
@@ -696,10 +703,6 @@ def ensure_map_block():
                         map.setPaintProperty('hbr-heat', 'heatmap-opacity',
                             heatmapOpacityExpr(isDark));
                     }
-                }
-                function heatmapOpacityExpr(isDark) {
-                    var peak = isDark ? 0.25 : 0.5;
-                    return ['interpolate', ['linear'], ['zoom'], 9, peak, 10, 0];
                 }
                 map.on('style.load', syncTheme);
 
