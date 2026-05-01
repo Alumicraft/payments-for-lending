@@ -1059,7 +1059,9 @@ def ensure_map_block():
                         'heatmap-weight': ['interpolate', ['linear'], ['get', 'hbr_count'], 1, 0.3, 10, 1],
                         'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 1, 12, 5],
                         'heatmap-radius': 40,
-                        'heatmap-opacity': 0.7
+                        // Fade the heatmap out as the pin layer kicks in.
+                        // Full strength below zoom 9, gone by zoom 10.
+                        'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 9, 0.7, 10, 0]
                     }
                 });
 
