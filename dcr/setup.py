@@ -682,9 +682,10 @@ def ensure_map_block():
         // Pucks are smaller assets, render at 0.5; full pins at 0.212 (matches
         // existing scale tuned for the previous pin asset).
         // Sizes account for pixelRatio:3 on 3× exported assets. Mapbox
-        // divides icon-size by pixelRatio at render, so 0.9/0.36 effective
-        // visual ≈ 0.3/0.12 — matches the previous tuned "adjusted" size.
-        return ['step', ['zoom'], 0.9, threshold, 0.36];
+        // divides icon-size by pixelRatio at render. Tuned in iteration:
+        // 0.9/0.36 read as too small; 1.5/0.636 read as too big. Landing
+        // at 1.2/0.5 — visible at state-wide zoom, comfortable up close.
+        return ['step', ['zoom'], 1.2, threshold, 0.5];
     }
 
     function iconAnchorExpr(threshold) {
@@ -1061,7 +1062,7 @@ def ensure_map_block():
                         id: 'unclustered-point',
                         type: 'symbol',
                         source: 'hbr-locations',
-                        minzoom: 6.5,
+                        minzoom: 3,  // pins visible from state-wide zoom and up
                         layout: {
                             'icon-image': iconImageExpr(theme, puckFullThreshold),
                             'icon-size': iconSizeExpr(puckFullThreshold),
@@ -1143,7 +1144,7 @@ def ensure_map_block():
                                 'icon-image': ['case',
                                     ['==', ['literal', currentTheme()], 'dark'],
                                     'factory-pin-dark', 'factory-pin-light'],
-                                'icon-size': 0.9,  // matches home pucks for visual parity
+                                'icon-size': 1.2,  // matches home pucks
                                 'icon-anchor': 'bottom',
                                 'icon-allow-overlap': true
                             }
