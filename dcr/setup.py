@@ -467,7 +467,7 @@ def ensure_map_block():
                     if (_pinsLoaded && map.getLayer('unclustered-point')) {
                         map.setLayoutProperty(
                             'unclustered-point', 'icon-image',
-                            isDark ? 'house-pin-dark' : 'house-pin-light'
+                            iconImageExpr(currentTheme(), puckFullThreshold)
                         );
                     }
 
@@ -528,6 +528,41 @@ def ensure_map_block():
         });
     }
 
+    function currentTheme() {
+        return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    }
+
+    // Puck under threshold, full pin at/above. Status drives the suffix.
+    function iconImageExpr(theme, threshold) {
+        var prefix = function(style) {
+            return [
+                'match', ['get', 'status'],
+                'Ordered',   'home-' + style + '-' + theme + '-ordered',
+                'Delivered', 'home-' + style + '-' + theme + '-delivered',
+                /* default Pending */ 'home-' + style + '-' + theme + '-pending'
+            ];
+        };
+        return ['step', ['zoom'], prefix('puck'), threshold, prefix('full')];
+    }
+
+    function iconSizeExpr(threshold) {
+        // Pucks are smaller assets, render at 0.5; full pins at 0.212 (matches
+        // existing scale tuned for the previous pin asset).
+        return ['step', ['zoom'], 0.5, threshold, 0.212];
+    }
+
+    function iconAnchorExpr(threshold) {
+        // Pucks anchor at center, full pins at bottom (the point of the pin).
+        return ['step', ['zoom'], 'center', threshold, 'bottom'];
+    }
+
+    // Active statuses; defaults to all three. Task 9 wires legend ↔ filter
+    // ↔ localStorage. Until then this returns the always-pass filter.
+    function currentStatusFilter() {
+        var active = window._dcrMapActiveStatuses || ['Pending', 'Ordered', 'Delivered'];
+        return ['in', ['get', 'status'], ['literal', active]];
+    }
+
     function loadData(map) {
         frappe.call({
             method: 'dcr.api.map.get_heatmap_data',
@@ -571,38 +606,51 @@ def ensure_map_block():
                 // Backend aggregates by (coords, address, space_number) into
                 // one feature, so each pin = one home or one stacked address.
                 //
-                // ICON SWAP — once status icons ship, replace the literal
-                // 'icon-image' below with a step+match expression keyed off
-                // ['get', 'status'] and puckFullThreshold. See spec
-                // 2026-04-30-map-icons-and-trails.md.
-                var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-                var loaded = 0;
-                function onPinLoaded() {
-                    loaded++;
-                    if (loaded < 2) return;
+                // Register all 12 status icons (puck + full × light + dark × 3 statuses).
+                // Mapbox needs them in the sprite under a stable name; we pick the
+                // theme variant at render time via a `match` expression on `status`.
+                var STATUSES = ['pending', 'ordered', 'delivered'];
+                var THEMES = ['light', 'dark'];
+                var STYLES = ['puck', 'full'];
+                var iconLoadCount = 0;
+                var ICON_TOTAL = STATUSES.length * THEMES.length * STYLES.length;
+                function onIconLoaded() {
+                    iconLoadCount++;
+                    if (iconLoadCount < ICON_TOTAL) return;
                     _pinsLoaded = true;
+                    addHomeLayer();
+                }
+                STATUSES.forEach(function(status) {
+                    THEMES.forEach(function(theme) {
+                        STYLES.forEach(function(style) {
+                            var imgName = 'home-' + style + '-' + theme + '-' + status;
+                            var imgUrl = '/assets/dcr/images/' + imgName + '.png';
+                            map.loadImage(imgUrl, function(err, img) {
+                                if (!err && img && !map.hasImage(imgName)) {
+                                    map.addImage(imgName, img);
+                                }
+                                onIconLoaded();
+                            });
+                        });
+                    });
+                });
 
+                function addHomeLayer() {
+                    var theme = currentTheme();
                     map.addLayer({
                         id: 'unclustered-point',
                         type: 'symbol',
                         source: 'hbr-locations',
                         minzoom: 6.5,
                         layout: {
-                            'icon-image': isDark ? 'house-pin-dark' : 'house-pin-light',
-                            'icon-size': 0.212,
-                            'icon-anchor': 'bottom',
+                            'icon-image': iconImageExpr(theme, puckFullThreshold),
+                            'icon-size': iconSizeExpr(puckFullThreshold),
+                            'icon-anchor': iconAnchorExpr(puckFullThreshold),
                             'icon-allow-overlap': true
-                        }
+                        },
+                        filter: currentStatusFilter()
                     });
                 }
-                map.loadImage('/assets/dcr/images/map-pin-light.png', function(err, img) {
-                    if (!err) map.addImage('house-pin-light', img);
-                    onPinLoaded();
-                });
-                map.loadImage('/assets/dcr/images/map-pin-dark.png', function(err, img) {
-                    if (!err) map.addImage('house-pin-dark', img);
-                    onPinLoaded();
-                });
 
                 // Popup on click - individual points
                 map.on('click', 'unclustered-point', function(e) {
