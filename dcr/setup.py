@@ -696,6 +696,10 @@ def ensure_map_block():
         return Math.floor(days / 365) + 'y ago';
     }
     function statusPillHtml(status) {
+        // Status is a closed set ('Pending'|'Ordered'|'Delivered') from
+        // dcr.api.map._derive_status; lowercasing produces a safe class name.
+        // If user-supplied status strings are ever introduced, sanitize before
+        // concatenating into the class attribute.
         var s = (status || 'Pending').toLowerCase();
         return '<span class="pill pill--' + s + '">' + escHtml(status || 'Pending') + '</span>';
     }
@@ -1034,11 +1038,17 @@ def ensure_map_block():
                     bindFactoryClick();
                 }
                 map.loadImage(factoryLight, function(err, img) {
-                    if (!err && img && !map.hasImage('factory-pin-light')) { map.addImage('factory-pin-light', img); fSuccess++; }
+                    if (!err && img) {
+                        if (!map.hasImage('factory-pin-light')) map.addImage('factory-pin-light', img);
+                        fSuccess++;
+                    }
                     onFactoryIconDone();
                 });
                 map.loadImage(factoryDark, function(err, img) {
-                    if (!err && img && !map.hasImage('factory-pin-dark')) { map.addImage('factory-pin-dark', img); fSuccess++; }
+                    if (!err && img) {
+                        if (!map.hasImage('factory-pin-dark')) map.addImage('factory-pin-dark', img);
+                        fSuccess++;
+                    }
                     onFactoryIconDone();
                 });
 
