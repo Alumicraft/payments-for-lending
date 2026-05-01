@@ -659,8 +659,8 @@ def ensure_map_block():
                         layout: { 'line-cap': 'round', 'line-join': 'round' },
                         paint: {
                             'line-color': ['get', 'color'],
-                            'line-width': 2.5,
-                            'line-dasharray': [0, 4, 3]
+                            'line-width': 3,
+                            'line-dasharray': [4, 3]
                         }
                     });
                     loadData(map);
@@ -963,18 +963,23 @@ def ensure_map_block():
         if (!features.length && _trailRAF) stopTrailAnimation();
     }
     function startTrailAnimation() {
+        // Marching-ants effect: shift the dash phase by alternating two
+        // valid even-length patterns each frame. Mapbox accepts smooth
+        // dasharray transitions via setPaintProperty. Period is short
+        // enough to read as motion without burning CPU.
+        var phase = 0;
         function step() {
-            _trailOffset = (_trailOffset + 0.4) % 7;
+            phase = (phase + 1) % 2;
             try {
                 window._dcrMap.setPaintProperty('dcr-trails', 'line-dasharray',
-                    [_trailOffset, 4, 3]);
+                    phase === 0 ? [4, 3] : [4.5, 2.5]);
             } catch(_) {}
-            _trailRAF = requestAnimationFrame(step);
+            _trailRAF = setTimeout(step, 200);  // ~5 fps — gentle
         }
-        _trailRAF = requestAnimationFrame(step);
+        _trailRAF = setTimeout(step, 200);
     }
     function stopTrailAnimation() {
-        if (_trailRAF) cancelAnimationFrame(_trailRAF);
+        if (_trailRAF) clearTimeout(_trailRAF);
         _trailRAF = null;
         _trailOffset = 0;
     }
@@ -1116,11 +1121,17 @@ def ensure_map_block():
 
     function applyStatusFilter(map) {
         var active = window._dcrMapActiveStatuses || STATUS_LIST.slice();
+        var filterExpr = ['in', ['get', 'status'], ['literal', active]];
         if (map.getLayer('unclustered-point')) {
-            map.setFilter('unclustered-point',
-                ['in', ['get', 'status'], ['literal', active]]);
+            map.setFilter('unclustered-point', filterExpr);
         }
-        // Heatmap stays as-is — it's a coarse density overlay, not status-aware.
+        // Heatmap shares the filter so toggling a status off also dims the
+        // density blobs for that status. Filter is on the group-level
+        // `status` (priority pick), so a stack with mixed statuses follows
+        // the dominant one — same UX as the pin.
+        if (map.getLayer('hbr-heat')) {
+            map.setFilter('hbr-heat', filterExpr);
+        }
     }
 
     function loadData(map) {
@@ -1157,6 +1168,8 @@ def ensure_map_block():
                     id: 'hbr-heat',
                     type: 'heatmap',
                     source: 'hbr-locations',
+                    filter: ['in', ['get', 'status'], ['literal',
+                        window._dcrMapActiveStatuses || ['Pending','Ordered','Delivered']]],
                     paint: {
                         'heatmap-weight': ['interpolate', ['linear'], ['get', 'hbr_count'], 1, 0.3, 10, 1],
                         'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 1, 12, 3],
@@ -1216,6 +1229,13 @@ def ensure_map_block():
                         },
                         filter: currentStatusFilter()
                     });
+                    // Trail lines belong above the heatmap (so they're visible
+                    // through the 60%-opaque heatmap blobs) but below the
+                    // pins (so pins remain clickable). moveLayer(id, beforeId)
+                    // places dcr-trails just below unclustered-point.
+                    if (map.getLayer('dcr-trails')) {
+                        try { map.moveLayer('dcr-trails', 'unclustered-point'); } catch(_) {}
+                    }
                     // Build legend once the layer exists. setTimeout(0) to
                     // let Mapbox finish the addLayer microtasks before we
                     // call setFilter on it.
