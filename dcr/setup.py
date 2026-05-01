@@ -1105,7 +1105,7 @@ def ensure_map_block():
                         id: 'unclustered-point',
                         type: 'symbol',
                         source: 'hbr-locations',
-                        minzoom: 6,  // pins kick in at metro-level zoom; heatmap dominates wider views
+                        minzoom: 10,  // pins fade in as the heatmap fades out (zoom 9→10)
                         layout: {
                             'icon-image': iconImageExpr(theme, puckFullThreshold),
                             'icon-size': iconSizeExpr(puckFullThreshold),
