@@ -487,6 +487,19 @@ def ensure_map_block():
     // sibling closure) can reach it. Set from get_map_settings; default 10.
     var puckFullThreshold = 10;
 
+    // Prefetch adapter — first checks window._dcrMapPrefetch (populated
+    // by map_warmup.js on desk boot). If hit, hand the cached response
+    // back asynchronously to match frappe.call's contract; if miss, fall
+    // through to the live call.
+    function callOrCache(method, callback) {
+        var pre = window._dcrMapPrefetch && window._dcrMapPrefetch[method];
+        if (pre) {
+            setTimeout(function() { callback(pre); }, 0);
+            return;
+        }
+        frappe.call({ method: method, callback: callback });
+    }
+
     // Heat reads softer on dark basemaps; peak 0.25 vs 0.5 light. Hoisted
     // here for the same reason as puckFullThreshold — loadData uses it.
     function heatmapOpacityExpr(isDark) {
@@ -734,9 +747,7 @@ def ensure_map_block():
     }
 
     function initMap() {
-        frappe.call({
-            method: 'dcr.api.map.get_map_settings',
-            callback: function(r) {
+        callOrCache('dcr.api.map.get_map_settings', function(r) {
                 if (!r.message || !r.message.access_token) {
                     container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#8d99a6;font-size:14px;">Configure Map Settings to enable the heatmap</div>';
                     return;
@@ -990,7 +1001,6 @@ def ensure_map_block():
                     if (hits.length) return;  // pin click already handled
                     if (_activePopup) _activePopup.remove();
                 });
-            }
         });
     }
 
@@ -1308,9 +1318,7 @@ def ensure_map_block():
     }
 
     function loadData(map) {
-        frappe.call({
-            method: 'dcr.api.map.get_heatmap_data',
-            callback: function(r) {
+        callOrCache('dcr.api.map.get_heatmap_data', function(r) {
                 if (!r.message || !r.message.length) return;
                 var geojson = {
                     type: 'FeatureCollection',
@@ -1441,14 +1449,11 @@ def ensure_map_block():
                 // Cursor on hover
                 map.on('mouseenter', 'unclustered-point', function() { map.getCanvas().style.cursor = 'pointer'; });
                 map.on('mouseleave', 'unclustered-point', function() { map.getCanvas().style.cursor = ''; });
-            }
         });
     }
 
     function loadFactories(map) {
-        frappe.call({
-            method: 'dcr.api.map.get_factory_locations',
-            callback: function(r) {
+        callOrCache('dcr.api.map.get_factory_locations', function(r) {
                 if (!r.message || !r.message.length) return;
                 var geojson = {
                     type: 'FeatureCollection',
@@ -1539,7 +1544,6 @@ def ensure_map_block():
                     map.on('mouseenter', 'factory-point', function() { map.getCanvas().style.cursor = 'pointer'; });
                     map.on('mouseleave', 'factory-point', function() { map.getCanvas().style.cursor = ''; });
                 }
-            }
         });
     }
 
