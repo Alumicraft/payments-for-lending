@@ -1189,7 +1189,9 @@ def ensure_map_block():
                             var imgUrl = '/assets/dcr/images/' + imgName + '.png';
                             map.loadImage(imgUrl, function(err, img) {
                                 if (!err && img && !map.hasImage(imgName)) {
-                                    map.addImage(imgName, img);
+                                    // Assets exported at 3x — declare pixelRatio so Mapbox
+                                    // renders them at their natural 1x display size.
+                                    map.addImage(imgName, img, { pixelRatio: 3 });
                                 }
                                 onIconLoaded();
                             });
@@ -1308,14 +1310,14 @@ def ensure_map_block():
                 }
                 map.loadImage(factoryLight, function(err, img) {
                     if (!err && img) {
-                        if (!map.hasImage('factory-pin-light')) map.addImage('factory-pin-light', img);
+                        if (!map.hasImage('factory-pin-light')) map.addImage('factory-pin-light', img, { pixelRatio: 3 });
                         fSuccess++;
                     }
                     onFactoryIconDone();
                 });
                 map.loadImage(factoryDark, function(err, img) {
                     if (!err && img) {
-                        if (!map.hasImage('factory-pin-dark')) map.addImage('factory-pin-dark', img);
+                        if (!map.hasImage('factory-pin-dark')) map.addImage('factory-pin-dark', img, { pixelRatio: 3 });
                         fSuccess++;
                     }
                     onFactoryIconDone();
