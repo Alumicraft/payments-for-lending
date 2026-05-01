@@ -589,8 +589,9 @@ def ensure_map_block():
                     var btn = document.createElement('button');
                     btn.type = 'button';
                     btn.title = 'Toggle satellite imagery';
-                    var SAT_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;"><circle cx="12" cy="12" r="3"/><path d="M12 2 L12 5 M12 19 L12 22 M2 12 L5 12 M19 12 L22 12"/><path d="M5.6 5.6 L7.7 7.7 M16.3 16.3 L18.4 18.4 M5.6 18.4 L7.7 16.3 M16.3 7.7 L18.4 5.6"/></svg>';
-                    var MAP_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;"><path d="M9 4 L3 6 L3 20 L9 18 L15 20 L21 18 L21 4 L15 6 L9 4 Z"/><path d="M9 4 L9 18 M15 6 L15 20"/></svg>';
+                    // Layers / stacked-planes glyph — universal "swap basemap" symbol.
+                    var SAT_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;"><path d="M12 2 L2 7 L12 12 L22 7 Z"/><path d="M2 12 L12 17 L22 12"/><path d="M2 17 L12 22 L22 17"/></svg>';
+                    var MAP_ICON = SAT_ICON;  // same glyph either direction — it's a "swap" affordance, not a state indicator
                     btn.innerHTML = SAT_ICON;
                     var streetsStyle = cfg.map_style_url || 'mapbox://styles/mapbox/standard';
                     var satelliteStyle = 'mapbox://styles/mapbox/standard-satellite';
@@ -724,10 +725,10 @@ def ensure_map_block():
     }
 
     function iconSizeExpr(threshold) {
-        // Assets exported at 3× from Figma. Scale by 1/3 to get the
+        // Assets exported at 3× from Figma. Scale by 0.3 to get the
         // intended display size — the asset's own intrinsic dimensions
         // already encode the puck-vs-full size relationship.
-        return 0.33;
+        return 0.3;
     }
 
     function iconAnchorExpr(threshold) {
@@ -1102,7 +1103,7 @@ def ensure_map_block():
                         id: 'unclustered-point',
                         type: 'symbol',
                         source: 'hbr-locations',
-                        minzoom: 3,  // pins visible from state-wide zoom and up
+                        minzoom: 6,  // pins kick in at metro-level zoom; heatmap dominates wider views
                         layout: {
                             'icon-image': iconImageExpr(theme, puckFullThreshold),
                             'icon-size': iconSizeExpr(puckFullThreshold),
@@ -1184,7 +1185,7 @@ def ensure_map_block():
                                 'icon-image': ['case',
                                     ['==', ['literal', currentTheme()], 'dark'],
                                     'factory-pin-dark', 'factory-pin-light'],
-                                'icon-size': 0.33,  // 3× export → 1/3 display
+                                'icon-size': 0.3,  // 3× export → 0.3 display
                                 'icon-anchor': 'bottom',
                                 'icon-allow-overlap': true
                             }
