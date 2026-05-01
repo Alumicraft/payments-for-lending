@@ -347,5 +347,80 @@ class TestGetHeatmapDataFiltering(unittest.TestCase):
         self.assertEqual(result[0]["homes"][0]["status"], "Pending")
 
 
+class TestGetFactoryLocations(unittest.TestCase):
+    """Factory locations payload — status counts + city.
+
+    The factory popup needs city + 3-up status counts + 12-month total.
+    Counts are derived from HBRs (trailing 12 months) linked via
+    `Home Build Request.factory`. Cancelled HBRs are excluded so the
+    totals match what the user sees on home pins.
+    """
+
+    @patch("dcr.api.map.frappe")
+    def test_factory_locations_includes_status_counts_and_city(self, mock_frappe):
+        """get_factory_locations returns per-factory status counts + total + city."""
+        # Suppliers with non-zero coords
+        mock_frappe.get_all.return_value = [
+            {"name": "SUPP-FACTORY", "supplier_name": "Cavco Industries",
+             "latitude": 33.4, "longitude": -112.0},
+        ]
+        # HBR aggregation rows (3 distinct HBRs at this factory)
+        # Mock frappe.db.sql is the HBR-counts query AND the city lookup —
+        # use side_effect to return different values per call.
+        mock_frappe.db.sql.side_effect = [
+            # First call: HBR rows
+            [
+                {"factory": "SUPP-FACTORY", "has_pr": 0, "has_active_po": 0, "has_cancelled_po": 0},   # Pending
+                {"factory": "SUPP-FACTORY", "has_pr": 0, "has_active_po": 1, "has_cancelled_po": 0},   # Ordered
+                {"factory": "SUPP-FACTORY", "has_pr": 1, "has_active_po": 1, "has_cancelled_po": 0},   # Delivered
+            ],
+            # Second call: city lookup
+            [{"city": "Phoenix"}],
+        ]
+        from dcr.api.map import get_factory_locations
+        out = get_factory_locations()
+        self.assertEqual(len(out), 1)
+        fac = out[0]
+        self.assertEqual(fac["name"], "SUPP-FACTORY")
+        self.assertEqual(fac["city"], "Phoenix")
+        self.assertEqual(fac["pending_count"], 1)
+        self.assertEqual(fac["ordered_count"], 1)
+        self.assertEqual(fac["delivered_count"], 1)
+        self.assertEqual(fac["total_12mo"], 3)
+
+    @patch("dcr.api.map.frappe")
+    def test_factory_locations_filters_zero_coords(self, mock_frappe):
+        """Suppliers with no lat/lng don't appear."""
+        mock_frappe.get_all.return_value = [
+            {"name": "SUPP-A", "supplier_name": "A", "latitude": 0, "longitude": 0},
+            {"name": "SUPP-B", "supplier_name": "B", "latitude": 33.4, "longitude": -112.0},
+        ]
+        mock_frappe.db.sql.side_effect = [[], []]  # no HBRs, no city
+        from dcr.api.map import get_factory_locations
+        out = get_factory_locations()
+        names = [f["name"] for f in out]
+        self.assertNotIn("SUPP-A", names)
+        self.assertIn("SUPP-B", names)
+
+    @patch("dcr.api.map.frappe")
+    def test_factory_locations_excludes_cancelled_only_pos(self, mock_frappe):
+        """Cancelled-PO-only rows don't count toward totals."""
+        mock_frappe.get_all.return_value = [
+            {"name": "SUPP-X", "supplier_name": "X", "latitude": 33.4, "longitude": -112.0},
+        ]
+        mock_frappe.db.sql.side_effect = [
+            [
+                {"factory": "SUPP-X", "has_pr": 0, "has_active_po": 1, "has_cancelled_po": 0},  # counts
+                {"factory": "SUPP-X", "has_pr": 0, "has_active_po": 0, "has_cancelled_po": 1},  # filtered
+            ],
+            [{"city": "Phoenix"}],
+        ]
+        from dcr.api.map import get_factory_locations
+        out = get_factory_locations()
+        self.assertEqual(out[0]["total_12mo"], 1)
+        self.assertEqual(out[0]["ordered_count"], 1)
+        self.assertEqual(out[0]["pending_count"], 0)
+
+
 if __name__ == "__main__":
     unittest.main()

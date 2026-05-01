@@ -155,29 +155,75 @@ def get_map_settings():
 
 @frappe.whitelist()
 def get_factory_locations():
-    """Return factory suppliers with non-zero coordinates.
+    """Return factory suppliers with non-zero coords, plus per-status counts.
 
-    Used by the map block to render factory icons. Coordinates are populated
-    by the Supplier on_update hook (`geocode_supplier`).
+    Counts are derived from HBRs (trailing 12 months) linked via
+    `Home Build Request.factory`. Cancelled HBRs are excluded — same
+    rule as the home pins, so the totals match what the user sees.
     """
-    rows = frappe.get_all(
+    cutoff = (datetime.utcnow() - timedelta(days=365)).strftime("%Y-%m-%d %H:%M:%S")
+    suppliers = frappe.get_all(
         "Supplier",
-        filters={
-            "supplier_group": FACTORY_SUPPLIER_GROUP,
-            "disabled": 0,
-        },
+        filters={"supplier_group": FACTORY_SUPPLIER_GROUP, "disabled": 0},
         fields=["name", "supplier_name", "latitude", "longitude"],
     )
-    return [
-        {
-            "name": r["name"],
-            "supplier_name": r.get("supplier_name") or r["name"],
-            "latitude": r.get("latitude") or 0,
-            "longitude": r.get("longitude") or 0,
-        }
-        for r in rows
-        if (r.get("latitude") or 0) and (r.get("longitude") or 0)
-    ]
+    suppliers = [s for s in suppliers if (s.get("latitude") or 0) and (s.get("longitude") or 0)]
+    if not suppliers:
+        return []
+
+    names = [s["name"] for s in suppliers]
+    placeholders = ", ".join(["%s"] * len(names))
+    rows = frappe.db.sql(
+        f"""
+        SELECT
+            hbr.factory,
+            EXISTS (SELECT 1 FROM `tabPurchase Receipt Item` pri
+                    JOIN `tabPurchase Receipt` pr ON pr.name = pri.parent
+                    JOIN `tabPurchase Order` po ON po.name = pri.purchase_order
+                    WHERE po.custom_home_build_request = hbr.name
+                      AND pr.docstatus = 1) AS has_pr,
+            EXISTS (SELECT 1 FROM `tabPurchase Order` po
+                    WHERE po.custom_home_build_request = hbr.name
+                      AND po.docstatus = 1) AS has_active_po,
+            EXISTS (SELECT 1 FROM `tabPurchase Order` po
+                    WHERE po.custom_home_build_request = hbr.name
+                      AND po.docstatus = 2) AS has_cancelled_po
+        FROM `tabHome Build Request` hbr
+        WHERE hbr.creation >= %s
+          AND hbr.docstatus != 2
+          AND hbr.factory IN ({placeholders})
+        """,
+        tuple([cutoff] + names),
+        as_dict=True,
+    )
+
+    counts = {n: {"pending_count": 0, "ordered_count": 0, "delivered_count": 0, "total_12mo": 0} for n in names}
+    for r in rows:
+        if r.get("has_cancelled_po") and not r.get("has_active_po") and not r.get("has_pr"):
+            continue
+        f = r["factory"]
+        if not f or f not in counts:
+            continue
+        if r.get("has_pr"):
+            counts[f]["delivered_count"] += 1
+        elif r.get("has_active_po"):
+            counts[f]["ordered_count"] += 1
+        else:
+            counts[f]["pending_count"] += 1
+        counts[f]["total_12mo"] += 1
+
+    out = []
+    for s in suppliers:
+        c = counts[s["name"]]
+        out.append({
+            "name": s["name"],
+            "supplier_name": s.get("supplier_name") or s["name"],
+            "latitude": s["latitude"],
+            "longitude": s["longitude"],
+            "city": _supplier_primary_city(s["name"]) or "",
+            **c,
+        })
+    return out
 
 
 def _parse_mapbox_feature(feature):
@@ -384,6 +430,25 @@ def _get_supplier_primary_address(supplier_name):
         a.get("country"),
     ]
     return ", ".join(p for p in parts if p)
+
+
+def _supplier_primary_city(supplier_name):
+    """Return the city of the supplier's primary address, or None."""
+    rows = frappe.db.sql(
+        """
+        SELECT a.city
+        FROM `tabAddress` a
+        JOIN `tabDynamic Link` dl ON dl.parent = a.name
+            AND dl.parenttype = 'Address'
+            AND dl.link_doctype = 'Supplier'
+            AND dl.link_name = %s
+        ORDER BY a.is_primary_address DESC, a.modified DESC
+        LIMIT 1
+        """,
+        (supplier_name,),
+        as_dict=True,
+    )
+    return rows[0].get("city") if rows else None
 
 
 def _geocode_address(query):
