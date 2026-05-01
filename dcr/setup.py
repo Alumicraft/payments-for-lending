@@ -1400,7 +1400,11 @@ def ensure_map_block():
                             'icon-image': iconImageExpr(theme, puckFullThreshold),
                             'icon-size': iconSizeExpr(puckFullThreshold),
                             'icon-anchor': iconAnchorExpr(puckFullThreshold),
-                            'icon-allow-overlap': true
+                            'icon-allow-overlap': true,
+                            // Without this, dense clusters drop some pins when
+                            // their placement boxes collide. allow-overlap
+                            // alone isn't enough.
+                            'icon-ignore-placement': true
                         },
                         paint: { 'icon-opacity': 0.9 },
                         filter: currentStatusFilter()
@@ -1483,7 +1487,8 @@ def ensure_map_block():
                                     'factory-pin-dark', 'factory-pin-light'],
                                 'icon-size': 0.3,  // 3× export → 0.3 display
                                 'icon-anchor': 'bottom',
-                                'icon-allow-overlap': true
+                                'icon-allow-overlap': true,
+                                'icon-ignore-placement': true
                             },
                             paint: { 'icon-opacity': 0.9 }
                         });
