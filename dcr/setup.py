@@ -300,15 +300,15 @@ def ensure_map_block():
 .mapboxgl-ctrl-bottom-left, .mapboxgl-ctrl-bottom-right { transform: translateY(150%); }
 
 /* DCR map popup styling — see docs/superpowers/specs/2026-04-30-map-icons-and-trails.md */
-.mapboxgl-popup-content { padding: 0; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.04); background: #FFFFFF; }
-.mapboxgl-popup--dark .mapboxgl-popup-content { background: #1C1F23; box-shadow: 0 6px 18px rgba(0,0,0,0.5), 0 0 0 1px #2D3137; }
+.mapboxgl-popup-content { padding: 0 !important; border-radius: 12px !important; overflow: hidden !important; box-shadow: 0 8px 24px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06) !important; background: transparent !important; }
+.mapboxgl-popup--dark .mapboxgl-popup-content { box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 0 1px #2D3137 !important; }
 /* Hide tip pointer + close button to match the mockup's floating-card look.
    Popup auto-dismisses on Esc / map move / map zoom / new pin. */
 .mapboxgl-popup-tip { display: none !important; }
 .mapboxgl-popup-close-button { display: none !important; }
 
-.dcr-popup { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; line-height: 1.45; color: #1F272E; min-width: 320px; }
-.dcr-popup--dark { color: #F2F4F5; }
+.dcr-popup { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; line-height: 1.45; color: #1F272E; min-width: 320px; background: #FFFFFF; border-radius: 12px; overflow: hidden; }
+.dcr-popup--dark { color: #F2F4F5; background: #1C1F23; }
 .dcr-popup--multi { width: 380px; }
 .dcr-popup--factory { width: 320px; }
 
@@ -361,12 +361,6 @@ def ensure_map_block():
 .dcr-popup .stack-row__factory { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dcr-popup .stack-row__meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
 .dcr-popup .stack-row__space { font-size: 11px; font-weight: 500; }
-.dcr-popup .trail-btn { width: 24px; height: 24px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; background: transparent; border: 1px solid #C7CDD3; color: #687178; padding: 0; opacity: .55; transition: opacity .12s ease, background .12s ease; }
-.dcr-popup .trail-btn:hover { opacity: 1; background: #F2F3F4; }
-.dcr-popup--dark .trail-btn { border-color: #4A5158; color: #A6ADB4; }
-.dcr-popup--dark .trail-btn:hover { background: #2D3137; }
-.dcr-popup .trail-btn svg { width: 12px; height: 12px; }
-
 .dcr-popup .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; padding: 14px 16px 4px; border-top: 1px solid #ECEDEE; }
 .dcr-popup--dark .stats { border-top-color: #2D3137; }
 .dcr-popup .stat { display: flex; flex-direction: column; gap: 6px; }
@@ -450,9 +444,6 @@ def ensure_map_block():
             if (!stillMap) {
                 var el = document.getElementById('dcr-map-fullbleed');
                 if (el) el.remove();
-                // Stop the trail rAF — without this, animation keeps running
-                // against an orphaned map after the user leaves the workspace.
-                if (window._dcrClearTrail) window._dcrClearTrail();
             }
         });
     }
@@ -653,21 +644,6 @@ def ensure_map_block():
                 });
 
                 map.on('load', function() {
-                    map.addSource('dcr-trails', {
-                        type: 'geojson',
-                        data: { type: 'FeatureCollection', features: [] }
-                    });
-                    map.addLayer({
-                        id: 'dcr-trails',
-                        type: 'line',
-                        source: 'dcr-trails',
-                        layout: { 'line-cap': 'round', 'line-join': 'round' },
-                        paint: {
-                            'line-color': ['get', 'color'],
-                            'line-width': 3,
-                            'line-dasharray': [4, 3]
-                        }
-                    });
                     loadData(map);
                     loadFactories(map);
                 });
@@ -678,7 +654,6 @@ def ensure_map_block():
                     });
                     if (hits.length) return;  // pin click already handled
                     if (_activePopup) _activePopup.remove();
-                    setTrailFeatures([]);
                 });
             }
         });
@@ -757,11 +732,6 @@ def ensure_map_block():
         var s = (status || 'Pending').toLowerCase();
         return '<span class="pill pill--' + s + '">' + escHtml(status || 'Pending') + '</span>';
     }
-    function trailBtnSvg() {
-        return '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5">'
-            +  '<path d="M2 6 Q6 2, 10 6"/><circle cx="2" cy="6" r="1.2" fill="currentColor"/>'
-            +  '<circle cx="10" cy="6" r="1.2" fill="currentColor"/></svg>';
-    }
     function tertiaryLine(props) {
         var bits = [];
         if (props.space_number) bits.push('Space ' + props.space_number);
@@ -784,8 +754,6 @@ def ensure_map_block():
         p.setLngLat(lngLat).setHTML(html).addTo(map);
         p.on('close', function() {
             if (_activePopup === p) _activePopup = null;
-            // Trail dismiss on popup close — Task 8 hooks here
-            if (window._dcrClearTrail) window._dcrClearTrail();
         });
         _activePopup = p;
         return p;
@@ -819,7 +787,6 @@ def ensure_map_block():
             +    '</div>'
             +    '<div class="dcr-popup__footer">'
             +      '<button class="btn btn--primary" data-act="open-hbr" data-name="' + escHtml(home.name) + '">Open HBR</button>'
-            +      '<button class="btn btn--secondary" data-act="show-trail" data-name="' + escHtml(home.name) + '">Show trail</button>'
             +    '</div>'
             +  '</div>';
     }
@@ -837,7 +804,6 @@ def ensure_map_block():
                 +    '</div>'
                 +    '<div class="stack-row__meta">'
                 +      (props.space_number ? '<span class="stack-row__space text-secondary">Space ' + escHtml(props.space_number) + '</span>' : '')
-                +      '<button class="trail-btn" data-act="show-trail" data-name="' + escHtml(h.name) + '" title="Show trail">' + trailBtnSvg() + '</button>'
                 +    '</div>'
                 +  '</div>';
         }).join('');
@@ -868,7 +834,6 @@ def ensure_map_block():
             +    '<div class="factory-total text-secondary">' + (props.total_12mo || 0) + ' deals routed here in the last 12 months</div>'
             +    '<div class="dcr-popup__footer">'
             +      '<button class="btn btn--primary" data-act="open-supplier" data-name="' + escHtml(props.name) + '">Open Supplier</button>'
-            +      '<button class="btn btn--secondary" data-act="show-all-trails" data-name="' + escHtml(props.name) + '">Show all trails</button>'
             +    '</div>'
             +  '</div>';
     }
@@ -894,18 +859,13 @@ def ensure_map_block():
             var homes = _activePopup._dcrHomes;
             var idx = parseInt(t.getAttribute('data-idx'), 10);
             if (p2 && homes && homes[idx]) drillIntoHome(p2, homes[idx]);
-        } else if (act === 'show-trail' && name) {
-            if (window._dcrShowTrailForHome) window._dcrShowTrailForHome(name);
-        } else if (act === 'show-all-trails' && name) {
-            if (window._dcrShowFactoryFan) window._dcrShowFactoryFan(name);
         }
     });
 
-    // Esc dismisses popup + trail
+    // Esc dismisses popup
     registerDocListener('PopupKey', 'keydown', function(e) {
-        if (e.key === 'Escape') {
-            if (_activePopup) _activePopup.remove();
-            setTrailFeatures([]);
+        if (e.key === 'Escape' && _activePopup) {
+            _activePopup.remove();
         }
     });
 
@@ -918,122 +878,6 @@ def ensure_map_block():
         p._dcrProps = groupProps;
         p._dcrHomes = [home];
     }
-
-    // ========== TRAIL HELPERS =========================================
-    // Great-circle interpolation (slerp on the unit sphere). N segments → N+1 points.
-    function greatCircleLine(start, end, n) {
-        var lon1 = start[0] * Math.PI / 180, lat1 = start[1] * Math.PI / 180;
-        var lon2 = end[0]   * Math.PI / 180, lat2 = end[1]   * Math.PI / 180;
-        var d = 2 * Math.asin(Math.sqrt(
-            Math.pow(Math.sin((lat2-lat1)/2), 2) +
-            Math.cos(lat1)*Math.cos(lat2)*Math.pow(Math.sin((lon2-lon1)/2), 2)
-        ));
-        if (d === 0) return [start, end];
-        var coords = [];
-        for (var i = 0; i <= n; i++) {
-            var f = i / n;
-            var A = Math.sin((1-f)*d)/Math.sin(d);
-            var B = Math.sin(f*d)/Math.sin(d);
-            var x = A*Math.cos(lat1)*Math.cos(lon1) + B*Math.cos(lat2)*Math.cos(lon2);
-            var y = A*Math.cos(lat1)*Math.sin(lon1) + B*Math.cos(lat2)*Math.sin(lon2);
-            var z = A*Math.sin(lat1) + B*Math.sin(lat2);
-            var lat = Math.atan2(z, Math.sqrt(x*x + y*y));
-            var lon = Math.atan2(y, x);
-            coords.push([lon * 180 / Math.PI, lat * 180 / Math.PI]);
-        }
-        return coords;
-    }
-
-    var STATUS_COLOR = {
-        Pending:   '#687178',
-        Ordered:   '#FF7B00',
-        Delivered: '#007AFF'
-    };
-
-    // ========== TRAIL SOURCE/LAYER ====================================
-    var _trailRAF = null;
-    var _trailOffset = 0;
-    var _factoryByName = {};
-
-    window._dcrIndexFactory = function(d) {
-        // Called from loadFactories' GeoJSON map step.
-        if (!d || !d.name) return;
-        _factoryByName[d.name] = d;
-    };
-
-    function setTrailFeatures(features) {
-        var src = window._dcrMap && window._dcrMap.getSource('dcr-trails');
-        if (!src) return;
-        src.setData({ type: 'FeatureCollection', features: features });
-        if (features.length && !_trailRAF) startTrailAnimation();
-        if (!features.length && _trailRAF) stopTrailAnimation();
-    }
-    function startTrailAnimation() {
-        // Animation deliberately disabled — Mapbox dasharray cycling either
-        // jitters (setPaintProperty doesn't smooth-transition the array) or
-        // looks broken on edge cases. Static dashes read as "in progress"
-        // well enough on their own.
-    }
-    function stopTrailAnimation() {
-        if (_trailRAF) clearTimeout(_trailRAF);
-        _trailRAF = null;
-    }
-    window._dcrClearTrail = function() { setTrailFeatures([]); };
-
-    function trailFeatureForHome(homeProps, home) {
-        if (!home || !home.factory) return null;
-        var fac = _factoryByName[home.factory];
-        if (!fac) return null;
-        var start = [Number(homeProps.longitude) || 0, Number(homeProps.latitude) || 0];
-        var end   = [fac.longitude, fac.latitude];
-        var coords = greatCircleLine(start, end, 24);
-        return {
-            type: 'Feature',
-            geometry: { type: 'LineString', coordinates: coords },
-            properties: { color: STATUS_COLOR[home.status] || STATUS_COLOR.Pending }
-        };
-    }
-
-    window._dcrShowTrailForHome = function(homeName) {
-        if (!_activePopup) return;
-        var props = _activePopup._dcrProps;
-        var homes = _activePopup._dcrHomes || [];
-        var home = null;
-        for (var i = 0; i < homes.length; i++) {
-            if (homes[i] && homes[i].name === homeName) { home = homes[i]; break; }
-        }
-        if (!home || !props) return;
-        var feat = trailFeatureForHome(props, home);
-        setTrailFeatures(feat ? [feat] : []);
-    };
-
-    window._dcrShowFactoryFan = function(supplierName) {
-        var src = window._dcrMap && window._dcrMap.getSource('hbr-locations');
-        if (!src) return;
-        // Prefer documented serialize(); fall back to private _data only if
-        // serialize is missing on this Mapbox build.
-        var data = (src.serialize && src.serialize().data) || src._data;
-        if (!data) return;
-        var fac = _factoryByName[supplierName];
-        if (!fac) return;
-        var active = window._dcrMapActiveStatuses || ['Pending', 'Ordered', 'Delivered'];
-        var feats = [];
-        (data.features || []).forEach(function(f) {
-            var homes;
-            try { homes = JSON.parse(f.properties.homes_json || '[]'); } catch(_) { return; }
-            homes.forEach(function(h) {
-                if (h.factory !== supplierName) return;
-                if (active.indexOf(h.status) === -1) return;
-                var feat = trailFeatureForHome({
-                    latitude: f.geometry.coordinates[1],
-                    longitude: f.geometry.coordinates[0]
-                }, h);
-                if (feat) feats.push(feat);
-            });
-        });
-        // Cap at 100 (spec). Order is whatever the source returned — fine for v1.
-        setTrailFeatures(feats.slice(0, 100));
-    };
 
     // ========== LEGEND + STATUS FILTER =================================
     var STATUS_LIST = ['Pending', 'Ordered', 'Delivered'];
@@ -1147,9 +991,6 @@ def ensure_map_block():
                                 city: d.city || '',
                                 state: d.state || '',
                                 zip: d.zip || '',
-                                // Lat/lng exposed on properties so the popup's
-                                // _dcrProps stash carries them — the trail
-                                // helper reads homeProps.latitude/longitude.
                                 latitude: d.latitude,
                                 longitude: d.longitude,
                                 hbr_count: d.hbr_count,
@@ -1229,13 +1070,6 @@ def ensure_map_block():
                         },
                         filter: currentStatusFilter()
                     });
-                    // Trail lines belong above the heatmap (so they're visible
-                    // through the 60%-opaque heatmap blobs) but below the
-                    // pins (so pins remain clickable). moveLayer(id, beforeId)
-                    // places dcr-trails just below unclustered-point.
-                    if (map.getLayer('dcr-trails')) {
-                        try { map.moveLayer('dcr-trails', 'unclustered-point'); } catch(_) {}
-                    }
                     // Build legend once the layer exists. setTimeout(0) to
                     // let Mapbox finish the addLayer microtasks before we
                     // call setFilter on it.
@@ -1275,7 +1109,6 @@ def ensure_map_block():
                 var geojson = {
                     type: 'FeatureCollection',
                     features: r.message.map(function(d) {
-                        if (window._dcrIndexFactory) window._dcrIndexFactory(d);
                         return {
                             type: 'Feature',
                             geometry: { type: 'Point', coordinates: [d.longitude, d.latitude] },
