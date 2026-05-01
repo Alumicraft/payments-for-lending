@@ -444,6 +444,9 @@ def ensure_map_block():
             if (!stillMap) {
                 var el = document.getElementById('dcr-map-fullbleed');
                 if (el) el.remove();
+                // Stop the trail rAF — without this, animation keeps running
+                // against an orphaned map after the user leaves the workspace.
+                if (window._dcrClearTrail) window._dcrClearTrail();
             }
         });
     }
@@ -996,7 +999,9 @@ def ensure_map_block():
     window._dcrShowFactoryFan = function(supplierName) {
         var src = window._dcrMap && window._dcrMap.getSource('hbr-locations');
         if (!src) return;
-        var data = (src._data) || (src.serialize && src.serialize().data);
+        // Prefer documented serialize(); fall back to private _data only if
+        // serialize is missing on this Mapbox build.
+        var data = (src.serialize && src.serialize().data) || src._data;
         if (!data) return;
         var fac = _factoryByName[supplierName];
         if (!fac) return;
