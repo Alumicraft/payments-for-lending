@@ -1150,7 +1150,7 @@ def ensure_map_block():
                             'icon-anchor': iconAnchorExpr(puckFullThreshold),
                             'icon-allow-overlap': true
                         },
-                        paint: { 'icon-opacity': 0.8 },
+                        paint: { 'icon-opacity': 0.9 },
                         filter: currentStatusFilter()
                     });
                     // Build legend once the layer exists. setTimeout(0) to
@@ -1230,7 +1230,7 @@ def ensure_map_block():
                                 'icon-anchor': 'bottom',
                                 'icon-allow-overlap': true
                             },
-                            paint: { 'icon-opacity': 0.8 }
+                            paint: { 'icon-opacity': 0.9 }
                         });
                     } else {
                         map.addLayer({
@@ -1242,7 +1242,7 @@ def ensure_map_block():
                                 'circle-color': '#000000',
                                 'circle-stroke-color': '#ffffff',
                                 'circle-stroke-width': 2,
-                                'circle-opacity': 0.8
+                                'circle-opacity': 0.9
                             }
                         });
                     }
