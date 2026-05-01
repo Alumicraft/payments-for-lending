@@ -1058,7 +1058,7 @@ def ensure_map_block():
                     paint: {
                         'heatmap-weight': ['interpolate', ['linear'], ['get', 'hbr_count'], 1, 0.3, 10, 1],
                         'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 1, 12, 5],
-                        'heatmap-radius': 24,
+                        'heatmap-radius': 40,
                         'heatmap-opacity': 0.7
                     }
                 });
