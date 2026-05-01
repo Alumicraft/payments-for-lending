@@ -197,7 +197,7 @@ Geocoded by an `on_update` hook against the supplier's primary address.
 4. `get_heatmap_data` rewrite + status derivation (this PR)
 5. `get_factory_locations` endpoint (this PR)
 6. Block JS: `block_zoom` wiring + factory layer + status-aware icon expressions w/ placeholder colors (this PR)
-7. Real status icons (next PR — depends on design assets)
-8. Legend + filter UI (next PR)
-9. Snail trail rendering (next PR)
-10. Stacked-popup list view (next PR)
+7. ~~Real status icons~~ ✅ shipped 2026-04-30 (12 home + 2 factory assets)
+8. ~~Legend + filter UI~~ ✅ shipped 2026-04-30
+9. ~~Snail trail rendering~~ ✅ shipped 2026-04-30
+10. ~~Stacked-popup list view~~ ✅ shipped 2026-04-30 (incl. drill-down + factory popup)
