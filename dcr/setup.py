@@ -689,6 +689,17 @@ def ensure_map_block():
                     if (legendEl) {
                         legendEl.classList.toggle('dcr-legend--dark', isDark);
                     }
+                    // Heatmap reads softer on dark basemaps — half the peak
+                    // opacity so it stays a tint rather than competing with
+                    // the satellite/dark imagery.
+                    if (map.getLayer('hbr-heat')) {
+                        map.setPaintProperty('hbr-heat', 'heatmap-opacity',
+                            heatmapOpacityExpr(isDark));
+                    }
+                }
+                function heatmapOpacityExpr(isDark) {
+                    var peak = isDark ? 0.25 : 0.5;
+                    return ['interpolate', ['linear'], ['zoom'], 9, peak, 10, 0];
                 }
                 map.on('style.load', syncTheme);
 
@@ -1084,7 +1095,7 @@ def ensure_map_block():
                         'heatmap-radius': 40,
                         // Fade the heatmap out as the pin layer kicks in.
                         // Full strength below zoom 9, gone by zoom 10.
-                        'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 9, 0.5, 10, 0]
+                        'heatmap-opacity': heatmapOpacityExpr(currentTheme() === 'dark')
                     }
                 });
 
