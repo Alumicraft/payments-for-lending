@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DCR Map — Pins & Popups Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    /* ─── BRAND TOKENS ─────────────────────────────────────────── */
+    :root {
+      --c-pending-bg-light:   rgba(104, 113, 120, 0.16);
+      --c-pending-fg-light:   #5A6166;
+      --c-pending-dot-light:  #687178;
+      --c-pending-bg-dark:    rgba(166, 173, 180, 0.18);
+      --c-pending-fg-dark:    #C8CFD5;
+      --c-pending-dot-dark:   #A6ADB4;
+
+      /* Figma `productivity` orange — solid #FF7B00 */
+      --c-ordered-bg-light:   rgba(255, 123, 0, 0.16);
+      --c-ordered-fg-light:   #D96D00;
+      --c-ordered-dot-light:  #FF7B00;
+      --c-ordered-bg-dark:    rgba(255, 154, 60, 0.20);
+      --c-ordered-fg-dark:    #FFB066;
+      --c-ordered-dot-dark:   #FF9A3C;
+
+      /* Figma `data` blue — gradient #007AFF → #0074F3 */
+      --c-delivered-grad-light: linear-gradient(135deg, #007AFF 0%, #0074F3 100%);
+      --c-delivered-bg-light:   rgba(0, 122, 255, 0.16);
+      --c-delivered-fg-light:   #0058CC;
+      --c-delivered-dot-light:  #007AFF;
+      --c-delivered-grad-dark:  linear-gradient(135deg, #4DA8FF 0%, #3F9EE8 100%);
+      --c-delivered-bg-dark:    rgba(77, 168, 255, 0.20);
+      --c-delivered-fg-dark:    #7FC0FF;
+      --c-delivered-dot-dark:   #4DA8FF;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #F5F6F7;
+      color: #1F272E;
+      padding: 32px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    header { max-width: 1080px; margin: 0 auto 28px; }
+    h1 { font-size: 22px; font-weight: 700; margin: 0 0 4px; }
+    header p { margin: 0; color: #687178; font-size: 14px; }
+
+    main { max-width: 1080px; margin: 0 auto; }
+    .row { margin-bottom: 36px; }
+    .row__title {
+      font-size: 11px; font-weight: 600; color: #687178;
+      margin: 0 0 12px; text-transform: uppercase; letter-spacing: 0.6px;
+    }
+    .stages { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .stage {
+      padding: 36px 24px;
+      border-radius: 12px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      min-height: 280px;
+    }
+    .stage--light {
+      background:
+        radial-gradient(circle at 30% 40%, #DCD8CC 0%, transparent 50%),
+        radial-gradient(circle at 70% 60%, #C8D4D8 0%, transparent 50%),
+        #E8E5DD;
+    }
+    .stage--dark {
+      background:
+        radial-gradient(circle at 30% 40%, #1B2940 0%, transparent 50%),
+        radial-gradient(circle at 70% 60%, #1F2D3F 0%, transparent 50%),
+        #0F1A2D;
+    }
+
+    /* ─── ICON KEY ─────────────────────────────────────────────── */
+    .icon-grid {
+      background: white;
+      border-radius: 12px;
+      padding: 20px 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .icon-grid--dark {
+      background: #1C1F23;
+      color: #F2F4F5;
+    }
+    .icon-grid h3 {
+      font-size: 11px; font-weight: 600; margin: 0 0 12px;
+      text-transform: uppercase; letter-spacing: 0.6px; color: #687178;
+    }
+    .icon-grid--dark h3 { color: #A6ADB4; }
+    .icon-rows { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+    .icon-cell { text-align: center; }
+    .icon-cell .icon-row {
+      display: flex; gap: 16px; align-items: end; justify-content: center;
+      min-height: 60px;
+    }
+    .icon-cell img.full { height: 56px; }
+    .icon-cell img.puck { height: 28px; align-self: center; }
+    .icon-cell .icon-label {
+      font-size: 11px; font-weight: 600; margin-top: 8px;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .icon-cell--pending  .icon-label { color: var(--c-pending-fg-light); }
+    .icon-cell--ordered  .icon-label { color: var(--c-ordered-fg-light); }
+    .icon-cell--delivered .icon-label {
+      background: var(--c-delivered-grad-light);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .icon-grid--dark .icon-cell--pending  .icon-label { color: var(--c-pending-fg-dark); }
+    .icon-grid--dark .icon-cell--ordered  .icon-label { color: var(--c-ordered-fg-dark); }
+    .icon-grid--dark .icon-cell--delivered .icon-label {
+      background: var(--c-delivered-grad-dark);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    /* ─── POPUP BASE ──────────────────────────────────────────── */
+    .popup {
+      border-radius: 10px;
+      overflow: hidden;
+      font-size: 13px;
+      line-height: 1.45;
+      width: 340px;
+    }
+    .popup--multi { width: 380px; }
+    .popup--factory { width: 320px; }
+
+    .popup--light {
+      background: #FFFFFF;
+      color: #1F272E;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.04);
+    }
+    .popup--dark {
+      background: #1C1F23;
+      color: #F2F4F5;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.5), 0 0 0 1px #2D3137;
+    }
+
+    .text-secondary--light { color: #687178; }
+    .text-secondary--dark  { color: #A6ADB4; }
+
+    .border-top--light { border-top: 1px solid #ECEDEE; }
+    .border-top--dark  { border-top: 1px solid #2D3137; }
+
+    .link--light { color: #2490EF; text-decoration: none; }
+    .link--light:hover { text-decoration: underline; }
+    .link--dark  { color: #4DA8FF; text-decoration: none; }
+    .link--dark:hover  { text-decoration: underline; }
+
+    .popup__header { padding: 14px 16px 10px; }
+    .popup__title { font-size: 15px; font-weight: 600; margin: 0 0 2px; }
+    .popup__subtitle { font-size: 13px; font-weight: 500; margin: 0; }
+    .popup__tertiary { font-size: 12px; font-weight: 500; margin: 2px 0 0; }
+
+    .popup__body { padding: 6px 16px 14px; }
+    .field-row {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 12px; padding: 6px 0; font-size: 13px;
+    }
+    .field-row .label-text { flex-shrink: 0; font-weight: 500; }
+    .field-row .value-text {
+      text-align: right; font-weight: 500; flex: 1; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    /* Status pills */
+    .pill {
+      display: inline-flex; align-items: center;
+      padding: 3px 8px;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.5px;
+      text-transform: uppercase;
+      border-radius: 4px;
+      line-height: 1.2;
+    }
+    .pill--pending-light  { background: var(--c-pending-bg-light);  color: var(--c-pending-fg-light); }
+    .pill--ordered-light  { background: var(--c-ordered-bg-light);  color: var(--c-ordered-fg-light); }
+    .pill--delivered-light{
+      background: var(--c-delivered-grad-light);
+      color: #FFFFFF;
+    }
+    .pill--pending-dark   { background: var(--c-pending-bg-dark);   color: var(--c-pending-fg-dark); }
+    .pill--ordered-dark   { background: var(--c-ordered-bg-dark);   color: var(--c-ordered-fg-dark); }
+    .pill--delivered-dark {
+      background: var(--c-delivered-grad-dark);
+      color: #0E1116;
+    }
+
+    .hbr-id {
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+    }
+
+    /* Footer actions */
+    .popup__footer {
+      display: flex; gap: 8px;
+      padding: 12px 16px;
+    }
+    .btn {
+      flex: 1; padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13px; font-weight: 600;
+      text-align: center; cursor: pointer;
+      border: none; font-family: inherit;
+      transition: background 0.12s ease, transform 0.06s ease, opacity 0.12s ease;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn--primary-light {
+      background: var(--c-delivered-grad-light);
+      color: white;
+    }
+    .btn--primary-light:hover { opacity: 0.92; }
+    .btn--primary-dark {
+      background: var(--c-delivered-grad-dark);
+      color: #0E1116;
+    }
+    .btn--primary-dark:hover { opacity: 0.92; }
+    .btn--secondary-light { background: #F2F3F4; color: #1F272E; }
+    .btn--secondary-light:hover { background: #E8EAEC; }
+    .btn--secondary-dark { background: #2D3137; color: #F2F4F5; }
+    .btn--secondary-dark:hover { background: #383D42; }
+
+    /* ─── MULTI-HOME STACK ROWS ───────────────────────────────── */
+    .stack-list { padding: 4px 0; }
+    .stack-row {
+      display: grid; grid-template-columns: 1fr auto;
+      gap: 10px; padding: 10px 16px;
+      align-items: center;
+      cursor: pointer;
+      transition: background 0.12s ease;
+    }
+    .popup--light .stack-row:hover { background: #FAFAFA; }
+    .popup--dark  .stack-row:hover { background: #22272B; }
+    .stack-row + .stack-row { border-top: 1px solid transparent; }
+    .popup--light .stack-row + .stack-row { border-top-color: #F0F0F0; }
+    .popup--dark  .stack-row + .stack-row { border-top-color: #2A2E33; }
+
+    .stack-row__main { min-width: 0; }
+    .stack-row__head {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 2px; min-width: 0;
+    }
+    .stack-row__customer {
+      font-size: 13px; font-weight: 600;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      flex: 1; min-width: 0;
+    }
+    .stack-row__factory {
+      font-size: 12px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .stack-row__meta {
+      display: flex; flex-direction: column; align-items: flex-end;
+      gap: 4px; flex-shrink: 0;
+    }
+    .stack-row__space { font-size: 11px; font-weight: 500; }
+    .trail-btn {
+      width: 24px; height: 24px;
+      border-radius: 12px;
+      display: inline-flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      background: transparent; border: 1px solid;
+      transition: opacity 0.12s ease, background 0.12s ease;
+      opacity: 0.55; padding: 0;
+    }
+    .trail-btn:hover { opacity: 1; }
+    .popup--light .trail-btn { border-color: #C7CDD3; color: #687178; }
+    .popup--light .trail-btn:hover { background: #F2F3F4; }
+    .popup--dark  .trail-btn { border-color: #4A5158; color: #A6ADB4; }
+    .popup--dark  .trail-btn:hover { background: #2D3137; }
+    .trail-btn svg { width: 12px; height: 12px; }
+
+    /* ─── FACTORY STATS ───────────────────────────────────────── */
+    .stats {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px; padding: 14px 16px 4px;
+    }
+    .stat { display: flex; flex-direction: column; gap: 6px; }
+    .stat__count { font-size: 22px; font-weight: 700; line-height: 1; }
+    .stat__label {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 10px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .stat__dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot--pending-light  { background: var(--c-pending-dot-light); }
+    .dot--ordered-light  { background: var(--c-ordered-dot-light); }
+    .dot--delivered-light{ background: var(--c-delivered-grad-light); }
+    .dot--pending-dark   { background: var(--c-pending-dot-dark); }
+    .dot--ordered-dark   { background: var(--c-ordered-dot-dark); }
+    .dot--delivered-dark { background: var(--c-delivered-grad-dark); }
+
+    .factory-total {
+      padding: 6px 16px 12px;
+      font-size: 12px; font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>DCR Map — Pins & Popups Preview</h1>
+    <p>Brand colors: <strong style="color:#FF7B00;">Ordered = #FF7B00</strong> · <strong style="background:linear-gradient(135deg,#007AFF,#0074F3);-webkit-background-clip:text;background-clip:text;color:transparent;">Delivered = #007AFF → #0074F3</strong> · <strong style="color:#5A6166;">Pending = gray</strong>. Cancelled removed; Draft folded into Pending.</p>
+  </header>
+
+  <main>
+
+    <!-- ════════════════════════════════════════════════════════ -->
+    <!-- ICON KEY                                                  -->
+    <!-- ════════════════════════════════════════════════════════ -->
+    <section class="row">
+      <div class="row__title">Pin & puck assets — full pin (left) + puck (right) per status</div>
+      <div class="stages" style="grid-template-columns: 1fr 1fr;">
+        <div class="icon-grid">
+          <h3>Light theme</h3>
+          <div class="icon-rows">
+            <div class="icon-cell icon-cell--pending">
+              <div class="icon-row">
+                <img class="full" src="file:///Users/tristanfleming/Desktop/Map%20Pins/map-pin-light-requested.png" alt="">
+                <img class="puck" src="file:///Users/tristanfleming/Desktop/Map%20Pins/map-pin-light-requested-1.png" alt="">
+              </div>
+              <div class="icon-label">Pending</div>
+            </div>
+            <div class="icon-cell icon-cell--ordered">
+              <div class="icon-row">
+                <img class="full" src="file:///Users/tristanfleming/Desktop/Map%20Pins/map-pin-light-ordered.png" alt="">
+                <img class="puck" src="file:///Users/tristanfleming/Desktop/Map%20Pins/map-pin-light-ordered-1.png" alt="">
+              </div>
+              <div class="icon-label">Ordered</div>
+            </div>
+            <div class="icon-cell icon-cell--delivered">
+              <div class="icon-row">
+                <img class="full" src="file:///Users/tristanfleming/Desktop/Map%20Pins/map-pin-light-delivered.png" alt="">
+                <img class="puck" src="file:///Users/tristanfleming/Desktop/Map%20Pins/map-pin-light-delivered-1.png" alt="">
+              </div>
+              <div class="icon-label">Delivered</div>
+            </div>
+          </div>
+        </div>
+        <div class="icon-grid icon-grid--dark">
+          <h3>Dark theme</h3>
+          <div class="icon-rows">
+            <div class="icon-cell icon-cell--pending">
+              <div class="icon-row">
+                <img class="full" src="file:///Users/tristanfleming/Desktop/Map%20Pins/map-pin-dark-requested.png" alt="">
+                <img class="puck" src="file:///Users/tristanfleming/Desktop/Map%20Pins/map-puck-dark-requested.png" alt="">
+              </div>
+              <div class="icon-label">Pending</div>
+            </div>
+            <div class="icon-cell icon-cell--ordered">
+              <div class="icon-row">
+                <img class="full" src="file:///Users/tristanfleming/Desktop/Map%20Pins/map-pin-dark-ordered.png" alt="">
+                <img class="puck" src="file:///Users/tristanfleming/Desktop/Map%20Pins/map-pin-dark-ordered-1.png" alt="">
+              </div>
+              <div class="icon-label">Ordered</div>
+            </div>
+            <div class="icon-cell icon-cell--delivered">
+              <div class="icon-row">
+                <img class="full" src="file:///Users/tristanfleming/Desktop/Map%20Pins/map-pin-dark-delivered.png" alt="">
+                <img class="puck" src="file:///Users/tristanfleming/Desktop/Map%20Pins/map-pin-dark-delivered-1.png" alt="">
+              </div>
+              <div class="icon-label">Delivered</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════ -->
+    <!-- ROW 1: Single home                                       -->
+    <!-- ════════════════════════════════════════════════════════ -->
+    <section class="row">
+      <div class="row__title">Single home — 1 deal at address</div>
+      <div class="stages">
+        <!-- LIGHT -->
+        <div class="stage stage--light">
+          <div class="popup popup--light">
+            <div class="popup__header">
+              <h3 class="popup__title">1247 Saguaro Way</h3>
+              <p class="popup__subtitle text-secondary--light">Sunrise Mobile Estates</p>
+              <p class="popup__tertiary text-secondary--light">Space 47 · Phoenix, AZ 85044</p>
+            </div>
+            <div class="popup__body">
+              <div class="field-row">
+                <span class="label-text text-secondary--light">Status</span>
+                <span class="value-text"><span class="pill pill--ordered-light">Ordered</span></span>
+              </div>
+              <div class="field-row">
+                <span class="label-text text-secondary--light">Customer</span>
+                <span class="value-text">Maria Rodriguez · <a class="link--light" href="#">View</a></span>
+              </div>
+              <div class="field-row">
+                <span class="label-text text-secondary--light">Factory</span>
+                <span class="value-text">Cavco Industries · <a class="link--light" href="#">View</a></span>
+              </div>
+              <div class="field-row">
+                <span class="label-text text-secondary--light">HBR</span>
+                <span class="value-text hbr-id">HBR-2026-0123</span>
+              </div>
+              <div class="field-row">
+                <span class="label-text text-secondary--light">Created</span>
+                <span class="value-text text-secondary--light">12 days ago</span>
+              </div>
+            </div>
+            <div class="popup__footer border-top--light">
+              <button class="btn btn--primary-light">Open HBR</button>
+              <button class="btn btn--secondary-light">Show trail</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- DARK -->
+        <div class="stage stage--dark">
+          <div class="popup popup--dark">
+            <div class="popup__header">
+              <h3 class="popup__title">1247 Saguaro Way</h3>
+              <p class="popup__subtitle text-secondary--dark">Sunrise Mobile Estates</p>
+              <p class="popup__tertiary text-secondary--dark">Space 47 · Phoenix, AZ 85044</p>
+            </div>
+            <div class="popup__body">
+              <div class="field-row">
+                <span class="label-text text-secondary--dark">Status</span>
+                <span class="value-text"><span class="pill pill--delivered-dark">Delivered</span></span>
+              </div>
+              <div class="field-row">
+                <span class="label-text text-secondary--dark">Customer</span>
+                <span class="value-text">Maria Rodriguez · <a class="link--dark" href="#">View</a></span>
+              </div>
+              <div class="field-row">
+                <span class="label-text text-secondary--dark">Factory</span>
+                <span class="value-text">Cavco Industries · <a class="link--dark" href="#">View</a></span>
+              </div>
+              <div class="field-row">
+                <span class="label-text text-secondary--dark">HBR</span>
+                <span class="value-text hbr-id">HBR-2026-0123</span>
+              </div>
+              <div class="field-row">
+                <span class="label-text text-secondary--dark">Created</span>
+                <span class="value-text text-secondary--dark">12 days ago</span>
+              </div>
+            </div>
+            <div class="popup__footer border-top--dark">
+              <button class="btn btn--primary-dark">Open HBR</button>
+              <button class="btn btn--secondary-dark">Show trail</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════ -->
+    <!-- ROW 2: Multi-home stacked popup                          -->
+    <!-- ════════════════════════════════════════════════════════ -->
+    <section class="row">
+      <div class="row__title">Stacked — 4 deals at the same park · click row to drill into single</div>
+      <div class="stages">
+        <!-- LIGHT -->
+        <div class="stage stage--light">
+          <div class="popup popup--light popup--multi">
+            <div class="popup__header">
+              <h3 class="popup__title">4 deals at 850 W Indian School Rd</h3>
+              <p class="popup__subtitle text-secondary--light">Desert Sage Estates · Phoenix, AZ</p>
+            </div>
+            <div class="stack-list border-top--light">
+              <div class="stack-row" role="button" tabindex="0">
+                <div class="stack-row__main">
+                  <div class="stack-row__head">
+                    <span class="pill pill--ordered-light">Ordered</span>
+                    <span class="stack-row__customer">Maria Rodriguez</span>
+                  </div>
+                  <div class="stack-row__factory text-secondary--light">Cavco Industries · 12d</div>
+                </div>
+                <div class="stack-row__meta">
+                  <span class="stack-row__space text-secondary--light">Space 47</span>
+                  <button class="trail-btn" title="Show trail">
+                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 6 Q6 2, 10 6"/><circle cx="2" cy="6" r="1.2" fill="currentColor"/><circle cx="10" cy="6" r="1.2" fill="currentColor"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="stack-row" role="button" tabindex="0">
+                <div class="stack-row__main">
+                  <div class="stack-row__head">
+                    <span class="pill pill--delivered-light">Delivered</span>
+                    <span class="stack-row__customer">David Chen</span>
+                  </div>
+                  <div class="stack-row__factory text-secondary--light">Champion Homes · 87d</div>
+                </div>
+                <div class="stack-row__meta">
+                  <span class="stack-row__space text-secondary--light">Space 12</span>
+                  <button class="trail-btn" title="Show trail">
+                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 6 Q6 2, 10 6"/><circle cx="2" cy="6" r="1.2" fill="currentColor"/><circle cx="10" cy="6" r="1.2" fill="currentColor"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="stack-row" role="button" tabindex="0">
+                <div class="stack-row__main">
+                  <div class="stack-row__head">
+                    <span class="pill pill--pending-light">Pending</span>
+                    <span class="stack-row__customer">Jennifer Park</span>
+                  </div>
+                  <div class="stack-row__factory text-secondary--light">Cavco Industries · 3d</div>
+                </div>
+                <div class="stack-row__meta">
+                  <span class="stack-row__space text-secondary--light">Space 88</span>
+                  <button class="trail-btn" title="Show trail">
+                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 6 Q6 2, 10 6"/><circle cx="2" cy="6" r="1.2" fill="currentColor"/><circle cx="10" cy="6" r="1.2" fill="currentColor"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="stack-row" role="button" tabindex="0">
+                <div class="stack-row__main">
+                  <div class="stack-row__head">
+                    <span class="pill pill--pending-light">Pending</span>
+                    <span class="stack-row__customer">Ahmed Hassan</span>
+                  </div>
+                  <div class="stack-row__factory text-secondary--light">Clayton Homes · 1d</div>
+                </div>
+                <div class="stack-row__meta">
+                  <span class="stack-row__space text-secondary--light">Space 3</span>
+                  <button class="trail-btn" title="Show trail">
+                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 6 Q6 2, 10 6"/><circle cx="2" cy="6" r="1.2" fill="currentColor"/><circle cx="10" cy="6" r="1.2" fill="currentColor"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="popup__footer border-top--light">
+              <button class="btn btn--secondary-light" style="flex: 1;">Open all in list view</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- DARK -->
+        <div class="stage stage--dark">
+          <div class="popup popup--dark popup--multi">
+            <div class="popup__header">
+              <h3 class="popup__title">4 deals at 850 W Indian School Rd</h3>
+              <p class="popup__subtitle text-secondary--dark">Desert Sage Estates · Phoenix, AZ</p>
+            </div>
+            <div class="stack-list border-top--dark">
+              <div class="stack-row" role="button" tabindex="0">
+                <div class="stack-row__main">
+                  <div class="stack-row__head">
+                    <span class="pill pill--ordered-dark">Ordered</span>
+                    <span class="stack-row__customer">Maria Rodriguez</span>
+                  </div>
+                  <div class="stack-row__factory text-secondary--dark">Cavco Industries · 12d</div>
+                </div>
+                <div class="stack-row__meta">
+                  <span class="stack-row__space text-secondary--dark">Space 47</span>
+                  <button class="trail-btn" title="Show trail">
+                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 6 Q6 2, 10 6"/><circle cx="2" cy="6" r="1.2" fill="currentColor"/><circle cx="10" cy="6" r="1.2" fill="currentColor"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="stack-row" role="button" tabindex="0">
+                <div class="stack-row__main">
+                  <div class="stack-row__head">
+                    <span class="pill pill--delivered-dark">Delivered</span>
+                    <span class="stack-row__customer">David Chen</span>
+                  </div>
+                  <div class="stack-row__factory text-secondary--dark">Champion Homes · 87d</div>
+                </div>
+                <div class="stack-row__meta">
+                  <span class="stack-row__space text-secondary--dark">Space 12</span>
+                  <button class="trail-btn" title="Show trail">
+                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 6 Q6 2, 10 6"/><circle cx="2" cy="6" r="1.2" fill="currentColor"/><circle cx="10" cy="6" r="1.2" fill="currentColor"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="stack-row" role="button" tabindex="0">
+                <div class="stack-row__main">
+                  <div class="stack-row__head">
+                    <span class="pill pill--pending-dark">Pending</span>
+                    <span class="stack-row__customer">Jennifer Park</span>
+                  </div>
+                  <div class="stack-row__factory text-secondary--dark">Cavco Industries · 3d</div>
+                </div>
+                <div class="stack-row__meta">
+                  <span class="stack-row__space text-secondary--dark">Space 88</span>
+                  <button class="trail-btn" title="Show trail">
+                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 6 Q6 2, 10 6"/><circle cx="2" cy="6" r="1.2" fill="currentColor"/><circle cx="10" cy="6" r="1.2" fill="currentColor"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="stack-row" role="button" tabindex="0">
+                <div class="stack-row__main">
+                  <div class="stack-row__head">
+                    <span class="pill pill--pending-dark">Pending</span>
+                    <span class="stack-row__customer">Ahmed Hassan</span>
+                  </div>
+                  <div class="stack-row__factory text-secondary--dark">Clayton Homes · 1d</div>
+                </div>
+                <div class="stack-row__meta">
+                  <span class="stack-row__space text-secondary--dark">Space 3</span>
+                  <button class="trail-btn" title="Show trail">
+                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 6 Q6 2, 10 6"/><circle cx="2" cy="6" r="1.2" fill="currentColor"/><circle cx="10" cy="6" r="1.2" fill="currentColor"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="popup__footer border-top--dark">
+              <button class="btn btn--secondary-dark" style="flex: 1;">Open all in list view</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════ -->
+    <!-- ROW 3: Factory                                            -->
+    <!-- ════════════════════════════════════════════════════════ -->
+    <section class="row">
+      <div class="row__title">Factory — supplier in Factory group</div>
+      <div class="stages">
+        <!-- LIGHT -->
+        <div class="stage stage--light">
+          <div class="popup popup--light popup--factory">
+            <div class="popup__header">
+              <h3 class="popup__title">Cavco Industries</h3>
+              <p class="popup__subtitle text-secondary--light">Phoenix, AZ</p>
+            </div>
+            <div class="stats border-top--light">
+              <div class="stat">
+                <span class="stat__count">12</span>
+                <span class="stat__label text-secondary--light"><span class="stat__dot dot--pending-light"></span>Pending</span>
+              </div>
+              <div class="stat">
+                <span class="stat__count">7</span>
+                <span class="stat__label text-secondary--light"><span class="stat__dot dot--ordered-light"></span>Ordered</span>
+              </div>
+              <div class="stat">
+                <span class="stat__count">23</span>
+                <span class="stat__label text-secondary--light"><span class="stat__dot dot--delivered-light"></span>Delivered</span>
+              </div>
+            </div>
+            <div class="factory-total text-secondary--light">42 deals routed here in the last 12 months</div>
+            <div class="popup__footer border-top--light">
+              <button class="btn btn--primary-light">Open Supplier</button>
+              <button class="btn btn--secondary-light">Show all trails</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- DARK -->
+        <div class="stage stage--dark">
+          <div class="popup popup--dark popup--factory">
+            <div class="popup__header">
+              <h3 class="popup__title">Cavco Industries</h3>
+              <p class="popup__subtitle text-secondary--dark">Phoenix, AZ</p>
+            </div>
+            <div class="stats border-top--dark">
+              <div class="stat">
+                <span class="stat__count">12</span>
+                <span class="stat__label text-secondary--dark"><span class="stat__dot dot--pending-dark"></span>Pending</span>
+              </div>
+              <div class="stat">
+                <span class="stat__count">7</span>
+                <span class="stat__label text-secondary--dark"><span class="stat__dot dot--ordered-dark"></span>Ordered</span>
+              </div>
+              <div class="stat">
+                <span class="stat__count">23</span>
+                <span class="stat__label text-secondary--dark"><span class="stat__dot dot--delivered-dark"></span>Delivered</span>
+              </div>
+            </div>
+            <div class="factory-total text-secondary--dark">42 deals routed here in the last 12 months</div>
+            <div class="popup__footer border-top--dark">
+              <button class="btn btn--primary-dark">Open Supplier</button>
+              <button class="btn btn--secondary-dark">Show all trails</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</body>
+</html>
