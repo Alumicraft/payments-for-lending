@@ -4,6 +4,7 @@ Pure function tests — no DB or Mapbox API dependency.
 """
 
 import unittest
+from datetime import datetime
 from unittest.mock import patch, MagicMock
 
 
@@ -196,6 +197,58 @@ class TestAggregateHeatmapData(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertAlmostEqual(result[0]["latitude"], 35.0)
         self.assertAlmostEqual(result[0]["longitude"], -110.0)
+
+    def test_homes_payload_includes_display_names_and_creation(self):
+        """Each home in a feature's homes[] carries customer/factory display
+        names and a creation_iso for relative-time formatting."""
+        rows = [
+            {
+                "name": "HBR-001",
+                "delivery_address": "123 Main St",
+                "city": "Phoenix",
+                "state": "AZ",
+                "zip": "85044",
+                "space_number": "47",
+                "latitude": 33.4,
+                "longitude": -112.0,
+                "customer": "CUST-1",
+                "customer_name": "Maria Rodriguez",
+                "factory": "SUPP-FACTORY",
+                "factory_name": "Cavco Industries",
+                "creation": datetime(2026, 4, 15, 10, 0, 0),
+                "has_pr": 0, "has_active_po": 1, "has_cancelled_po": 0,
+                "docstatus": 1,
+            },
+        ]
+        from dcr.api.map import _aggregate_locations
+        out = _aggregate_locations(rows)
+        home = out[0]["homes"][0]
+        self.assertEqual(home["customer_name"], "Maria Rodriguez")
+        self.assertEqual(home["factory_name"], "Cavco Industries")
+        self.assertTrue(home["creation_iso"].startswith("2026-04-15"))
+
+    def test_aggregate_exposes_city_state_zip_at_group_level(self):
+        """Group features expose city/state/zip separately so the frontend
+        can compose the popup tertiary line ('Space 47 · Phoenix, AZ 85044')."""
+        rows = [{
+            "name": "HBR-001",
+            "delivery_address": "123 Main St",
+            "city": "Phoenix",
+            "state": "AZ",
+            "zip": "85044",
+            "space_number": "47",
+            "latitude": 33.4,
+            "longitude": -112.0,
+            "has_pr": 0, "has_active_po": 1, "has_cancelled_po": 0,
+            "docstatus": 1,
+        }]
+        from dcr.api.map import _aggregate_locations
+        out = _aggregate_locations(rows)
+        self.assertEqual(out[0]["city"], "Phoenix")
+        self.assertEqual(out[0]["state"], "AZ")
+        self.assertEqual(out[0]["zip"], "85044")
+        # And the group address is the raw street, not the concatenated full address.
+        self.assertEqual(out[0]["address"], "123 Main St")
 
 
 class TestStatusDerivation(unittest.TestCase):

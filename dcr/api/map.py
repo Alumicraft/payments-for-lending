@@ -96,7 +96,9 @@ def get_heatmap_data():
             hbr.latitude,
             hbr.longitude,
             hbr.customer,
+            cust.customer_name AS customer_name,
             hbr.factory,
+            fact.supplier_name AS factory_name,
             hbr.creation,
             hbr.docstatus,
             EXISTS (
@@ -117,6 +119,8 @@ def get_heatmap_data():
                   AND po.docstatus = 2
             ) AS has_cancelled_po
         FROM `tabHome Build Request` hbr
+        LEFT JOIN `tabCustomer` cust ON cust.name = hbr.customer
+        LEFT JOIN `tabSupplier` fact ON fact.name = hbr.factory
         WHERE hbr.creation >= %s
           AND hbr.docstatus != 2
         """,
@@ -220,16 +224,12 @@ def _aggregate_locations(rows):
             space,
         )
         if key not in groups:
-            full_addr = addr
-            if row.get("city"):
-                full_addr += ", " + row["city"]
-            if row.get("state"):
-                full_addr += ", " + row["state"]
-            if row.get("zip"):
-                full_addr += " " + row["zip"]
             groups[key] = {
                 "community_name": row.get("community_name") or "",
-                "address": full_addr,
+                "address": addr,                  # raw street; no city tail
+                "city": row.get("city") or "",
+                "state": row.get("state") or "",
+                "zip": row.get("zip") or "",
                 "space_number": space,
                 "latitude": lat,
                 "longitude": lng,
@@ -243,7 +243,10 @@ def _aggregate_locations(rows):
             "name": row.get("name"),
             "status": status,
             "customer": row.get("customer"),
+            "customer_name": row.get("customer_name") or row.get("customer") or "",
             "factory": row.get("factory"),
+            "factory_name": row.get("factory_name") or row.get("factory") or "",
+            "creation_iso": row.get("creation").isoformat() if row.get("creation") else None,
         })
         cur = groups[key]["status"]
         if cur is None or STATUS_PRIORITY.index(status) < STATUS_PRIORITY.index(cur):
