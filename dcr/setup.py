@@ -460,6 +460,10 @@ def ensure_map_block():
     setHeight();
     window.addEventListener('resize', setHeight);
 
+    // Hoisted to IIFE scope so loadData()'s addHomeLayer (which lives in a
+    // sibling closure) can reach it. Set from get_map_settings; default 12.
+    var puckFullThreshold = 12;
+
     // Idempotent doc-level listener registration. Frappe re-runs this IIFE
     // whenever the workspace remounts; without this, every navigation back
     // to the Map workspace would attach a fresh handler.
@@ -509,7 +513,7 @@ def ensure_map_block():
                 // Block view zooms out a bit so the smaller widget still
                 // shows context; full-bleed Map workspace uses default_zoom.
                 var initialZoom = isMapPage ? cfg.default_zoom : (cfg.block_zoom || cfg.default_zoom);
-                var puckFullThreshold = cfg.puck_full_zoom_threshold || 12;
+                puckFullThreshold = cfg.puck_full_zoom_threshold || 12;  // assigns to IIFE-scoped var
                 var map = new mapboxgl.Map({
                     container: container,
                     style: cfg.map_style_url,
