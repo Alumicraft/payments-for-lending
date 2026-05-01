@@ -502,6 +502,7 @@ def ensure_map_block():
                     center: [cfg.default_longitude, cfg.default_latitude],
                     zoom: initialZoom
                 });
+                window._dcrMap = map;
                 map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
                 // 3D toggle control
@@ -669,6 +670,189 @@ def ensure_map_block():
         return ['in', ['get', 'status'], ['literal', active]];
     }
 
+    // ========== POPUP HELPERS =========================================
+    function popupClass() {
+        return currentTheme() === 'dark' ? 'mapboxgl-popup--dark' : '';
+    }
+    function popupRootClass() {
+        return 'dcr-popup' + (currentTheme() === 'dark' ? ' dcr-popup--dark' : '');
+    }
+    function escHtml(s) {
+        if (s == null) return '';
+        return String(s).replace(/[&<>"']/g, function(c) {
+            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+        });
+    }
+    function relativeDays(iso) {
+        if (!iso) return '';
+        var t = new Date(iso).getTime();
+        if (isNaN(t)) return '';
+        var days = Math.floor((Date.now() - t) / 86400000);
+        if (days < 1) return 'today';
+        if (days === 1) return '1 day ago';
+        if (days < 30) return days + ' days ago';
+        if (days < 60) return '1 month ago';
+        if (days < 365) return Math.floor(days / 30) + ' months ago';
+        return Math.floor(days / 365) + 'y ago';
+    }
+    function statusPillHtml(status) {
+        var s = (status || 'Pending').toLowerCase();
+        return '<span class="pill pill--' + s + '">' + escHtml(status || 'Pending') + '</span>';
+    }
+    function trailBtnSvg() {
+        return '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5">'
+            +  '<path d="M2 6 Q6 2, 10 6"/><circle cx="2" cy="6" r="1.2" fill="currentColor"/>'
+            +  '<circle cx="10" cy="6" r="1.2" fill="currentColor"/></svg>';
+    }
+    function tertiaryLine(props) {
+        var bits = [];
+        if (props.space_number) bits.push('Space ' + props.space_number);
+        var loc = [props.city, props.state].filter(Boolean).join(', ');
+        if (loc && props.zip) loc += ' ' + props.zip;
+        if (loc) bits.push(loc);
+        return bits.join(' · ');
+    }
+
+    // Single popup at a time — track and dismiss on switch
+    var _activePopup = null;
+    function openPopup(map, lngLat, html, opts) {
+        if (_activePopup) _activePopup.remove();
+        var p = new mapboxgl.Popup(Object.assign({
+            offset: 16,
+            className: popupClass(),
+            anchor: 'auto',
+            maxWidth: '420px'
+        }, opts || {}));
+        p.setLngLat(lngLat).setHTML(html).addTo(map);
+        p.on('close', function() {
+            if (_activePopup === p) _activePopup = null;
+            // Trail dismiss on popup close — Task 8 hooks here
+            if (window._dcrClearTrail) window._dcrClearTrail();
+        });
+        _activePopup = p;
+        return p;
+    }
+
+    // ========== RENDERERS =============================================
+    function renderSingleHomeHtml(props, home) {
+        // `props` is the GeoJSON feature properties (the group level);
+        // `home` is the single home record from props.homes_json.
+        var rows = [
+            ['Status',   statusPillHtml(home.status)],
+            ['Customer', home.customer_name
+                ? escHtml(home.customer_name) + ' · <a class="link" href="/app/customer/' + encodeURIComponent(home.customer || '') + '" target="_top">View</a>'
+                : '<span class="text-secondary">—</span>'],
+            ['Factory',  home.factory_name
+                ? escHtml(home.factory_name) + ' · <a class="link" href="/app/supplier/' + encodeURIComponent(home.factory || '') + '" target="_top">View</a>'
+                : '<span class="text-secondary">—</span>'],
+            ['HBR',      '<span class="hbr-id">' + escHtml(home.name) + '</span>'],
+            ['Created',  '<span class="text-secondary">' + escHtml(relativeDays(home.creation_iso)) + '</span>'],
+        ];
+        return '<div class="' + popupRootClass() + '">'
+            +    '<div class="dcr-popup__header">'
+            +      '<h3 class="dcr-popup__title">' + escHtml(props.address || '') + '</h3>'
+            +      (props.community_name ? '<p class="dcr-popup__subtitle text-secondary">' + escHtml(props.community_name) + '</p>' : '')
+            +      (tertiaryLine(props) ? '<p class="dcr-popup__tertiary text-secondary">' + escHtml(tertiaryLine(props)) + '</p>' : '')
+            +    '</div>'
+            +    '<div class="dcr-popup__body">'
+            +      rows.map(function(r) {
+                     return '<div class="field-row"><span class="label-text text-secondary">' + r[0] + '</span><span class="value-text">' + r[1] + '</span></div>';
+                   }).join('')
+            +    '</div>'
+            +    '<div class="dcr-popup__footer">'
+            +      '<button class="btn btn--primary" data-act="open-hbr" data-name="' + escHtml(home.name) + '">Open HBR</button>'
+            +      '<button class="btn btn--secondary" data-act="show-trail" data-name="' + escHtml(home.name) + '">Show trail</button>'
+            +    '</div>'
+            +  '</div>';
+    }
+
+    function renderStackedHtml(props, homes) {
+        var rowsHtml = homes.map(function(h, i) {
+            var ageBit = h.creation_iso ? ' · ' + escHtml(relativeDays(h.creation_iso)) : '';
+            return '<div class="stack-row" role="button" tabindex="0" data-act="drill" data-idx="' + i + '">'
+                +    '<div class="stack-row__main">'
+                +      '<div class="stack-row__head">'
+                +        statusPillHtml(h.status)
+                +        '<span class="stack-row__customer">' + escHtml(h.customer_name || '—') + '</span>'
+                +      '</div>'
+                +      '<div class="stack-row__factory text-secondary">' + escHtml(h.factory_name || '—') + ageBit + '</div>'
+                +    '</div>'
+                +    '<div class="stack-row__meta">'
+                +      (props.space_number ? '<span class="stack-row__space text-secondary">Space ' + escHtml(props.space_number) + '</span>' : '')
+                +      '<button class="trail-btn" data-act="show-trail" data-name="' + escHtml(h.name) + '" title="Show trail">' + trailBtnSvg() + '</button>'
+                +    '</div>'
+                +  '</div>';
+        }).join('');
+        var loc = [props.city, props.state].filter(Boolean).join(', ');
+        return '<div class="' + popupRootClass() + ' dcr-popup--multi">'
+            +    '<div class="dcr-popup__header">'
+            +      '<h3 class="dcr-popup__title">' + homes.length + ' deals at ' + escHtml(props.address || '') + '</h3>'
+            +      (props.community_name || loc ? '<p class="dcr-popup__subtitle text-secondary">' + escHtml([props.community_name, loc].filter(Boolean).join(' · ')) + '</p>' : '')
+            +    '</div>'
+            +    '<div class="stack-list">' + rowsHtml + '</div>'
+            +    '<div class="dcr-popup__footer">'
+            +      '<button class="btn btn--secondary" data-act="open-list" style="flex:1;">Open all in list view</button>'
+            +    '</div>'
+            +  '</div>';
+    }
+
+    function renderFactoryHtml(props) {
+        return '<div class="' + popupRootClass() + ' dcr-popup--factory">'
+            +    '<div class="dcr-popup__header">'
+            +      '<h3 class="dcr-popup__title">' + escHtml(props.supplier_name || props.name) + '</h3>'
+            +      (props.city ? '<p class="dcr-popup__subtitle text-secondary">' + escHtml(props.city) + '</p>' : '')
+            +    '</div>'
+            +    '<div class="stats">'
+            +      '<div class="stat"><span class="stat__count">' + (props.pending_count || 0) + '</span><span class="stat__label text-secondary"><span class="stat__dot dot--pending"></span>Pending</span></div>'
+            +      '<div class="stat"><span class="stat__count">' + (props.ordered_count || 0) + '</span><span class="stat__label text-secondary"><span class="stat__dot dot--ordered"></span>Ordered</span></div>'
+            +      '<div class="stat"><span class="stat__count">' + (props.delivered_count || 0) + '</span><span class="stat__label text-secondary"><span class="stat__dot dot--delivered"></span>Delivered</span></div>'
+            +    '</div>'
+            +    '<div class="factory-total text-secondary">' + (props.total_12mo || 0) + ' deals routed here in the last 12 months</div>'
+            +    '<div class="dcr-popup__footer">'
+            +      '<button class="btn btn--primary" data-act="open-supplier" data-name="' + escHtml(props.name) + '">Open Supplier</button>'
+            +      '<button class="btn btn--secondary" data-act="show-all-trails" data-name="' + escHtml(props.name) + '">Show all trails</button>'
+            +    '</div>'
+            +  '</div>';
+    }
+
+    // Delegate clicks inside any open popup
+    document.addEventListener('click', function(e) {
+        var t = e.target.closest('[data-act]');
+        if (!t || !_activePopup) return;
+        var act = t.getAttribute('data-act');
+        var name = t.getAttribute('data-name');
+        if (act === 'open-hbr' && name) {
+            window.open('/app/home-build-request/' + encodeURIComponent(name), '_top');
+        } else if (act === 'open-supplier' && name) {
+            window.open('/app/supplier/' + encodeURIComponent(name), '_top');
+        } else if (act === 'open-list') {
+            var p = _activePopup._dcrProps;
+            if (p && p.address) {
+                window.open('/app/home-build-request?delivery_address=' + encodeURIComponent(p.address), '_top');
+            }
+        } else if (act === 'drill') {
+            var p2 = _activePopup._dcrProps;
+            var homes = _activePopup._dcrHomes;
+            var idx = parseInt(t.getAttribute('data-idx'), 10);
+            if (p2 && homes && homes[idx]) drillIntoHome(p2, homes[idx]);
+        } else if (act === 'show-trail' && name) {
+            // Task 8 fills this
+            if (window._dcrShowTrailForHome) window._dcrShowTrailForHome(name);
+        } else if (act === 'show-all-trails' && name) {
+            if (window._dcrShowFactoryFan) window._dcrShowFactoryFan(name);
+        }
+    });
+
+    function drillIntoHome(groupProps, home) {
+        // Open the single-home popup at the same lngLat with anchor:auto so
+        // Mapbox repositions to the side with the most viewport room.
+        var lngLat = _activePopup.getLngLat();
+        var html = renderSingleHomeHtml(groupProps, home);
+        var p = openPopup(window._dcrMap, lngLat, html, { anchor: 'auto', offset: 16 });
+        p._dcrProps = groupProps;
+        p._dcrHomes = [home];
+    }
+
     function loadData(map) {
         frappe.call({
             method: 'dcr.api.map.get_heatmap_data',
@@ -684,6 +868,9 @@ def ensure_map_block():
                                 community_name: d.community_name,
                                 address: d.address,
                                 space_number: d.space_number || '',
+                                city: d.city || '',
+                                state: d.state || '',
+                                zip: d.zip || '',
                                 hbr_count: d.hbr_count,
                                 status: d.status || 'Pending',
                                 // Stringified so feature-state can survive
@@ -758,19 +945,22 @@ def ensure_map_block():
                     });
                 }
 
-                // Popup on click - individual points
                 map.on('click', 'unclustered-point', function(e) {
-                    var p = e.features[0].properties;
-                    var html = '<div style="font-family:Inter,sans-serif;font-size:13px;">'
-                        + '<strong>' + (p.community_name || 'Unknown') + '</strong><br>'
-                        + '<span style="color:#666;">' + (p.address || '') + '</span><br>'
-                        + '<span style="font-weight:600;">' + p.hbr_count + ' deal' + (p.hbr_count > 1 ? 's' : '') + '</span><br>'
-                        + '<a href="/app/home-build-request?delivery_address=' + encodeURIComponent(p.address) + '" style="color:#2490ef;">View deals</a>'
-                        + '</div>';
-                    new mapboxgl.Popup({ offset: 15 })
-                        .setLngLat(e.features[0].geometry.coordinates)
-                        .setHTML(html)
-                        .addTo(map);
+                    var f = e.features[0];
+                    var props = Object.assign({}, f.properties);
+                    var homes;
+                    try { homes = JSON.parse(props.homes_json || '[]'); } catch(_) { homes = []; }
+                    var lngLat = f.geometry.coordinates;
+                    var html, popup;
+                    if (homes.length > 1) {
+                        html = renderStackedHtml(props, homes);
+                        popup = openPopup(map, lngLat, html, { offset: 18 });
+                    } else {
+                        html = renderSingleHomeHtml(props, homes[0] || {});
+                        popup = openPopup(map, lngLat, html, { offset: 18 });
+                    }
+                    popup._dcrProps = props;
+                    popup._dcrHomes = homes;
                 });
 
                 // Cursor on hover
@@ -788,46 +978,81 @@ def ensure_map_block():
                 var geojson = {
                     type: 'FeatureCollection',
                     features: r.message.map(function(d) {
+                        if (window._dcrIndexFactory) window._dcrIndexFactory(d);
                         return {
                             type: 'Feature',
                             geometry: { type: 'Point', coordinates: [d.longitude, d.latitude] },
                             properties: {
                                 name: d.name,
-                                supplier_name: d.supplier_name
+                                supplier_name: d.supplier_name,
+                                city: d.city || '',
+                                pending_count: d.pending_count || 0,
+                                ordered_count: d.ordered_count || 0,
+                                delivered_count: d.delivered_count || 0,
+                                total_12mo: d.total_12mo || 0
                             }
                         };
                     })
                 };
                 map.addSource('factory-locations', { type: 'geojson', data: geojson });
-                // Placeholder rendering — solid amber circle with white halo.
-                // Replace with a symbol layer once factory-{light,dark}.png
-                // assets land. See spec 2026-04-30-map-icons-and-trails.md.
-                map.addLayer({
-                    id: 'factory-point',
-                    type: 'circle',
-                    source: 'factory-locations',
-                    paint: {
-                        'circle-radius': 8,
-                        'circle-color': '#f59e0b',
-                        'circle-stroke-color': '#ffffff',
-                        'circle-stroke-width': 2
+
+                // Try to load factory pin assets; fall back to a black circle
+                // if either asset is missing (graceful degrade).
+                var factoryLight = '/assets/dcr/images/factory-pin-light.png';
+                var factoryDark  = '/assets/dcr/images/factory-pin-dark.png';
+                var fLoaded = 0, fSuccess = 0;
+                function onFactoryIconDone() {
+                    fLoaded++;
+                    if (fLoaded < 2) return;
+                    if (fSuccess === 2) {
+                        map.addLayer({
+                            id: 'factory-point',
+                            type: 'symbol',
+                            source: 'factory-locations',
+                            layout: {
+                                'icon-image': ['case',
+                                    ['==', ['literal', currentTheme()], 'dark'],
+                                    'factory-pin-dark', 'factory-pin-light'],
+                                'icon-size': 0.5,
+                                'icon-anchor': 'bottom',
+                                'icon-allow-overlap': true
+                            }
+                        });
+                    } else {
+                        map.addLayer({
+                            id: 'factory-point',
+                            type: 'circle',
+                            source: 'factory-locations',
+                            paint: {
+                                'circle-radius': 8,
+                                'circle-color': '#000000',
+                                'circle-stroke-color': '#ffffff',
+                                'circle-stroke-width': 2
+                            }
+                        });
                     }
+                    bindFactoryClick();
+                }
+                map.loadImage(factoryLight, function(err, img) {
+                    if (!err && img && !map.hasImage('factory-pin-light')) { map.addImage('factory-pin-light', img); fSuccess++; }
+                    onFactoryIconDone();
+                });
+                map.loadImage(factoryDark, function(err, img) {
+                    if (!err && img && !map.hasImage('factory-pin-dark')) { map.addImage('factory-pin-dark', img); fSuccess++; }
+                    onFactoryIconDone();
                 });
 
-                map.on('click', 'factory-point', function(e) {
-                    var p = e.features[0].properties;
-                    var html = '<div style="font-family:Inter,sans-serif;font-size:13px;">'
-                        + '<strong>' + (p.supplier_name || p.name) + '</strong><br>'
-                        + '<span style="color:#666;">Factory</span><br>'
-                        + '<a href="/app/supplier/' + encodeURIComponent(p.name) + '" style="color:#2490ef;">Open</a>'
-                        + '</div>';
-                    new mapboxgl.Popup({ offset: 12 })
-                        .setLngLat(e.features[0].geometry.coordinates)
-                        .setHTML(html)
-                        .addTo(map);
-                });
-                map.on('mouseenter', 'factory-point', function() { map.getCanvas().style.cursor = 'pointer'; });
-                map.on('mouseleave', 'factory-point', function() { map.getCanvas().style.cursor = ''; });
+                function bindFactoryClick() {
+                    map.on('click', 'factory-point', function(e) {
+                        var f = e.features[0];
+                        var props = Object.assign({}, f.properties);
+                        var lngLat = f.geometry.coordinates;
+                        var p = openPopup(map, lngLat, renderFactoryHtml(props), { offset: 14 });
+                        p._dcrProps = props;
+                    });
+                    map.on('mouseenter', 'factory-point', function() { map.getCanvas().style.cursor = 'pointer'; });
+                    map.on('mouseleave', 'factory-point', function() { map.getCanvas().style.cursor = ''; });
+                }
             }
         });
     }
