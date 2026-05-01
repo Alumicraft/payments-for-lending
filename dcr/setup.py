@@ -581,6 +581,9 @@ def ensure_map_block():
                 // Satellite toggle — flips between Mapbox Standard and
                 // Standard Satellite. Custom layers are wiped by setStyle,
                 // so we re-load them on the subsequent style.load.
+                // Auto-switches to satellite at zoom >= 15; auto-reverts when
+                // zooming back out, unless the user manually toggled.
+                var SAT_AUTO_THRESHOLD = 15;
                 var SatelliteControl = function() {};
                 SatelliteControl.prototype.onAdd = function(m) {
                     this._map = m;
@@ -589,19 +592,39 @@ def ensure_map_block():
                     var btn = document.createElement('button');
                     btn.type = 'button';
                     btn.title = 'Toggle satellite imagery';
-                    // Layers / stacked-planes glyph — universal "swap basemap" symbol.
                     var SAT_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;"><path d="M12 2 L2 7 L12 12 L22 7 Z"/><path d="M2 12 L12 17 L22 12"/><path d="M2 17 L12 22 L22 17"/></svg>';
-                    var MAP_ICON = SAT_ICON;  // same glyph either direction — it's a "swap" affordance, not a state indicator
                     btn.innerHTML = SAT_ICON;
                     var streetsStyle = cfg.map_style_url || 'mapbox://styles/mapbox/standard';
                     var satelliteStyle = 'mapbox://styles/mapbox/standard-satellite';
+                    var isSat = false;
+                    var autoTriggered = false;  // true when auto-switch put us on satellite
+
+                    function applyStyle(toSat) {
+                        if (toSat === isSat) return;
+                        isSat = toSat;
+                        m.setStyle(toSat ? satelliteStyle : streetsStyle);
+                        btn.classList.toggle('active', toSat);
+                        btn.title = toSat ? 'Switch to map view' : 'Switch to satellite imagery';
+                    }
+
                     btn.onclick = function() {
-                        var isSat = btn.classList.contains('active');
-                        m.setStyle(isSat ? streetsStyle : satelliteStyle);
-                        btn.innerHTML = isSat ? SAT_ICON : MAP_ICON;
-                        btn.title = isSat ? 'Toggle satellite imagery' : 'Toggle street view';
-                        btn.classList.toggle('active');
+                        applyStyle(!isSat);
+                        autoTriggered = false;  // user took manual control
                     };
+
+                    // Auto-switch to satellite at high zoom; revert when zooming
+                    // back out only if WE triggered it (don't fight a manual toggle).
+                    m.on('zoom', function() {
+                        var z = m.getZoom();
+                        if (z >= SAT_AUTO_THRESHOLD && !isSat) {
+                            applyStyle(true);
+                            autoTriggered = true;
+                        } else if (z < SAT_AUTO_THRESHOLD && isSat && autoTriggered) {
+                            applyStyle(false);
+                            autoTriggered = false;
+                        }
+                    });
+
                     this._container.appendChild(btn);
                     return this._container;
                 };
