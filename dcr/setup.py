@@ -405,7 +405,8 @@ def ensure_map_block():
 .dcr-search__input { width: 360px; max-width: 80vw; height: 38px; padding: 0 36px 0 14px; font: inherit; font-size: 13px; border: 0; border-radius: 8px; background: #fff; box-shadow: 0 4px 14px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06); outline: none; color: #1F272E; }
 .dcr-search__input::placeholder { color: #94a3b8; }
 .dcr-search__input:focus { box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 0 0 2px #2490EF; }
-.dcr-search__icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #94a3b8; }
+.dcr-search__icon { position: absolute; right: 10px; top: 0; bottom: 0; display: flex; align-items: center; pointer-events: none; color: #94a3b8; }
+.dcr-search__icon svg { display: block; }
 .dcr-search__menu { position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: #fff; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06); overflow: hidden; max-height: 360px; overflow-y: auto; display: none; }
 .dcr-search__menu.is-open { display: block; }
 .dcr-search__item { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #F0F0F0; }
