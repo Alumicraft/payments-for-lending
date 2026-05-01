@@ -588,16 +588,17 @@ def ensure_map_block():
                     this._container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group';
                     var btn = document.createElement('button');
                     btn.type = 'button';
-                    btn.title = 'Toggle satellite';
-                    btn.style.fontWeight = '600';
-                    btn.style.fontSize = '11px';
-                    btn.textContent = 'Sat';
+                    btn.title = 'Toggle satellite imagery';
+                    var SAT_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;"><circle cx="12" cy="12" r="3"/><path d="M12 2 L12 5 M12 19 L12 22 M2 12 L5 12 M19 12 L22 12"/><path d="M5.6 5.6 L7.7 7.7 M16.3 16.3 L18.4 18.4 M5.6 18.4 L7.7 16.3 M16.3 7.7 L18.4 5.6"/></svg>';
+                    var MAP_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;"><path d="M9 4 L3 6 L3 20 L9 18 L15 20 L21 18 L21 4 L15 6 L9 4 Z"/><path d="M9 4 L9 18 M15 6 L15 20"/></svg>';
+                    btn.innerHTML = SAT_ICON;
                     var streetsStyle = cfg.map_style_url || 'mapbox://styles/mapbox/standard';
                     var satelliteStyle = 'mapbox://styles/mapbox/standard-satellite';
                     btn.onclick = function() {
                         var isSat = btn.classList.contains('active');
                         m.setStyle(isSat ? streetsStyle : satelliteStyle);
-                        btn.textContent = isSat ? 'Sat' : 'Map';
+                        btn.innerHTML = isSat ? SAT_ICON : MAP_ICON;
+                        btn.title = isSat ? 'Toggle satellite imagery' : 'Toggle street view';
                         btn.classList.toggle('active');
                     };
                     this._container.appendChild(btn);
@@ -723,13 +724,10 @@ def ensure_map_block():
     }
 
     function iconSizeExpr(threshold) {
-        // Pucks are smaller assets, render at 0.5; full pins at 0.212 (matches
-        // existing scale tuned for the previous pin asset).
-        // Sizes account for pixelRatio:3 on 3× exported assets. Mapbox
-        // divides icon-size by pixelRatio at render. Tuned in iteration:
-        // 0.9/0.36 read as too small; 1.5/0.636 read as too big. Landing
-        // at 1.2/0.5 — visible at state-wide zoom, comfortable up close.
-        return ['step', ['zoom'], 1.2, threshold, 0.5];
+        // Assets exported at 3× from Figma. Scale by 1/3 to get the
+        // intended display size — the asset's own intrinsic dimensions
+        // already encode the puck-vs-full size relationship.
+        return 0.33;
     }
 
     function iconAnchorExpr(threshold) {
@@ -1090,9 +1088,7 @@ def ensure_map_block():
                             var imgUrl = '/assets/dcr/images/' + imgName + '.png';
                             map.loadImage(imgUrl, function(err, img) {
                                 if (!err && img && !map.hasImage(imgName)) {
-                                    // Assets exported at 3x — declare pixelRatio so Mapbox
-                                    // renders them at their natural 1x display size.
-                                    map.addImage(imgName, img, { pixelRatio: 3 });
+                                    map.addImage(imgName, img);
                                 }
                                 onIconLoaded();
                             });
@@ -1188,7 +1184,7 @@ def ensure_map_block():
                                 'icon-image': ['case',
                                     ['==', ['literal', currentTheme()], 'dark'],
                                     'factory-pin-dark', 'factory-pin-light'],
-                                'icon-size': 1.2,  // matches home pucks
+                                'icon-size': 0.33,  // 3× export → 1/3 display
                                 'icon-anchor': 'bottom',
                                 'icon-allow-overlap': true
                             }
@@ -1210,14 +1206,14 @@ def ensure_map_block():
                 }
                 map.loadImage(factoryLight, function(err, img) {
                     if (!err && img) {
-                        if (!map.hasImage('factory-pin-light')) map.addImage('factory-pin-light', img, { pixelRatio: 3 });
+                        if (!map.hasImage('factory-pin-light')) map.addImage('factory-pin-light', img);
                         fSuccess++;
                     }
                     onFactoryIconDone();
                 });
                 map.loadImage(factoryDark, function(err, img) {
                     if (!err && img) {
-                        if (!map.hasImage('factory-pin-dark')) map.addImage('factory-pin-dark', img, { pixelRatio: 3 });
+                        if (!map.hasImage('factory-pin-dark')) map.addImage('factory-pin-dark', img);
                         fSuccess++;
                     }
                     onFactoryIconDone();
