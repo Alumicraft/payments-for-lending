@@ -399,6 +399,41 @@ def ensure_map_block():
 .dcr-legend--block .dcr-legend__title { display: none; }
 .dcr-legend--block .dcr-legend__row { display: flex; gap: 6px; padding: 0; cursor: default; }
 .dcr-legend--block .dcr-legend__check, .dcr-legend--block .dcr-legend__count { display: none; }
+
+/* Search control */
+.dcr-search { position: relative; font-family: 'Inter', -apple-system, sans-serif; }
+.dcr-search__input { width: 280px; height: 36px; padding: 0 36px 0 14px; font: inherit; font-size: 13px; border: 0; border-radius: 8px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.05); outline: none; color: #1F272E; }
+.dcr-search__input::placeholder { color: #94a3b8; }
+.dcr-search__input:focus { box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 0 0 2px #2490EF; }
+.dcr-search__icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #94a3b8; }
+.dcr-search__menu { position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: #fff; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06); overflow: hidden; max-height: 360px; overflow-y: auto; display: none; }
+.dcr-search__menu.is-open { display: block; }
+.dcr-search__item { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #F0F0F0; }
+.dcr-search__item:last-child { border-bottom: 0; }
+.dcr-search__item.is-active, .dcr-search__item:hover { background: #F2F8FF; }
+.dcr-search__label { font-size: 13px; font-weight: 600; color: #1F272E; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dcr-search__sub { font-size: 11px; color: #687178; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; }
+.dcr-search__empty { padding: 12px; font-size: 12px; color: #94a3b8; text-align: center; }
+/* Dark mode */
+.dcr-search--dark .dcr-search__input { background: #1C1F23; color: #F2F4F5; box-shadow: 0 2px 8px rgba(0,0,0,0.4), 0 0 0 1px #2D3137; }
+.dcr-search--dark .dcr-search__input::placeholder { color: #64748b; }
+.dcr-search--dark .dcr-search__input:focus { box-shadow: 0 4px 16px rgba(0,0,0,0.5), 0 0 0 2px #4DA8FF; }
+.dcr-search--dark .dcr-search__icon { color: #64748b; }
+.dcr-search--dark .dcr-search__menu { background: #1C1F23; box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 0 1px #2D3137; }
+.dcr-search--dark .dcr-search__item { border-bottom-color: #2A2E33; }
+.dcr-search--dark .dcr-search__item.is-active, .dcr-search--dark .dcr-search__item:hover { background: #22272B; }
+.dcr-search--dark .dcr-search__label { color: #F2F4F5; }
+.dcr-search--dark .dcr-search__sub { color: #A6ADB4; }
+
+/* Heat-by toggle in legend footer */
+.dcr-legend__heat { margin-top: 8px; padding-top: 6px; border-top: 1px solid #ECEDEE; display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.dcr-legend--dark .dcr-legend__heat { border-top-color: #2D3137; }
+.dcr-legend__heat-label { color: #687178; }
+.dcr-legend--dark .dcr-legend__heat-label { color: #A6ADB4; }
+.dcr-legend__heat-opt { padding: 2px 8px; border-radius: 4px; cursor: pointer; user-select: none; color: #687178; }
+.dcr-legend--dark .dcr-legend__heat-opt { color: #A6ADB4; }
+.dcr-legend__heat-opt.is-on { background: #2490EF; color: #fff; }
+.dcr-legend--dark .dcr-legend__heat-opt.is-on { background: #4DA8FF; color: #0E1116; }
 </style>
 <div id="dcr-map" style="width:100%; overflow: hidden; position: relative;"></div>"""
 
@@ -465,6 +500,236 @@ def ensure_map_block():
     function heatmapOpacityExpr(isDark) {
         var peak = isDark ? 0.25 : 0.5;
         return ['interpolate', ['linear'], ['zoom'], 9, peak, 10, 0];
+    }
+
+    // ========== HEAT WEIGHT TOGGLE ====================================
+    // Heatmap can weight by deal count (default) or total dollar value.
+    // Persisted in localStorage; toggle lives in the legend footer.
+    var HEAT_KEY = 'dcr-map-heat-weight';
+    function loadHeatMode() {
+        try { return localStorage.getItem(HEAT_KEY) === 'value' ? 'value' : 'count'; }
+        catch(_) { return 'count'; }
+    }
+    function saveHeatMode(mode) {
+        try { localStorage.setItem(HEAT_KEY, mode); } catch(_) {}
+        window._dcrHeatMode = mode;
+    }
+    function heatWeightExpr() {
+        var mode = window._dcrHeatMode || loadHeatMode();
+        if (mode === 'value') {
+            // total_value is in dollars; tune so a $50k group reads ~0.3 and
+            // a $500k group caps at 1.0.
+            return ['interpolate', ['linear'], ['get', 'total_value'], 50000, 0.3, 500000, 1];
+        }
+        return ['interpolate', ['linear'], ['get', 'hbr_count'], 1, 0.3, 10, 1];
+    }
+    function applyHeatMode(map) {
+        if (map.getLayer('hbr-heat')) {
+            map.setPaintProperty('hbr-heat', 'heatmap-weight', heatWeightExpr());
+        }
+    }
+
+    // ========== SEARCH INDEX + CONTROL ================================
+    var _searchIndex = [];
+    function buildSearchIndex() {
+        _searchIndex = [];
+        var homes = window._dcrHomeFeatures || [];
+        homes.forEach(function(f) {
+            var groupHomes;
+            try { groupHomes = JSON.parse(f.properties.homes_json || '[]'); } catch(_) { return; }
+            groupHomes.forEach(function(h) {
+                var label = (h.customer_name || h.name) + ' — ' + (f.properties.address || '');
+                var sub = [h.name, h.factory_name, f.properties.community_name].filter(Boolean).join(' · ');
+                _searchIndex.push({
+                    type: 'home',
+                    label: label,
+                    sub: sub,
+                    home: h,
+                    groupProps: f.properties,
+                    lngLat: f.geometry.coordinates,
+                    searchText: ((h.customer_name || '') + ' ' + (h.name || '') + ' ' +
+                        (f.properties.address || '') + ' ' + (f.properties.community_name || '') + ' ' +
+                        (h.factory_name || '') + ' ' + (f.properties.city || '')).toLowerCase()
+                });
+            });
+        });
+        var facs = window._dcrFactoryFeatures || [];
+        facs.forEach(function(f) {
+            _searchIndex.push({
+                type: 'factory',
+                label: f.properties.supplier_name || f.properties.name,
+                sub: 'Factory · ' + (f.properties.city || ''),
+                groupProps: f.properties,
+                lngLat: f.geometry.coordinates,
+                searchText: ((f.properties.supplier_name || '') + ' ' + (f.properties.city || '')).toLowerCase()
+            });
+        });
+    }
+    function searchQuery(q) {
+        if (!q || q.length < 2) return [];
+        var ql = q.toLowerCase();
+        var hits = [];
+        for (var i = 0; i < _searchIndex.length && hits.length < 8; i++) {
+            if (_searchIndex[i].searchText.indexOf(ql) !== -1) hits.push(_searchIndex[i]);
+        }
+        return hits;
+    }
+    function flyToResult(map, item) {
+        var coords = item.lngLat;
+        // Crisp 3D arrival — pronounced arc, snap into pitch.
+        map.flyTo({
+            center: coords,
+            zoom: item.type === 'factory' ? 13 : 16,
+            pitch: 60, bearing: -15,
+            speed: 1.7, curve: 1.7,
+            essential: true
+        });
+        map.once('moveend', function() {
+            // Open the popup at the landed position
+            var html, popup;
+            if (item.type === 'factory') {
+                html = renderFactoryHtml(item.groupProps);
+                popup = openPopup(map, coords, html, { offset: 14 });
+                popup._dcrProps = item.groupProps;
+            } else {
+                html = renderSingleHomeHtml(item.groupProps, item.home);
+                popup = openPopup(map, coords, html, { offset: 18 });
+                popup._dcrProps = item.groupProps;
+                popup._dcrHomes = [item.home];
+            }
+        });
+    }
+
+    function SearchControl() {}
+    SearchControl.prototype.onAdd = function(m) {
+        this._map = m;
+        var wrap = document.createElement('div');
+        wrap.className = 'dcr-search';
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'dcr-search__input';
+        input.placeholder = 'Search homes, customers, factories…';
+        var icon = document.createElement('div');
+        icon.className = 'dcr-search__icon';
+        icon.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+        var menu = document.createElement('div');
+        menu.className = 'dcr-search__menu';
+        wrap.appendChild(input);
+        wrap.appendChild(icon);
+        wrap.appendChild(menu);
+
+        var hits = [];
+        var active = -1;
+        function render() {
+            if (!hits.length) {
+                if (input.value.length >= 2) {
+                    menu.innerHTML = '<div class="dcr-search__empty">No matches</div>';
+                    menu.classList.add('is-open');
+                } else {
+                    menu.classList.remove('is-open');
+                }
+                return;
+            }
+            menu.innerHTML = hits.map(function(h, i) {
+                return '<div class="dcr-search__item' + (i === active ? ' is-active' : '') + '" data-idx="' + i + '">'
+                    + '<div class="dcr-search__label">' + escHtml(h.label) + '</div>'
+                    + '<div class="dcr-search__sub">' + escHtml(h.sub) + '</div>'
+                    + '</div>';
+            }).join('');
+            menu.classList.add('is-open');
+        }
+        function close() { menu.classList.remove('is-open'); active = -1; }
+
+        var debounce;
+        input.addEventListener('input', function() {
+            clearTimeout(debounce);
+            debounce = setTimeout(function() {
+                hits = searchQuery(input.value.trim());
+                active = hits.length ? 0 : -1;
+                render();
+            }, 120);
+        });
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowDown') { e.preventDefault(); active = Math.min(active + 1, hits.length - 1); render(); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); active = Math.max(active - 1, 0); render(); }
+            else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); flyToResult(m, hits[active]); input.blur(); close(); }
+            else if (e.key === 'Escape') { close(); input.blur(); }
+        });
+        menu.addEventListener('mousedown', function(e) {
+            var item = e.target.closest('.dcr-search__item');
+            if (!item) return;
+            e.preventDefault();
+            var idx = parseInt(item.getAttribute('data-idx'), 10);
+            if (hits[idx]) flyToResult(m, hits[idx]);
+            input.blur();
+            close();
+        });
+        document.addEventListener('mousedown', function(e) {
+            if (!wrap.contains(e.target)) close();
+        });
+
+        // Theme support
+        function applyTheme() {
+            wrap.classList.toggle('dcr-search--dark', currentTheme() === 'dark');
+        }
+        applyTheme();
+        new MutationObserver(applyTheme).observe(document.documentElement, {
+            attributes: true, attributeFilter: ['data-theme']
+        });
+
+        this._container = wrap;
+        return wrap;
+    };
+    SearchControl.prototype.onRemove = function() {
+        if (this._container && this._container.parentNode) this._container.parentNode.removeChild(this._container);
+    };
+
+    // ========== URL STATE =============================================
+    // Hash format: #z=10.5&l=-118,38&s=Pending,Ordered&v=sat
+    function readUrlState() {
+        var h = (window.location.hash || '').replace(/^#/, '');
+        if (!h) return null;
+        var out = {};
+        h.split('&').forEach(function(kv) {
+            var p = kv.split('=');
+            out[p[0]] = decodeURIComponent(p[1] || '');
+        });
+        return out;
+    }
+    function writeUrlState(state) {
+        var parts = [];
+        if (state.z != null) parts.push('z=' + state.z.toFixed(2));
+        if (state.l) parts.push('l=' + state.l[0].toFixed(4) + ',' + state.l[1].toFixed(4));
+        if (state.s) parts.push('s=' + encodeURIComponent(state.s.join(',')));
+        if (state.v) parts.push('v=' + state.v);
+        try {
+            var newHash = '#' + parts.join('&');
+            if (newHash !== window.location.hash) {
+                history.replaceState(null, '', window.location.pathname + window.location.search + newHash);
+            }
+        } catch(_) {}
+    }
+    function captureUrlState(map) {
+        var c = map.getCenter();
+        return {
+            z: map.getZoom(),
+            l: [c.lng, c.lat],
+            s: window._dcrMapActiveStatuses || ['Pending','Ordered','Delivered'],
+            v: window._dcrSatelliteOn ? 'sat' : 'map'
+        };
+    }
+    function applyUrlState(map, state) {
+        if (!state) return;
+        var center = state.l ? state.l.split(',').map(Number) : null;
+        if (center && state.z) {
+            map.jumpTo({ center: center, zoom: parseFloat(state.z) });
+        }
+        if (state.s) {
+            var arr = state.s.split(',').filter(function(x){ return STATUS_LIST.indexOf(x) !== -1; });
+            if (arr.length) saveStatusFilter(arr);
+        }
+        // Style applies via the satellite control's own state machine after init
+        window._dcrInitialUrlStyle = state.v;
     }
 
     // Idempotent doc-level listener registration. Frappe re-runs this IIFE
@@ -609,9 +874,11 @@ def ensure_map_block():
                     function applyStyle(toSat) {
                         if (toSat === isSat) return;
                         isSat = toSat;
+                        window._dcrSatelliteOn = toSat;
                         m.setStyle(toSat ? satelliteStyle : streetsStyle);
                         btn.classList.toggle('active', toSat);
                         btn.title = toSat ? 'Switch to map view' : 'Switch to satellite imagery';
+                        if (window._dcrOnStyleChange) window._dcrOnStyleChange();
                     }
 
                     btn.onclick = function() {
@@ -639,6 +906,22 @@ def ensure_map_block():
                     this._container.parentNode.removeChild(this._container);
                 };
                 map.addControl(new SatelliteControl(), 'top-right');
+                map.addControl(new SearchControl(), 'top-left');
+
+                // URL state: read on load, write on view changes
+                var initialUrl = readUrlState();
+                if (initialUrl) applyUrlState(map, initialUrl);
+                var _urlWriteTimer;
+                function scheduleUrlWrite() {
+                    clearTimeout(_urlWriteTimer);
+                    _urlWriteTimer = setTimeout(function() {
+                        writeUrlState(captureUrlState(map));
+                    }, 200);
+                }
+                map.on('moveend', scheduleUrlWrite);
+                map.on('zoomend', scheduleUrlWrite);
+                window._dcrOnFilterChange = scheduleUrlWrite;
+                window._dcrOnStyleChange = scheduleUrlWrite;
 
                 // Day/night mode + icon swap based on Frappe theme
                 var _pinsLoaded = false;
@@ -977,6 +1260,7 @@ def ensure_map_block():
     function saveStatusFilter(active) {
         try { localStorage.setItem(FILTER_KEY, JSON.stringify(active)); } catch(_) {}
         window._dcrMapActiveStatuses = active.slice();
+        if (window._dcrOnFilterChange) window._dcrOnFilterChange();
     }
 
     function countByStatus(features) {
@@ -1014,13 +1298,27 @@ def ensure_map_block():
         }).join('');
         var footer = isBlock ? '' :
             '<div class="dcr-legend__footer"><button type="button" data-act="all">Show all</button><button type="button" data-act="none">Hide all</button></div>';
-        el.innerHTML = (isBlock ? '' : '<div class="dcr-legend__title">Deal status</div>') + rows + footer;
+        var heatMode = window._dcrHeatMode || loadHeatMode();
+        var heatToggle = isBlock ? '' :
+            '<div class="dcr-legend__heat">'
+            + '<span class="dcr-legend__heat-label">Heat by</span>'
+            + '<span class="dcr-legend__heat-opt' + (heatMode === 'count' ? ' is-on' : '') + '" data-heat="count">count</span>'
+            + '<span class="dcr-legend__heat-opt' + (heatMode === 'value' ? ' is-on' : '') + '" data-heat="value">value</span>'
+            + '</div>';
+        el.innerHTML = (isBlock ? '' : '<div class="dcr-legend__title">Deal status</div>') + rows + footer + heatToggle;
         container.appendChild(el);
 
         if (!isBlock) {
             el.addEventListener('click', function(e) {
                 var row = e.target.closest('.dcr-legend__row');
                 var act = e.target.getAttribute('data-act');
+                var heat = e.target.getAttribute('data-heat');
+                if (heat) {
+                    saveHeatMode(heat);
+                    applyHeatMode(map);
+                    buildLegend(map, geojson);
+                    return;
+                }
                 if (row) {
                     var s = row.getAttribute('data-status');
                     var idx = active.indexOf(s);
@@ -1075,6 +1373,7 @@ def ensure_map_block():
                                 latitude: d.latitude,
                                 longitude: d.longitude,
                                 hbr_count: d.hbr_count,
+                                total_value: d.total_value || 0,
                                 status: d.status || 'Pending',
                                 // Stringified so feature-state can survive
                                 // through Mapbox; parsed in popup handler.
@@ -1083,6 +1382,10 @@ def ensure_map_block():
                         };
                     })
                 };
+
+                // Cache features for the search index + populate it
+                window._dcrHomeFeatures = geojson.features.slice();
+                buildSearchIndex();
 
                 // Heatmap layer
                 map.addSource('hbr-locations', { type: 'geojson', data: geojson });
@@ -1093,7 +1396,7 @@ def ensure_map_block():
                     filter: ['in', ['get', 'status'], ['literal',
                         window._dcrMapActiveStatuses || ['Pending','Ordered','Delivered']]],
                     paint: {
-                        'heatmap-weight': ['interpolate', ['linear'], ['get', 'hbr_count'], 1, 0.3, 10, 1],
+                        'heatmap-weight': heatWeightExpr(),
                         'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 0.5, 12, 2],
                         'heatmap-radius': 40,
                         // Fade the heatmap out as the pin layer kicks in.
@@ -1207,6 +1510,9 @@ def ensure_map_block():
                         };
                     })
                 };
+                window._dcrFactoryFeatures = geojson.features.slice();
+                buildSearchIndex();
+
                 map.addSource('factory-locations', { type: 'geojson', data: geojson });
 
                 // Try to load factory pin assets; fall back to a black circle
