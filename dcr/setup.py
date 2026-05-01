@@ -798,12 +798,16 @@ def ensure_map_block():
                     btn.title = 'Recenter';
                     btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:auto;"><path d="M3 11L12 3L21 11V20C21 20.5523 20.5523 21 20 21H15V14H9V21H4C3.44772 21 3 20.5523 3 20V11Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/></svg>';
                     btn.onclick = function() {
-                        m.easeTo({
+                        // Land at zoom 14.9 — just below the auto-satellite
+                        // threshold (15), so we don't trip the basemap swap.
+                        m.flyTo({
                             center: [cfg.default_longitude, cfg.default_latitude],
-                            zoom: initialZoom,
+                            zoom: 14.9,
                             pitch: 0,
                             bearing: 0,
-                            duration: 2500
+                            curve: 1.7,
+                            duration: 4500,
+                            essential: true
                         });
                     };
                     this._container.appendChild(btn);
