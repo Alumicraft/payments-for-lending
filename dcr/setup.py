@@ -457,8 +457,8 @@ def ensure_map_block():
     window.addEventListener('resize', setHeight);
 
     // Hoisted to IIFE scope so loadData()'s addHomeLayer (which lives in a
-    // sibling closure) can reach it. Set from get_map_settings; default 12.
-    var puckFullThreshold = 12;
+    // sibling closure) can reach it. Set from get_map_settings; default 10.
+    var puckFullThreshold = 10;
 
     // Idempotent doc-level listener registration. Frappe re-runs this IIFE
     // whenever the workspace remounts; without this, every navigation back
@@ -1105,7 +1105,8 @@ def ensure_map_block():
                         id: 'unclustered-point',
                         type: 'symbol',
                         source: 'hbr-locations',
-                        minzoom: 10,  // pins fade in as the heatmap fades out (zoom 9→10)
+                        // No minzoom — pucks visible at every zoom; full pins
+                        // take over at puck_full_zoom_threshold (default 10).
                         layout: {
                             'icon-image': iconImageExpr(theme, puckFullThreshold),
                             'icon-size': iconSizeExpr(puckFullThreshold),

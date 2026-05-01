@@ -148,7 +148,7 @@ def get_map_settings():
         "default_longitude": settings.default_longitude or -115.0,
         "default_zoom": settings.default_zoom or 6,
         "block_zoom": settings.get("block_zoom") or 4.5,
-        "puck_full_zoom_threshold": settings.get("puck_full_zoom_threshold") or 12,
+        "puck_full_zoom_threshold": settings.get("puck_full_zoom_threshold") or 10,
         "map_style_url": settings.map_style_url or "mapbox://styles/mapbox/streets-v12",
     }
 
