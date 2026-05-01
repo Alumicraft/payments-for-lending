@@ -199,7 +199,12 @@ class TestAggregateHeatmapData(unittest.TestCase):
 
 
 class TestStatusDerivation(unittest.TestCase):
-    """Status priority: Cancelled → Draft → Delivered → Ordered → Pending."""
+    """Status priority: Ordered → Pending → Delivered.
+
+    Cancelled is filtered server-side in `get_heatmap_data` and never
+    reaches `_aggregate_locations`. Draft folds into Pending — there is
+    no separate Draft pin.
+    """
 
     def _row(self, **kwargs):
         base = {
@@ -209,20 +214,10 @@ class TestStatusDerivation(unittest.TestCase):
         base.update(kwargs)
         return base
 
-    def test_cancelled_when_docstatus_is_2(self):
-        from dcr.api.map import _aggregate_locations
-        rows = [self._row(docstatus=2, has_active_po=1)]
-        self.assertEqual(_aggregate_locations(rows)[0]["status"], "Cancelled")
-
-    def test_cancelled_when_only_cancelled_po(self):
-        from dcr.api.map import _aggregate_locations
-        rows = [self._row(docstatus=1, has_cancelled_po=1)]
-        self.assertEqual(_aggregate_locations(rows)[0]["status"], "Cancelled")
-
-    def test_draft_when_docstatus_is_0(self):
+    def test_draft_folds_into_pending(self):
         from dcr.api.map import _aggregate_locations
         rows = [self._row(docstatus=0)]
-        self.assertEqual(_aggregate_locations(rows)[0]["status"], "Draft")
+        self.assertEqual(_aggregate_locations(rows)[0]["status"], "Pending")
 
     def test_delivered_when_purchase_receipt_exists(self):
         from dcr.api.map import _aggregate_locations
@@ -250,6 +245,61 @@ class TestStatusDerivation(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["status"], "Ordered")
         self.assertEqual(len(result[0]["homes"]), 2)
+
+
+class TestGetHeatmapDataFiltering(unittest.TestCase):
+    """Server-side filtering: Cancelled HBRs never reach the map."""
+
+    def test_get_heatmap_data_excludes_cancelled(self):
+        """Cancelled HBRs (docstatus=2 OR PO cancelled) must not appear at all.
+
+        We patch `frappe.db.sql` to return what the SQL *would* return
+        post-`docstatus != 2` filter, including a row whose only PO is
+        cancelled — that row must be stripped by the post-filter.
+        """
+        import frappe
+        from dcr.api.map import get_heatmap_data
+
+        # docstatus=2 is filtered by the SQL `WHERE docstatus != 2` clause,
+        # so it never makes it into the patched return. The remaining row
+        # has only a cancelled PO and must be stripped by the post-filter.
+        sql_rows = [
+            {"name": "HBR-CANCELLED-PO", "delivery_address": "1 Cancelled Way",
+             "latitude": 34.0, "longitude": -118.0,
+             "docstatus": 1, "has_pr": 0, "has_active_po": 0,
+             "has_cancelled_po": 1},
+            {"name": "HBR-LIVE", "delivery_address": "2 Live St",
+             "latitude": 34.1, "longitude": -118.1,
+             "docstatus": 1, "has_pr": 0, "has_active_po": 1,
+             "has_cancelled_po": 0},
+        ]
+        with patch.object(frappe.db, "sql", return_value=sql_rows):
+            result = get_heatmap_data()
+        names = [h["name"] for r in result for h in r["homes"]]
+        self.assertIn("HBR-LIVE", names)
+        self.assertNotIn("HBR-CANCELLED-PO", names)
+
+    def test_get_heatmap_data_folds_draft_to_pending(self):
+        """A docstatus=0 HBR returns status='Pending', not 'Draft'."""
+        import frappe
+        from dcr.api.map import get_heatmap_data
+
+        sql_rows = [
+            {"name": "HBR-DRAFT", "delivery_address": "1 Draft Ln",
+             "latitude": 34.0, "longitude": -118.0,
+             "docstatus": 0, "has_pr": 0, "has_active_po": 0,
+             "has_cancelled_po": 0},
+        ]
+        with patch.object(frappe.db, "sql", return_value=sql_rows):
+            result = get_heatmap_data()
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["status"], "Pending")
+        self.assertEqual(result[0]["homes"][0]["status"], "Pending")
+
+    def test_status_priority_order(self):
+        """When a stack has Ordered + Pending + Delivered, the pin shows Ordered."""
+        from dcr.api.map import STATUS_PRIORITY
+        self.assertEqual(STATUS_PRIORITY, ["Ordered", "Pending", "Delivered"])
 
 
 if __name__ == "__main__":

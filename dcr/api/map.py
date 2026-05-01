@@ -78,9 +78,9 @@ def search_address(query):
 def get_heatmap_data():
     """Return HBRs from the trailing 12 months, grouped by address+space.
 
-    Each returned feature carries a derived `status` (Draft/Pending/Ordered/
-    Delivered/Cancelled) computed from linked Purchase Order / Purchase
-    Receipt state, and a `homes` list with per-deal detail for the popup.
+    Cancelled HBRs (docstatus=2 OR a cancelled PO with no active PO/PR) are
+    filtered server-side and never reach the map. Draft (docstatus=0) maps
+    to status="Pending" — there is no separate Draft pin.
     """
     cutoff = (datetime.utcnow() - timedelta(days=365)).strftime("%Y-%m-%d %H:%M:%S")
     rows = frappe.db.sql(
@@ -97,6 +97,7 @@ def get_heatmap_data():
             hbr.longitude,
             hbr.customer,
             hbr.factory,
+            hbr.creation,
             hbr.docstatus,
             EXISTS (
                 SELECT 1 FROM `tabPurchase Receipt Item` pri
@@ -117,10 +118,16 @@ def get_heatmap_data():
             ) AS has_cancelled_po
         FROM `tabHome Build Request` hbr
         WHERE hbr.creation >= %s
+          AND hbr.docstatus != 2
         """,
         (cutoff,),
         as_dict=True,
     )
+    # Filter out rows whose only PO is cancelled (no active PO, no PR).
+    rows = [
+        r for r in rows
+        if not (r.get("has_cancelled_po") and not r.get("has_active_po") and not r.get("has_pr"))
+    ]
     return _aggregate_locations(rows)
 
 
@@ -187,7 +194,7 @@ def _parse_mapbox_feature(feature):
 
 # Stack color priority — higher (lower index) wins when a pin combines
 # homes with different statuses.
-STATUS_PRIORITY = ["Ordered", "Pending", "Delivered", "Draft", "Cancelled"]
+STATUS_PRIORITY = ["Ordered", "Pending", "Delivered"]
 
 
 def _aggregate_locations(rows):
@@ -248,22 +255,12 @@ def _aggregate_locations(rows):
 
 
 def _derive_status(row):
-    """Derive deal status from HBR docstatus + linked PO/PR flags.
-
-    Rows from the legacy code path (no PO/PR flags) fall through to
-    Pending — the test suite still exercises that path.
-    """
-    if row.get("docstatus") == 2:
-        return "Cancelled"
-    if row.get("has_cancelled_po") and not row.get("has_active_po") and not row.get("has_pr"):
-        return "Cancelled"
-    if row.get("docstatus") == 0:
-        return "Draft"
+    """Derive deal status from PO/PR flags. Draft folds into Pending."""
     if row.get("has_pr"):
         return "Delivered"
     if row.get("has_active_po"):
         return "Ordered"
-    return "Pending"
+    return "Pending"  # covers docstatus=0 (Draft) and docstatus=1 with no PO
 
 
 def _normalize_address(s):
