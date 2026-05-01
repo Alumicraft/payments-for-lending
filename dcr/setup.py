@@ -293,14 +293,19 @@ def ensure_map_block():
     if legacy_workspaces:
         frappe.db.commit()
 
-    html_content = """<style>
+    html_content = """<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
 .mapboxgl-ctrl-bottom-left, .mapboxgl-ctrl-bottom-right { transform: translateY(150%); }
 
 /* DCR map popup styling — see docs/superpowers/specs/2026-04-30-map-icons-and-trails.md */
-.mapboxgl-popup-content { padding: 0; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.04); }
+.mapboxgl-popup-content { padding: 0; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.04); background: #FFFFFF; }
 .mapboxgl-popup--dark .mapboxgl-popup-content { background: #1C1F23; box-shadow: 0 6px 18px rgba(0,0,0,0.5), 0 0 0 1px #2D3137; }
-.mapboxgl-popup--dark .mapboxgl-popup-tip { border-top-color: #1C1F23; border-bottom-color: #1C1F23; }
-.mapboxgl-popup-close-button { font-size: 18px; padding: 4px 8px; color: inherit; }
+/* Hide tip pointer + close button to match the mockup's floating-card look.
+   Popup auto-dismisses on Esc / map move / map zoom / new pin. */
+.mapboxgl-popup-tip { display: none !important; }
+.mapboxgl-popup-close-button { display: none !important; }
 
 .dcr-popup { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; line-height: 1.45; color: #1F272E; min-width: 320px; }
 .dcr-popup--dark { color: #F2F4F5; }
@@ -374,8 +379,8 @@ def ensure_map_block():
 .dcr-popup--dark .dot--delivered { background: linear-gradient(135deg,#4DA8FF,#3F9EE8); }
 .dcr-popup .factory-total { padding: 6px 16px 12px; font-size: 12px; font-weight: 500; }
 
-/* Legend */
-.dcr-legend { position: absolute; bottom: 16px; left: 16px; z-index: 5; background: #fff; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.04); padding: 10px 12px; min-width: 200px; font-family: 'Inter', -apple-system, sans-serif; font-size: 12px; }
+/* Legend — bottom-right per UX request */
+.dcr-legend { position: absolute; bottom: 16px; right: 16px; z-index: 5; background: #fff; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.04); padding: 10px 12px; min-width: 200px; font-family: 'Inter', -apple-system, sans-serif; font-size: 12px; }
 .dcr-legend--dark { background: #1C1F23; color: #F2F4F5; box-shadow: 0 4px 16px rgba(0,0,0,0.5), 0 0 0 1px #2D3137; }
 .dcr-legend__title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: #687178; margin-bottom: 8px; }
 .dcr-legend--dark .dcr-legend__title { color: #A6ADB4; }
@@ -701,9 +706,10 @@ def ensure_map_block():
     function iconSizeExpr(threshold) {
         // Pucks are smaller assets, render at 0.5; full pins at 0.212 (matches
         // existing scale tuned for the previous pin asset).
-        // Sizes are 3× the "intended visual" because addImage uses pixelRatio:3
-        // for the 3× exported assets — Mapbox divides by pixelRatio at render.
-        return ['step', ['zoom'], 1.5, threshold, 0.636];
+        // Sizes account for pixelRatio:3 on 3× exported assets. Mapbox
+        // divides icon-size by pixelRatio at render, so 0.9/0.36 effective
+        // visual ≈ 0.3/0.12 — matches the previous tuned "adjusted" size.
+        return ['step', ['zoom'], 0.9, threshold, 0.36];
     }
 
     function iconAnchorExpr(threshold) {
@@ -963,25 +969,14 @@ def ensure_map_block():
         if (!features.length && _trailRAF) stopTrailAnimation();
     }
     function startTrailAnimation() {
-        // Marching-ants effect: shift the dash phase by alternating two
-        // valid even-length patterns each frame. Mapbox accepts smooth
-        // dasharray transitions via setPaintProperty. Period is short
-        // enough to read as motion without burning CPU.
-        var phase = 0;
-        function step() {
-            phase = (phase + 1) % 2;
-            try {
-                window._dcrMap.setPaintProperty('dcr-trails', 'line-dasharray',
-                    phase === 0 ? [4, 3] : [4.5, 2.5]);
-            } catch(_) {}
-            _trailRAF = setTimeout(step, 200);  // ~5 fps — gentle
-        }
-        _trailRAF = setTimeout(step, 200);
+        // Animation deliberately disabled — Mapbox dasharray cycling either
+        // jitters (setPaintProperty doesn't smooth-transition the array) or
+        // looks broken on edge cases. Static dashes read as "in progress"
+        // well enough on their own.
     }
     function stopTrailAnimation() {
         if (_trailRAF) clearTimeout(_trailRAF);
         _trailRAF = null;
-        _trailOffset = 0;
     }
     window._dcrClearTrail = function() { setTrailFeatures([]); };
 
@@ -1152,6 +1147,11 @@ def ensure_map_block():
                                 city: d.city || '',
                                 state: d.state || '',
                                 zip: d.zip || '',
+                                // Lat/lng exposed on properties so the popup's
+                                // _dcrProps stash carries them — the trail
+                                // helper reads homeProps.latitude/longitude.
+                                latitude: d.latitude,
+                                longitude: d.longitude,
                                 hbr_count: d.hbr_count,
                                 status: d.status || 'Pending',
                                 // Stringified so feature-state can survive
@@ -1310,7 +1310,7 @@ def ensure_map_block():
                                 'icon-image': ['case',
                                     ['==', ['literal', currentTheme()], 'dark'],
                                     'factory-pin-dark', 'factory-pin-light'],
-                                'icon-size': 1.5,  // 3× to neutralize pixelRatio:3
+                                'icon-size': 0.9,  // matches home pucks for visual parity
                                 'icon-anchor': 'bottom',
                                 'icon-allow-overlap': true
                             }
