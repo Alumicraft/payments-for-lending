@@ -507,6 +507,41 @@ def ensure_map_block():
         return ['interpolate', ['linear'], ['zoom'], 9, peak, 10, 0];
     }
 
+    // ========== ICON SWAY PHYSICS =====================================
+    // Pins tilt opposite to map pan direction (like a flag catching wind)
+    // and spring back to upright on rest. Subtle — capped at ±4°.
+    var _sway = { angle: 0, target: 0, vel: 0, raf: null, prev: null };
+    function applySway(angle) {
+        var m = window._dcrMap;
+        if (!m) return;
+        if (m.getLayer('unclustered-point')) {
+            try { m.setLayoutProperty('unclustered-point', 'icon-rotate', angle); } catch(_) {}
+        }
+        if (m.getLayer('factory-point')) {
+            try { m.setLayoutProperty('factory-point', 'icon-rotate', angle); } catch(_) {}
+        }
+    }
+    function swayStep() {
+        // Damped spring: each frame, accelerate toward target with damping
+        // on velocity. Settles smoothly with a tiny overshoot.
+        var spring = (_sway.target - _sway.angle) * 0.18;
+        _sway.vel = _sway.vel * 0.78 + spring;
+        _sway.angle += _sway.vel;
+        applySway(_sway.angle);
+        // Rest condition — close to zero with no remaining motion.
+        if (_sway.target === 0 && Math.abs(_sway.angle) < 0.05 && Math.abs(_sway.vel) < 0.05) {
+            _sway.angle = 0; _sway.vel = 0;
+            applySway(0);
+            _sway.raf = null;
+            return;
+        }
+        _sway.raf = requestAnimationFrame(swayStep);
+    }
+    function bumpSway(target) {
+        _sway.target = target;
+        if (!_sway.raf) _sway.raf = requestAnimationFrame(swayStep);
+    }
+
     // ========== SEARCH INDEX + CONTROL ================================
     var _searchIndex = [];
     function buildSearchIndex() {
@@ -993,6 +1028,25 @@ def ensure_map_block():
                         loadFactories(map);
                     }
                 });
+
+                // Icon sway — compute pixel-space delta of the previous
+                // center against the current camera; tilt pins opposite.
+                map.on('move', function() {
+                    var c = map.getCenter();
+                    if (_sway.prev) {
+                        try {
+                            var prevPx = map.project(_sway.prev);
+                            var nowPx = map.project(c);
+                            var dxPx = prevPx.x - nowPx.x;
+                            var angle = -dxPx * 0.06;
+                            if (angle < -4) angle = -4;
+                            if (angle > 4) angle = 4;
+                            bumpSway(angle);
+                        } catch(_) {}
+                    }
+                    _sway.prev = c;
+                });
+                map.on('moveend', function() { _sway.prev = null; bumpSway(0); });
 
                 map.on('click', function(e) {
                     var hits = map.queryRenderedFeatures(e.point, {
