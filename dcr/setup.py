@@ -546,7 +546,7 @@ def ensure_map_block():
             zoom: item.type === 'factory' ? 13 : 16,
             pitch: 60, bearing: -15,
             curve: 1.7,
-            duration: 2800,  // explicit duration — reads as a deliberate flight
+            duration: 4500,  // long enough for tiles to load before arrival
             essential: true
         });
         map.once('moveend', function() {
