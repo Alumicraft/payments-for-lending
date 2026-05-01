@@ -388,11 +388,12 @@ def ensure_map_block():
 .dcr-legend--dark .dot--delivered { background: linear-gradient(135deg,#4DA8FF,#3F9EE8); }
 .dcr-legend__count { font-variant-numeric: tabular-nums; color: #687178; }
 .dcr-legend--dark .dcr-legend__count { color: #A6ADB4; }
-.dcr-legend__check { width: 14px; height: 14px; }
+.dcr-legend__check { width: 14px; height: 14px; pointer-events: none; }
 .dcr-legend__footer { margin-top: 6px; padding-top: 6px; border-top: 1px solid #ECEDEE; display: flex; gap: 8px; font-size: 11px; }
 .dcr-legend--dark .dcr-legend__footer { border-top-color: #2D3137; }
-.dcr-legend__footer a { color: #2490EF; cursor: pointer; }
-.dcr-legend--dark .dcr-legend__footer a { color: #4DA8FF; }
+.dcr-legend__footer button { color: #2490EF; cursor: pointer; background: none; border: 0; padding: 0; font: inherit; }
+.dcr-legend__footer button:hover { text-decoration: underline; }
+.dcr-legend--dark .dcr-legend__footer button { color: #4DA8FF; }
 
 /* Block view: read-only legend pill */
 .dcr-legend--block { padding: 6px 10px; min-width: 0; display: flex; gap: 12px; align-items: center; }
@@ -1081,7 +1082,7 @@ def ensure_map_block():
                 + '</div>';
         }).join('');
         var footer = isBlock ? '' :
-            '<div class="dcr-legend__footer"><a data-act="all">Show all</a><a data-act="none">Hide all</a></div>';
+            '<div class="dcr-legend__footer"><button type="button" data-act="all">Show all</button><button type="button" data-act="none">Hide all</button></div>';
         el.innerHTML = (isBlock ? '' : '<div class="dcr-legend__title">Deal status</div>') + rows + footer;
         container.appendChild(el);
 
