@@ -83,21 +83,8 @@ def get_heatmap_data():
     Receipt state, and a `homes` list with per-deal detail for the popup.
     """
     cutoff = (datetime.utcnow() - timedelta(days=365)).strftime("%Y-%m-%d %H:%M:%S")
-    rows = frappe.db.sql(
-        """
-        SELECT
-            hbr.name,
-            hbr.community_name,
-            hbr.delivery_address,
-            hbr.city,
-            hbr.state,
-            hbr.zip,
-            hbr.space_number,
-            hbr.latitude,
-            hbr.longitude,
-            hbr.customer,
-            hbr.factory,
-            hbr.docstatus,
+    if _has_purchase_order_hbr_field():
+        status_select = """
             EXISTS (
                 SELECT 1 FROM `tabPurchase Receipt Item` pri
                 JOIN `tabPurchase Receipt` pr ON pr.name = pri.parent
@@ -115,6 +102,30 @@ def get_heatmap_data():
                 WHERE po.custom_home_build_request = hbr.name
                   AND po.docstatus = 2
             ) AS has_cancelled_po
+        """
+    else:
+        status_select = """
+            0 AS has_pr,
+            0 AS has_active_po,
+            0 AS has_cancelled_po
+        """
+
+    rows = frappe.db.sql(
+        f"""
+        SELECT
+            hbr.name,
+            hbr.community_name,
+            hbr.delivery_address,
+            hbr.city,
+            hbr.state,
+            hbr.zip,
+            hbr.space_number,
+            hbr.latitude,
+            hbr.longitude,
+            hbr.customer,
+            hbr.factory,
+            hbr.docstatus,
+            {status_select}
         FROM `tabHome Build Request` hbr
         WHERE hbr.creation >= %s
         """,
@@ -122,6 +133,14 @@ def get_heatmap_data():
         as_dict=True,
     )
     return _aggregate_locations(rows)
+
+
+def _has_purchase_order_hbr_field():
+    """Return whether Purchase Order has DCR's HBR link custom field."""
+    try:
+        return bool(frappe.db.has_column("Purchase Order", "custom_home_build_request"))
+    except Exception:
+        return False
 
 
 @frappe.whitelist()

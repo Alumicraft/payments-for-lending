@@ -198,6 +198,34 @@ class TestAggregateHeatmapData(unittest.TestCase):
         self.assertAlmostEqual(result[0]["longitude"], -110.0)
 
 
+class TestHeatmapQuery(unittest.TestCase):
+    """Test heatmap SQL adapts to optional custom fields."""
+
+    @patch("dcr.api.map.frappe")
+    def test_missing_purchase_order_hbr_field_does_not_reference_column(self, mock_frappe):
+        from dcr.api.map import get_heatmap_data
+
+        mock_frappe.db.has_column.return_value = False
+        mock_frappe.db.sql.return_value = []
+
+        get_heatmap_data()
+
+        sql = mock_frappe.db.sql.call_args.args[0]
+        self.assertNotIn("custom_home_build_request", sql)
+
+    @patch("dcr.api.map.frappe")
+    def test_purchase_order_hbr_field_is_used_when_present(self, mock_frappe):
+        from dcr.api.map import get_heatmap_data
+
+        mock_frappe.db.has_column.return_value = True
+        mock_frappe.db.sql.return_value = []
+
+        get_heatmap_data()
+
+        sql = mock_frappe.db.sql.call_args.args[0]
+        self.assertIn("custom_home_build_request", sql)
+
+
 class TestStatusDerivation(unittest.TestCase):
     """Status priority: Cancelled → Draft → Delivered → Ordered → Pending."""
 

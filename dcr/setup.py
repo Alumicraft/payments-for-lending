@@ -91,6 +91,11 @@ def after_install():
     except Exception:
         frappe.log_error(frappe.get_traceback(), "ensure_supplier_geo_fields failed")
 
+    try:
+        ensure_purchase_order_hbr_field()
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "ensure_purchase_order_hbr_field failed")
+
     frappe.db.commit()
 
 
@@ -128,6 +133,25 @@ def ensure_supplier_geo_fields():
     for f in fields:
         if not frappe.db.exists("Custom Field", {"dt": "Supplier", "fieldname": f["fieldname"]}):
             create_custom_field("Supplier", f)
+
+
+def ensure_purchase_order_hbr_field():
+    """Create the Purchase Order link used by HBR create buttons and map status."""
+    if frappe.db.exists("Custom Field", {"dt": "Purchase Order", "fieldname": "custom_home_build_request"}):
+        return
+
+    frappe.get_doc({
+        "doctype": "Custom Field",
+        "dt": "Purchase Order",
+        "fieldname": "custom_home_build_request",
+        "label": "Home Build Request",
+        "fieldtype": "Link",
+        "options": "Home Build Request",
+        "insert_after": "supplier",
+        "read_only": 1,
+        "no_copy": 1,
+    }).insert(ignore_permissions=True)
+    frappe.clear_cache(doctype="Purchase Order")
 
 
 def tidy_la_connections():
