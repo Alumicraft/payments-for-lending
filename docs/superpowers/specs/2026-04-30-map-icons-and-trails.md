@@ -27,19 +27,21 @@ Block-mode reuses `default_latitude` / `default_longitude` for centering — no 
 
 Deal status is **derived at query time** from existing docs, not stored on the HBR. Single source of truth — no new field, no sync hooks.
 
-| Status      | Rule                                                          | Color (TBD by icon design) |
-|-------------|---------------------------------------------------------------|---------------------------|
-| Draft       | `HBR.docstatus = 0`                                           | (designer)                |
-| Cancelled   | `HBR.docstatus = 2` OR linked PO is cancelled                 | (designer)                |
-| Pending     | `HBR.docstatus = 1` and no PO exists                          | (designer)                |
-| Ordered     | A linked Purchase Order exists and not yet fully received     | (designer)                |
-| Delivered   | A linked Purchase Receipt exists                              | (designer)                |
+| Status      | Rule                                                          | Color                       |
+|-------------|---------------------------------------------------------------|------------------------------|
+| Pending     | `HBR.docstatus ∈ {0,1}` and no PO exists (Draft folds here)   | gray                         |
+| Ordered     | A linked Purchase Order exists and not yet fully received     | #FF7B00 (Figma productivity) |
+| Delivered   | A linked Purchase Receipt exists                              | #007AFF→#0074F3 gradient (Figma data) |
+
+Cancelled HBRs (`docstatus=2` OR linked PO cancelled with no active PO/PR) are filtered
+server-side in `get_heatmap_data` and never reach the map.
 
 Linkage:
 - HBR ↔ Purchase Order via `PO.custom_home_build_request`
 - HBR ↔ Purchase Receipt via the PO it references (PR's items reference the PO)
 
-Default filter state: **Cancelled hidden by default**, all others visible. Persisted in `localStorage` per user.
+Default filter state: All three statuses visible. Persisted in `localStorage` per user
+under key `dcr-map-status-filter`.
 
 ## Trailing 12-Month Window
 
@@ -47,14 +49,14 @@ Default filter state: **Cancelled hidden by default**, all others visible. Persi
 
 ## Home Icons
 
-Two visual styles per status × two themes (light/dark) = **20 home assets**.
+Two visual styles per status × two themes (light/dark) = **12 home assets**.
 
 ```
 home-puck-{status}-{theme}.png
 home-full-{status}-{theme}.png
 ```
 
-Where `status ∈ {draft, pending, ordered, delivered, cancelled}` and `theme ∈ {light, dark}`.
+Where `status ∈ {pending, ordered, delivered}` and `theme ∈ {light, dark}`.
 
 **Switching rules**:
 - Default: zoom < `puck_full_zoom_threshold` → puck. Zoom ≥ threshold → full icon. Implemented via Mapbox `step` expression on `icon-image`.
@@ -103,7 +105,7 @@ Multiple HBRs can share an address. Group key:
 So two lots in the same park (different `space_number`) are **separate pins**. Same address with no space → stacked.
 
 When a stack contains > 1 home:
-- Pin color follows priority: `Ordered > Pending > Delivered > Draft > Cancelled`
+- Pin color follows priority: `Ordered > Pending > Delivered`
 - Count badge in the top-right corner shows visible-after-filter count
 - Click → popup is a list view: header `"{N} deals at {address}"`, body is one row per home (status pill, customer, factory, "Open" link)
 - Pin disappears entirely if every home in the stack is filtered out
@@ -122,7 +124,7 @@ When a stack contains > 1 home:
 - Footer: "Show all / Hide all"
 
 **Behavior**:
-- Multi-select; defaults: all visible **except Cancelled**
+- Multi-select; defaults: all three statuses visible
 - Filter applies to home pins (puck + full), the heatmap weighting, popup contents, and trail counts. Factories are unaffected.
 - State persisted to `localStorage` keyed `dcr-map-status-filter`
 - Counts update live as the filter changes
@@ -195,7 +197,7 @@ Geocoded by an `on_update` hook against the supplier's primary address.
 4. `get_heatmap_data` rewrite + status derivation (this PR)
 5. `get_factory_locations` endpoint (this PR)
 6. Block JS: `block_zoom` wiring + factory layer + status-aware icon expressions w/ placeholder colors (this PR)
-7. Real status icons (next PR — depends on design assets)
-8. Legend + filter UI (next PR)
-9. Snail trail rendering (next PR)
-10. Stacked-popup list view (next PR)
+7. ~~Real status icons~~ ✅ shipped 2026-04-30 (12 home + 2 factory assets)
+8. ~~Legend + filter UI~~ ✅ shipped 2026-04-30
+9. ~~Snail trail rendering~~ ✅ shipped 2026-04-30
+10. ~~Stacked-popup list view~~ ✅ shipped 2026-04-30 (incl. drill-down + factory popup)

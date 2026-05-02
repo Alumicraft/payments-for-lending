@@ -317,79 +317,141 @@ def ensure_map_block():
     if legacy_workspaces:
         frappe.db.commit()
 
-    html_content = """<style>
+    html_content = """<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
 .mapboxgl-ctrl-bottom-left, .mapboxgl-ctrl-bottom-right { transform: translateY(150%); }
-.mapboxgl-popup-content { padding: 0; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.04); }
-.mapboxgl-popup--dark .mapboxgl-popup-content { background: #1c1f23; box-shadow: 0 6px 18px rgba(0,0,0,0.5), 0 0 0 1px #2d3137; }
-.mapboxgl-popup--dark .mapboxgl-popup-tip { border-top-color: #1c1f23; border-bottom-color: #1c1f23; }
-.mapboxgl-popup-close-button { font-size: 18px; padding: 4px 8px; color: inherit; }
-.dcr-popup { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 13px; line-height: 1.45; color: #1f272e; min-width: 320px; }
-.dcr-popup--dark { color: #f2f4f5; }
+
+/* DCR map popup styling — see docs/superpowers/specs/2026-04-30-map-icons-and-trails.md */
+.mapboxgl-popup-content { padding: 0 !important; border-radius: 12px !important; overflow: hidden !important; box-shadow: 0 8px 24px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06) !important; background: transparent !important; }
+.mapboxgl-popup--dark .mapboxgl-popup-content { box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 0 1px #2D3137 !important; }
+/* Hide tip pointer + close button to match the mockup's floating-card look.
+   Popup auto-dismisses on Esc / map move / map zoom / new pin. */
+.mapboxgl-popup-tip { display: none !important; }
+.mapboxgl-popup-close-button { display: none !important; }
+
+.dcr-popup { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; line-height: 1.45; color: #1F272E; min-width: 320px; background: #FFFFFF; border-radius: 12px; overflow: hidden; }
+.dcr-popup--dark { color: #F2F4F5; background: #1C1F23; }
 .dcr-popup--multi { width: 380px; }
 .dcr-popup--factory { width: 320px; }
+
 .dcr-popup__header { padding: 14px 16px 10px; }
 .dcr-popup__title { font-size: 15px; font-weight: 600; margin: 0 0 2px; }
 .dcr-popup__subtitle { font-size: 13px; font-weight: 500; margin: 0; }
+.dcr-popup__tertiary { font-size: 12px; font-weight: 500; margin: 2px 0 0; }
 .dcr-popup__body { padding: 6px 16px 14px; }
-.dcr-popup__footer { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid #ecedee; }
-.dcr-popup--dark .dcr-popup__footer { border-top-color: #2d3137; }
+.dcr-popup__footer { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid #ECEDEE; }
+.dcr-popup--dark .dcr-popup__footer { border-top-color: #2D3137; }
+
 .dcr-popup .text-secondary { color: #687178; }
-.dcr-popup--dark .text-secondary { color: #a6adb4; }
-.dcr-popup .link { color: #2490ef; text-decoration: none; }
+.dcr-popup--dark .text-secondary { color: #A6ADB4; }
+.dcr-popup .link { color: #2490EF; text-decoration: none; }
+.dcr-popup--dark .link { color: #4DA8FF; }
 .dcr-popup .link:hover { text-decoration: underline; }
+
 .dcr-popup .field-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 0; }
 .dcr-popup .field-row .label-text { flex-shrink: 0; font-weight: 500; }
 .dcr-popup .field-row .value-text { text-align: right; font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dcr-popup .hbr-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
-.dcr-popup .pill { display: inline-flex; align-items: center; padding: 3px 8px; font-size: 11px; font-weight: 600; text-transform: uppercase; border-radius: 4px; line-height: 1.2; }
-.dcr-popup .pill--pending { background: rgba(104,113,120,0.16); color: #5a6166; }
-.dcr-popup .pill--ordered { background: rgba(255,123,0,0.16); color: #d96d00; }
-.dcr-popup .pill--delivered { background: linear-gradient(135deg,#007aff 0%,#0074f3 100%); color: #fff; }
-.dcr-popup--dark .pill--pending { background: rgba(166,173,180,0.18); color: #c8cfd5; }
-.dcr-popup--dark .pill--ordered { background: rgba(255,154,60,0.20); color: #ffb066; }
-.dcr-popup--dark .pill--delivered { background: linear-gradient(135deg,#4da8ff 0%,#3f9ee8 100%); color: #0e1116; }
-.dcr-popup .btn { flex: 1; padding: 8px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; text-align: center; cursor: pointer; border: none; font-family: inherit; }
-.dcr-popup .btn--primary { background: linear-gradient(135deg,#007aff 0%,#0074f3 100%); color: #fff; }
-.dcr-popup .btn--secondary { background: #f2f3f4; color: #1f272e; }
-.dcr-popup--dark .btn--primary { background: linear-gradient(135deg,#4da8ff 0%,#3f9ee8 100%); color: #0e1116; }
-.dcr-popup--dark .btn--secondary { background: #2d3137; color: #f2f4f5; }
-.dcr-popup .stack-list { padding: 4px 0; border-top: 1px solid #ecedee; }
-.dcr-popup--dark .stack-list { border-top-color: #2d3137; }
-.dcr-popup .stack-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 10px 16px; align-items: center; cursor: pointer; }
-.dcr-popup .stack-row:hover { background: #fafafa; }
-.dcr-popup--dark .stack-row:hover { background: #22272b; }
-.dcr-popup .stack-row + .stack-row { border-top: 1px solid #f0f0f0; }
-.dcr-popup--dark .stack-row + .stack-row { border-top-color: #2a2e33; }
-.dcr-popup .stack-row__head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.dcr-popup .hbr-id { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+
+.dcr-popup .pill { display: inline-flex; align-items: center; padding: 3px 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; border-radius: 4px; line-height: 1.2; }
+.dcr-popup .pill--pending  { background: rgba(104,113,120,0.16); color: #5A6166; }
+.dcr-popup--dark .pill--pending { background: rgba(166,173,180,0.18); color: #C8CFD5; }
+.dcr-popup .pill--ordered  { background: rgba(255,123,0,0.16); color: #D96D00; }
+.dcr-popup--dark .pill--ordered { background: rgba(255,154,60,0.20); color: #FFB066; }
+.dcr-popup .pill--delivered { background: linear-gradient(135deg,#007AFF 0%,#0074F3 100%); color: #FFFFFF; }
+.dcr-popup--dark .pill--delivered { background: linear-gradient(135deg,#4DA8FF 0%,#3F9EE8 100%); color: #0E1116; }
+
+.dcr-popup .btn { flex: 1; padding: 8px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; text-align: center; cursor: pointer; border: none; font-family: inherit; transition: opacity .12s ease, background .12s ease; }
+.dcr-popup .btn:active { transform: translateY(1px); }
+.dcr-popup .btn--primary { background: linear-gradient(135deg,#007AFF 0%,#0074F3 100%); color: #fff; }
+.dcr-popup .btn--primary:hover { opacity: .92; }
+.dcr-popup--dark .btn--primary { background: linear-gradient(135deg,#4DA8FF 0%,#3F9EE8 100%); color: #0E1116; }
+.dcr-popup .btn--secondary { background: #F2F3F4; color: #1F272E; }
+.dcr-popup .btn--secondary:hover { background: #E8EAEC; }
+.dcr-popup--dark .btn--secondary { background: #2D3137; color: #F2F4F5; }
+.dcr-popup--dark .btn--secondary:hover { background: #383D42; }
+
+.dcr-popup .stack-list { padding: 4px 0; border-top: 1px solid #ECEDEE; }
+.dcr-popup--dark .stack-list { border-top-color: #2D3137; }
+.dcr-popup .stack-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 10px 16px; align-items: center; cursor: pointer; transition: background .12s ease; }
+.dcr-popup .stack-row:hover { background: #FAFAFA; }
+.dcr-popup--dark .stack-row:hover { background: #22272B; }
+.dcr-popup .stack-row + .stack-row { border-top: 1px solid #F0F0F0; }
+.dcr-popup--dark .stack-row + .stack-row { border-top-color: #2A2E33; }
+.dcr-popup .stack-row__head { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; min-width: 0; }
 .dcr-popup .stack-row__customer { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
 .dcr-popup .stack-row__factory { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dcr-popup .trail-btn { width: 24px; height: 24px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; background: transparent; border: 1px solid #c7cdd3; color: #687178; padding: 0; opacity: .65; }
-.dcr-popup .trail-btn:hover { opacity: 1; background: #f2f3f4; }
-.dcr-popup--dark .trail-btn { border-color: #4a5158; color: #a6adb4; }
-.dcr-popup--dark .trail-btn:hover { background: #2d3137; }
-.dcr-popup .trail-btn svg { width: 12px; height: 12px; }
-.dcr-legend { position: absolute; bottom: 16px; left: 16px; z-index: 5; background: #fff; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.04); padding: 10px 12px; min-width: 200px; font-family: Inter, -apple-system, sans-serif; font-size: 12px; }
-.dcr-legend--dark { background: #1c1f23; color: #f2f4f5; box-shadow: 0 4px 16px rgba(0,0,0,0.5), 0 0 0 1px #2d3137; }
-.dcr-legend__title { font-size: 11px; font-weight: 600; text-transform: uppercase; color: #687178; margin-bottom: 8px; }
-.dcr-legend--dark .dcr-legend__title { color: #a6adb4; }
+.dcr-popup .stack-row__meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.dcr-popup .stack-row__space { font-size: 11px; font-weight: 500; }
+.dcr-popup .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; padding: 14px 16px 4px; border-top: 1px solid #ECEDEE; }
+.dcr-popup--dark .stats { border-top-color: #2D3137; }
+.dcr-popup .stat { display: flex; flex-direction: column; gap: 6px; }
+.dcr-popup .stat__count { font-size: 22px; font-weight: 700; line-height: 1; }
+.dcr-popup .stat__label { display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+.dcr-popup .stat__dot { width: 8px; height: 8px; border-radius: 50%; }
+.dcr-popup .dot--pending { background: #687178; }
+.dcr-popup .dot--ordered { background: #FF7B00; }
+.dcr-popup .dot--delivered { background: linear-gradient(135deg,#007AFF,#0074F3); }
+.dcr-popup--dark .dot--delivered { background: linear-gradient(135deg,#4DA8FF,#3F9EE8); }
+.dcr-popup .factory-total { padding: 6px 16px 12px; font-size: 12px; font-weight: 500; }
+
+/* Legend — bottom-right per UX request */
+.dcr-legend { position: absolute; bottom: 16px; right: 16px; z-index: 5; background: #fff; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.04); padding: 10px 12px; min-width: 200px; font-family: 'Inter', -apple-system, sans-serif; font-size: 12px; }
+.dcr-legend--dark { background: #1C1F23; color: #F2F4F5; box-shadow: 0 4px 16px rgba(0,0,0,0.5), 0 0 0 1px #2D3137; }
+.dcr-legend__title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: #687178; margin-bottom: 8px; }
+.dcr-legend--dark .dcr-legend__title { color: #A6ADB4; }
 .dcr-legend__row { display: grid; grid-template-columns: 16px 1fr auto auto; gap: 8px; align-items: center; padding: 4px 0; cursor: pointer; user-select: none; }
 .dcr-legend__row.is-off { opacity: .4; }
 .dcr-legend__swatch { width: 12px; height: 12px; border-radius: 50%; }
 .dcr-legend .dot--pending { background: #687178; }
-.dcr-legend .dot--ordered { background: #ff7b00; }
-.dcr-legend .dot--delivered { background: linear-gradient(135deg,#007aff,#0074f3); }
+.dcr-legend .dot--ordered { background: #FF7B00; }
+.dcr-legend .dot--delivered { background: linear-gradient(135deg,#007AFF,#0074F3); }
+.dcr-legend--dark .dot--delivered { background: linear-gradient(135deg,#4DA8FF,#3F9EE8); }
 .dcr-legend__count { font-variant-numeric: tabular-nums; color: #687178; }
-.dcr-legend--dark .dcr-legend__count { color: #a6adb4; }
+.dcr-legend--dark .dcr-legend__count { color: #A6ADB4; }
 .dcr-legend__check { width: 14px; height: 14px; pointer-events: none; }
-.dcr-legend__footer { margin-top: 6px; padding-top: 6px; border-top: 1px solid #ecedee; display: flex; gap: 8px; font-size: 11px; }
-.dcr-legend--dark .dcr-legend__footer { border-top-color: #2d3137; }
-.dcr-legend__footer button { color: #2490ef; cursor: pointer; background: none; border: 0; padding: 0; font: inherit; }
+.dcr-legend__footer { margin-top: 6px; padding-top: 6px; border-top: 1px solid #ECEDEE; display: flex; gap: 8px; font-size: 11px; }
+.dcr-legend--dark .dcr-legend__footer { border-top-color: #2D3137; }
+.dcr-legend__footer button { color: #2490EF; cursor: pointer; background: none; border: 0; padding: 0; font: inherit; }
+.dcr-legend__footer button:hover { text-decoration: underline; }
+.dcr-legend--dark .dcr-legend__footer button { color: #4DA8FF; }
+
+/* Block view: read-only legend pill */
 .dcr-legend--block { padding: 6px 10px; min-width: 0; display: flex; gap: 12px; align-items: center; }
 .dcr-legend--block .dcr-legend__title { display: none; }
 .dcr-legend--block .dcr-legend__row { display: flex; gap: 6px; padding: 0; cursor: default; }
 .dcr-legend--block .dcr-legend__check, .dcr-legend--block .dcr-legend__count { display: none; }
+
+/* Search — floats over the map, top-center */
+.dcr-search { position: absolute; top: 24px; left: 50%; transform: translateX(-50%); z-index: 10; font-family: 'Inter', -apple-system, sans-serif; }
+.dcr-search__input { width: 360px; max-width: 80vw; height: 38px; padding: 0 36px 0 14px; font: inherit; font-size: 13px; border: 0; border-radius: 8px; background: #fff; box-shadow: 0 4px 14px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06); outline: none; color: #1F272E; }
+.dcr-search__input::placeholder { color: #94a3b8; }
+.dcr-search__input:focus { box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 0 0 2px #2490EF; }
+.dcr-search__icon { position: absolute; right: 10px; top: 0; bottom: 0; display: flex; align-items: center; pointer-events: none; color: #94a3b8; }
+.dcr-search__icon svg { display: block; }
+.dcr-search__menu { position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: #fff; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06); overflow: hidden; max-height: 360px; overflow-y: auto; display: none; }
+.dcr-search__menu.is-open { display: block; }
+.dcr-search__item { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #F0F0F0; }
+.dcr-search__item:last-child { border-bottom: 0; }
+.dcr-search__item.is-active, .dcr-search__item:hover { background: #F2F8FF; }
+.dcr-search__label { font-size: 13px; font-weight: 600; color: #1F272E; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dcr-search__sub { font-size: 11px; color: #687178; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; }
+.dcr-search__empty { padding: 12px; font-size: 12px; color: #94a3b8; text-align: center; }
+/* Dark mode */
+.dcr-search--dark .dcr-search__input { background: #1C1F23; color: #F2F4F5; box-shadow: 0 2px 8px rgba(0,0,0,0.4), 0 0 0 1px #2D3137; }
+.dcr-search--dark .dcr-search__input::placeholder { color: #64748b; }
+.dcr-search--dark .dcr-search__input:focus { box-shadow: 0 4px 16px rgba(0,0,0,0.5), 0 0 0 2px #4DA8FF; }
+.dcr-search--dark .dcr-search__icon { color: #64748b; }
+.dcr-search--dark .dcr-search__menu { background: #1C1F23; box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 0 1px #2D3137; }
+.dcr-search--dark .dcr-search__item { border-bottom-color: #2A2E33; }
+.dcr-search--dark .dcr-search__item.is-active, .dcr-search--dark .dcr-search__item:hover { background: #22272B; }
+.dcr-search--dark .dcr-search__label { color: #F2F4F5; }
+.dcr-search--dark .dcr-search__sub { color: #A6ADB4; }
+
 </style>
-<div id="dcr-map" style="width:100%; overflow: hidden;"></div>"""
+<div id="dcr-map" style="width:100%; overflow: hidden; position: relative;"></div>"""
 
     js_content = r"""
 (function() {
@@ -445,6 +507,278 @@ def ensure_map_block():
     setHeight();
     window.addEventListener('resize', setHeight);
 
+    // Hoisted to IIFE scope so loadData()'s addHomeLayer (which lives in a
+    // sibling closure) can reach it. Set from get_map_settings; default 10.
+    var puckFullThreshold = 10;
+
+    // Prefetch adapter — first checks window._dcrMapPrefetch (populated
+    // by map_warmup.js on desk boot). If hit, hand the cached response
+    // back asynchronously to match frappe.call's contract; if miss, fall
+    // through to the live call.
+    function callOrCache(method, callback) {
+        var pre = window._dcrMapPrefetch && window._dcrMapPrefetch[method];
+        if (pre) {
+            setTimeout(function() { callback(pre); }, 0);
+            return;
+        }
+        frappe.call({ method: method, callback: callback });
+    }
+
+    // Heat reads softer on dark basemaps; peak 0.25 vs 0.5 light. Hoisted
+    // here for the same reason as puckFullThreshold — loadData uses it.
+    function heatmapOpacityExpr(isDark) {
+        var peak = isDark ? 0.25 : 0.5;
+        return ['interpolate', ['linear'], ['zoom'], 9, peak, 10, 0];
+    }
+
+    // ========== ICON SWAY PHYSICS =====================================
+    // Pins tilt opposite to map pan direction (like a flag catching wind)
+    // and spring back to upright on rest. Subtle — capped at ±4°.
+    var _sway = { angle: 0, target: 0, vel: 0, raf: null, prev: null };
+    function applySway(angle) {
+        var m = window._dcrMap;
+        if (!m) return;
+        if (m.getLayer('unclustered-point')) {
+            try { m.setLayoutProperty('unclustered-point', 'icon-rotate', angle); } catch(_) {}
+        }
+        if (m.getLayer('factory-point')) {
+            try { m.setLayoutProperty('factory-point', 'icon-rotate', angle); } catch(_) {}
+        }
+    }
+    function swayStep() {
+        // Damped spring: each frame, accelerate toward target with damping
+        // on velocity. Settles smoothly with a tiny overshoot.
+        var spring = (_sway.target - _sway.angle) * 0.18;
+        _sway.vel = _sway.vel * 0.78 + spring;
+        _sway.angle += _sway.vel;
+        applySway(_sway.angle);
+        // Rest condition — close to zero with no remaining motion.
+        if (_sway.target === 0 && Math.abs(_sway.angle) < 0.05 && Math.abs(_sway.vel) < 0.05) {
+            _sway.angle = 0; _sway.vel = 0;
+            applySway(0);
+            _sway.raf = null;
+            return;
+        }
+        _sway.raf = requestAnimationFrame(swayStep);
+    }
+    function bumpSway(target) {
+        _sway.target = target;
+        if (!_sway.raf) _sway.raf = requestAnimationFrame(swayStep);
+    }
+
+    // ========== SEARCH INDEX + CONTROL ================================
+    var _searchIndex = [];
+    function buildSearchIndex() {
+        _searchIndex = [];
+        var homes = window._dcrHomeFeatures || [];
+        homes.forEach(function(f) {
+            var groupHomes;
+            try { groupHomes = JSON.parse(f.properties.homes_json || '[]'); } catch(_) { return; }
+            groupHomes.forEach(function(h) {
+                var label = (h.customer_name || h.name) + ' — ' + (f.properties.address || '');
+                var sub = [h.name, h.factory_name, f.properties.community_name].filter(Boolean).join(' · ');
+                _searchIndex.push({
+                    type: 'home',
+                    label: label,
+                    sub: sub,
+                    home: h,
+                    groupProps: f.properties,
+                    lngLat: f.geometry.coordinates,
+                    searchText: ((h.customer_name || '') + ' ' + (h.name || '') + ' ' +
+                        (f.properties.address || '') + ' ' + (f.properties.community_name || '') + ' ' +
+                        (h.factory_name || '') + ' ' + (f.properties.city || '')).toLowerCase()
+                });
+            });
+        });
+        var facs = window._dcrFactoryFeatures || [];
+        facs.forEach(function(f) {
+            _searchIndex.push({
+                type: 'factory',
+                label: f.properties.supplier_name || f.properties.name,
+                sub: 'Factory · ' + (f.properties.city || ''),
+                groupProps: f.properties,
+                lngLat: f.geometry.coordinates,
+                searchText: ((f.properties.supplier_name || '') + ' ' + (f.properties.city || '')).toLowerCase()
+            });
+        });
+    }
+    function searchQuery(q) {
+        if (!q || q.length < 2) return [];
+        var ql = q.toLowerCase();
+        var hits = [];
+        for (var i = 0; i < _searchIndex.length && hits.length < 8; i++) {
+            if (_searchIndex[i].searchText.indexOf(ql) !== -1) hits.push(_searchIndex[i]);
+        }
+        return hits;
+    }
+    function flyToResult(map, item) {
+        var coords = item.lngLat;
+        // Crisp 3D arrival — pronounced arc, snap into pitch.
+        map.flyTo({
+            center: coords,
+            zoom: item.type === 'factory' ? 13 : 16,
+            pitch: 60, bearing: -15,
+            curve: 1.7,
+            duration: 4500,  // long enough for tiles to load before arrival
+            essential: true
+        });
+        map.once('moveend', function() {
+            // Open the popup at the landed position
+            var html, popup;
+            if (item.type === 'factory') {
+                html = renderFactoryHtml(item.groupProps);
+                popup = openPopup(map, coords, html, { offset: 14 });
+                popup._dcrProps = item.groupProps;
+            } else {
+                html = renderSingleHomeHtml(item.groupProps, item.home);
+                popup = openPopup(map, coords, html, { offset: 18 });
+                popup._dcrProps = item.groupProps;
+                popup._dcrHomes = [item.home];
+            }
+        });
+    }
+
+    // Mount the search box directly on the map container (not as a Mapbox
+    // control — those live inside .mapboxgl-ctrl-* wrappers with
+    // pointer-events: none, which can swallow input clicks). Full-bleed only.
+    function mountSearch(m) {
+        if (!isMapPage) return;
+        if (container.querySelector('.dcr-search')) return;  // already mounted
+        var wrap = document.createElement('div');
+        wrap.className = 'dcr-search';
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'dcr-search__input';
+        input.placeholder = 'Search homes, customers, factories…';
+        var icon = document.createElement('div');
+        icon.className = 'dcr-search__icon';
+        icon.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+        var menu = document.createElement('div');
+        menu.className = 'dcr-search__menu';
+        wrap.appendChild(input);
+        wrap.appendChild(icon);
+        wrap.appendChild(menu);
+
+        var hits = [];
+        var active = -1;
+        function render() {
+            if (!hits.length) {
+                if (input.value.length >= 2) {
+                    menu.innerHTML = '<div class="dcr-search__empty">No matches</div>';
+                    menu.classList.add('is-open');
+                } else {
+                    menu.classList.remove('is-open');
+                }
+                return;
+            }
+            menu.innerHTML = hits.map(function(h, i) {
+                return '<div class="dcr-search__item' + (i === active ? ' is-active' : '') + '" data-idx="' + i + '">'
+                    + '<div class="dcr-search__label">' + escHtml(h.label) + '</div>'
+                    + '<div class="dcr-search__sub">' + escHtml(h.sub) + '</div>'
+                    + '</div>';
+            }).join('');
+            menu.classList.add('is-open');
+        }
+        function close() { menu.classList.remove('is-open'); active = -1; }
+
+        var debounce;
+        input.addEventListener('input', function() {
+            clearTimeout(debounce);
+            debounce = setTimeout(function() {
+                hits = searchQuery(input.value.trim());
+                active = hits.length ? 0 : -1;
+                render();
+            }, 120);
+        });
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowDown') { e.preventDefault(); active = Math.min(active + 1, hits.length - 1); render(); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); active = Math.max(active - 1, 0); render(); }
+            else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); flyToResult(m, hits[active]); input.blur(); close(); }
+            else if (e.key === 'Escape') { close(); input.blur(); }
+        });
+        menu.addEventListener('mousedown', function(e) {
+            var item = e.target.closest('.dcr-search__item');
+            if (!item) return;
+            e.preventDefault();
+            var idx = parseInt(item.getAttribute('data-idx'), 10);
+            if (hits[idx]) flyToResult(m, hits[idx]);
+            input.blur();
+            close();
+        });
+        document.addEventListener('mousedown', function(e) {
+            if (!wrap.contains(e.target)) close();
+        });
+
+        // Theme support
+        function applyTheme() {
+            wrap.classList.toggle('dcr-search--dark', currentTheme() === 'dark');
+        }
+        applyTheme();
+        new MutationObserver(applyTheme).observe(document.documentElement, {
+            attributes: true, attributeFilter: ['data-theme']
+        });
+
+        container.appendChild(wrap);
+    }
+
+    // ========== URL STATE =============================================
+    // Hash format: #z=10.5&l=-118,38&s=Pending,Ordered&v=sat
+    function readUrlState() {
+        var h = (window.location.hash || '').replace(/^#/, '');
+        if (!h) return null;
+        var out = {};
+        h.split('&').forEach(function(kv) {
+            var p = kv.split('=');
+            out[p[0]] = decodeURIComponent(p[1] || '');
+        });
+        return out;
+    }
+    function writeUrlState(state) {
+        var parts = [];
+        if (state.z != null) parts.push('z=' + state.z.toFixed(2));
+        if (state.l) parts.push('l=' + state.l[0].toFixed(4) + ',' + state.l[1].toFixed(4));
+        if (state.s) parts.push('s=' + encodeURIComponent(state.s.join(',')));
+        if (state.v) parts.push('v=' + state.v);
+        try {
+            var newHash = '#' + parts.join('&');
+            if (newHash !== window.location.hash) {
+                history.replaceState(null, '', window.location.pathname + window.location.search + newHash);
+            }
+        } catch(_) {}
+    }
+    function captureUrlState(map) {
+        var c = map.getCenter();
+        return {
+            z: map.getZoom(),
+            l: [c.lng, c.lat],
+            s: window._dcrMapActiveStatuses || ['Pending','Ordered','Delivered'],
+            v: window._dcrSatelliteOn ? 'sat' : 'map'
+        };
+    }
+    function applyUrlState(map, state) {
+        if (!state) return;
+        var center = state.l ? state.l.split(',').map(Number) : null;
+        if (center && state.z) {
+            map.jumpTo({ center: center, zoom: parseFloat(state.z) });
+        }
+        if (state.s) {
+            var arr = state.s.split(',').filter(function(x){ return STATUS_LIST.indexOf(x) !== -1; });
+            if (arr.length) saveStatusFilter(arr);
+        }
+        // Style applies via the satellite control's own state machine after init
+        window._dcrInitialUrlStyle = state.v;
+    }
+
+    // Idempotent doc-level listener registration. Frappe re-runs this IIFE
+    // whenever the workspace remounts; without this, every navigation back
+    // to the Map workspace would attach a fresh handler.
+    function registerDocListener(key, type, handler) {
+        var existing = window['_dcr' + key];
+        if (existing) document.removeEventListener(type, existing);
+        document.addEventListener(type, handler);
+        window['_dcr' + key] = handler;
+    }
+
     // Load Mapbox GL JS
     function loadMapbox(cb) {
         // Inject CSS into shadow root so it reaches the controls
@@ -472,9 +806,7 @@ def ensure_map_block():
     }
 
     function initMap() {
-        frappe.call({
-            method: 'dcr.api.map.get_map_settings',
-            callback: function(r) {
+        callOrCache('dcr.api.map.get_map_settings', function(r) {
                 if (!r.message || !r.message.access_token) {
                     container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#8d99a6;font-size:14px;">Configure Map Settings to enable the heatmap</div>';
                     return;
@@ -484,7 +816,7 @@ def ensure_map_block():
                 // Block view zooms out a bit so the smaller widget still
                 // shows context; full-bleed Map workspace uses default_zoom.
                 var initialZoom = isMapPage ? cfg.default_zoom : (cfg.block_zoom || cfg.default_zoom);
-                var puckFullThreshold = cfg.puck_full_zoom_threshold || 12;
+                puckFullThreshold = cfg.puck_full_zoom_threshold || 12;  // assigns to IIFE-scoped var
                 var map = new mapboxgl.Map({
                     container: container,
                     style: cfg.map_style_url,
@@ -537,12 +869,16 @@ def ensure_map_block():
                     btn.title = 'Recenter';
                     btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:auto;"><path d="M3 11L12 3L21 11V20C21 20.5523 20.5523 21 20 21H15V14H9V21H4C3.44772 21 3 20.5523 3 20V11Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/></svg>';
                     btn.onclick = function() {
-                        m.easeTo({
+                        // Back to the default overview — wide view of the
+                        // whole dataset, flat camera.
+                        m.flyTo({
                             center: [cfg.default_longitude, cfg.default_latitude],
                             zoom: initialZoom,
                             pitch: 0,
                             bearing: 0,
-                            duration: 2500
+                            curve: 1.7,
+                            duration: 4500,
+                            essential: true
                         });
                     };
                     this._container.appendChild(btn);
@@ -553,6 +889,79 @@ def ensure_map_block():
                 };
                 map.addControl(new RecenterControl(), 'top-right');
 
+                // Satellite toggle — flips between Mapbox Standard and
+                // Standard Satellite. Custom layers are wiped by setStyle,
+                // so we re-load them on the subsequent style.load.
+                // Auto-switches to satellite at zoom >= 15; auto-reverts when
+                // zooming back out, unless the user manually toggled.
+                var SAT_AUTO_THRESHOLD = 15;
+                var SatelliteControl = function() {};
+                SatelliteControl.prototype.onAdd = function(m) {
+                    this._map = m;
+                    this._container = document.createElement('div');
+                    this._container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group';
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.title = 'Toggle satellite imagery';
+                    var SAT_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;"><path d="M12 2 L2 7 L12 12 L22 7 Z"/><path d="M2 12 L12 17 L22 12"/><path d="M2 17 L12 22 L22 17"/></svg>';
+                    btn.innerHTML = SAT_ICON;
+                    var streetsStyle = cfg.map_style_url || 'mapbox://styles/mapbox/standard';
+                    var satelliteStyle = 'mapbox://styles/mapbox/standard-satellite';
+                    var isSat = false;
+                    var autoTriggered = false;  // true when auto-switch put us on satellite
+
+                    function applyStyle(toSat) {
+                        if (toSat === isSat) return;
+                        isSat = toSat;
+                        window._dcrSatelliteOn = toSat;
+                        m.setStyle(toSat ? satelliteStyle : streetsStyle);
+                        btn.classList.toggle('active', toSat);
+                        btn.title = toSat ? 'Switch to map view' : 'Switch to satellite imagery';
+                        if (window._dcrOnStyleChange) window._dcrOnStyleChange();
+                    }
+
+                    btn.onclick = function() {
+                        applyStyle(!isSat);
+                        autoTriggered = false;  // user took manual control
+                    };
+
+                    // Auto-switch to satellite at high zoom; revert when zooming
+                    // back out only if WE triggered it (don't fight a manual toggle).
+                    m.on('zoom', function() {
+                        var z = m.getZoom();
+                        if (z >= SAT_AUTO_THRESHOLD && !isSat) {
+                            applyStyle(true);
+                            autoTriggered = true;
+                        } else if (z < SAT_AUTO_THRESHOLD && isSat && autoTriggered) {
+                            applyStyle(false);
+                            autoTriggered = false;
+                        }
+                    });
+
+                    this._container.appendChild(btn);
+                    return this._container;
+                };
+                SatelliteControl.prototype.onRemove = function() {
+                    this._container.parentNode.removeChild(this._container);
+                };
+                map.addControl(new SatelliteControl(), 'top-right');
+                mountSearch(map);
+
+                // URL state: read on load, write on view changes
+                var initialUrl = readUrlState();
+                if (initialUrl) applyUrlState(map, initialUrl);
+                var _urlWriteTimer;
+                function scheduleUrlWrite() {
+                    clearTimeout(_urlWriteTimer);
+                    _urlWriteTimer = setTimeout(function() {
+                        writeUrlState(captureUrlState(map));
+                    }, 200);
+                }
+                map.on('moveend', scheduleUrlWrite);
+                map.on('zoomend', scheduleUrlWrite);
+                window._dcrOnFilterChange = scheduleUrlWrite;
+                window._dcrOnStyleChange = scheduleUrlWrite;
+
                 // Day/night mode + icon swap based on Frappe theme
                 var _pinsLoaded = false;
                 function syncTheme() {
@@ -561,12 +970,8 @@ def ensure_map_block():
                     if (_pinsLoaded && map.getLayer('unclustered-point')) {
                         map.setLayoutProperty(
                             'unclustered-point', 'icon-image',
-                            isDark ? 'house-pin-dark' : 'house-pin-light'
+                            iconImageExpr(currentTheme(), puckFullThreshold)
                         );
-                    }
-                    var legendEl = container.querySelector('.dcr-legend');
-                    if (legendEl) {
-                        legendEl.classList.toggle('dcr-legend--dark', isDark);
                     }
 
                     // Theme the Mapbox controls (zoom, compass, 3D, recenter).
@@ -609,6 +1014,17 @@ def ensure_map_block():
                             '}'
                         ].join('\n');
                     }
+                    var legendEl = container.querySelector('.dcr-legend');
+                    if (legendEl) {
+                        legendEl.classList.toggle('dcr-legend--dark', isDark);
+                    }
+                    // Heatmap reads softer on dark basemaps — half the peak
+                    // opacity so it stays a tint rather than competing with
+                    // the satellite/dark imagery.
+                    if (map.getLayer('hbr-heat')) {
+                        map.setPaintProperty('hbr-heat', 'heatmap-opacity',
+                            heatmapOpacityExpr(isDark));
+                    }
                 }
                 map.on('style.load', syncTheme);
 
@@ -618,345 +1034,369 @@ def ensure_map_block():
                     attributes: true, attributeFilter: ['data-theme']
                 });
 
+                var _initialLoadDone = false;
                 map.on('load', function() {
-                    map.addSource('dcr-trails', {
-                        type: 'geojson',
-                        data: { type: 'FeatureCollection', features: [] }
-                    });
-                    map.addLayer({
-                        id: 'dcr-trails',
-                        type: 'line',
-                        source: 'dcr-trails',
-                        paint: {
-                            'line-color': ['coalesce', ['get', 'color'], '#007aff'],
-                            'line-width': 3,
-                            'line-opacity': 0.85,
-                            'line-dasharray': [2, 4]
-                        }
-                    });
+                    _initialLoadDone = true;
                     loadData(map);
                     loadFactories(map);
                 });
-            }
+
+                // setStyle wipes all custom sources/layers/icons. Re-add them
+                // when style.load fires AFTER the initial load. The
+                // !getSource guard avoids re-running on the initial style.load
+                // (which fires before map.on('load') and loadData).
+                map.on('style.load', function() {
+                    if (_initialLoadDone && !map.getSource('hbr-locations')) {
+                        _pinsLoaded = false;
+                        loadData(map);
+                        loadFactories(map);
+                    }
+                });
+
+                // Icon sway — compute pixel-space delta of the previous
+                // center against the current camera; tilt pins opposite.
+                map.on('move', function() {
+                    var c = map.getCenter();
+                    if (_sway.prev) {
+                        try {
+                            var prevPx = map.project(_sway.prev);
+                            var nowPx = map.project(c);
+                            var dxPx = prevPx.x - nowPx.x;
+                            var angle = -dxPx * 0.06;
+                            if (angle < -4) angle = -4;
+                            if (angle > 4) angle = 4;
+                            bumpSway(angle);
+                        } catch(_) {}
+                    }
+                    _sway.prev = c;
+                });
+                map.on('moveend', function() { _sway.prev = null; bumpSway(0); });
+
+                map.on('click', function(e) {
+                    var hits = map.queryRenderedFeatures(e.point, {
+                        layers: ['unclustered-point', 'factory-point']
+                    });
+                    if (hits.length) return;  // pin click already handled
+                    if (_activePopup) _activePopup.remove();
+                });
         });
     }
-
-    var STATUS_LIST = ['Pending', 'Ordered', 'Delivered'];
-    var FILTER_KEY = 'dcr-map-status-filter';
-    var STATUS_COLOR = {
-        Pending: '#687178',
-        Ordered: '#ff7b00',
-        Delivered: '#007aff'
-    };
-    var _activePopup = null;
-    var _trailRAF = null;
-    var _trailOffset = 0;
-    var _factoryByName = {};
 
     function currentTheme() {
         return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
     }
 
-    function popupRootClass(extra) {
-        return 'dcr-popup' + (currentTheme() === 'dark' ? ' dcr-popup--dark' : '') + (extra ? ' ' + extra : '');
+    // Puck under threshold, full pin at/above. Status drives the suffix.
+    // Match keys are Title Case (matches GeoJSON properties.status); image
+    // suffixes are lowercase (match disk filenames). Don't swap the cases.
+    function iconImageExpr(theme, threshold) {
+        var prefix = function(style) {
+            return [
+                'match', ['get', 'status'],
+                'Ordered',   'home-' + style + '-' + theme + '-ordered',
+                'Delivered', 'home-' + style + '-' + theme + '-delivered',
+                /* default Pending */ 'home-' + style + '-' + theme + '-pending'
+            ];
+        };
+        return ['step', ['zoom'], prefix('puck'), threshold, prefix('full')];
     }
 
-    function escHtml(value) {
-        return String(value == null ? '' : value).replace(/[&<>"']/g, function(ch) {
-            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];
+    function iconSizeExpr(threshold) {
+        // Assets exported at 3× from Figma. Scale by 0.3 to get the
+        // intended display size — the asset's own intrinsic dimensions
+        // already encode the puck-vs-full size relationship.
+        return 0.3;
+    }
+
+    function iconAnchorExpr(threshold) {
+        // Pucks anchor at center, full pins at bottom (the point of the pin).
+        return ['step', ['zoom'], 'center', threshold, 'bottom'];
+    }
+
+    // Active statuses; defaults to all three. Task 9 wires legend ↔ filter
+    // ↔ localStorage. Until then this returns the always-pass filter.
+    function currentStatusFilter() {
+        var active = window._dcrMapActiveStatuses || ['Pending', 'Ordered', 'Delivered'];
+        return ['in', ['get', 'status'], ['literal', active]];
+    }
+
+    // ========== POPUP HELPERS =========================================
+    function popupClass() {
+        return currentTheme() === 'dark' ? 'mapboxgl-popup--dark' : '';
+    }
+    function popupRootClass() {
+        return 'dcr-popup' + (currentTheme() === 'dark' ? ' dcr-popup--dark' : '');
+    }
+    function escHtml(s) {
+        if (s == null) return '';
+        return String(s).replace(/[&<>"']/g, function(c) {
+            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
         });
     }
-
-    function statusClass(status) {
-        return String(status || 'Pending').toLowerCase();
+    function relativeDays(iso) {
+        if (!iso) return '';
+        var t = new Date(iso).getTime();
+        if (isNaN(t)) return '';
+        var days = Math.floor((Date.now() - t) / 86400000);
+        if (days < 1) return 'today';
+        if (days === 1) return '1 day ago';
+        if (days < 30) return days + ' days ago';
+        if (days < 60) return '1 month ago';
+        if (days < 365) return Math.floor(days / 30) + ' months ago';
+        return Math.floor(days / 365) + 'y ago';
+    }
+    function statusPillHtml(status) {
+        // Status is a closed set ('Pending'|'Ordered'|'Delivered') from
+        // dcr.api.map._derive_status; lowercasing produces a safe class name.
+        // If user-supplied status strings are ever introduced, sanitize before
+        // concatenating into the class attribute.
+        var s = (status || 'Pending').toLowerCase();
+        return '<span class="pill pill--' + s + '">' + escHtml(status || 'Pending') + '</span>';
+    }
+    function tertiaryLine(props) {
+        var bits = [];
+        if (props.space_number) bits.push('Space ' + props.space_number);
+        var loc = [props.city, props.state].filter(Boolean).join(', ');
+        if (loc && props.zip) loc += ' ' + props.zip;
+        if (loc) bits.push(loc);
+        return bits.join(' · ');
     }
 
-    function statusPill(status) {
-        status = status || 'Pending';
-        return '<span class="pill pill--' + statusClass(status) + '">' + escHtml(status) + '</span>';
-    }
-
-    function fieldRow(label, value) {
-        if (!value) return '';
-        return '<div class="field-row"><span class="label-text text-secondary">' + escHtml(label)
-            + '</span><span class="value-text">' + value + '</span></div>';
-    }
-
-    function trailBtnSvg() {
-        return '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">'
-            + '<path d="M5 19C8 8 16 16 19 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
-            + '<path d="M15 5H19V9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
-            + '</svg>';
-    }
-
-    function parseHomes(props) {
-        try { return JSON.parse(props.homes_json || '[]'); } catch(_) { return []; }
-    }
-
+    // Single popup at a time — track and dismiss on switch
+    var _activePopup = null;
     function openPopup(map, lngLat, html, opts) {
         if (_activePopup) _activePopup.remove();
-        window._dcrClearTrail();
-        var popup = new mapboxgl.Popup(Object.assign({ offset: 15, maxWidth: '420px' }, opts || {}))
-            .setLngLat(lngLat)
-            .setHTML(html)
-            .addTo(map);
-        _activePopup = popup;
-        popup.on('close', function() {
-            if (_activePopup === popup) _activePopup = null;
-            window._dcrClearTrail();
+        var p = new mapboxgl.Popup(Object.assign({
+            offset: 16,
+            className: popupClass(),
+            anchor: 'auto',
+            maxWidth: '420px'
+        }, opts || {}));
+        p.setLngLat(lngLat).setHTML(html).addTo(map);
+        p.on('close', function() {
+            if (_activePopup === p) _activePopup = null;
         });
-        return popup;
+        _activePopup = p;
+        return p;
     }
 
+    // ========== RENDERERS =============================================
     function renderSingleHomeHtml(props, home) {
-        home = home || {};
-        var title = home.name || props.community_name || 'Home Build Request';
+        // `props` is the GeoJSON feature properties (the group level);
+        // `home` is the single home record from props.homes_json.
+        var rows = [
+            ['Status',   statusPillHtml(home.status)],
+            ['Customer', home.customer_name
+                ? escHtml(home.customer_name) + ' · <a class="link" href="/app/customer/' + encodeURIComponent(home.customer || '') + '" target="_top">View</a>'
+                : '<span class="text-secondary">—</span>'],
+            ['Factory',  home.factory_name
+                ? escHtml(home.factory_name) + ' · <a class="link" href="/app/supplier/' + encodeURIComponent(home.factory || '') + '" target="_top">View</a>'
+                : '<span class="text-secondary">—</span>'],
+            ['HBR',      '<span class="hbr-id">' + escHtml(home.name) + '</span>'],
+            ['Created',  '<span class="text-secondary">' + escHtml(relativeDays(home.creation_iso)) + '</span>'],
+        ];
         return '<div class="' + popupRootClass() + '">'
-            + '<div class="dcr-popup__header">'
-            + '<div class="dcr-popup__title hbr-id">' + escHtml(title) + '</div>'
-            + '<div class="dcr-popup__subtitle text-secondary">' + escHtml(props.community_name || 'Unknown community') + '</div>'
-            + '</div>'
-            + '<div class="dcr-popup__body">'
-            + fieldRow('Status', statusPill(home.status || props.status))
-            + fieldRow('Address', escHtml(props.address || ''))
-            + fieldRow('Space', escHtml(props.space_number || ''))
-            + fieldRow('Customer', escHtml(home.customer_name || home.customer || ''))
-            + fieldRow('Factory', escHtml(home.factory_name || home.factory || ''))
-            + '</div>'
-            + '<div class="dcr-popup__footer">'
-            + '<button class="btn btn--primary" data-act="open-hbr" data-name="' + escHtml(home.name || '') + '">Open HBR</button>'
-            + '<button class="btn btn--secondary" data-act="show-trail" data-name="' + escHtml(home.name || '') + '">Show trail</button>'
-            + '</div>'
-            + '</div>';
+            +    '<div class="dcr-popup__header">'
+            +      '<h3 class="dcr-popup__title">' + escHtml(props.address || '') + '</h3>'
+            +      (props.community_name ? '<p class="dcr-popup__subtitle text-secondary">' + escHtml(props.community_name) + '</p>' : '')
+            +      (tertiaryLine(props) ? '<p class="dcr-popup__tertiary text-secondary">' + escHtml(tertiaryLine(props)) + '</p>' : '')
+            +    '</div>'
+            +    '<div class="dcr-popup__body">'
+            +      rows.map(function(r) {
+                     return '<div class="field-row"><span class="label-text text-secondary">' + r[0] + '</span><span class="value-text">' + r[1] + '</span></div>';
+                   }).join('')
+            +    '</div>'
+            +    '<div class="dcr-popup__footer">'
+            +      '<button class="btn btn--primary" data-act="open-hbr" data-name="' + escHtml(home.name) + '">Open HBR</button>'
+            +    '</div>'
+            +  '</div>';
     }
 
     function renderStackedHtml(props, homes) {
-        var rows = homes.map(function(home, i) {
+        var rowsHtml = homes.map(function(h, i) {
+            var ageBit = h.creation_iso ? ' · ' + escHtml(relativeDays(h.creation_iso)) : '';
             return '<div class="stack-row" role="button" tabindex="0" data-act="drill" data-idx="' + i + '">'
-                + '<div class="stack-row__main">'
-                + '<div class="stack-row__head">' + statusPill(home.status || props.status)
-                + '<span class="stack-row__customer">' + escHtml(home.customer_name || home.customer || home.name || 'Home') + '</span></div>'
-                + '<div class="stack-row__factory text-secondary">' + escHtml(home.factory_name || home.factory || '') + '</div>'
-                + '</div>'
-                + '<button class="trail-btn" data-act="show-trail" data-name="' + escHtml(home.name || '') + '" title="Show trail">'
-                + trailBtnSvg() + '</button>'
-                + '</div>';
+                +    '<div class="stack-row__main">'
+                +      '<div class="stack-row__head">'
+                +        statusPillHtml(h.status)
+                +        '<span class="stack-row__customer">' + escHtml(h.customer_name || '—') + '</span>'
+                +      '</div>'
+                +      '<div class="stack-row__factory text-secondary">' + escHtml(h.factory_name || '—') + ageBit + '</div>'
+                +    '</div>'
+                +    '<div class="stack-row__meta">'
+                +      (props.space_number ? '<span class="stack-row__space text-secondary">Space ' + escHtml(props.space_number) + '</span>' : '')
+                +    '</div>'
+                +  '</div>';
         }).join('');
-        return '<div class="' + popupRootClass('dcr-popup--multi') + '">'
-            + '<div class="dcr-popup__header">'
-            + '<div class="dcr-popup__title">' + escHtml(props.community_name || 'Stacked location') + '</div>'
-            + '<div class="dcr-popup__subtitle text-secondary">' + escHtml(props.address || '') + '</div>'
-            + '</div>'
-            + '<div class="stack-list">' + rows + '</div>'
-            + '</div>';
+        var loc = [props.city, props.state].filter(Boolean).join(', ');
+        return '<div class="' + popupRootClass() + ' dcr-popup--multi">'
+            +    '<div class="dcr-popup__header">'
+            +      '<h3 class="dcr-popup__title">' + homes.length + ' deals at ' + escHtml(props.address || '') + '</h3>'
+            +      (props.community_name || loc ? '<p class="dcr-popup__subtitle text-secondary">' + escHtml([props.community_name, loc].filter(Boolean).join(' · ')) + '</p>' : '')
+            +    '</div>'
+            +    '<div class="stack-list">' + rowsHtml + '</div>'
+            +    '<div class="dcr-popup__footer">'
+            +      '<button class="btn btn--secondary" data-act="open-list" style="flex:1;">Open all in list view</button>'
+            +    '</div>'
+            +  '</div>';
     }
 
     function renderFactoryHtml(props) {
-        return '<div class="' + popupRootClass('dcr-popup--factory') + '">'
-            + '<div class="dcr-popup__header">'
-            + '<div class="dcr-popup__title">' + escHtml(props.supplier_name || props.name || 'Factory') + '</div>'
-            + '<div class="dcr-popup__subtitle text-secondary">Factory</div>'
-            + '</div>'
-            + '<div class="dcr-popup__footer">'
-            + '<button class="btn btn--primary" data-act="open-supplier" data-name="' + escHtml(props.name || '') + '">Open supplier</button>'
-            + '<button class="btn btn--secondary" data-act="show-all-trails" data-name="' + escHtml(props.name || '') + '">Show all trails</button>'
-            + '</div>'
-            + '</div>';
+        return '<div class="' + popupRootClass() + ' dcr-popup--factory">'
+            +    '<div class="dcr-popup__header">'
+            +      '<h3 class="dcr-popup__title">' + escHtml(props.supplier_name || props.name) + '</h3>'
+            +      (props.city ? '<p class="dcr-popup__subtitle text-secondary">' + escHtml(props.city) + '</p>' : '')
+            +    '</div>'
+            +    '<div class="stats">'
+            +      '<div class="stat"><span class="stat__count">' + (props.pending_count || 0) + '</span><span class="stat__label text-secondary"><span class="stat__dot dot--pending"></span>Pending</span></div>'
+            +      '<div class="stat"><span class="stat__count">' + (props.ordered_count || 0) + '</span><span class="stat__label text-secondary"><span class="stat__dot dot--ordered"></span>Ordered</span></div>'
+            +      '<div class="stat"><span class="stat__count">' + (props.delivered_count || 0) + '</span><span class="stat__label text-secondary"><span class="stat__dot dot--delivered"></span>Delivered</span></div>'
+            +    '</div>'
+            +    '<div class="factory-total text-secondary">' + (props.total_12mo || 0) + ' deals routed here in the last 12 months</div>'
+            +    '<div class="dcr-popup__footer">'
+            +      '<button class="btn btn--primary" data-act="open-supplier" data-name="' + escHtml(props.name) + '">Open Supplier</button>'
+            +    '</div>'
+            +  '</div>';
     }
 
-    document.addEventListener('click', function(e) {
-        var el = e.target.closest('[data-act]');
-        if (!el) return;
-        var act = el.getAttribute('data-act');
-        var name = el.getAttribute('data-name') || '';
+    // Delegate clicks inside any open popup. Registered idempotently so
+    // SPA re-mount doesn't accumulate handlers.
+    registerDocListener('PopupClick', 'click', function(e) {
+        var t = e.target.closest('[data-act]');
+        if (!t || !_activePopup) return;
+        var act = t.getAttribute('data-act');
+        var name = t.getAttribute('data-name');
         if (act === 'open-hbr' && name) {
-            window.location.href = '/app/home-build-request/' + encodeURIComponent(name);
+            window.open('/app/home-build-request/' + encodeURIComponent(name), '_top');
         } else if (act === 'open-supplier' && name) {
-            window.location.href = '/app/supplier/' + encodeURIComponent(name);
-        } else if (act === 'show-trail' && name) {
-            window._dcrShowTrailForHome(name);
-        } else if (act === 'show-all-trails' && name) {
-            window._dcrShowFactoryFan(name);
-        } else if (act === 'drill' && _activePopup) {
-            var idx = parseInt(el.getAttribute('data-idx'), 10);
-            var homes = _activePopup._dcrHomes || [];
-            var props = _activePopup._dcrProps || {};
-            var home = homes[idx] || {};
-            _activePopup.setHTML(renderSingleHomeHtml(props, home));
-            _activePopup._dcrHomes = homes;
-            _activePopup._dcrProps = props;
+            window.open('/app/supplier/' + encodeURIComponent(name), '_top');
+        } else if (act === 'open-list') {
+            var p = _activePopup._dcrProps;
+            if (p && p.address) {
+                window.open('/app/home-build-request?delivery_address=' + encodeURIComponent(p.address), '_top');
+            }
+        } else if (act === 'drill') {
+            var p2 = _activePopup._dcrProps;
+            var homes = _activePopup._dcrHomes;
+            var idx = parseInt(t.getAttribute('data-idx'), 10);
+            if (p2 && homes && homes[idx]) drillIntoHome(p2, homes[idx]);
         }
     });
 
-    function greatCircleLine(start, end, n) {
-        var lon1 = start[0] * Math.PI / 180, lat1 = start[1] * Math.PI / 180;
-        var lon2 = end[0] * Math.PI / 180, lat2 = end[1] * Math.PI / 180;
-        var d = 2 * Math.asin(Math.sqrt(
-            Math.pow(Math.sin((lat2-lat1)/2), 2) +
-            Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin((lon2-lon1)/2), 2)
-        ));
-        if (d === 0) return [start, end];
-        var coords = [];
-        for (var i = 0; i <= n; i++) {
-            var f = i / n;
-            var A = Math.sin((1-f)*d)/Math.sin(d);
-            var B = Math.sin(f*d)/Math.sin(d);
-            var x = A*Math.cos(lat1)*Math.cos(lon1) + B*Math.cos(lat2)*Math.cos(lon2);
-            var y = A*Math.cos(lat1)*Math.sin(lon1) + B*Math.cos(lat2)*Math.sin(lon2);
-            var z = A*Math.sin(lat1) + B*Math.sin(lat2);
-            coords.push([Math.atan2(y, x) * 180 / Math.PI, Math.atan2(z, Math.sqrt(x*x + y*y)) * 180 / Math.PI]);
+    // Esc dismisses popup
+    registerDocListener('PopupKey', 'keydown', function(e) {
+        if (e.key === 'Escape' && _activePopup) {
+            _activePopup.remove();
         }
-        return coords;
+    });
+
+    function drillIntoHome(groupProps, home) {
+        // Open the single-home popup at the same lngLat with anchor:auto so
+        // Mapbox repositions to the side with the most viewport room.
+        var lngLat = _activePopup.getLngLat();
+        var html = renderSingleHomeHtml(groupProps, home);
+        var p = openPopup(window._dcrMap, lngLat, html, { anchor: 'auto', offset: 16 });
+        p._dcrProps = groupProps;
+        p._dcrHomes = [home];
     }
 
-    function setTrailFeatures(features) {
-        var src = window._dcrMap && window._dcrMap.getSource('dcr-trails');
-        if (!src) return;
-        src.setData({ type: 'FeatureCollection', features: features });
-        if (features.length && !_trailRAF) startTrailAnimation();
-        if (!features.length && _trailRAF) stopTrailAnimation();
-    }
-
-    function startTrailAnimation() {
-        function step() {
-            _trailOffset = (_trailOffset + 0.4) % 7;
-            try { window._dcrMap.setPaintProperty('dcr-trails', 'line-dasharray', [_trailOffset, 4, 3]); } catch(_) {}
-            _trailRAF = requestAnimationFrame(step);
-        }
-        _trailRAF = requestAnimationFrame(step);
-    }
-
-    function stopTrailAnimation() {
-        if (_trailRAF) cancelAnimationFrame(_trailRAF);
-        _trailRAF = null;
-        _trailOffset = 0;
-    }
-
-    window._dcrClearTrail = function() { setTrailFeatures([]); };
-
-    function trailFeatureForHome(homeProps, home) {
-        if (!home || !home.factory) return null;
-        var fac = _factoryByName[home.factory];
-        if (!fac) return null;
-        var start = [Number(homeProps.longitude) || 0, Number(homeProps.latitude) || 0];
-        var end = [Number(fac.longitude) || 0, Number(fac.latitude) || 0];
-        if ((!start[0] && !start[1]) || (!end[0] && !end[1])) return null;
-        return {
-            type: 'Feature',
-            geometry: { type: 'LineString', coordinates: greatCircleLine(start, end, 24) },
-            properties: { color: STATUS_COLOR[home.status] || STATUS_COLOR.Pending }
-        };
-    }
-
-    window._dcrShowTrailForHome = function(homeName) {
-        if (!_activePopup) return;
-        var props = _activePopup._dcrProps;
-        var homes = _activePopup._dcrHomes || [];
-        var home = homes.find(function(h) { return h && h.name === homeName; });
-        var feat = trailFeatureForHome(props, home);
-        setTrailFeatures(feat ? [feat] : []);
-    };
-
-    window._dcrShowFactoryFan = function(supplierName) {
-        var src = window._dcrMap && window._dcrMap.getSource('hbr-locations');
-        if (!src) return;
-        var data = (src.serialize && src.serialize().data) || src._data;
-        if (!data) return;
-        var active = window._dcrMapActiveStatuses || STATUS_LIST.slice();
-        var feats = [];
-        (data.features || []).forEach(function(f) {
-            var homes = parseHomes(f.properties || {});
-            homes.forEach(function(h) {
-                if (h.factory !== supplierName || active.indexOf(h.status) === -1) return;
-                var feat = trailFeatureForHome({
-                    latitude: f.geometry.coordinates[1],
-                    longitude: f.geometry.coordinates[0],
-                }, h);
-                if (feat) feats.push(feat);
-            });
-        });
-        setTrailFeatures(feats.slice(0, 100));
-    };
+    // ========== LEGEND + STATUS FILTER =================================
+    var STATUS_LIST = ['Pending', 'Ordered', 'Delivered'];
+    var FILTER_KEY = 'dcr-map-status-filter';
 
     function loadStatusFilter() {
         try {
             var raw = localStorage.getItem(FILTER_KEY);
             if (raw) {
-                var active = JSON.parse(raw);
-                if (Array.isArray(active)) {
-                    active = active.filter(function(s) { return STATUS_LIST.indexOf(s) !== -1; });
-                    return active;
-                }
+                var v = JSON.parse(raw);
+                if (Array.isArray(v)) return v.filter(function(s) { return STATUS_LIST.indexOf(s) !== -1; });
             }
         } catch(_) {}
-        return STATUS_LIST.slice();
+        return STATUS_LIST.slice();  // default: all on
     }
-
     function saveStatusFilter(active) {
         try { localStorage.setItem(FILTER_KEY, JSON.stringify(active)); } catch(_) {}
         window._dcrMapActiveStatuses = active.slice();
-    }
-
-    function currentStatusFilter() {
-        return ['in', ['get', 'status'], ['literal', window._dcrMapActiveStatuses || STATUS_LIST.slice()]];
+        if (window._dcrOnFilterChange) window._dcrOnFilterChange();
     }
 
     function countByStatus(features) {
-        var counts = { Pending: 0, Ordered: 0, Delivered: 0 };
+        var c = { Pending: 0, Ordered: 0, Delivered: 0 };
         features.forEach(function(f) {
-            parseHomes(f.properties || {}).forEach(function(home) {
-                if (counts[home.status] != null) counts[home.status]++;
-            });
+            try {
+                JSON.parse(f.properties.homes_json || '[]').forEach(function(h) {
+                    if (c[h.status] != null) c[h.status]++;
+                });
+            } catch(_) {}
         });
-        return counts;
+        return c;
     }
 
     function buildLegend(map, geojson) {
         var prior = container.querySelector('.dcr-legend');
         if (prior) prior.remove();
+
         var active = loadStatusFilter();
-        saveStatusFilter(active);
+        window._dcrMapActiveStatuses = active.slice();
         var counts = countByStatus(geojson.features);
+        var theme = currentTheme();
         var isBlock = !isMapPage;
+
         var el = document.createElement('div');
-        el.className = 'dcr-legend' + (currentTheme() === 'dark' ? ' dcr-legend--dark' : '') + (isBlock ? ' dcr-legend--block' : '');
-        var rows = STATUS_LIST.map(function(status) {
-            var on = active.indexOf(status) !== -1;
-            return '<div class="dcr-legend__row' + (on ? '' : ' is-off') + '" data-status="' + status + '">'
-                + '<span class="dcr-legend__swatch dot--' + status.toLowerCase() + '"></span>'
-                + '<span>' + status + '</span>'
-                + '<span class="dcr-legend__count">' + (counts[status] || 0) + '</span>'
+        el.className = 'dcr-legend' + (theme === 'dark' ? ' dcr-legend--dark' : '') + (isBlock ? ' dcr-legend--block' : '');
+        var rows = STATUS_LIST.map(function(s) {
+            var on = active.indexOf(s) !== -1;
+            return '<div class="dcr-legend__row' + (on ? '' : ' is-off') + '" data-status="' + s + '">'
+                + '<span class="dcr-legend__swatch dot--' + s.toLowerCase() + '"></span>'
+                + '<span>' + s + '</span>'
+                + '<span class="dcr-legend__count">' + (counts[s] || 0) + '</span>'
                 + (isBlock ? '' : '<input type="checkbox" class="dcr-legend__check" ' + (on ? 'checked' : '') + ' tabindex="-1">')
                 + '</div>';
         }).join('');
-        var footer = isBlock ? '' : '<div class="dcr-legend__footer"><button type="button" data-act="all">Show all</button><button type="button" data-act="none">Hide all</button></div>';
+        var footer = isBlock ? '' :
+            '<div class="dcr-legend__footer"><button type="button" data-act="all">Show all</button><button type="button" data-act="none">Hide all</button></div>';
         el.innerHTML = (isBlock ? '' : '<div class="dcr-legend__title">Deal status</div>') + rows + footer;
         container.appendChild(el);
-        if (isBlock) return;
-        el.addEventListener('click', function(e) {
-            var row = e.target.closest('.dcr-legend__row');
-            var act = e.target.getAttribute('data-act');
-            if (row) {
-                var status = row.getAttribute('data-status');
-                var idx = active.indexOf(status);
-                if (idx === -1) active.push(status); else active.splice(idx, 1);
-            } else if (act === 'all') {
-                active = STATUS_LIST.slice();
-            } else if (act === 'none') {
-                active = [];
-            } else {
-                return;
-            }
-            saveStatusFilter(active);
-            if (map.getLayer('unclustered-point')) map.setFilter('unclustered-point', currentStatusFilter());
-            buildLegend(map, geojson);
-        });
+
+        if (!isBlock) {
+            el.addEventListener('click', function(e) {
+                var row = e.target.closest('.dcr-legend__row');
+                var act = e.target.getAttribute('data-act');
+                if (row) {
+                    var s = row.getAttribute('data-status');
+                    var idx = active.indexOf(s);
+                    if (idx === -1) active.push(s); else active.splice(idx, 1);
+                } else if (act === 'all') {
+                    active = STATUS_LIST.slice();
+                } else if (act === 'none') {
+                    active = [];
+                } else {
+                    return;
+                }
+                saveStatusFilter(active);
+                applyStatusFilter(map);
+                buildLegend(map, geojson);  // re-render to refresh checks/counts
+            });
+        }
+    }
+
+    function applyStatusFilter(map) {
+        var active = window._dcrMapActiveStatuses || STATUS_LIST.slice();
+        var filterExpr = ['in', ['get', 'status'], ['literal', active]];
+        if (map.getLayer('unclustered-point')) {
+            map.setFilter('unclustered-point', filterExpr);
+        }
+        // Heatmap shares the filter so toggling a status off also dims the
+        // density blobs for that status. Filter is on the group-level
+        // `status` (priority pick), so a stack with mixed statuses follows
+        // the dominant one — same UX as the pin.
+        if (map.getLayer('hbr-heat')) {
+            map.setFilter('hbr-heat', filterExpr);
+        }
     }
 
     function loadData(map) {
-        frappe.call({
-            method: 'dcr.api.map.get_heatmap_data',
-            callback: function(r) {
+        callOrCache('dcr.api.map.get_heatmap_data', function(r) {
                 if (!r.message || !r.message.length) return;
                 var geojson = {
                     type: 'FeatureCollection',
@@ -968,6 +1408,11 @@ def ensure_map_block():
                                 community_name: d.community_name,
                                 address: d.address,
                                 space_number: d.space_number || '',
+                                city: d.city || '',
+                                state: d.state || '',
+                                zip: d.zip || '',
+                                latitude: d.latitude,
+                                longitude: d.longitude,
                                 hbr_count: d.hbr_count,
                                 status: d.status || 'Pending',
                                 // Stringified so feature-state can survive
@@ -978,17 +1423,25 @@ def ensure_map_block():
                     })
                 };
 
+                // Cache features for the search index + populate it
+                window._dcrHomeFeatures = geojson.features.slice();
+                buildSearchIndex();
+
                 // Heatmap layer
                 map.addSource('hbr-locations', { type: 'geojson', data: geojson });
                 map.addLayer({
                     id: 'hbr-heat',
                     type: 'heatmap',
                     source: 'hbr-locations',
+                    filter: ['in', ['get', 'status'], ['literal',
+                        window._dcrMapActiveStatuses || ['Pending','Ordered','Delivered']]],
                     paint: {
                         'heatmap-weight': ['interpolate', ['linear'], ['get', 'hbr_count'], 1, 0.3, 10, 1],
-                        'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 1, 12, 3],
-                        'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 0, 15, 12, 30],
-                        'heatmap-opacity': 0.6
+                        'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 0.5, 12, 2],
+                        'heatmap-radius': 40,
+                        // Fade the heatmap out as the pin layer kicks in.
+                        // Full strength below zoom 9, gone by zoom 10.
+                        'heatmap-opacity': heatmapOpacityExpr(currentTheme() === 'dark')
                     }
                 });
 
@@ -996,53 +1449,77 @@ def ensure_map_block():
                 // Backend aggregates by (coords, address, space_number) into
                 // one feature, so each pin = one home or one stacked address.
                 //
-                // ICON SWAP — once status icons ship, replace the literal
-                // 'icon-image' below with a step+match expression keyed off
-                // ['get', 'status'] and puckFullThreshold. See spec
-                // 2026-04-30-map-icons-and-trails.md.
-                var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-                var loaded = 0;
-                function onPinLoaded() {
-                    loaded++;
-                    if (loaded < 2) return;
+                // Register all 12 status icons (puck + full × light + dark × 3 statuses).
+                // Mapbox needs them in the sprite under a stable name; we pick the
+                // theme variant at render time via a `match` expression on `status`.
+                var STATUSES = ['pending', 'ordered', 'delivered'];
+                var THEMES = ['light', 'dark'];
+                var STYLES = ['puck', 'full'];
+                var iconLoadCount = 0;
+                var ICON_TOTAL = STATUSES.length * THEMES.length * STYLES.length;
+                function onIconLoaded() {
+                    iconLoadCount++;
+                    if (iconLoadCount < ICON_TOTAL) return;
                     _pinsLoaded = true;
-                    saveStatusFilter(loadStatusFilter());
+                    addHomeLayer();
+                }
+                saveStatusFilter(loadStatusFilter());  // hydrate global before addHomeLayer
+                STATUSES.forEach(function(status) {
+                    THEMES.forEach(function(theme) {
+                        STYLES.forEach(function(style) {
+                            var imgName = 'home-' + style + '-' + theme + '-' + status;
+                            var imgUrl = '/assets/dcr/images/' + imgName + '.png';
+                            map.loadImage(imgUrl, function(err, img) {
+                                if (!err && img && !map.hasImage(imgName)) {
+                                    map.addImage(imgName, img);
+                                }
+                                onIconLoaded();
+                            });
+                        });
+                    });
+                });
 
+                function addHomeLayer() {
+                    var theme = currentTheme();
                     map.addLayer({
                         id: 'unclustered-point',
                         type: 'symbol',
                         source: 'hbr-locations',
-                        minzoom: 6.5,
+                        // No minzoom — pucks visible at every zoom; full pins
+                        // take over at puck_full_zoom_threshold (default 10).
                         layout: {
-                            'icon-image': isDark ? 'house-pin-dark' : 'house-pin-light',
-                            'icon-size': 0.212,
-                            'icon-anchor': 'bottom',
-                            'icon-allow-overlap': true
+                            'icon-image': iconImageExpr(theme, puckFullThreshold),
+                            'icon-size': iconSizeExpr(puckFullThreshold),
+                            'icon-anchor': iconAnchorExpr(puckFullThreshold),
+                            'icon-allow-overlap': true,
+                            // Without this, dense clusters drop some pins when
+                            // their placement boxes collide. allow-overlap
+                            // alone isn't enough.
+                            'icon-ignore-placement': true
                         },
+                        paint: { 'icon-opacity': 0.9 },
                         filter: currentStatusFilter()
                     });
+                    // Build legend once the layer exists. setTimeout(0) to
+                    // let Mapbox finish the addLayer microtasks before we
+                    // call setFilter on it.
                     setTimeout(function() { buildLegend(map, geojson); }, 0);
                 }
-                map.loadImage('/assets/dcr/images/map-pin-light.png', function(err, img) {
-                    if (!err) map.addImage('house-pin-light', img);
-                    onPinLoaded();
-                });
-                map.loadImage('/assets/dcr/images/map-pin-dark.png', function(err, img) {
-                    if (!err) map.addImage('house-pin-dark', img);
-                    onPinLoaded();
-                });
 
-                // Popup on click - individual points
                 map.on('click', 'unclustered-point', function(e) {
-                    var feature = e.features[0];
-                    var props = Object.assign({}, feature.properties);
-                    props.longitude = feature.geometry.coordinates[0];
-                    props.latitude = feature.geometry.coordinates[1];
-                    var homes = parseHomes(props);
-                    var html = homes.length > 1
-                        ? renderStackedHtml(props, homes)
-                        : renderSingleHomeHtml(props, homes[0] || {});
-                    var popup = openPopup(map, feature.geometry.coordinates, html, { offset: 18 });
+                    var f = e.features[0];
+                    var props = Object.assign({}, f.properties);
+                    var homes;
+                    try { homes = JSON.parse(props.homes_json || '[]'); } catch(_) { homes = []; }
+                    var lngLat = f.geometry.coordinates;
+                    var html, popup;
+                    if (homes.length > 1) {
+                        html = renderStackedHtml(props, homes);
+                        popup = openPopup(map, lngLat, html, { offset: 18 });
+                    } else {
+                        html = renderSingleHomeHtml(props, homes[0] || {});
+                        popup = openPopup(map, lngLat, html, { offset: 18 });
+                    }
                     popup._dcrProps = props;
                     popup._dcrHomes = homes;
                 });
@@ -1050,53 +1527,101 @@ def ensure_map_block():
                 // Cursor on hover
                 map.on('mouseenter', 'unclustered-point', function() { map.getCanvas().style.cursor = 'pointer'; });
                 map.on('mouseleave', 'unclustered-point', function() { map.getCanvas().style.cursor = ''; });
-            }
         });
     }
 
     function loadFactories(map) {
-        frappe.call({
-            method: 'dcr.api.map.get_factory_locations',
-            callback: function(r) {
+        callOrCache('dcr.api.map.get_factory_locations', function(r) {
                 if (!r.message || !r.message.length) return;
                 var geojson = {
                     type: 'FeatureCollection',
                     features: r.message.map(function(d) {
-                        _factoryByName[d.name] = d;
                         return {
                             type: 'Feature',
                             geometry: { type: 'Point', coordinates: [d.longitude, d.latitude] },
                             properties: {
                                 name: d.name,
-                                supplier_name: d.supplier_name
+                                supplier_name: d.supplier_name,
+                                city: d.city || '',
+                                pending_count: d.pending_count || 0,
+                                ordered_count: d.ordered_count || 0,
+                                delivered_count: d.delivered_count || 0,
+                                total_12mo: d.total_12mo || 0
                             }
                         };
                     })
                 };
+                window._dcrFactoryFeatures = geojson.features.slice();
+                buildSearchIndex();
+
                 map.addSource('factory-locations', { type: 'geojson', data: geojson });
-                // Placeholder rendering — solid amber circle with white halo.
-                // Replace with a symbol layer once factory-{light,dark}.png
-                // assets land. See spec 2026-04-30-map-icons-and-trails.md.
-                map.addLayer({
-                    id: 'factory-point',
-                    type: 'circle',
-                    source: 'factory-locations',
-                    paint: {
-                        'circle-radius': 8,
-                        'circle-color': '#f59e0b',
-                        'circle-stroke-color': '#ffffff',
-                        'circle-stroke-width': 2
+
+                // Try to load factory pin assets; fall back to a black circle
+                // if either asset is missing (graceful degrade).
+                var factoryLight = '/assets/dcr/images/factory-pin-light.png';
+                var factoryDark  = '/assets/dcr/images/factory-pin-dark.png';
+                var fLoaded = 0, fSuccess = 0;
+                function onFactoryIconDone() {
+                    fLoaded++;
+                    if (fLoaded < 2) return;
+                    if (fSuccess === 2) {
+                        map.addLayer({
+                            id: 'factory-point',
+                            type: 'symbol',
+                            source: 'factory-locations',
+                            layout: {
+                                'icon-image': ['case',
+                                    ['==', ['literal', currentTheme()], 'dark'],
+                                    'factory-pin-dark', 'factory-pin-light'],
+                                'icon-size': 0.3,  // 3× export → 0.3 display
+                                'icon-anchor': 'bottom',
+                                'icon-allow-overlap': true,
+                                'icon-ignore-placement': true
+                            },
+                            paint: { 'icon-opacity': 0.9 }
+                        });
+                    } else {
+                        map.addLayer({
+                            id: 'factory-point',
+                            type: 'circle',
+                            source: 'factory-locations',
+                            paint: {
+                                'circle-radius': 8,
+                                'circle-color': '#000000',
+                                'circle-stroke-color': '#ffffff',
+                                'circle-stroke-width': 2,
+                                'circle-opacity': 0.9
+                            }
+                        });
                     }
+                    bindFactoryClick();
+                }
+                map.loadImage(factoryLight, function(err, img) {
+                    if (!err && img) {
+                        if (!map.hasImage('factory-pin-light')) map.addImage('factory-pin-light', img);
+                        fSuccess++;
+                    }
+                    onFactoryIconDone();
+                });
+                map.loadImage(factoryDark, function(err, img) {
+                    if (!err && img) {
+                        if (!map.hasImage('factory-pin-dark')) map.addImage('factory-pin-dark', img);
+                        fSuccess++;
+                    }
+                    onFactoryIconDone();
                 });
 
-                map.on('click', 'factory-point', function(e) {
-                    var props = Object.assign({}, e.features[0].properties);
-                    var popup = openPopup(map, e.features[0].geometry.coordinates, renderFactoryHtml(props), { offset: 14 });
-                    popup._dcrProps = props;
-                });
-                map.on('mouseenter', 'factory-point', function() { map.getCanvas().style.cursor = 'pointer'; });
-                map.on('mouseleave', 'factory-point', function() { map.getCanvas().style.cursor = ''; });
-            }
+                function bindFactoryClick() {
+                    map.on('click', 'factory-point', function(e) {
+                        var f = e.features[0];
+                        var props = Object.assign({}, f.properties);
+                        var lngLat = f.geometry.coordinates;
+                        var p = openPopup(map, lngLat, renderFactoryHtml(props), { offset: 14 });
+                        p._dcrProps = props;
+                    });
+                    map.on('mouseenter', 'factory-point', function() { map.getCanvas().style.cursor = 'pointer'; });
+                    map.on('mouseleave', 'factory-point', function() { map.getCanvas().style.cursor = ''; });
+                }
         });
     }
 

@@ -225,9 +225,45 @@ class TestHeatmapQuery(unittest.TestCase):
         sql = mock_frappe.db.sql.call_args.args[0]
         self.assertIn("custom_home_build_request", sql)
 
+    @patch("dcr.api.map.frappe")
+    def test_factory_counts_avoid_missing_purchase_order_hbr_field(self, mock_frappe):
+        from dcr.api.map import get_factory_locations
+
+        mock_frappe.db.has_column.return_value = False
+        mock_frappe.get_all.return_value = [{
+            "name": "SUPP-001",
+            "supplier_name": "Factory",
+            "latitude": 33.0,
+            "longitude": -112.0,
+        }]
+        mock_frappe.db.sql.side_effect = [[], []]
+
+        get_factory_locations()
+
+        sql = mock_frappe.db.sql.call_args_list[0].args[0]
+        self.assertNotIn("custom_home_build_request", sql)
+
+    @patch("dcr.api.map.frappe")
+    def test_factory_counts_use_purchase_order_hbr_field_when_present(self, mock_frappe):
+        from dcr.api.map import get_factory_locations
+
+        mock_frappe.db.has_column.return_value = True
+        mock_frappe.get_all.return_value = [{
+            "name": "SUPP-001",
+            "supplier_name": "Factory",
+            "latitude": 33.0,
+            "longitude": -112.0,
+        }]
+        mock_frappe.db.sql.side_effect = [[], []]
+
+        get_factory_locations()
+
+        sql = mock_frappe.db.sql.call_args_list[0].args[0]
+        self.assertIn("custom_home_build_request", sql)
+
 
 class TestStatusDerivation(unittest.TestCase):
-    """Status priority: Cancelled → Draft → Delivered → Ordered → Pending."""
+    """Status priority: Ordered → Pending → Delivered; Draft folds into Pending."""
 
     def _row(self, **kwargs):
         base = {
@@ -237,20 +273,10 @@ class TestStatusDerivation(unittest.TestCase):
         base.update(kwargs)
         return base
 
-    def test_cancelled_when_docstatus_is_2(self):
-        from dcr.api.map import _aggregate_locations
-        rows = [self._row(docstatus=2, has_active_po=1)]
-        self.assertEqual(_aggregate_locations(rows)[0]["status"], "Cancelled")
-
-    def test_cancelled_when_only_cancelled_po(self):
-        from dcr.api.map import _aggregate_locations
-        rows = [self._row(docstatus=1, has_cancelled_po=1)]
-        self.assertEqual(_aggregate_locations(rows)[0]["status"], "Cancelled")
-
-    def test_draft_when_docstatus_is_0(self):
+    def test_draft_folds_to_pending(self):
         from dcr.api.map import _aggregate_locations
         rows = [self._row(docstatus=0)]
-        self.assertEqual(_aggregate_locations(rows)[0]["status"], "Draft")
+        self.assertEqual(_aggregate_locations(rows)[0]["status"], "Pending")
 
     def test_delivered_when_purchase_receipt_exists(self):
         from dcr.api.map import _aggregate_locations

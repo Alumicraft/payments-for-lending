@@ -35,9 +35,11 @@ class TestMapBlockContent(unittest.TestCase):
         setup_code = (ROOT / "dcr/setup.py").read_text()
 
         self.assertIn("dcr-legend", setup_code)
+        self.assertIn("dcr-search", setup_code)
+        self.assertIn("SatelliteControl", setup_code)
         self.assertIn("renderStackedHtml", setup_code)
-        self.assertIn("window._dcrShowTrailForHome", setup_code)
         self.assertIn("buildLegend(map, geojson)", setup_code)
+        self.assertNotIn("window._dcrShowTrailForHome", setup_code)
 
 
 if __name__ == "__main__":

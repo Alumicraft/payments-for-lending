@@ -7,7 +7,13 @@ app_license = "MIT"
 required_apps = ["frappe", "erpnext", "lending"]
 
 boot_session = "dcr.api.boot.boot_session"
-app_include_js = ["/assets/dcr/js/icon_fix.js", "/assets/dcr/js/sidebar_fix.js"]
+app_include_js = [
+    "/assets/dcr/js/icon_fix.js",
+    "/assets/dcr/js/sidebar_fix.js",
+    # Preconnects to Mapbox CDN, preloads icon assets, lazy-loads
+    # mapbox-gl.js, and prefetches the map API responses on idle.
+    "/assets/dcr/js/map_warmup.js",
+]
 app_include_css = ["/assets/dcr/css/workspace_fullwidth.css"]
 
 override_whitelisted_methods = {
