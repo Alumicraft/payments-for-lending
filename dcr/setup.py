@@ -319,6 +319,75 @@ def ensure_map_block():
 
     html_content = """<style>
 .mapboxgl-ctrl-bottom-left, .mapboxgl-ctrl-bottom-right { transform: translateY(150%); }
+.mapboxgl-popup-content { padding: 0; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.04); }
+.mapboxgl-popup--dark .mapboxgl-popup-content { background: #1c1f23; box-shadow: 0 6px 18px rgba(0,0,0,0.5), 0 0 0 1px #2d3137; }
+.mapboxgl-popup--dark .mapboxgl-popup-tip { border-top-color: #1c1f23; border-bottom-color: #1c1f23; }
+.mapboxgl-popup-close-button { font-size: 18px; padding: 4px 8px; color: inherit; }
+.dcr-popup { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 13px; line-height: 1.45; color: #1f272e; min-width: 320px; }
+.dcr-popup--dark { color: #f2f4f5; }
+.dcr-popup--multi { width: 380px; }
+.dcr-popup--factory { width: 320px; }
+.dcr-popup__header { padding: 14px 16px 10px; }
+.dcr-popup__title { font-size: 15px; font-weight: 600; margin: 0 0 2px; }
+.dcr-popup__subtitle { font-size: 13px; font-weight: 500; margin: 0; }
+.dcr-popup__body { padding: 6px 16px 14px; }
+.dcr-popup__footer { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid #ecedee; }
+.dcr-popup--dark .dcr-popup__footer { border-top-color: #2d3137; }
+.dcr-popup .text-secondary { color: #687178; }
+.dcr-popup--dark .text-secondary { color: #a6adb4; }
+.dcr-popup .link { color: #2490ef; text-decoration: none; }
+.dcr-popup .link:hover { text-decoration: underline; }
+.dcr-popup .field-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 0; }
+.dcr-popup .field-row .label-text { flex-shrink: 0; font-weight: 500; }
+.dcr-popup .field-row .value-text { text-align: right; font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dcr-popup .hbr-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.dcr-popup .pill { display: inline-flex; align-items: center; padding: 3px 8px; font-size: 11px; font-weight: 600; text-transform: uppercase; border-radius: 4px; line-height: 1.2; }
+.dcr-popup .pill--pending { background: rgba(104,113,120,0.16); color: #5a6166; }
+.dcr-popup .pill--ordered { background: rgba(255,123,0,0.16); color: #d96d00; }
+.dcr-popup .pill--delivered { background: linear-gradient(135deg,#007aff 0%,#0074f3 100%); color: #fff; }
+.dcr-popup--dark .pill--pending { background: rgba(166,173,180,0.18); color: #c8cfd5; }
+.dcr-popup--dark .pill--ordered { background: rgba(255,154,60,0.20); color: #ffb066; }
+.dcr-popup--dark .pill--delivered { background: linear-gradient(135deg,#4da8ff 0%,#3f9ee8 100%); color: #0e1116; }
+.dcr-popup .btn { flex: 1; padding: 8px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; text-align: center; cursor: pointer; border: none; font-family: inherit; }
+.dcr-popup .btn--primary { background: linear-gradient(135deg,#007aff 0%,#0074f3 100%); color: #fff; }
+.dcr-popup .btn--secondary { background: #f2f3f4; color: #1f272e; }
+.dcr-popup--dark .btn--primary { background: linear-gradient(135deg,#4da8ff 0%,#3f9ee8 100%); color: #0e1116; }
+.dcr-popup--dark .btn--secondary { background: #2d3137; color: #f2f4f5; }
+.dcr-popup .stack-list { padding: 4px 0; border-top: 1px solid #ecedee; }
+.dcr-popup--dark .stack-list { border-top-color: #2d3137; }
+.dcr-popup .stack-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 10px 16px; align-items: center; cursor: pointer; }
+.dcr-popup .stack-row:hover { background: #fafafa; }
+.dcr-popup--dark .stack-row:hover { background: #22272b; }
+.dcr-popup .stack-row + .stack-row { border-top: 1px solid #f0f0f0; }
+.dcr-popup--dark .stack-row + .stack-row { border-top-color: #2a2e33; }
+.dcr-popup .stack-row__head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.dcr-popup .stack-row__customer { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.dcr-popup .stack-row__factory { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dcr-popup .trail-btn { width: 24px; height: 24px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; background: transparent; border: 1px solid #c7cdd3; color: #687178; padding: 0; opacity: .65; }
+.dcr-popup .trail-btn:hover { opacity: 1; background: #f2f3f4; }
+.dcr-popup--dark .trail-btn { border-color: #4a5158; color: #a6adb4; }
+.dcr-popup--dark .trail-btn:hover { background: #2d3137; }
+.dcr-popup .trail-btn svg { width: 12px; height: 12px; }
+.dcr-legend { position: absolute; bottom: 16px; left: 16px; z-index: 5; background: #fff; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.04); padding: 10px 12px; min-width: 200px; font-family: Inter, -apple-system, sans-serif; font-size: 12px; }
+.dcr-legend--dark { background: #1c1f23; color: #f2f4f5; box-shadow: 0 4px 16px rgba(0,0,0,0.5), 0 0 0 1px #2d3137; }
+.dcr-legend__title { font-size: 11px; font-weight: 600; text-transform: uppercase; color: #687178; margin-bottom: 8px; }
+.dcr-legend--dark .dcr-legend__title { color: #a6adb4; }
+.dcr-legend__row { display: grid; grid-template-columns: 16px 1fr auto auto; gap: 8px; align-items: center; padding: 4px 0; cursor: pointer; user-select: none; }
+.dcr-legend__row.is-off { opacity: .4; }
+.dcr-legend__swatch { width: 12px; height: 12px; border-radius: 50%; }
+.dcr-legend .dot--pending { background: #687178; }
+.dcr-legend .dot--ordered { background: #ff7b00; }
+.dcr-legend .dot--delivered { background: linear-gradient(135deg,#007aff,#0074f3); }
+.dcr-legend__count { font-variant-numeric: tabular-nums; color: #687178; }
+.dcr-legend--dark .dcr-legend__count { color: #a6adb4; }
+.dcr-legend__check { width: 14px; height: 14px; pointer-events: none; }
+.dcr-legend__footer { margin-top: 6px; padding-top: 6px; border-top: 1px solid #ecedee; display: flex; gap: 8px; font-size: 11px; }
+.dcr-legend--dark .dcr-legend__footer { border-top-color: #2d3137; }
+.dcr-legend__footer button { color: #2490ef; cursor: pointer; background: none; border: 0; padding: 0; font: inherit; }
+.dcr-legend--block { padding: 6px 10px; min-width: 0; display: flex; gap: 12px; align-items: center; }
+.dcr-legend--block .dcr-legend__title { display: none; }
+.dcr-legend--block .dcr-legend__row { display: flex; gap: 6px; padding: 0; cursor: default; }
+.dcr-legend--block .dcr-legend__check, .dcr-legend--block .dcr-legend__count { display: none; }
 </style>
 <div id="dcr-map" style="width:100%; overflow: hidden;"></div>"""
 
@@ -422,6 +491,7 @@ def ensure_map_block():
                     center: [cfg.default_longitude, cfg.default_latitude],
                     zoom: initialZoom
                 });
+                window._dcrMap = map;
                 map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
                 // 3D toggle control
@@ -494,6 +564,10 @@ def ensure_map_block():
                             isDark ? 'house-pin-dark' : 'house-pin-light'
                         );
                     }
+                    var legendEl = container.querySelector('.dcr-legend');
+                    if (legendEl) {
+                        legendEl.classList.toggle('dcr-legend--dark', isDark);
+                    }
 
                     // Theme the Mapbox controls (zoom, compass, 3D, recenter).
                     // Lives inside the shadow root so these rules actually reach
@@ -545,10 +619,337 @@ def ensure_map_block():
                 });
 
                 map.on('load', function() {
+                    map.addSource('dcr-trails', {
+                        type: 'geojson',
+                        data: { type: 'FeatureCollection', features: [] }
+                    });
+                    map.addLayer({
+                        id: 'dcr-trails',
+                        type: 'line',
+                        source: 'dcr-trails',
+                        paint: {
+                            'line-color': ['coalesce', ['get', 'color'], '#007aff'],
+                            'line-width': 3,
+                            'line-opacity': 0.85,
+                            'line-dasharray': [2, 4]
+                        }
+                    });
                     loadData(map);
                     loadFactories(map);
                 });
             }
+        });
+    }
+
+    var STATUS_LIST = ['Pending', 'Ordered', 'Delivered'];
+    var FILTER_KEY = 'dcr-map-status-filter';
+    var STATUS_COLOR = {
+        Pending: '#687178',
+        Ordered: '#ff7b00',
+        Delivered: '#007aff'
+    };
+    var _activePopup = null;
+    var _trailRAF = null;
+    var _trailOffset = 0;
+    var _factoryByName = {};
+
+    function currentTheme() {
+        return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    }
+
+    function popupRootClass(extra) {
+        return 'dcr-popup' + (currentTheme() === 'dark' ? ' dcr-popup--dark' : '') + (extra ? ' ' + extra : '');
+    }
+
+    function escHtml(value) {
+        return String(value == null ? '' : value).replace(/[&<>"']/g, function(ch) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];
+        });
+    }
+
+    function statusClass(status) {
+        return String(status || 'Pending').toLowerCase();
+    }
+
+    function statusPill(status) {
+        status = status || 'Pending';
+        return '<span class="pill pill--' + statusClass(status) + '">' + escHtml(status) + '</span>';
+    }
+
+    function fieldRow(label, value) {
+        if (!value) return '';
+        return '<div class="field-row"><span class="label-text text-secondary">' + escHtml(label)
+            + '</span><span class="value-text">' + value + '</span></div>';
+    }
+
+    function trailBtnSvg() {
+        return '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">'
+            + '<path d="M5 19C8 8 16 16 19 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
+            + '<path d="M15 5H19V9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
+            + '</svg>';
+    }
+
+    function parseHomes(props) {
+        try { return JSON.parse(props.homes_json || '[]'); } catch(_) { return []; }
+    }
+
+    function openPopup(map, lngLat, html, opts) {
+        if (_activePopup) _activePopup.remove();
+        window._dcrClearTrail();
+        var popup = new mapboxgl.Popup(Object.assign({ offset: 15, maxWidth: '420px' }, opts || {}))
+            .setLngLat(lngLat)
+            .setHTML(html)
+            .addTo(map);
+        _activePopup = popup;
+        popup.on('close', function() {
+            if (_activePopup === popup) _activePopup = null;
+            window._dcrClearTrail();
+        });
+        return popup;
+    }
+
+    function renderSingleHomeHtml(props, home) {
+        home = home || {};
+        var title = home.name || props.community_name || 'Home Build Request';
+        return '<div class="' + popupRootClass() + '">'
+            + '<div class="dcr-popup__header">'
+            + '<div class="dcr-popup__title hbr-id">' + escHtml(title) + '</div>'
+            + '<div class="dcr-popup__subtitle text-secondary">' + escHtml(props.community_name || 'Unknown community') + '</div>'
+            + '</div>'
+            + '<div class="dcr-popup__body">'
+            + fieldRow('Status', statusPill(home.status || props.status))
+            + fieldRow('Address', escHtml(props.address || ''))
+            + fieldRow('Space', escHtml(props.space_number || ''))
+            + fieldRow('Customer', escHtml(home.customer_name || home.customer || ''))
+            + fieldRow('Factory', escHtml(home.factory_name || home.factory || ''))
+            + '</div>'
+            + '<div class="dcr-popup__footer">'
+            + '<button class="btn btn--primary" data-act="open-hbr" data-name="' + escHtml(home.name || '') + '">Open HBR</button>'
+            + '<button class="btn btn--secondary" data-act="show-trail" data-name="' + escHtml(home.name || '') + '">Show trail</button>'
+            + '</div>'
+            + '</div>';
+    }
+
+    function renderStackedHtml(props, homes) {
+        var rows = homes.map(function(home, i) {
+            return '<div class="stack-row" role="button" tabindex="0" data-act="drill" data-idx="' + i + '">'
+                + '<div class="stack-row__main">'
+                + '<div class="stack-row__head">' + statusPill(home.status || props.status)
+                + '<span class="stack-row__customer">' + escHtml(home.customer_name || home.customer || home.name || 'Home') + '</span></div>'
+                + '<div class="stack-row__factory text-secondary">' + escHtml(home.factory_name || home.factory || '') + '</div>'
+                + '</div>'
+                + '<button class="trail-btn" data-act="show-trail" data-name="' + escHtml(home.name || '') + '" title="Show trail">'
+                + trailBtnSvg() + '</button>'
+                + '</div>';
+        }).join('');
+        return '<div class="' + popupRootClass('dcr-popup--multi') + '">'
+            + '<div class="dcr-popup__header">'
+            + '<div class="dcr-popup__title">' + escHtml(props.community_name || 'Stacked location') + '</div>'
+            + '<div class="dcr-popup__subtitle text-secondary">' + escHtml(props.address || '') + '</div>'
+            + '</div>'
+            + '<div class="stack-list">' + rows + '</div>'
+            + '</div>';
+    }
+
+    function renderFactoryHtml(props) {
+        return '<div class="' + popupRootClass('dcr-popup--factory') + '">'
+            + '<div class="dcr-popup__header">'
+            + '<div class="dcr-popup__title">' + escHtml(props.supplier_name || props.name || 'Factory') + '</div>'
+            + '<div class="dcr-popup__subtitle text-secondary">Factory</div>'
+            + '</div>'
+            + '<div class="dcr-popup__footer">'
+            + '<button class="btn btn--primary" data-act="open-supplier" data-name="' + escHtml(props.name || '') + '">Open supplier</button>'
+            + '<button class="btn btn--secondary" data-act="show-all-trails" data-name="' + escHtml(props.name || '') + '">Show all trails</button>'
+            + '</div>'
+            + '</div>';
+    }
+
+    document.addEventListener('click', function(e) {
+        var el = e.target.closest('[data-act]');
+        if (!el) return;
+        var act = el.getAttribute('data-act');
+        var name = el.getAttribute('data-name') || '';
+        if (act === 'open-hbr' && name) {
+            window.location.href = '/app/home-build-request/' + encodeURIComponent(name);
+        } else if (act === 'open-supplier' && name) {
+            window.location.href = '/app/supplier/' + encodeURIComponent(name);
+        } else if (act === 'show-trail' && name) {
+            window._dcrShowTrailForHome(name);
+        } else if (act === 'show-all-trails' && name) {
+            window._dcrShowFactoryFan(name);
+        } else if (act === 'drill' && _activePopup) {
+            var idx = parseInt(el.getAttribute('data-idx'), 10);
+            var homes = _activePopup._dcrHomes || [];
+            var props = _activePopup._dcrProps || {};
+            var home = homes[idx] || {};
+            _activePopup.setHTML(renderSingleHomeHtml(props, home));
+            _activePopup._dcrHomes = homes;
+            _activePopup._dcrProps = props;
+        }
+    });
+
+    function greatCircleLine(start, end, n) {
+        var lon1 = start[0] * Math.PI / 180, lat1 = start[1] * Math.PI / 180;
+        var lon2 = end[0] * Math.PI / 180, lat2 = end[1] * Math.PI / 180;
+        var d = 2 * Math.asin(Math.sqrt(
+            Math.pow(Math.sin((lat2-lat1)/2), 2) +
+            Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin((lon2-lon1)/2), 2)
+        ));
+        if (d === 0) return [start, end];
+        var coords = [];
+        for (var i = 0; i <= n; i++) {
+            var f = i / n;
+            var A = Math.sin((1-f)*d)/Math.sin(d);
+            var B = Math.sin(f*d)/Math.sin(d);
+            var x = A*Math.cos(lat1)*Math.cos(lon1) + B*Math.cos(lat2)*Math.cos(lon2);
+            var y = A*Math.cos(lat1)*Math.sin(lon1) + B*Math.cos(lat2)*Math.sin(lon2);
+            var z = A*Math.sin(lat1) + B*Math.sin(lat2);
+            coords.push([Math.atan2(y, x) * 180 / Math.PI, Math.atan2(z, Math.sqrt(x*x + y*y)) * 180 / Math.PI]);
+        }
+        return coords;
+    }
+
+    function setTrailFeatures(features) {
+        var src = window._dcrMap && window._dcrMap.getSource('dcr-trails');
+        if (!src) return;
+        src.setData({ type: 'FeatureCollection', features: features });
+        if (features.length && !_trailRAF) startTrailAnimation();
+        if (!features.length && _trailRAF) stopTrailAnimation();
+    }
+
+    function startTrailAnimation() {
+        function step() {
+            _trailOffset = (_trailOffset + 0.4) % 7;
+            try { window._dcrMap.setPaintProperty('dcr-trails', 'line-dasharray', [_trailOffset, 4, 3]); } catch(_) {}
+            _trailRAF = requestAnimationFrame(step);
+        }
+        _trailRAF = requestAnimationFrame(step);
+    }
+
+    function stopTrailAnimation() {
+        if (_trailRAF) cancelAnimationFrame(_trailRAF);
+        _trailRAF = null;
+        _trailOffset = 0;
+    }
+
+    window._dcrClearTrail = function() { setTrailFeatures([]); };
+
+    function trailFeatureForHome(homeProps, home) {
+        if (!home || !home.factory) return null;
+        var fac = _factoryByName[home.factory];
+        if (!fac) return null;
+        var start = [Number(homeProps.longitude) || 0, Number(homeProps.latitude) || 0];
+        var end = [Number(fac.longitude) || 0, Number(fac.latitude) || 0];
+        if ((!start[0] && !start[1]) || (!end[0] && !end[1])) return null;
+        return {
+            type: 'Feature',
+            geometry: { type: 'LineString', coordinates: greatCircleLine(start, end, 24) },
+            properties: { color: STATUS_COLOR[home.status] || STATUS_COLOR.Pending }
+        };
+    }
+
+    window._dcrShowTrailForHome = function(homeName) {
+        if (!_activePopup) return;
+        var props = _activePopup._dcrProps;
+        var homes = _activePopup._dcrHomes || [];
+        var home = homes.find(function(h) { return h && h.name === homeName; });
+        var feat = trailFeatureForHome(props, home);
+        setTrailFeatures(feat ? [feat] : []);
+    };
+
+    window._dcrShowFactoryFan = function(supplierName) {
+        var src = window._dcrMap && window._dcrMap.getSource('hbr-locations');
+        if (!src) return;
+        var data = (src.serialize && src.serialize().data) || src._data;
+        if (!data) return;
+        var active = window._dcrMapActiveStatuses || STATUS_LIST.slice();
+        var feats = [];
+        (data.features || []).forEach(function(f) {
+            var homes = parseHomes(f.properties || {});
+            homes.forEach(function(h) {
+                if (h.factory !== supplierName || active.indexOf(h.status) === -1) return;
+                var feat = trailFeatureForHome({
+                    latitude: f.geometry.coordinates[1],
+                    longitude: f.geometry.coordinates[0],
+                }, h);
+                if (feat) feats.push(feat);
+            });
+        });
+        setTrailFeatures(feats.slice(0, 100));
+    };
+
+    function loadStatusFilter() {
+        try {
+            var raw = localStorage.getItem(FILTER_KEY);
+            if (raw) {
+                var active = JSON.parse(raw);
+                if (Array.isArray(active)) {
+                    active = active.filter(function(s) { return STATUS_LIST.indexOf(s) !== -1; });
+                    return active;
+                }
+            }
+        } catch(_) {}
+        return STATUS_LIST.slice();
+    }
+
+    function saveStatusFilter(active) {
+        try { localStorage.setItem(FILTER_KEY, JSON.stringify(active)); } catch(_) {}
+        window._dcrMapActiveStatuses = active.slice();
+    }
+
+    function currentStatusFilter() {
+        return ['in', ['get', 'status'], ['literal', window._dcrMapActiveStatuses || STATUS_LIST.slice()]];
+    }
+
+    function countByStatus(features) {
+        var counts = { Pending: 0, Ordered: 0, Delivered: 0 };
+        features.forEach(function(f) {
+            parseHomes(f.properties || {}).forEach(function(home) {
+                if (counts[home.status] != null) counts[home.status]++;
+            });
+        });
+        return counts;
+    }
+
+    function buildLegend(map, geojson) {
+        var prior = container.querySelector('.dcr-legend');
+        if (prior) prior.remove();
+        var active = loadStatusFilter();
+        saveStatusFilter(active);
+        var counts = countByStatus(geojson.features);
+        var isBlock = !isMapPage;
+        var el = document.createElement('div');
+        el.className = 'dcr-legend' + (currentTheme() === 'dark' ? ' dcr-legend--dark' : '') + (isBlock ? ' dcr-legend--block' : '');
+        var rows = STATUS_LIST.map(function(status) {
+            var on = active.indexOf(status) !== -1;
+            return '<div class="dcr-legend__row' + (on ? '' : ' is-off') + '" data-status="' + status + '">'
+                + '<span class="dcr-legend__swatch dot--' + status.toLowerCase() + '"></span>'
+                + '<span>' + status + '</span>'
+                + '<span class="dcr-legend__count">' + (counts[status] || 0) + '</span>'
+                + (isBlock ? '' : '<input type="checkbox" class="dcr-legend__check" ' + (on ? 'checked' : '') + ' tabindex="-1">')
+                + '</div>';
+        }).join('');
+        var footer = isBlock ? '' : '<div class="dcr-legend__footer"><button type="button" data-act="all">Show all</button><button type="button" data-act="none">Hide all</button></div>';
+        el.innerHTML = (isBlock ? '' : '<div class="dcr-legend__title">Deal status</div>') + rows + footer;
+        container.appendChild(el);
+        if (isBlock) return;
+        el.addEventListener('click', function(e) {
+            var row = e.target.closest('.dcr-legend__row');
+            var act = e.target.getAttribute('data-act');
+            if (row) {
+                var status = row.getAttribute('data-status');
+                var idx = active.indexOf(status);
+                if (idx === -1) active.push(status); else active.splice(idx, 1);
+            } else if (act === 'all') {
+                active = STATUS_LIST.slice();
+            } else if (act === 'none') {
+                active = [];
+            } else {
+                return;
+            }
+            saveStatusFilter(active);
+            if (map.getLayer('unclustered-point')) map.setFilter('unclustered-point', currentStatusFilter());
+            buildLegend(map, geojson);
         });
     }
 
@@ -605,6 +1006,7 @@ def ensure_map_block():
                     loaded++;
                     if (loaded < 2) return;
                     _pinsLoaded = true;
+                    saveStatusFilter(loadStatusFilter());
 
                     map.addLayer({
                         id: 'unclustered-point',
@@ -616,8 +1018,10 @@ def ensure_map_block():
                             'icon-size': 0.212,
                             'icon-anchor': 'bottom',
                             'icon-allow-overlap': true
-                        }
+                        },
+                        filter: currentStatusFilter()
                     });
+                    setTimeout(function() { buildLegend(map, geojson); }, 0);
                 }
                 map.loadImage('/assets/dcr/images/map-pin-light.png', function(err, img) {
                     if (!err) map.addImage('house-pin-light', img);
@@ -630,17 +1034,17 @@ def ensure_map_block():
 
                 // Popup on click - individual points
                 map.on('click', 'unclustered-point', function(e) {
-                    var p = e.features[0].properties;
-                    var html = '<div style="font-family:Inter,sans-serif;font-size:13px;">'
-                        + '<strong>' + (p.community_name || 'Unknown') + '</strong><br>'
-                        + '<span style="color:#666;">' + (p.address || '') + '</span><br>'
-                        + '<span style="font-weight:600;">' + p.hbr_count + ' deal' + (p.hbr_count > 1 ? 's' : '') + '</span><br>'
-                        + '<a href="/app/home-build-request?delivery_address=' + encodeURIComponent(p.address) + '" style="color:#2490ef;">View deals</a>'
-                        + '</div>';
-                    new mapboxgl.Popup({ offset: 15 })
-                        .setLngLat(e.features[0].geometry.coordinates)
-                        .setHTML(html)
-                        .addTo(map);
+                    var feature = e.features[0];
+                    var props = Object.assign({}, feature.properties);
+                    props.longitude = feature.geometry.coordinates[0];
+                    props.latitude = feature.geometry.coordinates[1];
+                    var homes = parseHomes(props);
+                    var html = homes.length > 1
+                        ? renderStackedHtml(props, homes)
+                        : renderSingleHomeHtml(props, homes[0] || {});
+                    var popup = openPopup(map, feature.geometry.coordinates, html, { offset: 18 });
+                    popup._dcrProps = props;
+                    popup._dcrHomes = homes;
                 });
 
                 // Cursor on hover
@@ -658,6 +1062,7 @@ def ensure_map_block():
                 var geojson = {
                     type: 'FeatureCollection',
                     features: r.message.map(function(d) {
+                        _factoryByName[d.name] = d;
                         return {
                             type: 'Feature',
                             geometry: { type: 'Point', coordinates: [d.longitude, d.latitude] },
@@ -685,16 +1090,9 @@ def ensure_map_block():
                 });
 
                 map.on('click', 'factory-point', function(e) {
-                    var p = e.features[0].properties;
-                    var html = '<div style="font-family:Inter,sans-serif;font-size:13px;">'
-                        + '<strong>' + (p.supplier_name || p.name) + '</strong><br>'
-                        + '<span style="color:#666;">Factory</span><br>'
-                        + '<a href="/app/supplier/' + encodeURIComponent(p.name) + '" style="color:#2490ef;">Open</a>'
-                        + '</div>';
-                    new mapboxgl.Popup({ offset: 12 })
-                        .setLngLat(e.features[0].geometry.coordinates)
-                        .setHTML(html)
-                        .addTo(map);
+                    var props = Object.assign({}, e.features[0].properties);
+                    var popup = openPopup(map, e.features[0].geometry.coordinates, renderFactoryHtml(props), { offset: 14 });
+                    popup._dcrProps = props;
                 });
                 map.on('mouseenter', 'factory-point', function() { map.getCanvas().style.cursor = 'pointer'; });
                 map.on('mouseleave', 'factory-point', function() { map.getCanvas().style.cursor = ''; });

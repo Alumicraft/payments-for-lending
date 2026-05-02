@@ -1,7 +1,11 @@
 """Tests for setup helpers that provision DCR custom fields."""
 
 import unittest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class TestSetupCustomFields(unittest.TestCase):
@@ -23,6 +27,17 @@ class TestSetupCustomFields(unittest.TestCase):
         self.assertEqual(payload["options"], "Home Build Request")
         field_doc.insert.assert_called_once_with(ignore_permissions=True)
         mock_frappe.clear_cache.assert_called_once_with(doctype="Purchase Order")
+
+
+class TestMapBlockContent(unittest.TestCase):
+
+    def test_production_map_block_contains_preview_features(self):
+        setup_code = (ROOT / "dcr/setup.py").read_text()
+
+        self.assertIn("dcr-legend", setup_code)
+        self.assertIn("renderStackedHtml", setup_code)
+        self.assertIn("window._dcrShowTrailForHome", setup_code)
+        self.assertIn("buildLegend(map, geojson)", setup_code)
 
 
 if __name__ == "__main__":
