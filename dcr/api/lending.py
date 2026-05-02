@@ -80,6 +80,15 @@ def validate_loan_application(doc, method):
                     doc.home_build_request
                 )
             )
+
+        financing_type = frappe.db.get_value(
+            "Home Build Request", doc.home_build_request, "financing_type"
+        )
+        if financing_type != "Floored":
+            frappe.throw(
+                _("Loan Applications can only be created for Floored Home Build Requests. "
+                  "{0} is {1}.").format(doc.home_build_request, financing_type or _("not marked Floored"))
+            )
     else:
         return
 

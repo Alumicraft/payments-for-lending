@@ -52,7 +52,7 @@ def process_upcoming_payments():
     active_loans = frappe.get_all(
         "Loan",
         filters={
-            "status": ["in", ["Disbursed", "Partially Disbursed"]]
+            "status": ["in", ["Disbursed", "Partially Disbursed", "Active"]]
         },
         fields=["name", "applicant"]
     )

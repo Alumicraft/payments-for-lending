@@ -9,8 +9,10 @@ Security: HMAC token in URL verified before rendering.
 """
 
 import frappe
+import time
 
 no_cache = 1
+PLAID_TOKEN_MAX_AGE_SECONDS = 7 * 24 * 60 * 60
 
 
 def get_context(context):
@@ -60,18 +62,35 @@ def get_context(context):
     context.show_plaid = True
 
 
-def generate_plaid_token(customer):
+def generate_plaid_token(customer, issued_at=None):
     """Generate HMAC token for a Plaid setup URL."""
     import hashlib
     import hmac as hmac_mod
+
+    issued_at = int(issued_at if issued_at is not None else time.time())
     secret = frappe.local.conf.get("encryption_key") or frappe.local.conf.get("secret_key")
-    return hmac_mod.new(
-        secret.encode(), customer.encode(), hashlib.sha256
-    ).hexdigest()[:20]
+    signature = hmac_mod.new(
+        secret.encode(), f"{customer}:{issued_at}".encode(), hashlib.sha256
+    ).hexdigest()[:32]
+    return f"{issued_at}:{signature}"
 
 
 def verify_plaid_token(customer, token):
     """Verify an HMAC token for a Plaid setup URL."""
+    import hashlib
     import hmac as hmac_mod
-    expected = generate_plaid_token(customer)
-    return hmac_mod.compare_digest(token, expected)
+
+    try:
+        issued_at_raw, signature = (token or "").split(":", 1)
+        issued_at = int(issued_at_raw)
+    except (TypeError, ValueError):
+        return False
+
+    if int(time.time()) - issued_at > PLAID_TOKEN_MAX_AGE_SECONDS:
+        return False
+
+    secret = frappe.local.conf.get("encryption_key") or frappe.local.conf.get("secret_key")
+    expected = hmac_mod.new(
+        secret.encode(), f"{customer}:{issued_at}".encode(), hashlib.sha256
+    ).hexdigest()[:32]
+    return hmac_mod.compare_digest(signature, expected)

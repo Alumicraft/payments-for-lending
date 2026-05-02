@@ -141,7 +141,7 @@ function send_disbursement_notice(frm) {
                         customer_name: frm.doc.applicant_name || frm.doc.applicant,
                         factory_name: frm.doc.factory || '',
                         loan: frm.doc.name,
-                        home_build_request: frm.doc.home_serial_no || '',
+                        home_build_request: frm.doc.home_build_request || '',
                         amount: frm.doc.loan_amount,
                         to_email: r.email_id,
                         reference_name: frm.doc.name

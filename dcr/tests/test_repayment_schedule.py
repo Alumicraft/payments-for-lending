@@ -125,5 +125,27 @@ class TestGetNextUnpaidRepayment(unittest.TestCase):
         self.assertEqual(amount, 2500)
 
 
+class TestProcessUpcomingPayments(unittest.TestCase):
+
+    @patch("dcr.tasks.scheduled_debits.process_loan_payment")
+    @patch("dcr.tasks.scheduled_debits.is_ach_enabled")
+    @patch("dcr.tasks.scheduled_debits.frappe")
+    def test_includes_active_loans(self, mock_frappe, mock_is_enabled, mock_process):
+        """Active loans must be swept for upcoming ACH payments."""
+        from dcr.tasks.scheduled_debits import process_upcoming_payments
+
+        mock_is_enabled.return_value = True
+        settings = MagicMock()
+        settings.advance_notification_days = 5
+        settings.days_before_due_to_initiate = 3
+        mock_frappe.get_single.return_value = settings
+        mock_frappe.get_all.return_value = []
+
+        process_upcoming_payments()
+
+        filters = mock_frappe.get_all.call_args.kwargs["filters"]
+        self.assertIn("Active", filters["status"][1])
+
+
 if __name__ == "__main__":
     unittest.main()
