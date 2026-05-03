@@ -129,6 +129,7 @@ class TestPackagingConfig(unittest.TestCase):
         pyproject = (ROOT / "pyproject.toml").read_text()
         setup_py = (ROOT / "setup.py").read_text()
         manifest = (ROOT / "MANIFEST.in").read_text()
+        hooks = (ROOT / "dcr/hooks.py").read_text()
 
         self.assertIn('build-backend = "setuptools.build_meta"', pyproject)
         self.assertIn('[tool.setuptools.package-data]', pyproject)
@@ -137,6 +138,10 @@ class TestPackagingConfig(unittest.TestCase):
         self.assertIn('"public/images/*.png"', pyproject)
         self.assertIn('"public/js/*.js"', setup_py)
         self.assertIn("recursive-include dcr/public *.css *.js *.png", manifest)
+        self.assertIn('DCR_ASSET_VERSION = "20260503-2"', hooks)
+        self.assertIn('versioned_asset("/assets/dcr/js/sidebar_fix.js")', hooks)
+        self.assertIn('versioned_asset("/assets/dcr/js/map_warmup.js")', hooks)
+        self.assertIn('versioned_asset("/assets/dcr/css/map.css")', hooks)
 
 
 class TestMapWorkspaceClientCode(unittest.TestCase):

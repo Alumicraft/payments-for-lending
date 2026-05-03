@@ -7,16 +7,27 @@ app_license = "MIT"
 required_apps = ["frappe", "erpnext", "lending"]
 
 boot_session = "dcr.api.boot.boot_session"
+
+# Frappe Cloud serves /assets files with a long immutable browser cache.
+# Keep these explicit URLs versioned so deployed client fixes are fetched
+# without requiring users to hard-refresh stale browser caches.
+DCR_ASSET_VERSION = "20260503-2"
+
+
+def versioned_asset(path):
+    return f"{path}?v={DCR_ASSET_VERSION}"
+
+
 app_include_js = [
-    "/assets/dcr/js/icon_fix.js",
-    "/assets/dcr/js/sidebar_fix.js",
+    versioned_asset("/assets/dcr/js/icon_fix.js"),
+    versioned_asset("/assets/dcr/js/sidebar_fix.js"),
     # Preconnects to Mapbox CDN, preloads icon assets, lazy-loads
     # mapbox-gl.js, and prefetches the map API responses on idle.
-    "/assets/dcr/js/map_warmup.js",
+    versioned_asset("/assets/dcr/js/map_warmup.js"),
 ]
 app_include_css = [
-    "/assets/dcr/css/workspace_fullwidth.css",
-    "/assets/dcr/css/map.css",
+    versioned_asset("/assets/dcr/css/workspace_fullwidth.css"),
+    versioned_asset("/assets/dcr/css/map.css"),
 ]
 
 override_whitelisted_methods = {
