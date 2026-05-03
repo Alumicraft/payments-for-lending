@@ -97,9 +97,9 @@ def after_install():
         frappe.log_error(frappe.get_traceback(), "ensure_supplier_geo_fields failed")
 
     try:
-        ensure_purchase_order_hbr_field()
+        ensure_order_hbr_fields()
     except Exception:
-        frappe.log_error(frappe.get_traceback(), "ensure_purchase_order_hbr_field failed")
+        frappe.log_error(frappe.get_traceback(), "ensure_order_hbr_fields failed")
 
     frappe.db.commit()
 
@@ -265,21 +265,57 @@ def ensure_bank_account_ach_fields():
 
 def ensure_purchase_order_hbr_field():
     """Create the Purchase Order link used by HBR create buttons and map status."""
-    if frappe.db.exists("Custom Field", {"dt": "Purchase Order", "fieldname": "custom_home_build_request"}):
-        return
+    ensure_order_hbr_fields(["Purchase Order"])
 
-    frappe.get_doc({
-        "doctype": "Custom Field",
-        "dt": "Purchase Order",
-        "fieldname": "custom_home_build_request",
-        "label": "Home Build Request",
-        "fieldtype": "Link",
-        "options": "Home Build Request",
-        "insert_after": "supplier",
-        "read_only": 1,
-        "no_copy": 1,
-    }).insert(ignore_permissions=True)
-    frappe.clear_cache(doctype="Purchase Order")
+
+def ensure_order_hbr_fields(only_doctypes=None):
+    """Create missing HBR link fields on order/payment doctypes.
+
+    Existing fields are intentionally left untouched so Customize Form remains
+    the source of truth for placement and layout after first provisioning.
+    """
+    fields = [
+        {
+            "dt": "Purchase Order",
+            "fieldname": "custom_home_build_request",
+            "insert_after": "supplier",
+        },
+        {
+            "dt": "Purchase Invoice",
+            "fieldname": "home_build_request",
+            "insert_after": "supplier",
+        },
+        {
+            "dt": "Purchase Receipt",
+            "fieldname": "custom_home_build_request",
+            "insert_after": "supplier",
+        },
+        {
+            "dt": "Payment Entry",
+            "fieldname": "custom_home_build_request",
+            "insert_after": "party",
+        },
+    ]
+    if only_doctypes:
+        only_doctypes = set(only_doctypes)
+        fields = [field for field in fields if field["dt"] in only_doctypes]
+
+    for field in fields:
+        if frappe.db.exists("Custom Field", {"dt": field["dt"], "fieldname": field["fieldname"]}):
+            continue
+
+        frappe.get_doc({
+            "doctype": "Custom Field",
+            "dt": field["dt"],
+            "fieldname": field["fieldname"],
+            "label": "Home Build Request",
+            "fieldtype": "Link",
+            "options": "Home Build Request",
+            "insert_after": field["insert_after"],
+            "read_only": 1,
+            "no_copy": 1,
+        }).insert(ignore_permissions=True)
+        frappe.clear_cache(doctype=field["dt"])
 
 
 def tidy_la_connections():

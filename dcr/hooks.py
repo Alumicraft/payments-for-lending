@@ -89,6 +89,10 @@ doctype_js = {
     "MIFA": "public/js/mifa.js",
     "Factory Assignment": "public/js/factory_assignment.js",
     "Loan Disbursement": "public/js/loan_disbursement.js",
+    "Purchase Order": "public/js/hbr_connection_defaults.js",
+    "Purchase Invoice": "public/js/hbr_connection_defaults.js",
+    "Purchase Receipt": "public/js/hbr_connection_defaults.js",
+    "Payment Entry": "public/js/hbr_connection_defaults.js",
 }
 
 # Document Events

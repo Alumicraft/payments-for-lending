@@ -5,6 +5,8 @@ Pure function, no database dependency.
 """
 
 import unittest
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 from dcr.dcr.doctype.home_build_request.home_build_request import get_required_docs, DOC_REQUIREMENTS
 
 
@@ -125,6 +127,103 @@ class TestGetRequiredDocs(unittest.TestCase):
         """Factory Quote should appear in every valid combination."""
         for key, docs in DOC_REQUIREMENTS.items():
             self.assertIn("Factory Quote", docs, f"Missing Factory Quote for {key}")
+
+
+class TestHomeBuildRequestAttachmentSync(unittest.TestCase):
+
+    @patch("dcr.dcr.doctype.home_build_request.home_build_request.frappe")
+    def test_sync_links_current_checklist_files_to_hbr(self, mock_frappe):
+        from dcr.dcr.doctype.home_build_request.home_build_request import sync_linked_files
+
+        doc = SimpleNamespace(
+            doctype="Home Build Request",
+            name="HBR-001",
+            doc_checklist=[
+                SimpleNamespace(attachment="/files/factory-quote.pdf"),
+                SimpleNamespace(attachment="/files/plot-plan.pdf"),
+            ],
+        )
+        file_doc = MagicMock()
+        mock_frappe.db.exists.return_value = False
+        mock_frappe.db.get_value.return_value = "FILE-001"
+        mock_frappe.get_doc.return_value = file_doc
+
+        sync_linked_files(doc, ["doc_checklist"])
+
+        self.assertEqual(mock_frappe.db.get_value.call_count, 2)
+        file_doc.db_set.assert_any_call(
+            {
+                "attached_to_doctype": "Home Build Request",
+                "attached_to_name": "HBR-001",
+                "attached_to_field": "doc_checklist",
+            },
+            update_modified=False,
+        )
+        self.assertEqual(file_doc.db_set.call_count, 2)
+
+    @patch("dcr.dcr.doctype.home_build_request.home_build_request.frappe")
+    def test_sync_skips_files_already_linked_to_hbr(self, mock_frappe):
+        from dcr.dcr.doctype.home_build_request.home_build_request import sync_linked_files
+
+        doc = SimpleNamespace(
+            doctype="Home Build Request",
+            name="HBR-001",
+            doc_checklist=[SimpleNamespace(attachment="/files/factory-quote-v2.pdf")],
+        )
+        file_doc = MagicMock()
+        file_doc.attached_to_doctype = "Home Build Request"
+        file_doc.attached_to_name = "HBR-001"
+        file_doc.attached_to_field = "doc_checklist"
+        mock_frappe.db.get_value.return_value = "FILE-002"
+        mock_frappe.get_doc.return_value = file_doc
+
+        sync_linked_files(doc, ["doc_checklist"])
+
+        file_doc.db_set.assert_not_called()
+
+    @patch("dcr.dcr.doctype.home_build_request.home_build_request.frappe")
+    def test_sync_detaches_stale_checklist_file_links_only(self, mock_frappe):
+        from dcr.dcr.doctype.home_build_request.home_build_request import sync_linked_files
+
+        doc = SimpleNamespace(
+            doctype="Home Build Request",
+            name="HBR-001",
+            doc_checklist=[SimpleNamespace(attachment="/files/factory-quote-v2.pdf")],
+        )
+        current_file = MagicMock()
+        current_file.attached_to_doctype = "Document Checklist"
+        current_file.attached_to_name = "row-2"
+        current_file.attached_to_field = "attachment"
+        stale_file = MagicMock()
+        mock_frappe.db.exists.return_value = False
+        mock_frappe.db.get_value.return_value = "FILE-002"
+        mock_frappe.get_doc.side_effect = [stale_file, current_file]
+        mock_frappe.get_all.return_value = [
+            {"name": "FILE-001", "file_url": "/files/factory-quote-v1.pdf"},
+        ]
+
+        sync_linked_files(doc, ["doc_checklist"])
+
+        stale_file.db_set.assert_called_once_with(
+            {
+                "attached_to_doctype": None,
+                "attached_to_name": None,
+                "attached_to_field": None,
+            },
+            update_modified=False,
+        )
+        current_file.db_set.assert_called_once_with(
+            {
+                "attached_to_doctype": "Home Build Request",
+                "attached_to_name": "HBR-001",
+                "attached_to_field": "doc_checklist",
+            },
+            update_modified=False,
+        )
+        self.assertEqual(
+            mock_frappe.get_all.call_args.kwargs["filters"]["attached_to_field"],
+            ["in", ["doc_checklist"]],
+        )
 
 
 if __name__ == "__main__":

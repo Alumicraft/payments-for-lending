@@ -20,6 +20,10 @@ frappe.ui.form.on('Loan Application', {
         });
     },
 
+    onload: function(frm) {
+        hydrate_from_home_build_request(frm);
+    },
+
     refresh: function(frm) {
         // Force-show read-only fields (Frappe v15 hides empty read-only fields on new forms)
         ['rate_of_interest', 'buyer_name', 'available_credit', 'outstanding_loan_balance',
@@ -119,12 +123,7 @@ frappe.ui.form.on('Loan Application', {
     },
 
     home_build_request: function(frm) {
-        // fetch_from silently populates applicant without firing the applicant handler
-        // so we manually clear cache and re-run credit fetches after HBR is linked
-        frappe.after_ajax(function() {
-            frm.doc.__credit_fetched = false;
-            frm.trigger('refresh');
-        });
+        hydrate_from_home_build_request(frm);
     },
 
     loan_amount: function(frm) {
@@ -144,6 +143,52 @@ frappe.ui.form.on('Loan Application', {
         calculate_preapproval_fields(frm);
     }
 });
+
+
+function hydrate_from_home_build_request(frm) {
+    if (!frm.is_new() || !frm.doc.home_build_request || frm.doc.__hbr_hydrated === frm.doc.home_build_request) return;
+    frm.doc.__hbr_hydrated = frm.doc.home_build_request;
+
+    frappe.db.get_doc('Home Build Request', frm.doc.home_build_request).then(function(hbr) {
+        if (!hbr) return;
+
+        apply_hbr_fetch_from_fields(frm, hbr, 'home_build_request');
+        set_if_empty(frm, 'applicant_type', 'Customer');
+        set_if_empty(frm, 'applicant', hbr.customer);
+        set_if_empty(frm, 'loan_amount', hbr.home_invoice_plus_freight);
+        set_if_empty(frm, 'requested_advance_amount', hbr.home_invoice_plus_freight);
+        set_if_empty(frm, 'buyer_name', hbr.home_buyer);
+        set_if_empty(frm, 'home_serial_no', hbr.home_serial_no);
+        set_if_empty(frm, 'factory', hbr.factory);
+        set_if_empty(frm, 'floor_plan', hbr.model_name);
+        set_if_empty(frm, 'custom_monthly_space_rent', hbr.space_rent);
+        set_if_empty(frm, 'custom_projected_sales_price', hbr.selling_price);
+
+        frappe.after_ajax(function() {
+            frm.doc.__credit_fetched = false;
+            frm.trigger('refresh');
+        });
+    });
+}
+
+
+function apply_hbr_fetch_from_fields(frm, hbr, link_fieldname) {
+    if (!frappe.meta || !frappe.meta.get_docfields) return;
+    var docfields = frappe.meta.get_docfields(frm.doc.doctype) || [];
+    docfields.forEach(function(df) {
+        if (!df.fetch_from || df.fetch_from.indexOf(link_fieldname + '.') !== 0) return;
+        var source_field = df.fetch_from.slice(link_fieldname.length + 1);
+        set_if_empty(frm, df.fieldname, hbr[source_field]);
+    });
+}
+
+
+function set_if_empty(frm, fieldname, value) {
+    if (value === undefined || value === null || value === '') return;
+    if (frm.doc[fieldname]) return;
+    if (!frm.fields_dict[fieldname] && !Object.prototype.hasOwnProperty.call(frm.doc, fieldname)) return;
+    frm.set_value(fieldname, value);
+}
 
 
 function render_hbr_documents(frm) {

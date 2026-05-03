@@ -29,6 +29,45 @@ class TestLoanClientScript(unittest.TestCase):
         self.assertNotIn("home_build_request: frm.doc.home_serial_no || ''", script)
 
 
+class TestLoanApplicationClientScript(unittest.TestCase):
+
+    def test_connection_created_new_loan_application_hydrates_from_hbr_onload(self):
+        script = (ROOT / "dcr/public/js/loan_application.js").read_text()
+
+        self.assertIn("onload: function(frm)", script)
+        self.assertIn("hydrate_from_home_build_request(frm)", script)
+        self.assertIn("function hydrate_from_home_build_request(frm)", script)
+        self.assertIn("frm.doc.__hbr_hydrated === frm.doc.home_build_request", script)
+        self.assertIn("frm.doc.__hbr_hydrated = frm.doc.home_build_request", script)
+        self.assertIn("frappe.db.get_doc('Home Build Request', frm.doc.home_build_request)", script)
+        self.assertIn("apply_hbr_fetch_from_fields(frm, hbr, 'home_build_request')", script)
+        self.assertIn("function apply_hbr_fetch_from_fields(frm, hbr, link_fieldname)", script)
+        self.assertIn("df.fetch_from.indexOf(link_fieldname + '.')", script)
+        self.assertIn("set_if_empty(frm, 'applicant', hbr.customer)", script)
+        self.assertIn("set_if_empty(frm, 'loan_amount', hbr.home_invoice_plus_freight)", script)
+        self.assertIn("set_if_empty(frm, 'buyer_name', hbr.home_buyer)", script)
+
+
+class TestHbrConnectionDefaultsClientScript(unittest.TestCase):
+
+    def test_order_connection_targets_use_shared_hbr_fetch_script(self):
+        hooks = (ROOT / "dcr/hooks.py").read_text()
+        script = (ROOT / "dcr/public/js/hbr_connection_defaults.js")
+
+        self.assertTrue(script.exists())
+        for doctype in ["Purchase Order", "Purchase Invoice", "Purchase Receipt", "Payment Entry"]:
+            self.assertIn(f'"{doctype}": "public/js/hbr_connection_defaults.js"', hooks)
+
+    def test_shared_hbr_fetch_script_applies_customize_form_fetch_from_fields(self):
+        script = (ROOT / "dcr/public/js/hbr_connection_defaults.js").read_text()
+
+        self.assertIn('"Purchase Order": "custom_home_build_request"', script)
+        self.assertIn('"Purchase Invoice": "home_build_request"', script)
+        self.assertIn("frappe.meta.get_docfields(frm.doc.doctype)", script)
+        self.assertIn('df.fetch_from.indexOf(link_fieldname + ".")', script)
+        self.assertIn("frm.set_value(df.fieldname, hbr[source_field])", script)
+
+
 class TestSidebarFixClientScript(unittest.TestCase):
 
     def test_workspace_routes_match_boot_keys_or_labels(self):

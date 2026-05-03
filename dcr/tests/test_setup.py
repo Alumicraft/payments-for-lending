@@ -65,6 +65,50 @@ class TestSetupCustomFields(unittest.TestCase):
         field_doc.insert.assert_called_once_with(ignore_permissions=True)
         mock_frappe.clear_cache.assert_called_once_with(doctype="Purchase Order")
 
+    @patch("dcr.setup.frappe")
+    def test_ensure_order_hbr_fields_creates_only_missing_fields(self, mock_frappe):
+        from dcr.setup import ensure_order_hbr_fields
+
+        field_doc = MagicMock()
+
+        def exists(doctype, filters):
+            return filters["dt"] == "Purchase Receipt"
+
+        mock_frappe.db.exists.side_effect = exists
+        mock_frappe.get_doc.return_value = field_doc
+
+        ensure_order_hbr_fields()
+
+        payloads = [call.args[0] for call in mock_frappe.get_doc.call_args_list]
+        created_by_dt = {payload["dt"]: payload for payload in payloads}
+
+        self.assertEqual(set(created_by_dt), {"Purchase Order", "Purchase Invoice", "Payment Entry"})
+        self.assertEqual(created_by_dt["Purchase Order"]["fieldname"], "custom_home_build_request")
+        self.assertEqual(created_by_dt["Purchase Invoice"]["fieldname"], "home_build_request")
+        self.assertEqual(created_by_dt["Payment Entry"]["fieldname"], "custom_home_build_request")
+        self.assertNotIn("Purchase Receipt", created_by_dt)
+        self.assertEqual(field_doc.insert.call_count, 3)
+        mock_frappe.clear_cache.assert_any_call(doctype="Purchase Order")
+        mock_frappe.clear_cache.assert_any_call(doctype="Purchase Invoice")
+        mock_frappe.clear_cache.assert_any_call(doctype="Payment Entry")
+
+    def test_hbr_orders_connections_are_ordered_po_pi_pr_pe(self):
+        import json
+
+        doctype = json.loads(
+            (ROOT / "dcr/dcr/doctype/home_build_request/home_build_request.json").read_text()
+        )
+        orders = [
+            link["link_doctype"]
+            for link in doctype["links"]
+            if link.get("group") == "Orders"
+        ]
+
+        self.assertEqual(
+            orders,
+            ["Purchase Order", "Purchase Invoice", "Purchase Receipt", "Payment Entry"],
+        )
+
 
 class TestAchBankAccountMigration(unittest.TestCase):
 

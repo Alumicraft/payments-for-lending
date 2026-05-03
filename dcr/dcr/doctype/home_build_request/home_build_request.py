@@ -73,12 +73,18 @@ class HomeBuildRequest(Document):
                     )
                 )
 
+    def on_update(self):
+        self.sync_checklist_files()
+
     def before_submit(self):
         self.validate_checklist_complete()
 
     def on_submit(self):
         """Submission locks the deal record. Downstream docs created manually."""
-        pass
+        self.sync_checklist_files()
+
+    def sync_checklist_files(self):
+        sync_linked_files(self, ["doc_checklist"])
 
     def validate_checklist_complete(self):
         """Block submission unless every checklist row has an attachment or is waived."""
@@ -108,6 +114,85 @@ def get_required_docs(home_type, financing_type, property_type):
     return docs
 
 
+def sync_linked_files(doc, table_fields):
+    """Mirror child-row file attachments onto the parent document.
+
+    Files mirrored by this helper are marked with `attached_to_field` equal to
+    the child table fieldname. That lets later saves detach stale mirrored
+    links when a checklist row points at a replacement file, while leaving
+    files manually attached to the parent document alone.
+    """
+    current_by_field = {}
+    for table_field in table_fields:
+        urls = set()
+        for row in _get_value(doc, table_field) or []:
+            attachment = _get_value(row, "attachment")
+            if attachment:
+                urls.add(attachment)
+        current_by_field[table_field] = urls
+
+    all_current = set().union(*current_by_field.values()) if current_by_field else set()
+    if doc.doctype and doc.name:
+        stale_links = frappe.get_all(
+            "File",
+            filters={
+                "attached_to_doctype": doc.doctype,
+                "attached_to_name": doc.name,
+                "attached_to_field": ["in", table_fields],
+                "file_url": ["not in", list(all_current) or [""]],
+            },
+            fields=["name", "file_url"],
+        )
+        for file_link in stale_links:
+            frappe.get_doc("File", file_link["name"]).db_set(
+                {
+                    "attached_to_doctype": None,
+                    "attached_to_name": None,
+                    "attached_to_field": None,
+                },
+                update_modified=False,
+            )
+
+    for table_field, file_urls in current_by_field.items():
+        for file_url in file_urls:
+            if frappe.db.exists(
+                "File",
+                {
+                    "file_url": file_url,
+                    "attached_to_doctype": doc.doctype,
+                    "attached_to_name": doc.name,
+                },
+            ):
+                continue
+
+            file_name = frappe.db.get_value("File", {"file_url": file_url}, "name")
+            if not file_name:
+                continue
+
+            file_doc = frappe.get_doc("File", file_name)
+            if (
+                file_doc.attached_to_doctype == doc.doctype
+                and file_doc.attached_to_name == doc.name
+                and file_doc.attached_to_field == table_field
+            ):
+                continue
+
+            file_doc.db_set(
+                {
+                    "attached_to_doctype": doc.doctype,
+                    "attached_to_name": doc.name,
+                    "attached_to_field": table_field,
+                },
+                update_modified=False,
+            )
+
+
+def _get_value(obj, fieldname):
+    if hasattr(obj, "get"):
+        return obj.get(fieldname)
+    return getattr(obj, fieldname, None)
+
+
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_assigned_factories(doctype, txt, searchfield, start, page_len, filters):
@@ -131,4 +216,3 @@ def get_assigned_factories(doctype, txt, searchfield, start, page_len, filters):
         "start": start,
         "page_len": page_len
     })
-

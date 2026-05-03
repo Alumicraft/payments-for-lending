@@ -407,6 +407,16 @@
    "link_fieldname": "home_build_request"
   },
   {
+   "group": "Orders",
+   "link_doctype": "Purchase Receipt",
+   "link_fieldname": "custom_home_build_request"
+  },
+  {
+   "group": "Orders",
+   "link_doctype": "Payment Entry",
+   "link_fieldname": "custom_home_build_request"
+  },
+  {
    "group": "Lending",
    "link_doctype": "Loan Application",
    "link_fieldname": "home_build_request"

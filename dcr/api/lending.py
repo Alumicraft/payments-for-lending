@@ -70,6 +70,7 @@ def validate_loan_application(doc, method):
     - Validates advance date against factory lead time
     - Warns if requested amount exceeds available credit
     """
+    hbr = None
     if doc.get("home_build_request"):
         hbr_status = frappe.db.get_value(
             "Home Build Request", doc.home_build_request, "docstatus"
@@ -89,6 +90,9 @@ def validate_loan_application(doc, method):
                 _("Loan Applications can only be created for Floored Home Build Requests. "
                   "{0} is {1}.").format(doc.home_build_request, financing_type or _("not marked Floored"))
             )
+
+        hbr = frappe.get_doc("Home Build Request", doc.home_build_request)
+        _populate_loan_application_from_hbr(doc, hbr)
     else:
         return
 
@@ -120,7 +124,6 @@ def validate_loan_application(doc, method):
         )
 
     if doc.get("advance_date_requested"):
-        hbr = frappe.get_doc("Home Build Request", doc.home_build_request)
         if hbr.factory:
             validate_advance_date(hbr.factory, doc.advance_date_requested)
 
@@ -158,6 +161,25 @@ def validate_loan_application(doc, method):
     else:
         doc.custom_projected_equity = None
         doc.custom_projected_ltv = None
+
+
+def _populate_loan_application_from_hbr(doc, hbr):
+    """Backfill HBR-derived fields when native connection creation skips fetches."""
+    defaults = {
+        "applicant_type": "Customer",
+        "applicant": hbr.get("customer"),
+        "loan_amount": hbr.get("home_invoice_plus_freight"),
+        "requested_advance_amount": hbr.get("home_invoice_plus_freight"),
+        "buyer_name": hbr.get("home_buyer"),
+        "home_serial_no": hbr.get("home_serial_no"),
+        "factory": hbr.get("factory"),
+        "floor_plan": hbr.get("model_name"),
+        "custom_monthly_space_rent": hbr.get("space_rent"),
+        "custom_projected_sales_price": hbr.get("selling_price"),
+    }
+    for fieldname, value in defaults.items():
+        if value is not None and not doc.get(fieldname):
+            doc.set(fieldname, value)
 
 
 def validate_advance_date(factory, requested_date):
