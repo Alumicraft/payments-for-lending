@@ -705,7 +705,14 @@ def ensure_map_block():
         function close() { menu.classList.remove('is-open'); active = -1; }
 
         var debounce;
-        input.addEventListener('input', function() {
+        function keepSearchEventLocal(e) {
+            e.stopPropagation();
+        }
+        ['keydown', 'keyup', 'keypress', 'input', 'beforeinput'].forEach(function(eventName) {
+            input.addEventListener(eventName, keepSearchEventLocal, true);
+        });
+        input.addEventListener('input', function(e) {
+            keepSearchEventLocal(e);
             clearTimeout(debounce);
             debounce = setTimeout(function() {
                 hits = searchQuery(input.value.trim());
@@ -714,6 +721,7 @@ def ensure_map_block():
             }, 120);
         });
         input.addEventListener('keydown', function(e) {
+            keepSearchEventLocal(e);
             if (e.key === 'ArrowDown') { e.preventDefault(); active = Math.min(active + 1, hits.length - 1); render(); }
             else if (e.key === 'ArrowUp') { e.preventDefault(); active = Math.max(active - 1, 0); render(); }
             else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); flyToResult(m, hits[active]); input.blur(); close(); }

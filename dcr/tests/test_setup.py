@@ -40,6 +40,7 @@ class TestMapBlockContent(unittest.TestCase):
         self.assertIn("SatelliteControl", setup_code)
         self.assertIn("renderStackedHtml", setup_code)
         self.assertIn("buildLegend(map, geojson)", setup_code)
+        self.assertIn("keepSearchEventLocal", setup_code)
         self.assertNotIn("window._dcrShowTrailForHome", setup_code)
 
     def test_map_css_is_shipped_as_asset(self):
