@@ -540,11 +540,11 @@ def ensure_map_block():
 .dcr-legend__count { font-variant-numeric: tabular-nums; color: #687178; }
 .dcr-legend--dark .dcr-legend__count { color: #A6ADB4; }
 .dcr-legend__check { display: inline-block; width: 14px; height: 14px; border: 1px solid #C7CDD3; border-radius: 3px; background: #fff; pointer-events: none; position: relative; box-sizing: border-box; }
-.dcr-legend__check.is-checked { background: #2490EF; border-color: #2490EF; }
-.dcr-legend__check.is-checked::after { content: ""; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.dcr-legend__check:checked, .dcr-legend__check.is-checked { background: #2490EF; border-color: #2490EF; }
+.dcr-legend__check:checked::after, .dcr-legend__check.is-checked::after { content: ""; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
 .dcr-legend--dark .dcr-legend__check { background: #0E1116; border-color: #4A5158; }
-.dcr-legend--dark .dcr-legend__check.is-checked { background: #4DA8FF; border-color: #4DA8FF; }
-.dcr-legend--dark .dcr-legend__check.is-checked::after { border-color: #0E1116; }
+.dcr-legend--dark .dcr-legend__check:checked, .dcr-legend--dark .dcr-legend__check.is-checked { background: #4DA8FF; border-color: #4DA8FF; }
+.dcr-legend--dark .dcr-legend__check:checked::after, .dcr-legend--dark .dcr-legend__check.is-checked::after { border-color: #0E1116; }
 .dcr-legend__footer { margin-top: 6px; padding-top: 6px; border-top: 1px solid #ECEDEE; display: flex; gap: 8px; font-size: 11px; }
 .dcr-legend--dark .dcr-legend__footer { border-top-color: #2D3137; }
 .dcr-legend__footer button { color: #2490EF; cursor: pointer; background: none; border: 0; padding: 0; font: inherit; }
@@ -818,9 +818,14 @@ def ensure_map_block():
 
         var hits = [];
         var active = -1;
+        var suppressMenuUntil = 0;
         function render() {
+            if (Date.now() < suppressMenuUntil && document.activeElement !== input) {
+                menu.classList.remove('is-open');
+                return;
+            }
             if (!hits.length) {
-                if (input.value.length >= 2) {
+                if (input.value.trim().length >= 2) {
                     menu.innerHTML = '<div class="dcr-search__empty">No matches</div>';
                     menu.classList.add('is-open');
                 } else {
@@ -845,6 +850,29 @@ def ensure_map_block():
         window._dcrMapRefreshSearch = refreshSearch;
 
         var debounce;
+        function scheduleRefresh(resetActive) {
+            suppressMenuUntil = 0;
+            clearTimeout(debounce);
+            debounce = setTimeout(function() {
+                if (resetActive) active = 0;
+                refreshSearch();
+            }, 120);
+            setTimeout(function() {
+                if (resetActive) active = 0;
+                refreshSearch();
+            }, 0);
+        }
+        function selectHit(item) {
+            if (!item) return;
+            suppressMenuUntil = Date.now() + 6000;
+            close();
+            input.blur();
+            flyToResult(m, item);
+            try { m.once('moveend', close); } catch (_) {}
+            setTimeout(close, 0);
+            setTimeout(close, 500);
+            setTimeout(close, 2500);
+        }
         function keepSearchEventLocal(e) {
             e.stopPropagation();
         }
@@ -853,30 +881,33 @@ def ensure_map_block():
         });
         input.addEventListener('input', function(e) {
             keepSearchEventLocal(e);
-            clearTimeout(debounce);
-            debounce = setTimeout(function() {
-                active = 0;
-                refreshSearch();
-            }, 120);
+            scheduleRefresh(true);
+        });
+        input.addEventListener('keyup', function(e) {
+            keepSearchEventLocal(e);
+            if (['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].indexOf(e.key) === -1) {
+                scheduleRefresh(true);
+            }
         });
         input.addEventListener('focus', function() {
-            if (input.value.trim().length >= 2) refreshSearch();
+            if (input.value.trim().length >= 2) scheduleRefresh(true);
         });
         input.addEventListener('keydown', function(e) {
             keepSearchEventLocal(e);
             if (e.key === 'ArrowDown') { e.preventDefault(); active = Math.min(active + 1, hits.length - 1); render(); }
             else if (e.key === 'ArrowUp') { e.preventDefault(); active = Math.max(active - 1, 0); render(); }
-            else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); flyToResult(m, hits[active]); input.blur(); close(); }
+            else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); selectHit(hits[active]); }
             else if (e.key === 'Escape') { close(); input.blur(); }
+            else if (e.key && e.key.length === 1) {
+                setTimeout(function() { scheduleRefresh(true); }, 0);
+            }
         });
         menu.addEventListener('mousedown', function(e) {
             var item = e.target.closest('.dcr-search__item');
             if (!item) return;
             e.preventDefault();
             var idx = parseInt(item.getAttribute('data-idx'), 10);
-            if (hits[idx]) flyToResult(m, hits[idx]);
-            input.blur();
-            close();
+            if (hits[idx]) selectHit(hits[idx]);
         });
         document.addEventListener('mousedown', function(e) {
             if (!wrap.contains(e.target)) close();

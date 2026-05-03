@@ -16,6 +16,8 @@
 	var _initialized = false;
 	var _last_clicked = null;
 	var ENTITY_WORKSPACE_PREFIX = "dcr_workspace_for_";
+	var DOCTYPE_MAP_KEY = "sidebar_fix_doctype_workspace";
+	var GLOBAL_KEY = "sidebar_fix_last_workspace";
 	var DEFAULT_WORKSPACE_BY_ENTITY = {
 		"homebuildrequest": "Deals"
 	};
@@ -28,7 +30,7 @@
 		catch (e) { return []; }
 	}
 
-	function scrub_fieldname(field) {
+	function fieldname_from_label(field) {
 		return (field || "")
 			.toString()
 			.trim()
@@ -49,19 +51,40 @@
 		if (!f) return null;
 		if (Array.isArray(f)) {
 			if (f.length >= 4) {
-				return { field: scrub_fieldname(f[1]), operator: normalize_operator(f[2]), value: f[3] };
+				return {
+					doctype: (f[0] || "").toString().trim(),
+					field: (f[1] || "").toString().trim(),
+					operator: normalize_operator(f[2]),
+					value: f[3]
+				};
 			}
 			if (f.length === 3) {
-				return { field: scrub_fieldname(f[0]), operator: normalize_operator(f[1]), value: f[2] };
+				return {
+					doctype: "",
+					field: (f[0] || "").toString().trim(),
+					operator: normalize_operator(f[1]),
+					value: f[2]
+				};
 			}
 			if (f.length === 2) {
-				return { field: scrub_fieldname(f[0]), operator: "=", value: f[1] };
+				return {
+					doctype: "",
+					field: (f[0] || "").toString().trim(),
+					operator: "=",
+					value: f[1]
+				};
 			}
 			return null;
 		}
 		if (typeof f === "object") {
 			return {
-				field: scrub_fieldname(f.fieldname || f.field || f.field_name || f.label),
+				doctype: (f.doctype || f.dt || f.document_type || "").toString().trim(),
+				field: (
+					f.fieldname ||
+					f.field ||
+					f.field_name ||
+					fieldname_from_label(f.label)
+				).toString().trim(),
 				operator: normalize_operator(f.operator || f.condition || f.op),
 				value: f.value != null ? f.value : f.filter_value
 			};
@@ -74,7 +97,15 @@
 		for (var i = 0; i < filters.length; i++) {
 			var parts = filter_parts(filters[i]);
 			if (!parts || !parts.field || parts.value == null || parts.value === "") continue;
-			opts[parts.field] = parts.operator === "=" ? parts.value : [parts.operator, parts.value];
+			var key = parts.doctype ? parts.doctype + "." + parts.field : parts.field;
+			var entry = [parts.operator, parts.value];
+			if (opts[key] === undefined) {
+				opts[key] = entry;
+			} else if (Array.isArray(opts[key]) && Array.isArray(opts[key][0])) {
+				opts[key].push(entry);
+			} else {
+				opts[key] = [opts[key], entry];
+			}
 		}
 		return opts;
 	}
@@ -132,6 +163,17 @@
 		}
 	}
 
+	function read_doctype_map() {
+		try {
+			var raw = localStorage.getItem(DOCTYPE_MAP_KEY);
+			if (!raw) return {};
+			var parsed = JSON.parse(raw);
+			return parsed && typeof parsed === "object" ? parsed : {};
+		} catch (e) {
+			return {};
+		}
+	}
+
 	function default_workspace_for_entity(entity, candidates) {
 		return candidate_label(DEFAULT_WORKSPACE_BY_ENTITY[normalize(entity)], candidates);
 	}
@@ -142,10 +184,28 @@
 		try {
 			localStorage.setItem(ENTITY_WORKSPACE_PREFIX + normalize(entity), workspace.label);
 			localStorage.setItem("dcr_last_workspace", workspace.label);
+			localStorage.setItem(GLOBAL_KEY, workspace.label);
 			console.info("[DCR sidebar] remembered", reason || "", entity, workspace.label);
 			return true;
 		} catch (e) {
 			console.log("[DCR sidebar] remember error:", e);
+			return false;
+		}
+	}
+
+	function remember_doctype_workspace(doctype) {
+		if (!doctype) return false;
+		var workspace = workspace_from_slug(get_workspace_name());
+		if (!workspace) return false;
+		try {
+			var map = read_doctype_map();
+			map[doctype] = workspace.label;
+			map[normalize(doctype)] = workspace.label;
+			localStorage.setItem(DOCTYPE_MAP_KEY, JSON.stringify(map));
+			localStorage.setItem(GLOBAL_KEY, workspace.label);
+			return true;
+		} catch (e) {
+			console.log("[DCR sidebar] doctype remember error:", e);
 			return false;
 		}
 	}
@@ -215,13 +275,25 @@
 		}
 		if (!item || item.type !== "Link") return;
 		remember_workspace_for_entity(item.link_to, get_workspace_name(), "sidebar-click");
+		remember_doctype_workspace(item.link_to);
 
-		// Apply filters as route_options
+		// Apply filters as route_options before Frappe navigates.
+		// Use the [op, value] array form and "<DocType>.<field>" keys so
+		// list_view can parse filters even before doctype meta finishes
+		// loading. Strip query params from the anchor so Frappe's bubble
+		// handler cannot overwrite these clean route_options with
+		// comma-joined URL values.
 		if (item.filters) {
 			var filters = parse_filters(item.filters);
 			if (filters.length) {
 				var opts = filters_to_route_options(filters);
-				if (Object.keys(opts).length) frappe.route_options = opts;
+				if (Object.keys(opts).length) {
+					frappe.route_options = opts;
+					var anchor = e.target.closest("a.item-anchor") || e.target.closest("a") || container.querySelector("a");
+					if (anchor && anchor.search) {
+						anchor.search = "";
+					}
+				}
 			}
 		}
 
@@ -390,6 +462,38 @@
 		}
 	}
 
+	// Frappe v16's TypeLink.get_path can throw when a Workspace link points
+	// at a workspace that is deleted, renamed, or hidden from the current
+	// user. That aborts sidebar setup before our workspace correction runs.
+	function patch_typelink_get_path() {
+		try {
+			if (!frappe.ui || !frappe.ui.sidebar_item || !frappe.ui.sidebar_item.TypeLink) return false;
+			var proto = frappe.ui.sidebar_item.TypeLink.prototype;
+			if (proto._dcr_sidebar_fix_get_path_patched) return true;
+			var original = proto.get_path;
+			if (typeof original !== "function") return false;
+			proto.get_path = function () {
+				try {
+					return original.call(this);
+				} catch (e) {
+					console.warn("[DCR sidebar] get_path failed for item", this.item, e);
+					return null;
+				}
+			};
+			proto._dcr_sidebar_fix_get_path_patched = true;
+			return true;
+		} catch (e) {
+			return false;
+		}
+	}
+
+	function try_patch_typelink_get_path(n) {
+		if (n <= 0) return;
+		if (!patch_typelink_get_path()) {
+			setTimeout(function () { try_patch_typelink_get_path(n - 1); }, 300);
+		}
+	}
+
 	// -- Pick the right workspace on (hard) refresh --
 	// On reload Frappe has no remembered workspace, so its module-based
 	// fallback picks whichever workspace "owns" the doctype — usually the
@@ -455,6 +559,10 @@
 			if (!candidates.length) return null;
 			if (candidates.length === 1) return candidates[0];
 
+			var doctype_map = read_doctype_map();
+			var doctype_workspace = candidate_label(doctype_map[entity] || doctype_map[normalize(entity)], candidates);
+			if (doctype_workspace) return doctype_workspace;
+
 			var entity_workspace = get_workspace_for_entity(entity, candidates);
 			if (entity_workspace) return entity_workspace;
 
@@ -462,7 +570,7 @@
 			if (default_workspace) return default_workspace;
 
 			var last = null;
-			try { last = localStorage.getItem("dcr_last_workspace"); } catch (e) {}
+			try { last = localStorage.getItem("dcr_last_workspace") || localStorage.getItem(GLOBAL_KEY); } catch (e) {}
 			var last_workspace = candidate_label(last, candidates);
 			if (last_workspace) return last_workspace;
 			return candidates[0];
@@ -488,6 +596,7 @@
 				return false;
 			}
 			localStorage.setItem("dcr_last_workspace", workspace.label);
+			localStorage.setItem(GLOBAL_KEY, workspace.label);
 			console.info("[DCR sidebar] saved", reason || "", workspace.label);
 			return true;
 		} catch (e) {
@@ -505,6 +614,7 @@
 			current: sb.sidebar_title,
 			correct: correct,
 			last: localStorage.getItem("dcr_last_workspace"),
+			global: localStorage.getItem(GLOBAL_KEY),
 			patched: !!sb._dcr_workspace_patched
 		});
 		if (!correct) return;
@@ -636,6 +746,7 @@
 
 		inject_workspace_fullbleed_styles();
 		set_workspace_fullbleed_class("init");
+		try_patch_typelink_get_path(20);
 		try_patch_workspace_switch(20);
 		enforce_retry(20);
 		try_watch_sidebar_title(20);

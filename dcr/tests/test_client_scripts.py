@@ -48,17 +48,26 @@ class TestSidebarFixClientScript(unittest.TestCase):
         self.assertIn("if (Array.isArray(str)) return str;", script)
         self.assertIn("function filter_parts(f)", script)
         self.assertIn("f.length === 3", script)
-        self.assertIn("function scrub_fieldname(field)", script)
         self.assertIn("filters_to_route_options(filters)", script)
+        self.assertIn('parts.doctype ? parts.doctype + "." + parts.field : parts.field', script)
+        self.assertIn("var entry = [parts.operator, parts.value]", script)
         self.assertIn("frappe.route_options = opts", script)
+        self.assertIn('anchor.search = ""', script)
 
     def test_hbr_refresh_prefers_deals_over_stale_access_hint(self):
         script = (ROOT / "dcr/public/js/sidebar_fix.js").read_text()
 
         self.assertIn('"homebuildrequest": "Deals"', script)
         self.assertIn('remember_workspace_for_entity(item.link_to, get_workspace_name(), "sidebar-click")', script)
+        self.assertIn("remember_doctype_workspace(item.link_to)", script)
+        self.assertIn('var DOCTYPE_MAP_KEY = "sidebar_fix_doctype_workspace"', script)
+        self.assertIn("doctype_map[entity] || doctype_map[normalize(entity)]", script)
         self.assertIn("get_workspace_for_entity(entity, candidates)", script)
         self.assertIn("default_workspace_for_entity(entity, candidates)", script)
+        self.assertLess(
+            script.index("var doctype_workspace = candidate_label(doctype_map[entity] || doctype_map[normalize(entity)], candidates)"),
+            script.index("var entity_workspace = get_workspace_for_entity(entity, candidates)"),
+        )
         self.assertLess(
             script.index("var entity_workspace = get_workspace_for_entity(entity, candidates)"),
             script.index('localStorage.getItem("dcr_last_workspace")'),
@@ -67,6 +76,14 @@ class TestSidebarFixClientScript(unittest.TestCase):
             script.index("var default_workspace = default_workspace_for_entity(entity, candidates)"),
             script.index('localStorage.getItem("dcr_last_workspace")'),
         )
+
+    def test_sidebar_setup_survives_missing_workspace_links(self):
+        script = (ROOT / "dcr/public/js/sidebar_fix.js").read_text()
+
+        self.assertIn("function patch_typelink_get_path()", script)
+        self.assertIn("frappe.ui.sidebar_item.TypeLink", script)
+        self.assertIn("return original.call(this)", script)
+        self.assertIn("return null", script)
 
 
 if __name__ == "__main__":

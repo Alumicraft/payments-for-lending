@@ -147,10 +147,21 @@ class TestMapWorkspaceClientCode(unittest.TestCase):
 
         self.assertIn("window._dcrMapRefreshSearch = refreshSearch", setup_code)
         self.assertIn("if (window._dcrMapRefreshSearch) window._dcrMapRefreshSearch()", setup_code)
+        self.assertIn("function scheduleRefresh(resetActive)", setup_code)
+        self.assertIn("input.addEventListener('keyup'", setup_code)
         self.assertIn(".dcr-search { position: absolute", css)
         self.assertIn("z-index: 1000", css)
         self.assertIn("pointer-events: auto", css)
         self.assertIn(".dcr-search__menu.is-open { display: block !important; }", css)
+
+    def test_map_search_closes_after_selecting_result(self):
+        setup_code = (ROOT / "dcr/setup.py").read_text()
+
+        self.assertIn("var suppressMenuUntil = 0", setup_code)
+        self.assertIn("function selectHit(item)", setup_code)
+        self.assertIn("suppressMenuUntil = Date.now() + 6000", setup_code)
+        self.assertIn("m.once('moveend', close)", setup_code)
+        self.assertIn("selectHit(hits[active])", setup_code)
 
     def test_dark_legend_checkmark_uses_span_not_native_checkbox(self):
         setup_code = (ROOT / "dcr/setup.py").read_text()
@@ -158,8 +169,11 @@ class TestMapWorkspaceClientCode(unittest.TestCase):
 
         self.assertIn('<span class="dcr-legend__check', setup_code)
         self.assertNotIn('<input type="checkbox" class="dcr-legend__check"', setup_code)
+        self.assertIn(".dcr-legend__check:checked", css)
         self.assertIn(".dcr-legend__check.is-checked::after", css)
+        self.assertIn(".dcr-legend__check:checked::after", css)
         self.assertIn(".dcr-legend--dark .dcr-legend__check.is-checked::after", css)
+        self.assertIn(".dcr-legend--dark .dcr-legend__check:checked::after", css)
 
 
 if __name__ == "__main__":
