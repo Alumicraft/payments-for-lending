@@ -11,6 +11,15 @@
         "Payment Entry": "custom_home_build_request"
     };
 
+    frappe.ui.form.on("Signature Request", {
+        onload: function(frm) {
+            set_hbr_reference_doctype(frm);
+        },
+        reference_name: function(frm) {
+            set_hbr_reference_doctype(frm);
+        }
+    });
+
     Object.keys(HBR_LINK_FIELDS).forEach(function(doctype) {
         var link_fieldname = HBR_LINK_FIELDS[doctype];
         var handlers = {
@@ -41,5 +50,11 @@
                 frm.set_value(df.fieldname, hbr[source_field]);
             });
         });
+    }
+
+    function set_hbr_reference_doctype(frm) {
+        if (!frm.is_new() || frm.doc.reference_doctype || !frm.doc.reference_name) return;
+        if (!/^ACC-HBR-\d{4}-\d+$/.test(frm.doc.reference_name)) return;
+        frm.set_value("reference_doctype", "Home Build Request");
     }
 })();

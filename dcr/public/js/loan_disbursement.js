@@ -3,12 +3,17 @@ frappe.ui.form.on('Loan Disbursement', {
         if (frm.doc.against_loan && !frm.doc.home_build_request) {
             fetch_deal_reference(frm);
         }
+        hydrate_from_home_build_request(frm);
     },
 
     against_loan: function(frm) {
         if (frm.doc.against_loan) {
             fetch_deal_reference(frm);
         }
+    },
+
+    home_build_request: function(frm) {
+        hydrate_from_home_build_request(frm);
     }
 });
 
@@ -25,6 +30,17 @@ function fetch_deal_reference(frm) {
                             frm.set_value('factory', r2.message.factory);
                         }
                     });
+            }
+        });
+}
+
+function hydrate_from_home_build_request(frm) {
+    if (!frm.doc.home_build_request || frm.doc.factory) return;
+
+    frappe.db.get_value('Home Build Request', frm.doc.home_build_request, ['factory'])
+        .then(r => {
+            if (r.message && r.message.factory && !frm.doc.factory) {
+                frm.set_value('factory', r.message.factory);
             }
         });
 }

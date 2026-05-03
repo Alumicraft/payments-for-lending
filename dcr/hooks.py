@@ -11,7 +11,7 @@ boot_session = "dcr.api.boot.boot_session"
 # Frappe Cloud serves /assets files with a long immutable browser cache.
 # Keep these explicit URLs versioned so deployed client fixes are fetched
 # without requiring users to hard-refresh stale browser caches.
-DCR_ASSET_VERSION = "20260503-2"
+DCR_ASSET_VERSION = "20260503-3"
 
 
 def versioned_asset(path):
@@ -93,6 +93,7 @@ doctype_js = {
     "Purchase Invoice": "public/js/hbr_connection_defaults.js",
     "Purchase Receipt": "public/js/hbr_connection_defaults.js",
     "Payment Entry": "public/js/hbr_connection_defaults.js",
+    "Signature Request": "public/js/hbr_connection_defaults.js",
 }
 
 # Document Events

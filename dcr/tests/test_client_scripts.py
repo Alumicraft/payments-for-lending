@@ -55,7 +55,7 @@ class TestHbrConnectionDefaultsClientScript(unittest.TestCase):
         script = (ROOT / "dcr/public/js/hbr_connection_defaults.js")
 
         self.assertTrue(script.exists())
-        for doctype in ["Purchase Order", "Purchase Invoice", "Purchase Receipt", "Payment Entry"]:
+        for doctype in ["Purchase Order", "Purchase Invoice", "Purchase Receipt", "Payment Entry", "Signature Request"]:
             self.assertIn(f'"{doctype}": "public/js/hbr_connection_defaults.js"', hooks)
 
     def test_shared_hbr_fetch_script_applies_customize_form_fetch_from_fields(self):
@@ -66,6 +66,26 @@ class TestHbrConnectionDefaultsClientScript(unittest.TestCase):
         self.assertIn("frappe.meta.get_docfields(frm.doc.doctype)", script)
         self.assertIn('df.fetch_from.indexOf(link_fieldname + ".")', script)
         self.assertIn("frm.set_value(df.fieldname, hbr[source_field])", script)
+
+    def test_signature_request_connection_sets_hbr_reference_doctype(self):
+        script = (ROOT / "dcr/public/js/hbr_connection_defaults.js").read_text()
+
+        self.assertIn('frappe.ui.form.on("Signature Request"', script)
+        self.assertIn("function set_hbr_reference_doctype(frm)", script)
+        self.assertIn("frm.doc.reference_name", script)
+        self.assertIn("frm.set_value(\"reference_doctype\", \"Home Build Request\")", script)
+
+
+class TestLoanDisbursementClientScript(unittest.TestCase):
+
+    def test_connection_created_disbursement_fetches_factory_from_hbr(self):
+        script = (ROOT / "dcr/public/js/loan_disbursement.js").read_text()
+
+        self.assertIn("hydrate_from_home_build_request(frm)", script)
+        self.assertIn("home_build_request: function(frm)", script)
+        self.assertIn("function hydrate_from_home_build_request(frm)", script)
+        self.assertIn("frappe.db.get_value('Home Build Request', frm.doc.home_build_request, ['factory'])", script)
+        self.assertIn("frm.set_value('factory', r.message.factory)", script)
 
 
 class TestSidebarFixClientScript(unittest.TestCase):

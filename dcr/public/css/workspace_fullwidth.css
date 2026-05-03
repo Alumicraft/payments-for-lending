@@ -13,12 +13,14 @@
  *
  * The constraint comes from `.container.page-body` (Bootstrap container
  * max-width), container padding, and the editor.js wrappers around dashboard
- * widgets — all are killed below.
+ * widgets. The main wrappers are widened below, then the outer page body gets
+ * a small horizontal gutter so cards and charts do not sit against the edge.
  */
 
 body.dcr-workspace-fullbleed {
 	--page-max-width: none;
 	--content-width: 100%;
+	--dcr-workspace-content-padding: clamp(16px, 1.5vw, 24px);
 }
 
 body.dcr-workspace-fullbleed .main-section,
@@ -65,6 +67,15 @@ body[data-route^="Workspaces/"] .ce-block__content {
 	padding-right: 0 !important;
 }
 
+body.dcr-workspace-fullbleed .page-body,
+body.dcr-workspace-fullbleed .container.page-body,
+body[data-route^="Workspaces/"] .page-body,
+body[data-route^="Workspaces/"] .container.page-body {
+	box-sizing: border-box !important;
+	padding-left: var(--dcr-workspace-content-padding, 20px) !important;
+	padding-right: var(--dcr-workspace-content-padding, 20px) !important;
+}
+
 body.dcr-workspace-fullbleed .widget-group,
 body.dcr-workspace-fullbleed .widget-group-body,
 body.dcr-workspace-fullbleed .widget,
@@ -105,6 +116,13 @@ body:has(.workspace-body) .ce-block__content {
 	margin-right: 0 !important;
 	padding-left: 0 !important;
 	padding-right: 0 !important;
+}
+
+body:has(.workspace-body) .page-body,
+body:has(.workspace-body) .container.page-body {
+	box-sizing: border-box !important;
+	padding-left: var(--dcr-workspace-content-padding, 20px) !important;
+	padding-right: var(--dcr-workspace-content-padding, 20px) !important;
 }
 
 body:has(.workspace-body) .widget-group,
