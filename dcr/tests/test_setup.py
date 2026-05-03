@@ -86,10 +86,13 @@ class TestSetupCustomFields(unittest.TestCase):
         self.assertEqual(created_by_dt["Purchase Order"]["fieldname"], "custom_home_build_request")
         self.assertEqual(created_by_dt["Purchase Invoice"]["fieldname"], "home_build_request")
         self.assertEqual(created_by_dt["Payment Entry"]["fieldname"], "custom_home_build_request")
+        self.assertEqual(created_by_dt["Payment Entry"]["read_only"], 0)
         self.assertNotIn("Purchase Receipt", created_by_dt)
         self.assertEqual(field_doc.insert.call_count, 3)
+        mock_frappe.db.set_value.assert_any_call("Custom Field", True, "read_only", 0)
         mock_frappe.clear_cache.assert_any_call(doctype="Purchase Order")
         mock_frappe.clear_cache.assert_any_call(doctype="Purchase Invoice")
+        mock_frappe.clear_cache.assert_any_call(doctype="Purchase Receipt")
         mock_frappe.clear_cache.assert_any_call(doctype="Payment Entry")
 
     def test_hbr_orders_connections_are_ordered_po_pi_pr_pe(self):
