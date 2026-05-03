@@ -3,12 +3,14 @@
  *
  * The user prefers Frappe's "Full Width" toggle OFF for forms and lists,
  * but workspace dashboards look cramped under the contained width. Frappe
- * v16 sets `body[data-route="Workspaces/<Name>"]` on workspace routes,
- * so we scope the override to that attribute and leave forms/lists alone.
+ * v16 normally sets `body[data-route="Workspaces/<Name>"]` on workspace
+ * routes, so we scope the main override to that attribute and leave forms/lists
+ * alone. A second `:has(.workspace-body)` rule catches workspace renders where
+ * the route attribute is not updated quickly enough after navigation.
  *
  * The constraint comes from `.container.page-body` (Bootstrap container
- * max-width) plus the editor.js wrappers around dashboard widgets — both
- * are killed below.
+ * max-width), container padding, and the editor.js wrappers around dashboard
+ * widgets — all are killed below.
  */
 
 body[data-route^="Workspaces/"] .main-section,
@@ -27,7 +29,15 @@ body[data-route^="Workspaces/"] .editor-js-container,
 body[data-route^="Workspaces/"] .codex-editor,
 body[data-route^="Workspaces/"] .codex-editor__redactor,
 body[data-route^="Workspaces/"] .ce-block,
-body[data-route^="Workspaces/"] .ce-block__content,
+body[data-route^="Workspaces/"] .ce-block__content {
+	max-width: none !important;
+	width: 100% !important;
+	margin-left: 0 !important;
+	margin-right: 0 !important;
+	padding-left: 0 !important;
+	padding-right: 0 !important;
+}
+
 body[data-route^="Workspaces/"] .widget-group,
 body[data-route^="Workspaces/"] .widget-group-body,
 body[data-route^="Workspaces/"] .widget,
@@ -36,4 +46,44 @@ body[data-route^="Workspaces/"] .chart-container,
 body[data-route^="Workspaces/"] .dashboard-section {
 	max-width: none !important;
 	width: 100% !important;
+}
+
+body:has(.workspace-body) .main-section,
+body:has(.workspace-body) .page-container,
+body:has(.workspace-body) .page-wrapper,
+body:has(.workspace-body) .page-content,
+body:has(.workspace-body) .container.page-body,
+body:has(.workspace-body) .layout-main,
+body:has(.workspace-body) .layout-main-section-wrapper,
+body:has(.workspace-body) .layout-main-section,
+body:has(.workspace-body) .layout-main-section > .container,
+body:has(.workspace-body) .layout-main-section > .container-fluid,
+body:has(.workspace-body) .workspace-body,
+body:has(.workspace-body) .workspace-content,
+body:has(.workspace-body) .editor-js-container,
+body:has(.workspace-body) .codex-editor,
+body:has(.workspace-body) .codex-editor__redactor,
+body:has(.workspace-body) .ce-block,
+body:has(.workspace-body) .ce-block__content {
+	max-width: none !important;
+	width: 100% !important;
+	margin-left: 0 !important;
+	margin-right: 0 !important;
+	padding-left: 0 !important;
+	padding-right: 0 !important;
+}
+
+body:has(.workspace-body) .widget-group,
+body:has(.workspace-body) .widget-group-body,
+body:has(.workspace-body) .widget,
+body:has(.workspace-body) .number-card,
+body:has(.workspace-body) .chart-container,
+body:has(.workspace-body) .dashboard-section {
+	max-width: none !important;
+	width: 100% !important;
+}
+
+body[data-route^="Workspaces/"] .widget.custom-block-widget-box,
+body:has(.workspace-body) .widget.custom-block-widget-box {
+	padding: 0 !important;
 }

@@ -108,6 +108,18 @@ class TestMapBlockContent(unittest.TestCase):
         self.assertIn(".dcr-legend__check:checked::after", css)
         self.assertIn(".dcr-legend--dark .dcr-legend__check:checked::after", css)
 
+    def test_workspace_css_forces_full_bleed_when_full_width_is_off(self):
+        css = (ROOT / "dcr/public/css/workspace_fullwidth.css").read_text()
+
+        self.assertIn("body:has(.workspace-body)", css)
+        self.assertIn("body[data-route^=\"Workspaces/\"] .container.page-body", css)
+        self.assertIn("body:has(.workspace-body) .container.page-body", css)
+        self.assertIn("padding-left: 0 !important", css)
+        self.assertIn("padding-right: 0 !important", css)
+        self.assertIn("margin-left: 0 !important", css)
+        self.assertIn("margin-right: 0 !important", css)
+        self.assertIn("body:has(.workspace-body) .widget.custom-block-widget-box", css)
+
 
 if __name__ == "__main__":
     unittest.main()
