@@ -273,8 +273,9 @@ def ensure_order_hbr_fields(only_doctypes=None):
 
     Existing fields are intentionally left untouched so Customize Form remains
     the source of truth for placement and layout after first provisioning.
-    The link itself must stay writable: Frappe's dashboard connection create
-    path applies defaults through route options, which skips read-only fields.
+    The link itself must stay writable/copyable: Frappe's dashboard connection
+    create path applies defaults through route options, and get_new_doc skips
+    fields marked no_copy.
     """
     fields = [
         {
@@ -308,8 +309,14 @@ def ensure_order_hbr_fields(only_doctypes=None):
             {"dt": field["dt"], "fieldname": field["fieldname"]},
         )
         if existing:
+            changed = False
             if frappe.db.get_value("Custom Field", existing, "read_only"):
                 frappe.db.set_value("Custom Field", existing, "read_only", 0)
+                changed = True
+            if frappe.db.get_value("Custom Field", existing, "no_copy"):
+                frappe.db.set_value("Custom Field", existing, "no_copy", 0)
+                changed = True
+            if changed:
                 frappe.clear_cache(doctype=field["dt"])
             continue
 
@@ -322,7 +329,7 @@ def ensure_order_hbr_fields(only_doctypes=None):
             "options": "Home Build Request",
             "insert_after": field["insert_after"],
             "read_only": 0,
-            "no_copy": 1,
+            "no_copy": 0,
         }).insert(ignore_permissions=True)
         frappe.clear_cache(doctype=field["dt"])
 
