@@ -147,6 +147,8 @@ class TestSidebarFixClientScript(unittest.TestCase):
         self.assertIn("--dcr-workspace-content-padding: clamp(16px, 1.5vw, 24px)", script)
         self.assertIn("padding-left: var(--dcr-workspace-content-padding, 20px) !important", script)
         self.assertIn("padding-right: var(--dcr-workspace-content-padding, 20px) !important", script)
+        self.assertIn("body.dcr-workspace-fullbleed[data-route=", script)
+        self.assertIn("Workspaces/Map", script)
 
     def test_sidebar_setup_survives_missing_workspace_links(self):
         script = (ROOT / "dcr/public/js/sidebar_fix.js").read_text()

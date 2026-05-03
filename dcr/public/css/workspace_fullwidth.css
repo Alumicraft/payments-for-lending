@@ -76,6 +76,14 @@ body[data-route^="Workspaces/"] .container.page-body {
 	padding-right: var(--dcr-workspace-content-padding, 20px) !important;
 }
 
+body.dcr-workspace-fullbleed[data-route="Workspaces/Map"] .page-body,
+body.dcr-workspace-fullbleed[data-route="Workspaces/Map"] .container.page-body,
+body[data-route="Workspaces/Map"] .page-body,
+body[data-route="Workspaces/Map"] .container.page-body {
+	padding-left: 0 !important;
+	padding-right: 0 !important;
+}
+
 body.dcr-workspace-fullbleed .widget-group,
 body.dcr-workspace-fullbleed .widget-group-body,
 body.dcr-workspace-fullbleed .widget,
@@ -123,6 +131,12 @@ body:has(.workspace-body) .container.page-body {
 	box-sizing: border-box !important;
 	padding-left: var(--dcr-workspace-content-padding, 20px) !important;
 	padding-right: var(--dcr-workspace-content-padding, 20px) !important;
+}
+
+body[data-route="Workspaces/Map"]:has(.workspace-body) .page-body,
+body[data-route="Workspaces/Map"]:has(.workspace-body) .container.page-body {
+	padding-left: 0 !important;
+	padding-right: 0 !important;
 }
 
 body:has(.workspace-body) .widget-group,
