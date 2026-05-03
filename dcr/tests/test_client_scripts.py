@@ -52,7 +52,10 @@ class TestSidebarFixClientScript(unittest.TestCase):
         self.assertIn('parts.doctype ? parts.doctype + "." + parts.field : parts.field', script)
         self.assertIn("var entry = [parts.operator, parts.value]", script)
         self.assertIn("frappe.route_options = opts", script)
-        self.assertIn('anchor.search = ""', script)
+        self.assertIn("e.preventDefault()", script)
+        self.assertIn("e.stopImmediatePropagation()", script)
+        self.assertIn('frappe.set_route(["List", item.link_to, view])', script)
+        self.assertIn("function route_options_from_anchor(anchor, item)", script)
 
     def test_hbr_refresh_prefers_deals_over_stale_access_hint(self):
         script = (ROOT / "dcr/public/js/sidebar_fix.js").read_text()
@@ -62,6 +65,8 @@ class TestSidebarFixClientScript(unittest.TestCase):
         self.assertIn("remember_doctype_workspace(item.link_to)", script)
         self.assertIn('var DOCTYPE_MAP_KEY = "sidebar_fix_doctype_workspace"', script)
         self.assertIn("doctype_map[entity] || doctype_map[normalize(entity)]", script)
+        self.assertIn("var correct = pick_correct_workspace()", script)
+        self.assertIn("original_setup(correct)", script)
         self.assertIn("get_workspace_for_entity(entity, candidates)", script)
         self.assertIn("default_workspace_for_entity(entity, candidates)", script)
         self.assertLess(

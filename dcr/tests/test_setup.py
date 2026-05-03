@@ -149,6 +149,8 @@ class TestMapWorkspaceClientCode(unittest.TestCase):
         self.assertIn("if (window._dcrMapRefreshSearch) window._dcrMapRefreshSearch()", setup_code)
         self.assertIn("function scheduleRefresh(resetActive)", setup_code)
         self.assertIn("input.addEventListener('keyup'", setup_code)
+        self.assertIn("input.addEventListener('paste'", setup_code)
+        self.assertIn("Loading map results", setup_code)
         self.assertIn(".dcr-search { position: absolute", css)
         self.assertIn("z-index: 1000", css)
         self.assertIn("pointer-events: auto", css)
@@ -162,6 +164,13 @@ class TestMapWorkspaceClientCode(unittest.TestCase):
         self.assertIn("suppressMenuUntil = Date.now() + 6000", setup_code)
         self.assertIn("m.once('moveend', close)", setup_code)
         self.assertIn("selectHit(hits[active])", setup_code)
+
+    def test_map_click_guard_only_queries_existing_layers(self):
+        setup_code = (ROOT / "dcr/setup.py").read_text()
+
+        self.assertIn("function renderedClickLayers(map)", setup_code)
+        self.assertIn("if (!layers.length) {", setup_code)
+        self.assertIn("map.queryRenderedFeatures(e.point, { layers: layers })", setup_code)
 
     def test_dark_legend_checkmark_uses_span_not_native_checkbox(self):
         setup_code = (ROOT / "dcr/setup.py").read_text()

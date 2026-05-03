@@ -724,6 +724,7 @@ def ensure_map_block():
 
     // ========== SEARCH INDEX + CONTROL ================================
     var _searchIndex = [];
+    var _searchHydrated = false;
     function buildSearchIndex() {
         _searchIndex = [];
         var homes = window._dcrHomeFeatures || [];
@@ -757,6 +758,7 @@ def ensure_map_block():
                 searchText: ((f.properties.supplier_name || '') + ' ' + (f.properties.city || '')).toLowerCase()
             });
         });
+        _searchHydrated = true;
         if (window._dcrMapRefreshSearch) window._dcrMapRefreshSearch();
     }
     function searchQuery(q) {
@@ -826,7 +828,7 @@ def ensure_map_block():
             }
             if (!hits.length) {
                 if (input.value.trim().length >= 2) {
-                    menu.innerHTML = '<div class="dcr-search__empty">No matches</div>';
+                    menu.innerHTML = '<div class="dcr-search__empty">' + (_searchHydrated ? 'No matches' : 'Loading map results...') + '</div>';
                     menu.classList.add('is-open');
                 } else {
                     menu.classList.remove('is-open');
@@ -856,7 +858,7 @@ def ensure_map_block():
             debounce = setTimeout(function() {
                 if (resetActive) active = 0;
                 refreshSearch();
-            }, 120);
+            }, 30);
             setTimeout(function() {
                 if (resetActive) active = 0;
                 refreshSearch();
@@ -888,6 +890,10 @@ def ensure_map_block():
             if (['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].indexOf(e.key) === -1) {
                 scheduleRefresh(true);
             }
+        });
+        input.addEventListener('paste', function(e) {
+            keepSearchEventLocal(e);
+            scheduleRefresh(true);
         });
         input.addEventListener('focus', function() {
             if (input.value.trim().length >= 2) scheduleRefresh(true);
@@ -1276,10 +1282,19 @@ def ensure_map_block():
                 });
                 map.on('moveend', function() { _sway.prev = null; bumpSway(0); });
 
-                map.on('click', function(e) {
-                    var hits = map.queryRenderedFeatures(e.point, {
-                        layers: ['unclustered-point', 'factory-point']
+                function renderedClickLayers(map) {
+                    return ['unclustered-point', 'factory-point'].filter(function(layer) {
+                        return !!map.getLayer(layer);
                     });
+                }
+
+                map.on('click', function(e) {
+                    var layers = renderedClickLayers(map);
+                    if (!layers.length) {
+                        if (_activePopup) _activePopup.remove();
+                        return;
+                    }
+                    var hits = map.queryRenderedFeatures(e.point, { layers: layers });
                     if (hits.length) return;  // pin click already handled
                     if (_activePopup) _activePopup.remove();
                 });

@@ -13,6 +13,9 @@
 (function () {
 	"use strict";
 
+	window.__dcr_sidebar_debug = window.__dcr_sidebar_debug || {};
+	window.__dcr_sidebar_debug.version = "2026-05-03-direct-route";
+
 	var _initialized = false;
 	var _last_clicked = null;
 	var ENTITY_WORKSPACE_PREFIX = "dcr_workspace_for_";
@@ -108,6 +111,75 @@
 			}
 		}
 		return opts;
+	}
+
+	function route_option_key(key, item) {
+		key = (key || "").toString().trim();
+		if (key && key.indexOf(".") === -1 && item && item.link_to) {
+			return item.link_to + "." + key;
+		}
+		return key;
+	}
+
+	function route_option_entry(value) {
+		var v = value;
+		if (typeof v === "string") {
+			try { v = JSON.parse(v); } catch (e) {}
+		}
+		if (Array.isArray(v)) return v;
+		return ["=", v];
+	}
+
+	function normalize_route_options(raw, item) {
+		var opts = {};
+		if (!raw || typeof raw !== "object") return opts;
+		Object.keys(raw).forEach(function (key) {
+			var normalized_key = route_option_key(key, item);
+			var entry = route_option_entry(raw[key]);
+			if (!normalized_key || entry[1] == null || entry[1] === "") return;
+			opts[normalized_key] = entry;
+		});
+		return opts;
+	}
+
+	function route_options_from_anchor(anchor, item) {
+		var opts = {};
+		if (!anchor || !anchor.search) return opts;
+		try {
+			var params = new URLSearchParams(anchor.search);
+			params.forEach(function (value, key) {
+				var normalized_key = route_option_key(key, item);
+				var entry = route_option_entry(value);
+				if (!normalized_key || entry[1] == null || entry[1] === "") return;
+				opts[normalized_key] = entry;
+			});
+		} catch (e) {}
+		return opts;
+	}
+
+	function route_options_from_item(item, anchor) {
+		var opts = filters_to_route_options(parse_filters(item.filters));
+		if (Object.keys(opts).length) return opts;
+		if (item.route_options) {
+			var raw = item.route_options;
+			if (typeof raw === "string") {
+				try { raw = JSON.parse(raw); } catch (e) { raw = null; }
+			}
+			opts = normalize_route_options(raw, item);
+			if (Object.keys(opts).length) return opts;
+		}
+		return route_options_from_anchor(anchor, item);
+	}
+
+	function list_view_for_item(item, anchor) {
+		if (item && item.tab) return item.tab;
+		if (anchor && anchor.pathname) {
+			var match = anchor.pathname.match(/\/view\/([^/?#]+)/);
+			if (match && match[1]) {
+				return match[1].charAt(0).toUpperCase() + match[1].slice(1);
+			}
+		}
+		return "List";
 	}
 
 	function normalize(s) {
@@ -259,6 +331,22 @@
 		return null;
 	}
 
+	function track_click(label, item) {
+		_last_clicked = { label: label, link_to: item.link_to };
+		var _attempts = 0;
+		var _poll = setInterval(function () {
+			_attempts++;
+			if (_attempts > 25 || !_last_clicked) { clearInterval(_poll); return; }
+			var el = find_dom_by_label(_last_clicked.label);
+			if (!el) return;
+			var inner = el.querySelector(".standard-sidebar-item");
+			if (inner && !inner.classList.contains("active-sidebar")) {
+				set_active(el);
+			}
+		}, 200);
+		setTimeout(function () { _last_clicked = null; }, 5000);
+	}
+
 	// -- Click handler (capture phase) --
 
 	function on_click(e) {
@@ -274,44 +362,33 @@
 			if (items[i].label === label) { item = items[i]; break; }
 		}
 		if (!item || item.type !== "Link") return;
+		var anchor = e.target.closest("a.item-anchor") || e.target.closest("a") || container.querySelector("a");
 		remember_workspace_for_entity(item.link_to, get_workspace_name(), "sidebar-click");
 		remember_doctype_workspace(item.link_to);
 
-		// Apply filters as route_options before Frappe navigates.
-		// Use the [op, value] array form and "<DocType>.<field>" keys so
-		// list_view can parse filters even before doctype meta finishes
-		// loading. Strip query params from the anchor so Frappe's bubble
-		// handler cannot overwrite these clean route_options with
-		// comma-joined URL values.
-		if (item.filters) {
-			var filters = parse_filters(item.filters);
-			if (filters.length) {
-				var opts = filters_to_route_options(filters);
-				if (Object.keys(opts).length) {
-					frappe.route_options = opts;
-					var anchor = e.target.closest("a.item-anchor") || e.target.closest("a") || container.querySelector("a");
-					if (anchor && anchor.search) {
-						anchor.search = "";
-					}
-				}
-			}
+		var opts = route_options_from_item(item, anchor);
+		if (item.link_to && (item.link_type === "DocType" || !item.link_type) && Object.keys(opts).length) {
+			e.preventDefault();
+			e.stopPropagation();
+			if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+			var view = list_view_for_item(item, anchor);
+			frappe.route_options = opts;
+			track_click(label, item);
+			window.__dcr_sidebar_debug.lastClick = {
+				label: label,
+				link_to: item.link_to,
+				view: view,
+				opts: opts,
+				path: anchor && anchor.pathname,
+				search: anchor && anchor.search
+			};
+			frappe.set_route(["List", item.link_to, view]);
+			return;
 		}
 
 		// Track click — poll to enforce correct active state
 		// (MutationObserver fails if Frappe rebuilds the entire sidebar DOM)
-		_last_clicked = { label: label, link_to: item.link_to };
-		var _attempts = 0;
-		var _poll = setInterval(function () {
-			_attempts++;
-			if (_attempts > 25 || !_last_clicked) { clearInterval(_poll); return; }
-			var el = find_dom_by_label(_last_clicked.label);
-			if (!el) return;
-			var inner = el.querySelector(".standard-sidebar-item");
-			if (inner && !inner.classList.contains("active-sidebar")) {
-				set_active(el);
-			}
-		}, 200);
-		setTimeout(function () { _last_clicked = null; }, 5000);
+		track_click(label, item);
 	}
 
 	// -- Active state on route change --
@@ -405,6 +482,15 @@
 				}
 
 				var is_workspace_nav = slug && !!workspace_from_slug(slug);
+				var correct = pick_correct_workspace();
+				if (!is_workspace_nav && correct) {
+					if (sb.sidebar_title !== correct) {
+						original_setup(correct);
+					} else if (typeof sb.set_active_workspace_item === "function") {
+						sb.set_active_workspace_item();
+					}
+					return;
+				}
 
 				// Let Frappe run its normal logic on first load (no
 				// current sidebar yet) or when the user explicitly
@@ -437,12 +523,18 @@
 					route.indexOf("dashboard-view") !== -1 ||
 					route.indexOf("Tree") !== -1;
 
-				if (is_doctype_view && sb.sidebar_title &&
-					workspace_title !== sb.sidebar_title) {
-					if (typeof sb.set_active_workspace_item === "function") {
-						sb.set_active_workspace_item();
+				if (is_doctype_view) {
+					var correct = pick_correct_workspace();
+					if (correct && workspace_title !== correct) {
+						original_setup(correct);
+						return;
 					}
-					return;
+					if (sb.sidebar_title && workspace_title !== sb.sidebar_title) {
+						if (typeof sb.set_active_workspace_item === "function") {
+							sb.set_active_workspace_item();
+						}
+						return;
+					}
 				}
 			} catch (e) {
 				console.log("DCR sidebar setup-patch error:", e);
