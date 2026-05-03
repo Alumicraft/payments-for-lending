@@ -411,7 +411,12 @@ def ensure_map_block():
 .dcr-legend--dark .dot--delivered { background: linear-gradient(135deg,#4DA8FF,#3F9EE8); }
 .dcr-legend__count { font-variant-numeric: tabular-nums; color: #687178; }
 .dcr-legend--dark .dcr-legend__count { color: #A6ADB4; }
-.dcr-legend__check { width: 14px; height: 14px; pointer-events: none; }
+.dcr-legend__check { appearance: none; -webkit-appearance: none; width: 14px; height: 14px; border: 1px solid #C7CDD3; border-radius: 3px; background: #fff; pointer-events: none; position: relative; }
+.dcr-legend__check:checked { background: #2490EF; border-color: #2490EF; }
+.dcr-legend__check:checked::after { content: ""; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.dcr-legend--dark .dcr-legend__check { background: #0E1116; border-color: #4A5158; }
+.dcr-legend--dark .dcr-legend__check:checked { background: #4DA8FF; border-color: #4DA8FF; }
+.dcr-legend--dark .dcr-legend__check:checked::after { border-color: #0E1116; }
 .dcr-legend__footer { margin-top: 6px; padding-top: 6px; border-top: 1px solid #ECEDEE; display: flex; gap: 8px; font-size: 11px; }
 .dcr-legend--dark .dcr-legend__footer { border-top-color: #2D3137; }
 .dcr-legend__footer button { color: #2490EF; cursor: pointer; background: none; border: 0; padding: 0; font: inherit; }
@@ -1198,9 +1203,9 @@ def ensure_map_block():
     function openPopup(map, lngLat, html, opts) {
         if (_activePopup) _activePopup.remove();
         var p = new mapboxgl.Popup(Object.assign({
-            offset: 16,
+            offset: 22,
             className: popupClass(),
-            anchor: 'auto',
+            anchor: 'bottom',
             maxWidth: '420px'
         }, opts || {}));
         p.setLngLat(lngLat).setHTML(html).addTo(map);
@@ -1322,11 +1327,10 @@ def ensure_map_block():
     });
 
     function drillIntoHome(groupProps, home) {
-        // Open the single-home popup at the same lngLat with anchor:auto so
-        // Mapbox repositions to the side with the most viewport room.
+        // Keep drilled-in details attached to the selected home marker.
         var lngLat = _activePopup.getLngLat();
         var html = renderSingleHomeHtml(groupProps, home);
-        var p = openPopup(window._dcrMap, lngLat, html, { anchor: 'auto', offset: 16 });
+        var p = openPopup(window._dcrMap, lngLat, html, { offset: 18 });
         p._dcrProps = groupProps;
         p._dcrHomes = [home];
     }

@@ -41,6 +41,8 @@ class TestMapBlockContent(unittest.TestCase):
         self.assertIn("renderStackedHtml", setup_code)
         self.assertIn("buildLegend(map, geojson)", setup_code)
         self.assertIn("keepSearchEventLocal", setup_code)
+        self.assertIn("anchor: 'bottom'", setup_code)
+        self.assertNotIn("anchor: 'auto'", setup_code)
         self.assertNotIn("window._dcrShowTrailForHome", setup_code)
 
     def test_map_css_is_shipped_as_asset(self):
@@ -49,6 +51,8 @@ class TestMapBlockContent(unittest.TestCase):
         self.assertIn(".dcr-legend", css)
         self.assertIn(".dcr-search", css)
         self.assertIn(".dcr-popup", css)
+        self.assertIn(".dcr-legend__check:checked::after", css)
+        self.assertIn(".dcr-legend--dark .dcr-legend__check:checked::after", css)
 
 
 if __name__ == "__main__":
