@@ -15,11 +15,21 @@
 
 	var _initialized = false;
 	var _last_clicked = null;
+	var ENTITY_WORKSPACE_PREFIX = "dcr_workspace_for_";
+	var DEFAULT_WORKSPACE_BY_ENTITY = {
+		"homebuildrequest": "Deals"
+	};
 
 	function parse_filters(str) {
 		if (!str) return [];
 		try { var r = JSON.parse(str); return Array.isArray(r) ? r : []; }
 		catch (e) { return []; }
+	}
+
+	function normalize(s) {
+		// Compare entities/labels regardless of slug vs title case.
+		// "Home Build Request" and "home-build-request" -> "homebuildrequest"
+		return (s || "").toLowerCase().replace(/[\s_-]+/g, "");
 	}
 
 	function slugify(s) {
@@ -48,9 +58,51 @@
 		return null;
 	}
 
+	function candidate_label(label, candidates) {
+		var workspace = workspace_from_slug(label);
+		var target = normalize(workspace ? workspace.label : label);
+		if (!target) return null;
+		for (var i = 0; i < candidates.length; i++) {
+			if (normalize(candidates[i]) === target) return candidates[i];
+		}
+		return null;
+	}
+
+	function get_workspace_for_entity(entity, candidates) {
+		try {
+			return candidate_label(
+				localStorage.getItem(ENTITY_WORKSPACE_PREFIX + normalize(entity)),
+				candidates
+			);
+		} catch (e) {
+			return null;
+		}
+	}
+
+	function default_workspace_for_entity(entity, candidates) {
+		return candidate_label(DEFAULT_WORKSPACE_BY_ENTITY[normalize(entity)], candidates);
+	}
+
+	function remember_workspace_for_entity(entity, workspace_name, reason) {
+		var workspace = workspace_from_slug(workspace_name);
+		if (!entity || !workspace) return false;
+		try {
+			localStorage.setItem(ENTITY_WORKSPACE_PREFIX + normalize(entity), workspace.label);
+			localStorage.setItem("dcr_last_workspace", workspace.label);
+			console.info("[DCR sidebar] remembered", reason || "", entity, workspace.label);
+			return true;
+		} catch (e) {
+			console.log("[DCR sidebar] remember error:", e);
+			return false;
+		}
+	}
+
 	function get_workspace_name() {
 		if (frappe.app && frappe.app.sidebar && frappe.app.sidebar.current_workspace) {
 			return frappe.app.sidebar.current_workspace;
+		}
+		if (frappe.app && frappe.app.sidebar && frappe.app.sidebar.sidebar_title) {
+			return frappe.app.sidebar.sidebar_title;
 		}
 		var el = document.querySelector(".body-sidebar[data-title]");
 		if (el) return el.getAttribute("data-title");
@@ -109,6 +161,7 @@
 			if (items[i].label === label) { item = items[i]; break; }
 		}
 		if (!item || item.type !== "Link") return;
+		remember_workspace_for_entity(item.link_to, get_workspace_name(), "sidebar-click");
 
 		// Apply filters as route_options
 		if (item.filters) {
@@ -292,12 +345,6 @@
 	// a candidate ourselves based on which workspaces actually list the
 	// current doctype, preferring the last workspace the user was on.
 
-	function normalize(s) {
-		// Compare entities/labels regardless of slug vs title case.
-		// "Home Build Request" and "home-build-request" → "homebuildrequest"
-		return (s || "").toLowerCase().replace(/[\s_-]+/g, "");
-	}
-
 	function find_candidate_workspaces(entity) {
 		var map = frappe.boot.workspace_sidebar_item || {};
 		var out = [];
@@ -356,9 +403,16 @@
 			if (!candidates.length) return null;
 			if (candidates.length === 1) return candidates[0];
 
+			var entity_workspace = get_workspace_for_entity(entity, candidates);
+			if (entity_workspace) return entity_workspace;
+
+			var default_workspace = default_workspace_for_entity(entity, candidates);
+			if (default_workspace) return default_workspace;
+
 			var last = null;
 			try { last = localStorage.getItem("dcr_last_workspace"); } catch (e) {}
-			if (last && candidates.indexOf(last) !== -1) return last;
+			var last_workspace = candidate_label(last, candidates);
+			if (last_workspace) return last_workspace;
 			return candidates[0];
 		} catch (e) {
 			return null;
@@ -460,6 +514,66 @@
 		}
 	}
 
+	function inject_workspace_fullbleed_styles() {
+		if (document.getElementById("dcr-workspace-fullbleed-js")) return;
+		var style = document.createElement("style");
+		style.id = "dcr-workspace-fullbleed-js";
+		style.textContent = [
+			"body.dcr-workspace-fullbleed { --page-max-width: none; --content-width: 100%; }",
+			"body.dcr-workspace-fullbleed .main-section,",
+			"body.dcr-workspace-fullbleed .page-container,",
+			"body.dcr-workspace-fullbleed .page-wrapper,",
+			"body.dcr-workspace-fullbleed .page-content,",
+			"body.dcr-workspace-fullbleed .page-body,",
+			"body.dcr-workspace-fullbleed .container.page-body,",
+			"body.dcr-workspace-fullbleed .layout-main,",
+			"body.dcr-workspace-fullbleed .layout-main-section-wrapper,",
+			"body.dcr-workspace-fullbleed .layout-main-section,",
+			"body.dcr-workspace-fullbleed .layout-main-section > .container,",
+			"body.dcr-workspace-fullbleed .layout-main-section > .container-fluid,",
+			"body.dcr-workspace-fullbleed .workspace-body,",
+			"body.dcr-workspace-fullbleed .workspace-content,",
+			"body.dcr-workspace-fullbleed .editor-js-container,",
+			"body.dcr-workspace-fullbleed .codex-editor,",
+			"body.dcr-workspace-fullbleed .codex-editor__redactor,",
+			"body.dcr-workspace-fullbleed .ce-block,",
+			"body.dcr-workspace-fullbleed .ce-block__content {",
+			"  max-width: none !important;",
+			"  width: 100% !important;",
+			"  margin-left: 0 !important;",
+			"  margin-right: 0 !important;",
+			"  padding-left: 0 !important;",
+			"  padding-right: 0 !important;",
+			"}",
+			"body.dcr-workspace-fullbleed .widget-group,",
+			"body.dcr-workspace-fullbleed .widget-group-body,",
+			"body.dcr-workspace-fullbleed .widget,",
+			"body.dcr-workspace-fullbleed .number-card,",
+			"body.dcr-workspace-fullbleed .chart-container,",
+			"body.dcr-workspace-fullbleed .dashboard-section {",
+			"  max-width: none !important;",
+			"  width: 100% !important;",
+			"}",
+			"body.dcr-workspace-fullbleed .widget.custom-block-widget-box { padding: 0 !important; }"
+		].join("\n");
+		document.head.appendChild(style);
+	}
+
+	function set_workspace_fullbleed_class(reason) {
+		try {
+			var route = frappe.get_route() || [];
+			var is_workspace = !!workspace_slug_from_route(route);
+			if (!is_workspace && !route.length) {
+				is_workspace = !!document.querySelector(".workspace-body");
+			}
+			document.body.classList.toggle("dcr-workspace-fullbleed", is_workspace);
+			if (is_workspace) document.body.setAttribute("data-dcr-workspace-fullbleed", reason || "1");
+			else document.body.removeAttribute("data-dcr-workspace-fullbleed");
+		} catch (e) {
+			console.log("[DCR sidebar] fullbleed class error:", e);
+		}
+	}
+
 	// -- Init --
 
 	function init() {
@@ -468,6 +582,8 @@
 		if (_initialized) return true;
 		_initialized = true;
 
+		inject_workspace_fullbleed_styles();
+		set_workspace_fullbleed_class("init");
 		try_patch_workspace_switch(20);
 		enforce_retry(20);
 		try_watch_sidebar_title(20);
@@ -480,6 +596,7 @@
 		// rest are no-ops (or harmlessly re-save the same label).
 		[200, 600, 1500, 3000].forEach(function (ms) {
 			setTimeout(function () { save_last_workspace("init+" + ms); }, ms);
+			setTimeout(function () { set_workspace_fullbleed_class("init+" + ms); }, ms);
 		});
 		console.info("[DCR sidebar] init", { route: frappe.get_route() });
 
@@ -501,11 +618,13 @@
 		observer.observe(sb, { attributes: true, attributeFilter: ["class"], subtree: true });
 
 		var on_route = function () {
+			set_workspace_fullbleed_class("route");
 			setTimeout(function () { fix_active_retry(5); }, 300);
 			// If Frappe's buggy swap slipped past our patch at any point,
 			// correct the workspace after each navigation.
 			setTimeout(function () { enforce_correct_workspace("route-200"); }, 200);
 			setTimeout(function () { enforce_correct_workspace("route-600"); }, 600);
+			setTimeout(function () { set_workspace_fullbleed_class("route-300"); }, 300);
 			// Remember the workspace only when the user is explicitly on
 			// a workspace URL (save_last_workspace guards against doctype
 			// routes internally).

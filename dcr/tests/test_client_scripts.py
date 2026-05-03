@@ -42,6 +42,22 @@ class TestSidebarFixClientScript(unittest.TestCase):
         self.assertNotIn("if (route.length === 1 && route[0]) return route[0].toLowerCase();", script)
         self.assertNotIn("var data = map[slug];", script)
 
+    def test_hbr_refresh_prefers_deals_over_stale_access_hint(self):
+        script = (ROOT / "dcr/public/js/sidebar_fix.js").read_text()
+
+        self.assertIn('"homebuildrequest": "Deals"', script)
+        self.assertIn('remember_workspace_for_entity(item.link_to, get_workspace_name(), "sidebar-click")', script)
+        self.assertIn("get_workspace_for_entity(entity, candidates)", script)
+        self.assertIn("default_workspace_for_entity(entity, candidates)", script)
+        self.assertLess(
+            script.index("var entity_workspace = get_workspace_for_entity(entity, candidates)"),
+            script.index('localStorage.getItem("dcr_last_workspace")'),
+        )
+        self.assertLess(
+            script.index("var default_workspace = default_workspace_for_entity(entity, candidates)"),
+            script.index('localStorage.getItem("dcr_last_workspace")'),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

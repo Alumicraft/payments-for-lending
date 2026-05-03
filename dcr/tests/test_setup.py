@@ -112,7 +112,9 @@ class TestMapBlockContent(unittest.TestCase):
         css = (ROOT / "dcr/public/css/workspace_fullwidth.css").read_text()
 
         self.assertIn("body:has(.workspace-body)", css)
+        self.assertIn("body.dcr-workspace-fullbleed", css)
         self.assertIn("body[data-route^=\"Workspaces/\"] .container.page-body", css)
+        self.assertIn("body.dcr-workspace-fullbleed .page-body", css)
         self.assertIn("body:has(.workspace-body) .container.page-body", css)
         self.assertIn("padding-left: 0 !important", css)
         self.assertIn("padding-right: 0 !important", css)

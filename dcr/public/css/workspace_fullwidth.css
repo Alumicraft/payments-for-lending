@@ -7,16 +7,43 @@
  * routes, so we scope the main override to that attribute and leave forms/lists
  * alone. A second `:has(.workspace-body)` rule catches workspace renders where
  * the route attribute is not updated quickly enough after navigation.
+ * The JS sidebar fix also toggles `body.dcr-workspace-fullbleed`, which covers
+ * bare workspace routes like `/app/map` where `data-route` may not use the
+ * `Workspaces/<Name>` shape.
  *
  * The constraint comes from `.container.page-body` (Bootstrap container
  * max-width), container padding, and the editor.js wrappers around dashboard
  * widgets — all are killed below.
  */
 
+body.dcr-workspace-fullbleed {
+	--page-max-width: none;
+	--content-width: 100%;
+}
+
+body.dcr-workspace-fullbleed .main-section,
+body.dcr-workspace-fullbleed .page-container,
+body.dcr-workspace-fullbleed .page-wrapper,
+body.dcr-workspace-fullbleed .page-content,
+body.dcr-workspace-fullbleed .page-body,
+body.dcr-workspace-fullbleed .container.page-body,
+body.dcr-workspace-fullbleed .layout-main,
+body.dcr-workspace-fullbleed .layout-main-section-wrapper,
+body.dcr-workspace-fullbleed .layout-main-section,
+body.dcr-workspace-fullbleed .layout-main-section > .container,
+body.dcr-workspace-fullbleed .layout-main-section > .container-fluid,
+body.dcr-workspace-fullbleed .workspace-body,
+body.dcr-workspace-fullbleed .workspace-content,
+body.dcr-workspace-fullbleed .editor-js-container,
+body.dcr-workspace-fullbleed .codex-editor,
+body.dcr-workspace-fullbleed .codex-editor__redactor,
+body.dcr-workspace-fullbleed .ce-block,
+body.dcr-workspace-fullbleed .ce-block__content,
 body[data-route^="Workspaces/"] .main-section,
 body[data-route^="Workspaces/"] .page-container,
 body[data-route^="Workspaces/"] .page-wrapper,
 body[data-route^="Workspaces/"] .page-content,
+body[data-route^="Workspaces/"] .page-body,
 body[data-route^="Workspaces/"] .container.page-body,
 body[data-route^="Workspaces/"] .layout-main,
 body[data-route^="Workspaces/"] .layout-main-section-wrapper,
@@ -38,6 +65,12 @@ body[data-route^="Workspaces/"] .ce-block__content {
 	padding-right: 0 !important;
 }
 
+body.dcr-workspace-fullbleed .widget-group,
+body.dcr-workspace-fullbleed .widget-group-body,
+body.dcr-workspace-fullbleed .widget,
+body.dcr-workspace-fullbleed .number-card,
+body.dcr-workspace-fullbleed .chart-container,
+body.dcr-workspace-fullbleed .dashboard-section,
 body[data-route^="Workspaces/"] .widget-group,
 body[data-route^="Workspaces/"] .widget-group-body,
 body[data-route^="Workspaces/"] .widget,
@@ -52,6 +85,7 @@ body:has(.workspace-body) .main-section,
 body:has(.workspace-body) .page-container,
 body:has(.workspace-body) .page-wrapper,
 body:has(.workspace-body) .page-content,
+body:has(.workspace-body) .page-body,
 body:has(.workspace-body) .container.page-body,
 body:has(.workspace-body) .layout-main,
 body:has(.workspace-body) .layout-main-section-wrapper,
@@ -83,6 +117,7 @@ body:has(.workspace-body) .dashboard-section {
 	width: 100% !important;
 }
 
+body.dcr-workspace-fullbleed .widget.custom-block-widget-box,
 body[data-route^="Workspaces/"] .widget.custom-block-widget-box,
 body:has(.workspace-body) .widget.custom-block-widget-box {
 	padding: 0 !important;
