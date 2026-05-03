@@ -87,6 +87,11 @@ def after_install():
         frappe.log_error(frappe.get_traceback(), "tidy_la_connections (after_install)")
 
     try:
+        ensure_bank_account_ach_fields()
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "ensure_bank_account_ach_fields failed")
+
+    try:
         ensure_supplier_geo_fields()
     except Exception:
         frappe.log_error(frappe.get_traceback(), "ensure_supplier_geo_fields failed")
@@ -133,6 +138,129 @@ def ensure_supplier_geo_fields():
     for f in fields:
         if not frappe.db.exists("Custom Field", {"dt": "Supplier", "fieldname": f["fieldname"]}):
             create_custom_field("Supplier", f)
+
+
+def ensure_bank_account_ach_fields():
+    """Create Bank Account fields required by the ACH payment flow.
+
+    Frappe Cloud runs patches during deploy, so the Bank Account migration
+    cannot depend on these fields being added manually in Customize Form.
+    """
+    fields = [
+        {
+            "fieldname": "custom_ach_status",
+            "label": "ACH Status",
+            "fieldtype": "Select",
+            "options": "\nActive\nPaused\nRevoked\nFailed",
+            "insert_after": "is_default",
+        },
+        {
+            "fieldname": "custom_achq_token",
+            "label": "ACHQ Token",
+            "fieldtype": "Data",
+            "hidden": 1,
+            "no_copy": 1,
+            "insert_after": "custom_ach_status",
+        },
+        {
+            "fieldname": "custom_token_source",
+            "label": "Token Source",
+            "fieldtype": "Select",
+            "options": "\nManual\nPlaid",
+            "read_only": 1,
+            "insert_after": "custom_achq_token",
+        },
+        {
+            "fieldname": "custom_account_last_four",
+            "label": "Account Last 4",
+            "fieldtype": "Data",
+            "read_only": 1,
+            "insert_after": "custom_token_source",
+        },
+        {
+            "fieldname": "custom_routing_last_4",
+            "label": "Routing Last 4",
+            "fieldtype": "Data",
+            "read_only": 1,
+            "insert_after": "custom_account_last_four",
+        },
+        {
+            "fieldname": "custom_verification_status",
+            "label": "Verification Status",
+            "fieldtype": "Select",
+            "options": "\nPOS\nUNK\nNEG",
+            "read_only": 1,
+            "insert_after": "custom_routing_last_4",
+        },
+        {
+            "fieldname": "custom_consent_captured",
+            "label": "Consent Captured",
+            "fieldtype": "Check",
+            "read_only": 1,
+            "insert_after": "custom_verification_status",
+        },
+        {
+            "fieldname": "custom_authorization_ip",
+            "label": "Authorization IP",
+            "fieldtype": "Data",
+            "read_only": 1,
+            "insert_after": "custom_consent_captured",
+        },
+        {
+            "fieldname": "custom_authorization_date",
+            "label": "Authorization Date",
+            "fieldtype": "Datetime",
+            "read_only": 1,
+            "insert_after": "custom_authorization_ip",
+        },
+        {
+            "fieldname": "custom_sec_code",
+            "label": "SEC Code",
+            "fieldtype": "Select",
+            "options": "WEB\nPPD\nCCD\nTEL",
+            "default": "CCD",
+            "insert_after": "custom_authorization_date",
+        },
+        {
+            "fieldname": "custom_revocation_date",
+            "label": "Revocation Date",
+            "fieldtype": "Datetime",
+            "read_only": 1,
+            "insert_after": "custom_sec_code",
+        },
+        {
+            "fieldname": "custom_revocation_reason",
+            "label": "Revocation Reason",
+            "fieldtype": "Small Text",
+            "insert_after": "custom_revocation_date",
+        },
+        {
+            "fieldname": "custom_legacy_ach_auth",
+            "label": "Legacy ACH Authorization",
+            "fieldtype": "Link",
+            "options": "ACH Authorization",
+            "read_only": 1,
+            "hidden": 1,
+            "no_copy": 1,
+            "insert_after": "custom_revocation_reason",
+        },
+    ]
+
+    created = False
+    for field in fields:
+        if frappe.db.exists("Custom Field", {"dt": "Bank Account", "fieldname": field["fieldname"]}):
+            continue
+
+        payload = {
+            "doctype": "Custom Field",
+            "dt": "Bank Account",
+            **field,
+        }
+        frappe.get_doc(payload).insert(ignore_permissions=True)
+        created = True
+
+    if created:
+        frappe.clear_cache(doctype="Bank Account")
 
 
 def ensure_purchase_order_hbr_field():

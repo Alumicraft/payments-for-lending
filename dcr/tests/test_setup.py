@@ -11,6 +11,43 @@ ROOT = Path(__file__).resolve().parents[2]
 class TestSetupCustomFields(unittest.TestCase):
 
     @patch("dcr.setup.frappe")
+    def test_ensure_bank_account_ach_fields_creates_required_fields(self, mock_frappe):
+        from dcr.setup import ensure_bank_account_ach_fields
+
+        field_doc = MagicMock()
+        mock_frappe.db.exists.return_value = False
+        mock_frappe.get_doc.return_value = field_doc
+
+        ensure_bank_account_ach_fields()
+
+        payloads = [call.args[0] for call in mock_frappe.get_doc.call_args_list]
+        fieldnames = {payload["fieldname"] for payload in payloads}
+
+        self.assertEqual({payload["dt"] for payload in payloads}, {"Bank Account"})
+        self.assertTrue({
+            "custom_ach_status",
+            "custom_achq_token",
+            "custom_token_source",
+            "custom_account_last_four",
+            "custom_routing_last_4",
+            "custom_verification_status",
+            "custom_consent_captured",
+            "custom_authorization_ip",
+            "custom_authorization_date",
+            "custom_sec_code",
+            "custom_revocation_date",
+            "custom_revocation_reason",
+            "custom_legacy_ach_auth",
+        }.issubset(fieldnames))
+
+        by_fieldname = {payload["fieldname"]: payload for payload in payloads}
+        self.assertEqual(by_fieldname["custom_ach_status"]["options"], "\nActive\nPaused\nRevoked\nFailed")
+        self.assertEqual(by_fieldname["custom_sec_code"]["default"], "CCD")
+        self.assertEqual(by_fieldname["custom_token_source"]["options"], "\nManual\nPlaid")
+        self.assertEqual(field_doc.insert.call_count, len(payloads))
+        mock_frappe.clear_cache.assert_called_once_with(doctype="Bank Account")
+
+    @patch("dcr.setup.frappe")
     def test_ensure_purchase_order_hbr_field_creates_missing_field(self, mock_frappe):
         from dcr.setup import ensure_purchase_order_hbr_field
 
@@ -27,6 +64,23 @@ class TestSetupCustomFields(unittest.TestCase):
         self.assertEqual(payload["options"], "Home Build Request")
         field_doc.insert.assert_called_once_with(ignore_permissions=True)
         mock_frappe.clear_cache.assert_called_once_with(doctype="Purchase Order")
+
+
+class TestAchBankAccountMigration(unittest.TestCase):
+
+    @patch("dcr.patches.migrate_ach_to_bank_account.ensure_bank_account_ach_fields")
+    @patch("dcr.patches.migrate_ach_to_bank_account.frappe")
+    def test_migration_provisions_bank_account_fields_before_copying_data(
+        self, mock_frappe, mock_ensure_fields
+    ):
+        from dcr.patches.migrate_ach_to_bank_account import execute
+
+        mock_frappe.db.exists.return_value = True
+        mock_frappe.db.sql.return_value = []
+
+        execute()
+
+        mock_ensure_fields.assert_called_once_with()
 
 
 class TestMapBlockContent(unittest.TestCase):

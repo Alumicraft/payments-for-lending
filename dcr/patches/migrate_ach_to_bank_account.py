@@ -2,16 +2,17 @@
 Migrate ACH Authorization records to Bank Account.
 
 Idempotent — skips records already migrated (checked via ach_authorization_legacy).
-
-PREREQUISITE: User must create Bank Account custom fields on Frappe Cloud
-Customize Form BEFORE deploying this code.
 """
 
 import frappe
 from frappe.utils import now_datetime
 
+from dcr.setup import ensure_bank_account_ach_fields
+
 
 def execute():
+    ensure_bank_account_ach_fields()
+
     # Check that custom fields exist on Bank Account
     if not frappe.db.exists("Custom Field", {"dt": "Bank Account", "fieldname": "custom_ach_status"}):
         frappe.log_error(
