@@ -306,5 +306,32 @@ class TestStatusDerivation(unittest.TestCase):
         self.assertEqual(len(result[0]["homes"]), 2)
 
 
+class TestFactoryCoordinates(unittest.TestCase):
+
+    @patch("dcr.api.map._geocode_address")
+    @patch("dcr.api.map._get_supplier_primary_address")
+    @patch("dcr.api.map.frappe")
+    def test_missing_factory_coords_are_backfilled(
+        self, mock_frappe, mock_address, mock_geocode
+    ):
+        from dcr.api.map import _ensure_supplier_coords
+
+        mock_address.return_value = "123 Factory Rd, Phoenix, AZ"
+        mock_geocode.return_value = (33.45, -112.07)
+
+        supplier = {
+            "name": "SUPP-001",
+            "supplier_name": "Factory",
+            "latitude": None,
+            "longitude": None,
+        }
+
+        result = _ensure_supplier_coords(supplier)
+
+        self.assertEqual(result["latitude"], 33.45)
+        self.assertEqual(result["longitude"], -112.07)
+        mock_frappe.db.set_value.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()

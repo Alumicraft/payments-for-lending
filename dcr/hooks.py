@@ -14,7 +14,10 @@ app_include_js = [
     # mapbox-gl.js, and prefetches the map API responses on idle.
     "/assets/dcr/js/map_warmup.js",
 ]
-app_include_css = ["/assets/dcr/css/workspace_fullwidth.css"]
+app_include_css = [
+    "/assets/dcr/css/workspace_fullwidth.css",
+    "/assets/dcr/css/map.css",
+]
 
 override_whitelisted_methods = {
     "frappe.desk.doctype.desktop_layout.desktop_layout.get_layout": "dcr.api.boot.get_layout_with_icons"

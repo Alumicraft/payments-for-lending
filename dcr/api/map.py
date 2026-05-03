@@ -186,6 +186,7 @@ def get_factory_locations():
         filters={"supplier_group": FACTORY_SUPPLIER_GROUP, "disabled": 0},
         fields=["name", "supplier_name", "latitude", "longitude"],
     )
+    suppliers = [_ensure_supplier_coords(s) for s in suppliers]
     suppliers = [s for s in suppliers if (s.get("latitude") or 0) and (s.get("longitude") or 0)]
     if not suppliers:
         return []
@@ -254,6 +255,34 @@ def get_factory_locations():
             **c,
         })
     return out
+
+
+def _ensure_supplier_coords(supplier):
+    """Best-effort backfill of factory supplier coordinates.
+
+    Existing factories predate the Supplier geocode hook, so production may
+    have valid factory addresses but empty latitude/longitude fields. Without
+    this, the map has no factory icon to render until each supplier is edited.
+    """
+    if (supplier.get("latitude") or 0) and (supplier.get("longitude") or 0):
+        return supplier
+
+    address = _get_supplier_primary_address(supplier["name"])
+    coords = _geocode_address(address) if address else None
+    if not coords:
+        return supplier
+
+    lat, lng = coords
+    supplier["latitude"] = lat
+    supplier["longitude"] = lng
+    try:
+        frappe.db.set_value("Supplier", supplier["name"], {
+            "latitude": lat,
+            "longitude": lng,
+        }, update_modified=False)
+    except Exception:
+        pass
+    return supplier
 
 
 def _parse_mapbox_feature(feature):

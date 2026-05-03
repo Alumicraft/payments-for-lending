@@ -458,6 +458,29 @@ def ensure_map_block():
     var container = root_element.querySelector('#dcr-map');
     if (!container) return;
 
+    function injectDcrMapStyles() {
+        var href = '/assets/dcr/css/map.css';
+        function ensureLink(root, selectorFn) {
+            if (!root || !root.appendChild) return;
+            var existing = selectorFn && selectorFn();
+            if (existing) return;
+            var link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = href;
+            link.className = 'dcr-map-css';
+            root.appendChild(link);
+        }
+
+        var shadowRoot = container.getRootNode && container.getRootNode();
+        ensureLink(shadowRoot, function() {
+            return shadowRoot.querySelector && shadowRoot.querySelector('link.dcr-map-css');
+        });
+        ensureLink(document.head, function() {
+            return document.querySelector('link.dcr-map-css[href="' + href + '"]');
+        });
+    }
+    injectDcrMapStyles();
+
     // Full-bleed on Map workspace, rounded corners elsewhere
     var isMapPage = (frappe.get_route() || []).join('/').toLowerCase().indexOf('map') !== -1;
     if (!isMapPage) {

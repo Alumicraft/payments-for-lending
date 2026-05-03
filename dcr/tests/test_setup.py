@@ -36,10 +36,18 @@ class TestMapBlockContent(unittest.TestCase):
 
         self.assertIn("dcr-legend", setup_code)
         self.assertIn("dcr-search", setup_code)
+        self.assertIn("/assets/dcr/css/map.css", setup_code)
         self.assertIn("SatelliteControl", setup_code)
         self.assertIn("renderStackedHtml", setup_code)
         self.assertIn("buildLegend(map, geojson)", setup_code)
         self.assertNotIn("window._dcrShowTrailForHome", setup_code)
+
+    def test_map_css_is_shipped_as_asset(self):
+        css = (ROOT / "dcr/public/css/map.css").read_text()
+
+        self.assertIn(".dcr-legend", css)
+        self.assertIn(".dcr-search", css)
+        self.assertIn(".dcr-popup", css)
 
 
 if __name__ == "__main__":
