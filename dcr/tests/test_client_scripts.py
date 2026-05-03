@@ -29,5 +29,19 @@ class TestLoanClientScript(unittest.TestCase):
         self.assertNotIn("home_build_request: frm.doc.home_serial_no || ''", script)
 
 
+class TestSidebarFixClientScript(unittest.TestCase):
+
+    def test_workspace_routes_match_boot_keys_or_labels(self):
+        script = (ROOT / "dcr/public/js/sidebar_fix.js").read_text()
+
+        self.assertIn("function workspace_from_slug", script)
+        self.assertIn("slugify(data.label)", script)
+        self.assertIn("workspace_from_slug(route[0])", script)
+        self.assertIn("workspace_from_slug(ws_slug)", script)
+        self.assertIn("workspace.label", script)
+        self.assertNotIn("if (route.length === 1 && route[0]) return route[0].toLowerCase();", script)
+        self.assertNotIn("var data = map[slug];", script)
+
+
 if __name__ == "__main__":
     unittest.main()

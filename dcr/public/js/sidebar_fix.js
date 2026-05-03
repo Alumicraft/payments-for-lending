@@ -22,19 +22,46 @@
 		catch (e) { return []; }
 	}
 
+	function slugify(s) {
+		return (s || "")
+			.toLowerCase()
+			.replace(/[\s_]+/g, "-")
+			.replace(/[^a-z0-9-]/g, "")
+			.replace(/-+/g, "-")
+			.replace(/^-|-$/g, "");
+	}
+
+	function workspace_from_slug(slug) {
+		var map = frappe.boot.workspace_sidebar_item || {};
+		var target = slugify(slug);
+		if (!target) return null;
+		if (map[slug]) return { key: slug, label: map[slug].label || slug, data: map[slug] };
+		if (map[target]) return { key: target, label: map[target].label || target, data: map[target] };
+		var keys = Object.keys(map);
+		for (var i = 0; i < keys.length; i++) {
+			var key = keys[i];
+			var data = map[key] || {};
+			if (slugify(key) === target || slugify(data.label) === target) {
+				return { key: key, label: data.label || key, data: data };
+			}
+		}
+		return null;
+	}
+
 	function get_workspace_name() {
 		if (frappe.app && frappe.app.sidebar && frappe.app.sidebar.current_workspace) {
 			return frappe.app.sidebar.current_workspace;
 		}
 		var el = document.querySelector(".body-sidebar[data-title]");
-		if (el) return el.getAttribute("data-title").toLowerCase();
+		if (el) return el.getAttribute("data-title");
 		return null;
 	}
 
 	function get_all_items() {
 		var ws = get_workspace_name();
 		if (!ws) return [];
-		var data = (frappe.boot.workspace_sidebar_item || {})[ws];
+		var workspace = workspace_from_slug(ws);
+		var data = workspace && workspace.data;
 		if (!data || !data.items) return [];
 		// Flatten top-level + nested items
 		var all = [];
@@ -188,7 +215,6 @@
 		sb.set_workspace_sidebar = function (router) {
 			try {
 				var route = frappe.get_route() || [];
-				var map = frappe.boot.workspace_sidebar_item || {};
 				var slug = "";
 
 				// Explicit workspace navigation looks like:
@@ -201,7 +227,7 @@
 					return original(router);
 				}
 
-				var is_workspace_nav = slug && !!map[slug];
+				var is_workspace_nav = slug && !!workspace_from_slug(slug);
 
 				// Let Frappe run its normal logic on first load (no
 				// current sidebar yet) or when the user explicitly
@@ -298,8 +324,13 @@
 		// builds used a bare ["<slug>"]. Return the lowercase slug for
 		// either form, or null if this isn't a workspace route.
 		if (!route || !route.length) return null;
-		if (route.length === 1 && route[0]) return route[0].toLowerCase();
+		if (route.length === 1 && route[0] && workspace_from_slug(route[0])) {
+			return route[0].toLowerCase();
+		}
 		if (route.length >= 2 && (route[0] || "").toLowerCase() === "workspaces" && route[1]) {
+			if ((route[1] || "").toLowerCase() === "private" && route[2]) {
+				return route[2].toLowerCase();
+			}
 			return route[1].toLowerCase();
 		}
 		return null;
@@ -308,11 +339,10 @@
 	function pick_correct_workspace() {
 		try {
 			var route = frappe.get_route() || [];
-			var map = frappe.boot.workspace_sidebar_item || {};
 
 			// Workspace URL — trust Frappe.
 			var ws_slug = workspace_slug_from_route(route);
-			if (ws_slug && map[ws_slug]) return null;
+			if (ws_slug && workspace_from_slug(ws_slug)) return null;
 
 			// Doctype entity — for list view ["List", "<DocType>"], form view
 			// ["Form", "<DocType>", "<name>"], or a bare slug like
@@ -346,15 +376,13 @@
 				console.info("[DCR sidebar] save skip", reason || "", { route: route });
 				return false;
 			}
-			var map = frappe.boot.workspace_sidebar_item || {};
-			var data = map[slug];
-			if (!data) {
-				console.info("[DCR sidebar] save no-map", reason || "", { slug: slug, mapKeys: Object.keys(map).length });
+			var workspace = workspace_from_slug(slug);
+			if (!workspace) {
+				console.info("[DCR sidebar] save no-map", reason || "", { slug: slug });
 				return false;
 			}
-			var label = data.label || slug;
-			localStorage.setItem("dcr_last_workspace", label);
-			console.info("[DCR sidebar] saved", reason || "", label);
+			localStorage.setItem("dcr_last_workspace", workspace.label);
+			console.info("[DCR sidebar] saved", reason || "", workspace.label);
 			return true;
 		} catch (e) {
 			console.log("[DCR sidebar] save error:", e);
