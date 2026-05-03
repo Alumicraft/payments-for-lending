@@ -1,19 +1,42 @@
 [project]
 name = "dcr"
+version = "0.0.1"
 authors = [
     { name = "DCR", email = "hello@example.com" }
 ]
 description = "Dealer Capital Resources — Home Builder Lending Platform"
 requires-python = ">=3.10"
 readme = "README.md"
-dynamic = ["version"]
+dependencies = [
+    "PyJWT[crypto]"
+]
 
 [build-system]
-requires = ["flit_core >=3.4,<4"]
-build-backend = "flit_core.buildapi"
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
 
-[tool.flit.module]
-name = "dcr"
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+dcr = [
+    "*.txt",
+    "fixtures/*.json",
+    "public/css/*.css",
+    "public/js/*.js",
+    "public/images/*.png",
+    "public/images/*.svg",
+    "public/images/*.ico",
+    "www/*.html",
+    "www/*.css",
+    "www/*.js",
+    "dcr/doctype/*/*.json",
+    "dcr/report/*/*.json",
+    "dcr/print_format/*/*.json",
+]
 
 [tool.bench.frappe-dependencies]
 frappe = ">=15.0.0,<17.0.0"

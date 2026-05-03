@@ -1,7 +1,11 @@
 from setuptools import setup, find_packages
 
 with open("requirements.txt") as f:
-    install_requires = f.read().strip().split("\n")
+    install_requires = [
+        line
+        for line in f.read().strip().split("\n")
+        if line and not line.startswith("#") and line != "frappe"
+    ]
 
 setup(
     name="dcr",
@@ -12,5 +16,22 @@ setup(
     packages=find_packages(),
     zip_safe=False,
     include_package_data=True,
+    package_data={
+        "dcr": [
+            "*.txt",
+            "fixtures/*.json",
+            "public/css/*.css",
+            "public/js/*.js",
+            "public/images/*.png",
+            "public/images/*.svg",
+            "public/images/*.ico",
+            "www/*.html",
+            "www/*.css",
+            "www/*.js",
+            "dcr/doctype/*/*.json",
+            "dcr/report/*/*.json",
+            "dcr/print_format/*/*.json",
+        ],
+    },
     install_requires=install_requires,
 )

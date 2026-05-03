@@ -42,6 +42,16 @@ class TestSidebarFixClientScript(unittest.TestCase):
         self.assertNotIn("if (route.length === 1 && route[0]) return route[0].toLowerCase();", script)
         self.assertNotIn("var data = map[slug];", script)
 
+    def test_sidebar_filters_accept_frappe_filter_row_shapes(self):
+        script = (ROOT / "dcr/public/js/sidebar_fix.js").read_text()
+
+        self.assertIn("if (Array.isArray(str)) return str;", script)
+        self.assertIn("function filter_parts(f)", script)
+        self.assertIn("f.length === 3", script)
+        self.assertIn("function scrub_fieldname(field)", script)
+        self.assertIn("filters_to_route_options(filters)", script)
+        self.assertIn("frappe.route_options = opts", script)
+
     def test_hbr_refresh_prefers_deals_over_stale_access_hint(self):
         script = (ROOT / "dcr/public/js/sidebar_fix.js").read_text()
 

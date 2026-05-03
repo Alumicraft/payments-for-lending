@@ -105,8 +105,8 @@ class TestMapBlockContent(unittest.TestCase):
         self.assertIn(".dcr-legend", css)
         self.assertIn(".dcr-search", css)
         self.assertIn(".dcr-popup", css)
-        self.assertIn(".dcr-legend__check:checked::after", css)
-        self.assertIn(".dcr-legend--dark .dcr-legend__check:checked::after", css)
+        self.assertIn(".dcr-legend__check.is-checked::after", css)
+        self.assertIn(".dcr-legend--dark .dcr-legend__check.is-checked::after", css)
 
     def test_workspace_css_forces_full_bleed_when_full_width_is_off(self):
         css = (ROOT / "dcr/public/css/workspace_fullwidth.css").read_text()
@@ -121,6 +121,45 @@ class TestMapBlockContent(unittest.TestCase):
         self.assertIn("margin-left: 0 !important", css)
         self.assertIn("margin-right: 0 !important", css)
         self.assertIn("body:has(.workspace-body) .widget.custom-block-widget-box", css)
+
+
+class TestPackagingConfig(unittest.TestCase):
+
+    def test_pyproject_packages_desk_assets_for_frappe_cloud(self):
+        pyproject = (ROOT / "pyproject.toml").read_text()
+        setup_py = (ROOT / "setup.py").read_text()
+        manifest = (ROOT / "MANIFEST.in").read_text()
+
+        self.assertIn('build-backend = "setuptools.build_meta"', pyproject)
+        self.assertIn('[tool.setuptools.package-data]', pyproject)
+        self.assertIn('"public/js/*.js"', pyproject)
+        self.assertIn('"public/css/*.css"', pyproject)
+        self.assertIn('"public/images/*.png"', pyproject)
+        self.assertIn('"public/js/*.js"', setup_py)
+        self.assertIn("recursive-include dcr/public *.css *.js *.png", manifest)
+
+
+class TestMapWorkspaceClientCode(unittest.TestCase):
+
+    def test_map_search_refreshes_after_data_loads(self):
+        setup_code = (ROOT / "dcr/setup.py").read_text()
+        css = (ROOT / "dcr/public/css/map.css").read_text()
+
+        self.assertIn("window._dcrMapRefreshSearch = refreshSearch", setup_code)
+        self.assertIn("if (window._dcrMapRefreshSearch) window._dcrMapRefreshSearch()", setup_code)
+        self.assertIn(".dcr-search { position: absolute", css)
+        self.assertIn("z-index: 1000", css)
+        self.assertIn("pointer-events: auto", css)
+        self.assertIn(".dcr-search__menu.is-open { display: block !important; }", css)
+
+    def test_dark_legend_checkmark_uses_span_not_native_checkbox(self):
+        setup_code = (ROOT / "dcr/setup.py").read_text()
+        css = (ROOT / "dcr/public/css/map.css").read_text()
+
+        self.assertIn('<span class="dcr-legend__check', setup_code)
+        self.assertNotIn('<input type="checkbox" class="dcr-legend__check"', setup_code)
+        self.assertIn(".dcr-legend__check.is-checked::after", css)
+        self.assertIn(".dcr-legend--dark .dcr-legend__check.is-checked::after", css)
 
 
 if __name__ == "__main__":

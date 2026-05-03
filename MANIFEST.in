@@ -1,0 +1,7 @@
+recursive-include dcr/public *.css *.js *.png *.svg *.ico
+recursive-include dcr/fixtures *.json
+recursive-include dcr/dcr/doctype *.json
+recursive-include dcr/dcr/report *.json
+recursive-include dcr/dcr/print_format *.json
+recursive-include dcr/www *.html *.css *.js
+include dcr/*.txt

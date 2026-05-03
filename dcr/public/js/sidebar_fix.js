@@ -22,8 +22,61 @@
 
 	function parse_filters(str) {
 		if (!str) return [];
+		if (Array.isArray(str)) return str;
+		if (typeof str === "object") return [str];
 		try { var r = JSON.parse(str); return Array.isArray(r) ? r : []; }
 		catch (e) { return []; }
+	}
+
+	function scrub_fieldname(field) {
+		return (field || "")
+			.toString()
+			.trim()
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, "_")
+			.replace(/^_+|_+$/g, "");
+	}
+
+	function normalize_operator(operator) {
+		var op = (operator || "=").toString();
+		var lower = op.toLowerCase();
+		if (lower === "equals" || lower === "==" || lower === "=") return "=";
+		if (lower === "not equals") return "!=";
+		return op;
+	}
+
+	function filter_parts(f) {
+		if (!f) return null;
+		if (Array.isArray(f)) {
+			if (f.length >= 4) {
+				return { field: scrub_fieldname(f[1]), operator: normalize_operator(f[2]), value: f[3] };
+			}
+			if (f.length === 3) {
+				return { field: scrub_fieldname(f[0]), operator: normalize_operator(f[1]), value: f[2] };
+			}
+			if (f.length === 2) {
+				return { field: scrub_fieldname(f[0]), operator: "=", value: f[1] };
+			}
+			return null;
+		}
+		if (typeof f === "object") {
+			return {
+				field: scrub_fieldname(f.fieldname || f.field || f.field_name || f.label),
+				operator: normalize_operator(f.operator || f.condition || f.op),
+				value: f.value != null ? f.value : f.filter_value
+			};
+		}
+		return null;
+	}
+
+	function filters_to_route_options(filters) {
+		var opts = {};
+		for (var i = 0; i < filters.length; i++) {
+			var parts = filter_parts(filters[i]);
+			if (!parts || !parts.field || parts.value == null || parts.value === "") continue;
+			opts[parts.field] = parts.operator === "=" ? parts.value : [parts.operator, parts.value];
+		}
+		return opts;
 	}
 
 	function normalize(s) {
@@ -167,12 +220,8 @@
 		if (item.filters) {
 			var filters = parse_filters(item.filters);
 			if (filters.length) {
-				var opts = {};
-				for (var i = 0; i < filters.length; i++) {
-					var f = filters[i];
-					opts[f[1]] = f[2] === "=" ? f[3] : [f[2], f[3]];
-				}
-				frappe.route_options = opts;
+				var opts = filters_to_route_options(filters);
+				if (Object.keys(opts).length) frappe.route_options = opts;
 			}
 		}
 
@@ -227,10 +276,13 @@
 			if (!mf.length) continue;
 			var score = 0, ok = true;
 			for (var j = 0; j < mf.length; j++) {
-				var f = mf[j], found = false;
+				var f = filter_parts(mf[j]), found = false;
+				if (!f) continue;
 				for (var k = 0; k < cur_filters.length; k++) {
-					var cf = cur_filters[k];
-					if (cf[1] === f[1] && cf[2] === f[2] && String(cf[3]) === String(f[3]))
+					var cf = filter_parts(cur_filters[k]);
+					if (cf && cf.field === f.field &&
+						cf.operator === f.operator &&
+						String(cf.value) === String(f.value))
 					{ found = true; break; }
 				}
 				if (found) score++; else { ok = false; break; }
