@@ -773,7 +773,7 @@
 		var style = document.createElement("style");
 		style.id = "dcr-workspace-fullbleed-js";
 		style.textContent = [
-			"body.dcr-workspace-fullbleed { --page-max-width: none; --content-width: 100%; }",
+			"body.dcr-workspace-fullbleed { --page-max-width: none; --content-width: 100%; --dcr-workspace-content-padding: clamp(16px, 1.5vw, 24px); }",
 			"body.dcr-workspace-fullbleed .main-section,",
 			"body.dcr-workspace-fullbleed .page-container,",
 			"body.dcr-workspace-fullbleed .page-wrapper,",
@@ -798,6 +798,12 @@
 			"  margin-right: 0 !important;",
 			"  padding-left: 0 !important;",
 			"  padding-right: 0 !important;",
+			"}",
+			"body.dcr-workspace-fullbleed .page-body,",
+			"body.dcr-workspace-fullbleed .container.page-body {",
+			"  box-sizing: border-box !important;",
+			"  padding-left: var(--dcr-workspace-content-padding, 20px) !important;",
+			"  padding-right: var(--dcr-workspace-content-padding, 20px) !important;",
 			"}",
 			"body.dcr-workspace-fullbleed .widget-group,",
 			"body.dcr-workspace-fullbleed .widget-group-body,",
