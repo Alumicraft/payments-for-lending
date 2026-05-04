@@ -308,6 +308,40 @@ class TestStatusDerivation(unittest.TestCase):
 
 class TestFactoryCoordinates(unittest.TestCase):
 
+    @patch("dcr.api.map.frappe")
+    def test_supplier_primary_address_field_is_used_before_dynamic_links(self, mock_frappe):
+        from dcr.api.map import _get_supplier_primary_address
+
+        def has_column(doctype, fieldname):
+            return (
+                doctype == "Supplier"
+                and fieldname == "supplier_primary_address"
+            )
+
+        def get_value(doctype, name, fieldname, **kwargs):
+            if doctype == "Supplier" and fieldname == "supplier_primary_address":
+                return "Champion Homes-Billing"
+            if doctype == "Address" and name == "Champion Homes-Billing":
+                return {
+                    "address_line1": "755 W Big Beaver Rd",
+                    "address_line2": None,
+                    "city": "Troy",
+                    "state": "MI",
+                    "pincode": "48084",
+                    "country": "United States",
+                }
+            return None
+
+        mock_frappe.db.has_column.side_effect = has_column
+        mock_frappe.db.get_value.side_effect = get_value
+        mock_frappe.db.sql.return_value = []
+
+        self.assertEqual(
+            _get_supplier_primary_address("Champion Homes"),
+            "755 W Big Beaver Rd, Troy, MI, 48084, United States",
+        )
+        mock_frappe.db.sql.assert_not_called()
+
     @patch("dcr.api.map._geocode_address")
     @patch("dcr.api.map._get_supplier_primary_address")
     @patch("dcr.api.map.frappe")

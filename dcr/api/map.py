@@ -462,6 +462,10 @@ def geocode_address_suppliers(doc, method=None):
 
 def _get_supplier_primary_address(supplier_name):
     """Return the supplier's primary address as a single query string, or None."""
+    address = _get_supplier_primary_address_from_supplier_field(supplier_name)
+    if address:
+        return _format_address(address)
+
     rows = frappe.db.sql(
         """
         SELECT a.address_line1, a.address_line2, a.city, a.state, a.pincode, a.country,
@@ -479,7 +483,32 @@ def _get_supplier_primary_address(supplier_name):
     )
     if not rows:
         return None
-    a = rows[0]
+    return _format_address(rows[0])
+
+
+def _get_supplier_primary_address_from_supplier_field(supplier_name):
+    """Return Address fields from Supplier's primary-address link if present."""
+    for fieldname in ("supplier_primary_address", "primary_address"):
+        try:
+            if not frappe.db.has_column("Supplier", fieldname):
+                continue
+            address_name = frappe.db.get_value("Supplier", supplier_name, fieldname)
+        except Exception:
+            continue
+        if not address_name:
+            continue
+        address = frappe.db.get_value(
+            "Address",
+            address_name,
+            ["address_line1", "address_line2", "city", "state", "pincode", "country"],
+            as_dict=True,
+        )
+        if address:
+            return address
+    return None
+
+
+def _format_address(a):
     parts = [
         a.get("address_line1"),
         a.get("address_line2"),
