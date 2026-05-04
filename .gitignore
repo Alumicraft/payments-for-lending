@@ -26,4 +26,5 @@ Thumbs.db
 
 # Local configuration
 *.local
+.claude/
 .worktrees/
