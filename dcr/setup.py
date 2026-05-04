@@ -707,12 +707,12 @@ def ensure_map_block():
         });
     }
 
-    // Dynamic height: Map workspace uses a shorter viewport block; embedded
-    // block views still fill their available viewport height.
+    // Dynamic height: the full Map workspace fills the available viewport;
+    // embedded block views use a shorter preview height.
     function setHeight() {
         var rect = container.getBoundingClientRect();
         var availableHeight = Math.max(360, window.innerHeight - rect.top);
-        var targetHeight = isMapPage ? Math.round(availableHeight * 0.67) : availableHeight;
+        var targetHeight = isMapPage ? availableHeight : Math.round(availableHeight * 0.67);
         container.style.height = targetHeight + 'px';
     }
     setHeight();

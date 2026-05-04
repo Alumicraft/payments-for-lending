@@ -229,11 +229,11 @@ class TestMapWorkspaceClientCode(unittest.TestCase):
         self.assertIn("if (!layers.length) {", setup_code)
         self.assertIn("map.queryRenderedFeatures(e.point, { layers: layers })", setup_code)
 
-    def test_map_workspace_uses_shorter_viewport_height(self):
+    def test_embedded_map_block_uses_shorter_viewport_height(self):
         setup_code = (ROOT / "dcr/setup.py").read_text()
 
         self.assertIn("var availableHeight = Math.max(360, window.innerHeight - rect.top)", setup_code)
-        self.assertIn("var targetHeight = isMapPage ? Math.round(availableHeight * 0.67) : availableHeight", setup_code)
+        self.assertIn("var targetHeight = isMapPage ? availableHeight : Math.round(availableHeight * 0.67)", setup_code)
         self.assertIn("container.style.height = targetHeight + 'px'", setup_code)
 
     def test_dark_legend_checkmark_uses_span_not_native_checkbox(self):
