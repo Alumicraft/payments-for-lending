@@ -45,6 +45,7 @@ frappe.ui.form.on('Home Build Request', {
         // Hide Lending connections (Loan Application / Loan / Loan
         // Disbursement) on Cash deals — those only exist for Floored.
         update_connections_visibility(frm);
+        update_stage_field_visibility(frm);
 
         // Create buttons only on submitted HBR
         if (frm.doc.docstatus !== 1) return;
@@ -134,6 +135,7 @@ frappe.ui.form.on('Home Build Request', {
     financing_type: function(frm) {
         populate_checklist(frm);
         update_connections_visibility(frm);
+        update_stage_field_visibility(frm);
     },
     property_type: function(frm) { populate_checklist(frm); },
 });
@@ -164,6 +166,16 @@ function update_connections_visibility(frm) {
         attempts += 1;
         if (apply() || attempts > 10) clearInterval(iv);
     }, 300);
+}
+
+
+function update_stage_field_visibility(frm) {
+    var is_cash = frm.doc.financing_type === 'Cash';
+
+    if (frm.fields_dict.custom_loan_stage) {
+        frm.toggle_display('custom_loan_stage', !is_cash);
+        frm.toggle_reqd('custom_loan_stage', !is_cash);
+    }
 }
 
 

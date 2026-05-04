@@ -99,7 +99,8 @@ doctype_js = {
 # Document Events
 doc_events = {
     "Loan Application": {
-        "validate": "dcr.api.lending.validate_loan_application"
+        "validate": "dcr.api.lending.validate_loan_application",
+        "on_update": "dcr.api.hbr_stage.sync_from_doc",
     },
     "Loan": {
         "validate": "dcr.api.lending.on_loan_validate",
@@ -107,7 +108,17 @@ doc_events = {
         "on_update": "dcr.api.lending.on_loan_on_update"
     },
     "Loan Disbursement": {
-        "validate": "dcr.api.lending.on_loan_disbursement_validate"
+        "validate": "dcr.api.lending.on_loan_disbursement_validate",
+        "on_submit": "dcr.api.hbr_stage.sync_from_doc",
+        "on_cancel": "dcr.api.hbr_stage.sync_from_doc",
+    },
+    "Purchase Order": {
+        "on_submit": "dcr.api.hbr_stage.sync_from_doc",
+        "on_cancel": "dcr.api.hbr_stage.sync_from_doc",
+    },
+    "Purchase Receipt": {
+        "on_submit": "dcr.api.hbr_stage.sync_from_doc",
+        "on_cancel": "dcr.api.hbr_stage.sync_from_doc",
     },
     "Bank Account": {
         "validate": "dcr.api.bank_account_ach.validate_single_default"

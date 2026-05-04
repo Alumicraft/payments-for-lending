@@ -42,6 +42,10 @@ DOC_REQUIREMENTS = {
 
 class HomeBuildRequest(Document):
     def validate(self):
+        from dcr.api.hbr_stage import apply_hbr_stage_defaults
+
+        apply_hbr_stage_defaults(self)
+
         # Warn if factory has no approved Factory Assignment for this dealer
         if self.factory and self.customer:
             has_fa = frappe.db.exists("Factory Assignment", {

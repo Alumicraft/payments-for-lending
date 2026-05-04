@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>DCR Heatmap Preview</title>
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
+<style>
+  body { margin: 0; padding: 0; font-family: Inter, -apple-system, sans-serif; }
+  #map { width: 100vw; height: 100vh; }
+  .setup-prompt {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: #fff; padding: 32px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    text-align: center; z-index: 10; max-width: 400px;
+  }
+  .setup-prompt input, .setup-prompt select {
+    width: 100%; padding: 10px 12px; margin: 8px 0; border: 1px solid #d1d8dd;
+    border-radius: 4px; font-size: 14px; box-sizing: border-box;
+  }
+  .setup-prompt button {
+    background: #007AFF; color: #fff; border: none; padding: 10px 24px;
+    border-radius: 4px; font-size: 14px; cursor: pointer;
+  }
+  .controls {
+    position: absolute; top: 10px; left: 10px; z-index: 10;
+    background: #fff; border: 1px solid #d1d8dd; border-radius: 8px;
+    padding: 12px; font-size: 12px; width: 280px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: none;
+  }
+  .controls h4 { margin: 0 0 8px 0; font-size: 13px; }
+  .controls label { display: block; margin-bottom: 8px; }
+  .controls input[type="range"] { width: 100%; }
+  .controls .row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .controls .row label { margin: 0; flex: 1; }
+  .controls .row input[type="number"] { width: 60px; padding: 4px; border: 1px solid #d1d8dd; border-radius: 4px; }
+  .controls button { padding: 6px 12px; font-size: 12px; background: #007AFF; color: #fff; border: 0; border-radius: 4px; cursor: pointer; margin-top: 8px; width: 100%; }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="controls" id="controls">
+  <h4>Cluster style</h4>
+  <div class="row">
+    <label>Opacity</label>
+    <input type="number" id="opacity" value="0.75" min="0" max="1" step="0.05">
+  </div>
+  <div class="row">
+    <label>Radius (small)</label>
+    <input type="number" id="r-small" value="14">
+  </div>
+  <div class="row">
+    <label>Radius (mid)</label>
+    <input type="number" id="r-mid" value="18">
+  </div>
+  <div class="row">
+    <label>Radius (large)</label>
+    <input type="number" id="r-large" value="24">
+  </div>
+  <div class="row">
+    <label>Stroke width</label>
+    <input type="number" id="stroke" value="2">
+  </div>
+  <div class="row">
+    <label>Stroke opacity</label>
+    <input type="number" id="stroke-op" value="0.9" min="0" max="1" step="0.05">
+  </div>
+  <h4 style="margin-top:12px;">Heatmap</h4>
+  <div class="row">
+    <label>Opacity</label>
+    <input type="number" id="heat-op" value="0.6" min="0" max="1" step="0.05">
+  </div>
+  <h4 style="margin-top:12px;">Theme</h4>
+  <div class="row">
+    <button onclick="toggleTheme()" style="margin:0;">Toggle Day/Night</button>
+  </div>
+  <button onclick="applyStyles()">Apply</button>
+</div>
+
+<div class="setup-prompt" id="prompt">
+  <h3 style="margin:0 0 8px 0;">DCR Heatmap Preview</h3>
+  <input type="text" id="token-input" placeholder="Mapbox access token (pk.*)">
+  <input type="text" id="custom-style" placeholder="Custom style URL (optional)">
+  <button onclick="startMap()">Load Map</button>
+</div>
+
+<script>
+var SAMPLE_DATA = [
+  { community_name: "Oak Forest MHP", address: "123 Main St, Westlake Village, CA 93065", latitude: 34.1416, longitude: -118.8209, hbr_count: 12 },
+  { community_name: "Pine Valley Estates", address: "456 Oak Ave, Simi Valley, CA 93063", latitude: 34.2694, longitude: -118.7815, hbr_count: 7 },
+  { community_name: "Desert Palms", address: "789 Palm Dr, Palm Springs, CA 92262", latitude: 33.8303, longitude: -116.5453, hbr_count: 15 },
+  { community_name: "Sunrise Village", address: "321 Sunrise Blvd, Las Vegas, NV 89101", latitude: 36.1699, longitude: -115.1398, hbr_count: 4 },
+  { community_name: "Mountain View Park", address: "555 Mountain Rd, Phoenix, AZ 85001", latitude: 33.4484, longitude: -112.0740, hbr_count: 9 },
+  { community_name: "Riverside Estates", address: "888 River Ln, Riverside, CA 92501", latitude: 33.9533, longitude: -117.3962, hbr_count: 6 },
+  { community_name: "Mesa Grande", address: "222 Mesa Dr, Mesa, AZ 85201", latitude: 33.4152, longitude: -111.8315, hbr_count: 11 },
+  { community_name: "Valley Vista", address: "444 Valley Rd, Tucson, AZ 85701", latitude: 32.2226, longitude: -110.9747, hbr_count: 3 },
+  { community_name: "Sunland Terrace", address: "666 Sunland Ave, San Bernardino, CA 92401", latitude: 34.1083, longitude: -117.2898, hbr_count: 8 },
+  { community_name: "Golden Shores", address: "777 Shore Dr, Lake Havasu City, AZ 86403", latitude: 34.4839, longitude: -114.3224, hbr_count: 5 },
+  { community_name: "Camelback Village", address: "999 Camelback Rd, Scottsdale, AZ 85251", latitude: 33.5092, longitude: -111.9261, hbr_count: 10 },
+  { community_name: "Silver Creek", address: "111 Creek Way, Henderson, NV 89002", latitude: 36.0395, longitude: -114.9817, hbr_count: 2 },
+  { community_name: "Oasis Park", address: "333 Oasis Blvd, Indio, CA 92201", latitude: 33.7206, longitude: -116.2156, hbr_count: 14 },
+];
+
+var _map = null;
+var _isDark = false;
+
+function startMap() {
+  var token = document.getElementById('token-input').value.trim();
+  if (!token) return;
+  var customStyle = document.getElementById('custom-style').value.trim();
+  var style = customStyle || 'mapbox://styles/mapbox/standard';
+  document.getElementById('prompt').style.display = 'none';
+  document.getElementById('controls').style.display = 'block';
+
+  mapboxgl.accessToken = token;
+  _map = new mapboxgl.Map({
+    container: 'map',
+    style: style,
+    center: [-115.0, 34.0],
+    zoom: 6
+  });
+  _map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+  // 3D toggle
+  var ThreeDControl = function() {};
+  ThreeDControl.prototype.onAdd = function(map) {
+    this._map = map;
+    this._container = document.createElement('div');
+    this._container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.title = 'Toggle 3D';
+    btn.style.fontWeight = '600';
+    btn.style.fontSize = '11px';
+    btn.textContent = '3D';
+    btn.onclick = function() {
+      var is3D = map.getPitch() > 0;
+      if (is3D) {
+        map.easeTo({ pitch: 0, bearing: 0 });
+        btn.textContent = '3D';
+        btn.style.background = '';
+      } else {
+        map.easeTo({ pitch: 60, bearing: -15 });
+        btn.textContent = '2D';
+        btn.style.background = '#e7f1ff';
+      }
+    };
+    this._container.appendChild(btn);
+    return this._container;
+  };
+  ThreeDControl.prototype.onRemove = function() {
+    this._container.parentNode.removeChild(this._container);
+    this._map = undefined;
+  };
+  _map.addControl(new ThreeDControl(), 'top-right');
+
+  // Recenter control
+  var RecenterControl = function() {};
+  RecenterControl.prototype.onAdd = function(map) {
+    this._container = document.createElement('div');
+    this._container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.title = 'Recenter';
+    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:auto;"><path d="M3 11L12 3L21 11V20C21 20.5523 20.5523 21 20 21H15V14H9V21H4C3.44772 21 3 20.5523 3 20V11Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/></svg>';
+    btn.onclick = function() {
+      map.easeTo({ center: [-115.0, 34.0], zoom: 6, pitch: 0, bearing: 0 });
+    };
+    this._container.appendChild(btn);
+    return this._container;
+  };
+  RecenterControl.prototype.onRemove = function() {
+    this._container.parentNode.removeChild(this._container);
+  };
+  _map.addControl(new RecenterControl(), 'top-right');
+
+  _map.on('load', function() {
+    var el = document.querySelector('.mapboxgl-ctrl-bottom-left');
+    if (el) { el.style.left = '50%'; el.style.transform = 'translateX(-50%)'; }
+    loadData(_map);
+  });
+}
+
+function toggleTheme() {
+  _isDark = !_isDark;
+  try { _map.setConfigProperty('basemap', 'lightPreset', _isDark ? 'night' : 'day'); } catch(e) {}
+}
+
+function applyStyles() {
+  if (!_map) return;
+  var opacity = parseFloat(document.getElementById('opacity').value);
+  var rSmall = parseInt(document.getElementById('r-small').value);
+  var rMid = parseInt(document.getElementById('r-mid').value);
+  var rLarge = parseInt(document.getElementById('r-large').value);
+  var stroke = parseInt(document.getElementById('stroke').value);
+  var strokeOp = parseFloat(document.getElementById('stroke-op').value);
+  var heatOp = parseFloat(document.getElementById('heat-op').value);
+
+  _map.setPaintProperty('clusters', 'circle-color', 'rgba(0, 122, 255, ' + opacity + ')');
+  _map.setPaintProperty('clusters', 'circle-radius', ['step', ['get', 'total_count'], rSmall, 5, rMid, 15, rLarge]);
+  _map.setPaintProperty('clusters', 'circle-stroke-width', stroke);
+  _map.setPaintProperty('clusters', 'circle-stroke-color', 'rgba(255, 255, 255, ' + strokeOp + ')');
+  _map.setPaintProperty('hbr-heat', 'heatmap-opacity', heatOp);
+}
+
+function loadData(map) {
+  var geojson = {
+    type: 'FeatureCollection',
+    features: SAMPLE_DATA.map(function(d) {
+      return {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [d.longitude, d.latitude] },
+        properties: { community_name: d.community_name, address: d.address, hbr_count: d.hbr_count }
+      };
+    })
+  };
+
+  map.addSource('hbr-locations', { type: 'geojson', data: geojson });
+  map.addLayer({
+    id: 'hbr-heat', type: 'heatmap', source: 'hbr-locations',
+    paint: {
+      'heatmap-weight': ['interpolate', ['linear'], ['get', 'hbr_count'], 1, 0.3, 10, 1],
+      'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 1, 12, 3],
+      'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 0, 15, 12, 30],
+      'heatmap-opacity': 0.6
+    }
+  });
+
+  map.addSource('hbr-clusters', {
+    type: 'geojson', data: geojson, cluster: true, clusterMaxZoom: 14, clusterRadius: 50,
+    clusterProperties: { total_count: ['+', ['get', 'hbr_count']] }
+  });
+
+  map.addLayer({
+    id: 'clusters', type: 'circle', source: 'hbr-clusters', filter: ['has', 'point_count'],
+    minzoom: 6,
+    paint: {
+      'circle-color': 'rgba(0, 122, 255, 0.75)',
+      'circle-radius': ['step', ['get', 'total_count'], 14, 5, 18, 15, 24],
+      'circle-stroke-width': 2,
+      'circle-stroke-color': 'rgba(255, 255, 255, 0.9)'
+    }
+  });
+
+  map.addLayer({
+    id: 'cluster-count', type: 'symbol', source: 'hbr-clusters', filter: ['has', 'point_count'],
+    minzoom: 6,
+    layout: { 'text-field': ['to-string', ['get', 'total_count']], 'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'], 'text-size': 13 },
+    paint: { 'text-color': '#ffffff' }
+  });
+
+  // Load custom house pin
+  map.loadImage('/dcr/public/images/map-pin-light.png', function(err, img) {
+    if (!err && img) {
+      map.addImage('house-pin-light', img);
+      map.addLayer({
+        id: 'unclustered-point', type: 'symbol', source: 'hbr-clusters',
+        filter: ['!', ['has', 'point_count']],
+        minzoom: 6.5,
+        layout: {
+          'icon-image': 'house-pin-light',
+          'icon-size': 0.212,
+          'icon-anchor': 'bottom',
+          'icon-allow-overlap': true
+        }
+      });
+    } else {
+      // Fallback if image fails
+      map.addLayer({
+        id: 'unclustered-point', type: 'circle', source: 'hbr-clusters',
+        filter: ['!', ['has', 'point_count']],
+        minzoom: 6.5,
+        paint: { 'circle-color': '#007AFF', 'circle-radius': 8, 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' }
+      });
+    }
+  });
+
+  map.on('click', 'unclustered-point', function(e) {
+    var p = e.features[0].properties;
+    new mapboxgl.Popup({ offset: 15 })
+      .setLngLat(e.features[0].geometry.coordinates)
+      .setHTML('<div style="font-family:Inter,sans-serif;font-size:13px;"><strong>' + p.community_name + '</strong><br><span style="color:#666;">' + p.address + '</span><br><strong>' + p.hbr_count + ' deals</strong></div>')
+      .addTo(map);
+  });
+
+  map.on('click', 'clusters', function(e) {
+    map.getSource('hbr-clusters').getClusterExpansionZoom(e.features[0].properties.cluster_id, function(err, zoom) {
+      if (!err) map.easeTo({ center: e.features[0].geometry.coordinates, zoom: zoom });
+    });
+  });
+}
+</script>
+</body>
+</html>

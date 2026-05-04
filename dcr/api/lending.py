@@ -162,6 +162,10 @@ def validate_loan_application(doc, method):
         doc.custom_projected_equity = None
         doc.custom_projected_ltv = None
 
+    from dcr.api.hbr_stage import sync_hbr_stages
+
+    sync_hbr_stages(doc.home_build_request)
+
 
 def _populate_loan_application_from_hbr(doc, hbr):
     """Backfill HBR-derived fields when native connection creation skips fetches."""
@@ -307,6 +311,11 @@ def get_loan_deal_reference(loan_application, applicant=None):
 
 def on_loan_on_update(doc, method):
     """On every save, check for bank account and auto-send setup email if missing."""
+    if doc.get("home_build_request"):
+        from dcr.api.hbr_stage import sync_hbr_stages
+
+        sync_hbr_stages(doc.home_build_request)
+
     if not doc.applicant or doc.docstatus != 0:
         return
 

@@ -19,6 +19,15 @@ class TestHomeBuildRequestClientScript(unittest.TestCase):
         self.assertIn("if (frm.doc.financing_type === 'Floored')", script)
         self.assertNotIn("if (frm.doc.financing_type !== 'Floored') return;", script)
 
+    def test_cash_deals_hide_loan_stage_field(self):
+        script = (ROOT / "dcr/public/js/home_build_request.js").read_text()
+
+        self.assertIn("update_stage_field_visibility(frm)", script)
+        self.assertIn("function update_stage_field_visibility(frm)", script)
+        self.assertIn("frm.toggle_display('custom_loan_stage', !is_cash)", script)
+        self.assertIn("frm.toggle_reqd('custom_loan_stage', !is_cash)", script)
+        self.assertIn("var is_cash = frm.doc.financing_type === 'Cash'", script)
+
 
 class TestLoanClientScript(unittest.TestCase):
 
