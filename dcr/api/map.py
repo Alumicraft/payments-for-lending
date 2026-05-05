@@ -187,7 +187,13 @@ def get_factory_locations():
         fields=["name", "supplier_name", "latitude", "longitude"],
     )
     suppliers = [_ensure_supplier_coords(s) for s in suppliers]
-    suppliers = [s for s in suppliers if (s.get("latitude") or 0) and (s.get("longitude") or 0)]
+    suppliers = [
+        s for s in suppliers
+        if (
+            ((s.get("latitude") or 0) and (s.get("longitude") or 0))
+            or s.get("address_query")
+        )
+    ]
     if not suppliers:
         return []
 
@@ -252,6 +258,7 @@ def get_factory_locations():
             "latitude": s["latitude"],
             "longitude": s["longitude"],
             "city": _supplier_primary_city(s["name"]) or "",
+            "address_query": s.get("address_query") or "",
             **c,
         })
     return out
@@ -269,6 +276,8 @@ def _ensure_supplier_coords(supplier):
 
     address = _get_supplier_primary_address(supplier["name"])
     coords = _geocode_address(address) if address else None
+    if address:
+        supplier["address_query"] = address
     if not coords:
         return supplier
 

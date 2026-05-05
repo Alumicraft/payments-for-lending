@@ -1806,9 +1806,12 @@ def ensure_map_block():
     function loadFactories(map) {
         callOrCache('dcr.api.map.get_factory_locations', function(r) {
                 if (!r.message || !r.message.length) return;
+                geocodeFactoryRows(r.message, function(rows) {
+                rows = rows.filter(hasFactoryCoords);
+                if (!rows.length) return;
                 var geojson = {
                     type: 'FeatureCollection',
-                    features: r.message.map(function(d) {
+                    features: rows.map(function(d) {
                         return {
                             type: 'Feature',
                             geometry: { type: 'Point', coordinates: [d.longitude, d.latitude] },
@@ -1895,6 +1898,54 @@ def ensure_map_block():
                     map.on('mouseenter', 'factory-point', function() { map.getCanvas().style.cursor = 'pointer'; });
                     map.on('mouseleave', 'factory-point', function() { map.getCanvas().style.cursor = ''; });
                 }
+                });
+        });
+    }
+
+    function hasFactoryCoords(row) {
+        return !!((Number(row.latitude) || 0) && (Number(row.longitude) || 0));
+    }
+
+    function geocodeFactoryRows(rows, callback) {
+        var token = window.mapboxgl && mapboxgl.accessToken;
+        var pending = rows.filter(function(row) {
+            return !hasFactoryCoords(row) && row.address_query && token;
+        });
+        if (!pending.length) {
+            callback(rows);
+            return;
+        }
+
+        var remaining = pending.length;
+        pending.forEach(function(row) {
+            geocodeFactoryAddress(token, row.address_query, function(coords) {
+                if (coords) {
+                    row.latitude = coords.latitude;
+                    row.longitude = coords.longitude;
+                }
+                remaining--;
+                if (remaining === 0) callback(rows);
+            });
+        });
+    }
+
+    function geocodeFactoryAddress(token, query, callback) {
+        var url = 'https://api.mapbox.com/geocoding/v5/mapbox.places/'
+            + encodeURIComponent(query) + '.json'
+            + '?access_token=' + encodeURIComponent(token)
+            + '&country=US&types=address&limit=1';
+        fetch(url).then(function(resp) {
+            return resp.json();
+        }).then(function(data) {
+            var feature = (data.features || [])[0];
+            var coords = feature && feature.geometry && feature.geometry.coordinates;
+            if (!coords || coords.length < 2) {
+                callback(null);
+                return;
+            }
+            callback({ latitude: coords[1], longitude: coords[0] });
+        }).catch(function() {
+            callback(null);
         });
     }
 

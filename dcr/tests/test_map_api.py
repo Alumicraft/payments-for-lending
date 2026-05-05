@@ -366,6 +366,33 @@ class TestFactoryCoordinates(unittest.TestCase):
         self.assertEqual(result["longitude"], -112.07)
         mock_frappe.db.set_value.assert_called_once()
 
+    @patch("dcr.api.map._geocode_address")
+    @patch("dcr.api.map._get_supplier_primary_address")
+    @patch("dcr.api.map.frappe")
+    def test_factory_locations_keep_address_when_server_geocode_fails(
+        self, mock_frappe, mock_address, mock_geocode
+    ):
+        from dcr.api.map import get_factory_locations
+
+        mock_address.return_value = "6420 W Allison Rd, Chandler, AZ 85226"
+        mock_geocode.return_value = None
+        mock_frappe.db.has_column.return_value = False
+        mock_frappe.get_all.return_value = [{
+            "name": "Champion Home Builders",
+            "supplier_name": "Champion Home Builders",
+            "latitude": 0,
+            "longitude": 0,
+        }]
+        mock_frappe.db.sql.side_effect = [[], []]
+
+        result = get_factory_locations()
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(
+            result[0]["address_query"],
+            "6420 W Allison Rd, Chandler, AZ 85226",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
