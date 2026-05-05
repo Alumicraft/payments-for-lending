@@ -33,6 +33,8 @@ class TestHomeBuildRequestClientScript(unittest.TestCase):
         script = (ROOT / "dcr/public/js/home_build_request.js").read_text()
 
         self.assertIn("frm._dcr_connections_observer = new MutationObserver", script)
+        self.assertIn("function connection_wrappers()", script)
+        self.assertIn("$(frm.wrapper).find('.form-documents')", script)
         self.assertIn("$card.closest('.col-md-4, .col-sm-6, .col-xs-12')", script)
         self.assertIn("$title.text().trim() !== 'Lending'", script)
         self.assertIn("if (attempts > 30) clearInterval(iv)", script)

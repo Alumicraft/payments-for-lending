@@ -147,9 +147,21 @@ function update_connections_visibility(frm) {
     var lending_doctypes = ['Loan Application', 'Loan', 'Loan Disbursement'];
     var hide_lending = frm.doc.financing_type === 'Cash';
 
+    function connection_wrappers() {
+        var wrappers = $();
+        if (frm.dashboard && frm.dashboard.wrapper) {
+            wrappers = wrappers.add(frm.dashboard.wrapper);
+        }
+        if (frm.wrapper) {
+            wrappers = wrappers.add($(frm.wrapper).find('.form-documents'));
+        }
+        wrappers = wrappers.add($('.form-documents'));
+        return wrappers;
+    }
+
     function apply() {
-        var $wrapper = frm.dashboard && frm.dashboard.wrapper;
-        if (!$wrapper || !$wrapper.length) return false;
+        var $wrapper = connection_wrappers();
+        if (!$wrapper.length) return false;
         var any = false;
         lending_doctypes.forEach(function(dt) {
             var $cards = $wrapper.find('.document-link[data-doctype="' + dt + '"]');
@@ -179,7 +191,7 @@ function update_connections_visibility(frm) {
         if (attempts > 30) clearInterval(iv);
     }, 300);
 
-    var wrapper = frm.dashboard && frm.dashboard.wrapper && frm.dashboard.wrapper.get(0);
+    var wrapper = connection_wrappers().get(0);
     if (wrapper && window.MutationObserver) {
         if (frm._dcr_connections_observer) {
             frm._dcr_connections_observer.disconnect();
