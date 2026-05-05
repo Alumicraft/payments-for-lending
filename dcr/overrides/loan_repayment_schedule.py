@@ -38,17 +38,26 @@ class CustomLoanRepaymentSchedule(LoanRepaymentSchedule):
     def get_loan_product_value(self, *fieldnames):
         """Return the first populated Loan Product field from the provided names."""
         for fieldname in fieldnames:
+            if not self._loan_product_has_field(fieldname):
+                continue
             value = frappe.db.get_value("Loan Product", self.loan_product, fieldname)
             if value not in (None, ""):
                 return value
         return None
 
+    def _loan_product_has_field(self, fieldname):
+        try:
+            return bool(frappe.db.has_column("Loan Product", fieldname))
+        except Exception:
+            return bool(frappe.get_meta("Loan Product").has_field(fieldname))
+
     def get_contract_interest_rate(self) -> float:
         """Use product-specific contract rate when configured, else loan rate."""
-        for field in ("custom_contract_interest_rate", "custom_rate_of_interest"):
-            val = frappe.db.get_value("Loan Product", self.loan_product, field)
-            if flt(val) > 0:
-                return flt(val)
+        val = self.get_loan_product_value(
+            "custom_contract_interest_rate", "custom_rate_of_interest"
+        )
+        if flt(val) > 0:
+            return flt(val)
         return flt(self.rate_of_interest)
 
     def get_default_interest_rate(self) -> float:

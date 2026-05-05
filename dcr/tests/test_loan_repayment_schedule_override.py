@@ -105,6 +105,17 @@ class TestLoanRepaymentScheduleOverride(unittest.TestCase):
             "repayment_schedule"
         )
 
+    def test_missing_optional_loan_product_fields_are_skipped(self):
+        module, frappe = import_override_with_stubs()
+        frappe.db.has_column.return_value = False
+
+        schedule = module.CustomLoanRepaymentSchedule()
+        schedule.loan_product = "Standard"
+        schedule.rate_of_interest = 12
+
+        self.assertEqual(schedule.get_contract_interest_rate(), 12)
+        frappe.db.get_value.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
