@@ -116,33 +116,11 @@ class TestLoanRepaymentScheduleOverride(unittest.TestCase):
         self.assertEqual(schedule.get_contract_interest_rate(), 12)
         frappe.db.get_value.assert_not_called()
 
-    def test_add_schedule_row_supplies_required_v16_charges_arg(self):
+    def test_add_schedule_row_appends_without_lending_helper(self):
         module, _frappe = import_override_with_stubs()
 
-        class Schedule(module.CustomLoanRepaymentSchedule):
-            def add_repayment_schedule_row(
-                self,
-                schedule_field,
-                payment_date,
-                principal_amount,
-                interest_amount,
-                total_payment,
-                balance_loan_amount,
-                days,
-                charges,
-            ):
-                self.row = {
-                    "schedule_field": schedule_field,
-                    "payment_date": payment_date,
-                    "principal_amount": principal_amount,
-                    "interest_amount": interest_amount,
-                    "total_payment": total_payment,
-                    "balance_loan_amount": balance_loan_amount,
-                    "days": days,
-                    "charges": charges,
-                }
-
-        schedule = Schedule()
+        schedule = module.CustomLoanRepaymentSchedule()
+        schedule.append = MagicMock()
         schedule._add_schedule_row(
             schedule_field="repayment_schedule",
             payment_date="2026-05-05",
@@ -153,7 +131,16 @@ class TestLoanRepaymentScheduleOverride(unittest.TestCase):
             days=30,
         )
 
-        self.assertEqual(schedule.row["charges"], [])
+        schedule.append.assert_called_once_with(
+            "repayment_schedule",
+            {
+                "payment_date": "2026-05-05",
+                "principal_amount": 0,
+                "interest_amount": 2180,
+                "total_payment": 2180,
+                "balance_loan_amount": 218000,
+            },
+        )
 
 
 if __name__ == "__main__":

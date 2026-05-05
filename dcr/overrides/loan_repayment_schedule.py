@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import inspect
-
 import frappe
 from frappe.utils import add_months, flt
 from lending.loan_management.doctype.loan_repayment_schedule.loan_repayment_schedule import (
@@ -119,23 +117,11 @@ class CustomLoanRepaymentSchedule(LoanRepaymentSchedule):
             self.monthly_repayment_amount = self.get(schedule_field)[0].total_payment
 
     def _add_schedule_row(self, **row_data):
-        """Call core helper with compatible args, or append directly as fallback."""
-        add_row = getattr(self, "add_repayment_schedule_row", None)
-        if callable(add_row):
-            params = inspect.signature(add_row).parameters
-            kwargs = {
-                name: value
-                for name, value in row_data.items()
-                if name in params
-            }
-            if "demand_generated" in params and "demand_generated" not in kwargs:
-                kwargs["demand_generated"] = 0
-            if "is_accrued" in params and "is_accrued" not in kwargs:
-                kwargs["is_accrued"] = 0
-            if "charges" in params and "charges" not in kwargs:
-                kwargs["charges"] = []
-            return add_row(**kwargs)
+        """Append the DCR-owned row shape directly.
 
+        The upstream helper signature has changed across Lending releases; this
+        custom schedule only needs the core child-table fields below.
+        """
         self.append(
             row_data["schedule_field"],
             {
