@@ -180,7 +180,49 @@ def send_dealer_agreement_signed(customer_name, signed_date, to_email, attachmen
 
 
 # ============================================================================
-# 8. Flooring Packet Sent
+# 8. MIFA Sent
+# ============================================================================
+
+def send_mifa_sent(customer_name, mifa_name, credit_limit, to_email, signing_url=None, reference_name=None):
+    """Send notification that a MIFA is ready for signature."""
+    return _send(
+        doctype="MIFA",
+        docname=reference_name or mifa_name,
+        to_email=to_email,
+        subject="MIFA Ready for Signature",
+        template="mifa-sent",
+        extra_data={
+            "customer_name": customer_name,
+            "mifa_name": mifa_name,
+            "credit_limit": credit_limit,
+            "signing_url": signing_url,
+        },
+    )
+
+
+# ============================================================================
+# 9. MIFA Signed
+# ============================================================================
+
+def send_mifa_signed(customer_name, mifa_name, signed_date, to_email, attachments=None, reference_name=None):
+    """Send notification that a MIFA has been fully executed."""
+    return _send(
+        doctype="MIFA",
+        docname=reference_name or mifa_name,
+        to_email=to_email,
+        subject="MIFA Fully Executed",
+        template="mifa-signed",
+        extra_data={
+            "customer_name": customer_name,
+            "mifa_name": mifa_name,
+            "signed_date": signed_date,
+        },
+        attachments=attachments,
+    )
+
+
+# ============================================================================
+# 10. Flooring Packet Sent
 # ============================================================================
 
 def send_flooring_packet_sent(customer_name, loan_application, loan_amount, factory_name, to_email, signing_url=None, reference_name=None):
@@ -202,7 +244,7 @@ def send_flooring_packet_sent(customer_name, loan_application, loan_amount, fact
 
 
 # ============================================================================
-# 9. Flooring Packet Signed
+# 11. Flooring Packet Signed
 # ============================================================================
 
 def send_flooring_packet_signed(customer_name, loan_application, signed_date, to_email, attachments=None, reference_name=None):

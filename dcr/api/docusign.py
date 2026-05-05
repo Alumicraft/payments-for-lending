@@ -466,6 +466,7 @@ def _update_reference_document(sig_req):
         elif sig_req.document_type == "MIFA" and sig_req.reference_doctype == "MIFA":
             frappe.db.set_value("MIFA", sig_req.reference_name,
                                 "signed_mifa", sig_req.signed_attachment)
+            _send_signed_email(sig_req)
 
         elif sig_req.document_type == "Flooring Packet" and sig_req.reference_doctype == "Loan Application":
             frappe.db.set_value("Loan Application", sig_req.reference_name,
@@ -485,6 +486,7 @@ def _send_signed_email(sig_req):
         from dcr.api.dcr_email import (
             send_dealer_agreement_signed,
             send_flooring_packet_signed,
+            send_mifa_signed,
         )
 
         customer_doc = frappe.get_doc("Customer", sig_req.customer)
@@ -519,6 +521,16 @@ def _send_signed_email(sig_req):
             send_flooring_packet_signed(
                 customer_name=customer_doc.customer_name,
                 loan_application=sig_req.reference_name,
+                signed_date=signed_date,
+                to_email=email,
+                attachments=attachments,
+                reference_name=sig_req.reference_name,
+            )
+
+        elif sig_req.document_type == "MIFA":
+            send_mifa_signed(
+                customer_name=customer_doc.customer_name,
+                mifa_name=sig_req.reference_name,
                 signed_date=signed_date,
                 to_email=email,
                 attachments=attachments,
@@ -566,6 +578,7 @@ def _send_signing_email(sig_req, recipient_email, recipient_name, client_user_id
     from dcr.api.dcr_email import (
         send_dealer_agreement_sent,
         send_flooring_packet_sent,
+        send_mifa_sent,
     )
 
     if sig_req.document_type == "Dealer Agreement":
@@ -596,13 +609,18 @@ def _send_signing_email(sig_req, recipient_email, recipient_name, client_user_id
             reference_name=sig_req.reference_name,
         )
     elif sig_req.document_type == "MIFA":
-        # Generic email for MIFA
-        frappe.sendmail(
-            recipients=[recipient_email],
-            subject=f"Document Ready for Signature — {recipient_name}",
-            message=f'<p>Please <a href="{signing_url}">click here to sign your document</a>.</p>',
-            reference_doctype="Signature Request",
-            reference_name=sig_req.name,
+        mifa = frappe.get_doc("MIFA", sig_req.reference_name)
+        credit_limit = ""
+        if mifa.credit_limit:
+            credit_limit = f"${mifa.credit_limit:,.0f}"
+
+        send_mifa_sent(
+            customer_name=recipient_name,
+            mifa_name=sig_req.reference_name,
+            credit_limit=credit_limit,
+            to_email=recipient_email,
+            signing_url=signing_url,
+            reference_name=sig_req.reference_name,
         )
 
 
