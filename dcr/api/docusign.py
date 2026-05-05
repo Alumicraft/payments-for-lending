@@ -239,6 +239,16 @@ class DocuSignClient:
         resp.raise_for_status()
         return resp.content
 
+    def get_envelope_status(self, envelope_id):
+        """Fetch the current DocuSign envelope status."""
+        resp = requests.get(
+            f"{self.base_url}/v2.1/accounts/{self.account_id}/envelopes/{envelope_id}",
+            headers=self._headers(),
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return (resp.json().get("status") or "").lower()
+
 
 # ---------------------------------------------------------------------------
 # Settings Helper
@@ -540,6 +550,12 @@ def _verify_signing_token(sig_req_name, token):
     return hmac.compare_digest(token, expected)
 
 
+def _get_signing_return_url(sig_req_name, token):
+    return frappe.utils.get_url(
+        f"/api/method/dcr.api.docusign.signing_complete?sig={sig_req_name}&token={token}"
+    )
+
+
 def _send_signing_email(sig_req, recipient_email, recipient_name, client_user_id):
     """Send our own email with a signing link (since DocuSign emails are suppressed)."""
     token = _generate_signing_token(sig_req.name)
@@ -624,7 +640,7 @@ def sign_document(sig, token):
 
     customer_doc = frappe.get_doc("Customer", sig_req.customer)
     client_user_id = f"{sig_req.customer}-{sig_req.document_type}"
-    return_url = frappe.utils.get_url("/docusign-complete")
+    return_url = _get_signing_return_url(sig, token)
 
     try:
         client = DocuSignClient()
@@ -644,6 +660,51 @@ def sign_document(sig, token):
             _("Unable to open the signing page. Please try again or contact support."),
             http_status_code=500,
         )
+
+
+@frappe.whitelist(allow_guest=True)
+def signing_complete(sig, token, event=None):
+    """DocuSign return URL fallback that finalizes completed embedded signing."""
+    if not sig or not token or not _verify_signing_token(sig, token):
+        frappe.respond_as_web_page(
+            _("Invalid Link"),
+            _("This signing completion link is invalid. Please contact support."),
+            http_status_code=403,
+        )
+        return
+
+    sig_req = frappe.db.get_value(
+        "Signature Request",
+        sig,
+        ["envelope_id", "status"],
+        as_dict=True,
+    )
+    if not sig_req:
+        frappe.respond_as_web_page(
+            _("Not Found"),
+            _("Signature request not found."),
+            http_status_code=404,
+        )
+        return
+
+    try:
+        if sig_req.get("status") != "Signed":
+            client = DocuSignClient()
+            envelope_id = sig_req.get("envelope_id")
+            if client.get_envelope_status(envelope_id) == "completed":
+                _handle_envelope_completed(envelope_id, {"status": "completed"})
+                frappe.db.commit()
+    except Exception as e:
+        frappe.log_error(
+            f"Failed to finalize DocuSign return for {sig}: {str(e)}",
+            "DocuSign Signing Complete",
+        )
+
+    complete_event = event or "signing_complete"
+    frappe.local.response["type"] = "redirect"
+    frappe.local.response["location"] = frappe.utils.get_url(
+        f"/docusign-complete?event={complete_event}"
+    )
 
 
 # ---------------------------------------------------------------------------

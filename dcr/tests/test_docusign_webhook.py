@@ -184,6 +184,47 @@ class TestDocuSignWebhookVerification(unittest.TestCase):
         from dcr.api.docusign import _verify_webhook_request
         self.assertTrue(_verify_webhook_request())
 
+    @patch("dcr.api.docusign.frappe")
+    def test_signing_return_url_keeps_signature_context(self, mock_frappe):
+        mock_frappe.utils.get_url.side_effect = lambda path: f"https://backdesk.test{path}"
+
+        from dcr.api.docusign import _get_signing_return_url
+
+        self.assertEqual(
+            _get_signing_return_url("SIG-0173", "token-123"),
+            "https://backdesk.test/api/method/dcr.api.docusign.signing_complete?sig=SIG-0173&token=token-123",
+        )
+
+    @patch("dcr.api.docusign._handle_envelope_completed")
+    @patch("dcr.api.docusign.DocuSignClient")
+    @patch("dcr.api.docusign._verify_signing_token")
+    @patch("dcr.api.docusign.frappe")
+    def test_signing_complete_finalizes_completed_envelope(
+        self, mock_frappe, mock_verify, mock_client_class, mock_handle
+    ):
+        mock_verify.return_value = True
+        mock_frappe.db.get_value.return_value = {
+            "envelope_id": "env-123",
+            "status": "Sent",
+        }
+        mock_client = MagicMock()
+        mock_client.get_envelope_status.return_value = "completed"
+        mock_client_class.return_value = mock_client
+        mock_frappe.local.response = {}
+        mock_frappe.utils.get_url.side_effect = lambda path: f"https://backdesk.test{path}"
+
+        from dcr.api.docusign import signing_complete
+
+        signing_complete("SIG-0173", "token-123", event="signing_complete")
+
+        mock_handle.assert_called_once_with("env-123", {"status": "completed"})
+        mock_frappe.db.commit.assert_called_once()
+        self.assertEqual(mock_frappe.local.response["type"], "redirect")
+        self.assertEqual(
+            mock_frappe.local.response["location"],
+            "https://backdesk.test/docusign-complete?event=signing_complete",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
