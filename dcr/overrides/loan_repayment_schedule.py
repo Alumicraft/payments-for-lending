@@ -19,11 +19,10 @@ class CustomLoanRepaymentSchedule(LoanRepaymentSchedule):
     - Then interest + principal as fixed % of outstanding balance.
     """
 
-    def make_repayment_schedule(self):
+    def make_repayment_schedule(self, schedule_field="repayment_schedule", *args, **kwargs):
         if not self.is_dcr_floorplan_structure():
-            return super().make_repayment_schedule()
+            return super().make_repayment_schedule(schedule_field, *args, **kwargs)
 
-        schedule_field = "repayment_schedule"
         self.set(schedule_field, [])
         self.make_dcr_repayment_schedule(schedule_field)
 
