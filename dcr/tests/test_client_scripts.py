@@ -26,7 +26,16 @@ class TestHomeBuildRequestClientScript(unittest.TestCase):
         self.assertIn("function update_stage_field_visibility(frm)", script)
         self.assertIn("frm.toggle_display('custom_loan_stage', !is_cash)", script)
         self.assertIn("frm.toggle_reqd('custom_loan_stage', !is_cash)", script)
+        self.assertIn("frm.set_df_property('custom_loan_stage', 'hidden', is_cash ? 1 : 0)", script)
         self.assertIn("var is_cash = frm.doc.financing_type === 'Cash'", script)
+
+    def test_cash_deals_keep_lending_connections_hidden_after_async_render(self):
+        script = (ROOT / "dcr/public/js/home_build_request.js").read_text()
+
+        self.assertIn("frm._dcr_connections_observer = new MutationObserver", script)
+        self.assertIn("$card.closest('.col-md-4, .col-sm-6, .col-xs-12')", script)
+        self.assertIn("$title.text().trim() !== 'Lending'", script)
+        self.assertIn("if (attempts > 30) clearInterval(iv)", script)
 
 
 class TestLoanClientScript(unittest.TestCase):

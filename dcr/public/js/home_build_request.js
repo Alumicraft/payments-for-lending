@@ -154,9 +154,20 @@ function update_connections_visibility(frm) {
         lending_doctypes.forEach(function(dt) {
             var $cards = $wrapper.find('.document-link[data-doctype="' + dt + '"]');
             if ($cards.length) {
-                $cards.toggle(!hide_lending);
+                $cards.each(function() {
+                    var $card = $(this);
+                    var $column = $card.closest('.col-md-4, .col-sm-6, .col-xs-12');
+                    ($column.length ? $column : $card).toggle(!hide_lending);
+                });
                 any = true;
             }
+        });
+        $wrapper.find('.form-link-title').each(function() {
+            var $title = $(this);
+            if ($title.text().trim() !== 'Lending') return;
+            var $section = $title.closest('.col-md-4, .col-sm-6, .col-xs-12');
+            if (!$section.length) $section = $title.parent();
+            $section.toggle(!hide_lending);
         });
         return any;
     }
@@ -164,18 +175,39 @@ function update_connections_visibility(frm) {
     var attempts = 0;
     var iv = setInterval(function() {
         attempts += 1;
-        if (apply() || attempts > 10) clearInterval(iv);
+        apply();
+        if (attempts > 30) clearInterval(iv);
     }, 300);
+
+    var wrapper = frm.dashboard && frm.dashboard.wrapper && frm.dashboard.wrapper.get(0);
+    if (wrapper && window.MutationObserver) {
+        if (frm._dcr_connections_observer) {
+            frm._dcr_connections_observer.disconnect();
+        }
+        frm._dcr_connections_observer = new MutationObserver(function() {
+            apply();
+        });
+        frm._dcr_connections_observer.observe(wrapper, { childList: true, subtree: true });
+    }
 }
 
 
 function update_stage_field_visibility(frm) {
     var is_cash = frm.doc.financing_type === 'Cash';
 
-    if (frm.fields_dict.custom_loan_stage) {
-        frm.toggle_display('custom_loan_stage', !is_cash);
-        frm.toggle_reqd('custom_loan_stage', !is_cash);
+    function apply() {
+        if (frm.fields_dict.custom_loan_stage) {
+            frm.toggle_display('custom_loan_stage', !is_cash);
+            frm.toggle_reqd('custom_loan_stage', !is_cash);
+            frm.set_df_property('custom_loan_stage', 'hidden', is_cash ? 1 : 0);
+            frm.set_df_property('custom_loan_stage', 'reqd', is_cash ? 0 : 1);
+        }
     }
+
+    apply();
+    setTimeout(apply, 0);
+    setTimeout(apply, 500);
+    setTimeout(apply, 1500);
 }
 
 
