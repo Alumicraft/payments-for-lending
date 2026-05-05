@@ -175,6 +175,7 @@ class DocuSignClient:
                 "requireAcknowledgment": "true",
                 "loggingEnabled": "true",
                 "includeSoapBody": "false",
+                "includeHMAC": "true",
                 "eventData": {
                     "version": "restv2.1",
                     "format": "json",

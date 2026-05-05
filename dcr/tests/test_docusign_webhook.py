@@ -14,6 +14,39 @@ from unittest.mock import patch, MagicMock
 
 class TestDocuSignWebhookVerification(unittest.TestCase):
 
+    @patch("dcr.api.docusign.requests.post")
+    @patch("dcr.api.docusign.DocuSignClient._headers")
+    @patch("dcr.api.docusign.frappe")
+    def test_envelope_notifications_request_hmac_signature(
+        self, mock_frappe, mock_headers, mock_post
+    ):
+        """Envelope-level callbacks must include HMAC for fail-closed webhook auth."""
+        settings = MagicMock()
+        settings.enabled = True
+        settings.account_id = "acct-123"
+        settings.get_base_url.return_value = "https://demo.docusign.net/restapi"
+        mock_frappe.get_single.return_value = settings
+        mock_headers.return_value = {"Authorization": "Bearer token", "Content-Type": "application/json"}
+
+        response = MagicMock()
+        response.ok = True
+        response.json.return_value = {"envelopeId": "env-123"}
+        mock_post.return_value = response
+
+        from dcr.api.docusign import DocuSignClient
+
+        client = DocuSignClient()
+        client.create_envelope(
+            name="Flooring Packet - Test Homes 3",
+            recipients=[{"email": "send2tristan@gmail.com", "name": "Test Homes 3"}],
+            documents=[{"content": b"%PDF", "name": "packet.pdf"}],
+            webhook_url="https://backdesk.dealercapital.net/api/method/dcr.api.docusign.docusign_webhook",
+            client_user_id="Test Homes 3-Flooring Packet",
+        )
+
+        payload = mock_post.call_args.kwargs["json"]
+        self.assertEqual(payload["eventNotification"]["includeHMAC"], "true")
+
     @patch("dcr.api.docusign.frappe")
     @patch("dcr.api.docusign.get_docusign_settings")
     def test_valid_hmac_signature_passes(self, mock_settings, mock_frappe):
