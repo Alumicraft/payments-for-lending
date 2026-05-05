@@ -157,6 +157,7 @@ class TestHbrStageHookRegistration(unittest.TestCase):
         self.assertIn('"Purchase Order"', hooks)
         self.assertIn('"Purchase Receipt"', hooks)
         self.assertIn("dcr.api.hbr_stage.sync_from_doc", hooks)
+        self.assertIn('"on_update_after_submit": "dcr.api.hbr_stage.sync_from_doc"', hooks)
         self.assertIn("sync_hbr_stages(doc.home_build_request)", lending)
 
 
@@ -168,6 +169,14 @@ class TestHbrStageSetup(unittest.TestCase):
         self.assertIn("sync_existing_hbr_stage_fields()", setup)
         self.assertIn("custom_loan_stage", setup)
         self.assertIn("Not Applicable\\nNot Started\\nApplied", setup)
+
+    def test_migrate_patch_backfills_existing_hbr_stages(self):
+        patches = (ROOT / "dcr/patches.txt").read_text()
+        patch = (ROOT / "dcr/patches/sync_hbr_stage_fields.py").read_text()
+
+        self.assertIn("dcr.patches.sync_hbr_stage_fields", patches)
+        self.assertIn("ensure_hbr_stage_field_options()", patch)
+        self.assertIn("sync_hbr_stages(hbr_name)", patch)
 
 
 if __name__ == "__main__":

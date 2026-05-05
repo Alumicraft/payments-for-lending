@@ -10,3 +10,4 @@ dcr.patches.remove_park_doctype
 dcr.patches.flip_la_default_to_placeholder
 dcr.patches.tidy_la_connections
 dcr.patches.drop_monthly_interest_setter
+dcr.patches.sync_hbr_stage_fields

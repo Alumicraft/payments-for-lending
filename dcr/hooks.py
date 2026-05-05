@@ -105,7 +105,8 @@ doc_events = {
     "Loan": {
         "validate": "dcr.api.lending.on_loan_validate",
         "after_insert": "dcr.api.lending.on_loan_after_insert",
-        "on_update": "dcr.api.lending.on_loan_on_update"
+        "on_update": "dcr.api.lending.on_loan_on_update",
+        "on_update_after_submit": "dcr.api.hbr_stage.sync_from_doc",
     },
     "Loan Disbursement": {
         "validate": "dcr.api.lending.on_loan_disbursement_validate",
