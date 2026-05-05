@@ -46,6 +46,8 @@ class TestDocuSignWebhookVerification(unittest.TestCase):
 
         payload = mock_post.call_args.kwargs["json"]
         self.assertEqual(payload["eventNotification"]["includeHMAC"], "true")
+        self.assertEqual(payload["eventNotification"]["deliveryMode"], "SIM")
+        self.assertEqual(payload["eventNotification"]["eventData"]["format"], "json")
 
     @patch("dcr.api.docusign.frappe")
     @patch("dcr.api.docusign.get_docusign_settings")

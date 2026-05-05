@@ -172,6 +172,7 @@ class DocuSignClient:
         if webhook_url:
             payload["eventNotification"] = {
                 "url": webhook_url,
+                "deliveryMode": "SIM",
                 "requireAcknowledgment": "true",
                 "loggingEnabled": "true",
                 "includeSoapBody": "false",
