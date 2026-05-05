@@ -160,5 +160,15 @@ class TestHbrStageHookRegistration(unittest.TestCase):
         self.assertIn("sync_hbr_stages(doc.home_build_request)", lending)
 
 
+class TestHbrStageSetup(unittest.TestCase):
+    def test_cash_loan_stage_option_is_preserved_after_migrate(self):
+        setup = (ROOT / "dcr/setup.py").read_text()
+
+        self.assertIn("ensure_hbr_stage_field_options()", setup)
+        self.assertIn("sync_existing_hbr_stage_fields()", setup)
+        self.assertIn("custom_loan_stage", setup)
+        self.assertIn("Not Applicable\\nNot Started\\nApplied", setup)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -101,6 +101,16 @@ def after_install():
     except Exception:
         frappe.log_error(frappe.get_traceback(), "ensure_order_hbr_fields failed")
 
+    try:
+        ensure_hbr_stage_field_options()
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "ensure_hbr_stage_field_options failed")
+
+    try:
+        sync_existing_hbr_stage_fields()
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "sync_existing_hbr_stage_fields failed")
+
     frappe.db.commit()
 
 
@@ -332,6 +342,47 @@ def ensure_order_hbr_fields(only_doctypes=None):
             "no_copy": 0,
         }).insert(ignore_permissions=True)
         frappe.clear_cache(doctype=field["dt"])
+
+
+def ensure_hbr_stage_field_options():
+    """Keep HBR stage Custom Field options aligned with derived stage values.
+
+    The HBR stage fields are placed through Customize Form on Frappe Cloud, so
+    this only updates existing field options and leaves layout untouched.
+    """
+    fields = {
+        "custom_order_stage": "Not Ordered\nOrdered\nDelivered\nClosed",
+        "custom_loan_stage": (
+            "Not Applicable\nNot Started\nApplied\nApproved\nFunded\nActive\nClosed"
+        ),
+    }
+
+    changed = False
+    for fieldname, options in fields.items():
+        custom_field = frappe.db.exists(
+            "Custom Field",
+            {"dt": "Home Build Request", "fieldname": fieldname},
+        )
+        if not custom_field:
+            continue
+
+        current_options = frappe.db.get_value("Custom Field", custom_field, "options")
+        if current_options == options:
+            continue
+
+        frappe.db.set_value("Custom Field", custom_field, "options", options)
+        changed = True
+
+    if changed:
+        frappe.clear_cache(doctype="Home Build Request")
+
+
+def sync_existing_hbr_stage_fields():
+    """Backfill derived stage fields for existing HBRs after migrations."""
+    from dcr.api.hbr_stage import sync_hbr_stages
+
+    for row in frappe.get_all("Home Build Request", pluck="name"):
+        sync_hbr_stages(row)
 
 
 def tidy_la_connections():
