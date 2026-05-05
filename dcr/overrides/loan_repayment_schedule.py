@@ -132,6 +132,8 @@ class CustomLoanRepaymentSchedule(LoanRepaymentSchedule):
                 kwargs["demand_generated"] = 0
             if "is_accrued" in params and "is_accrued" not in kwargs:
                 kwargs["is_accrued"] = 0
+            if "charges" in params and "charges" not in kwargs:
+                kwargs["charges"] = []
             return add_row(**kwargs)
 
         self.append(
