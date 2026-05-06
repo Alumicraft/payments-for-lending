@@ -268,6 +268,7 @@ def send_flooring_packet_signed(customer_name, loan_application, signed_date, to
 # 10. Loan Disbursed
 # ============================================================================
 
+@frappe.whitelist()
 def send_loan_disbursed(customer_name, factory_name, loan, home_build_request, amount, to_email, reference_name=None):
     """Send notification that loan advance has been disbursed to factory."""
     return _send(
@@ -283,6 +284,23 @@ def send_loan_disbursed(customer_name, factory_name, loan, home_build_request, a
             "home_build_request": home_build_request,
             "amount": amount,
         },
+    )
+
+
+def send_payoff_letter(customer_name, loan, payoff_type, to_email, attachments=None, reference_name=None):
+    """Send a payoff letter PDF using an explicit DCR email template."""
+    return _send(
+        doctype="Loan",
+        docname=reference_name or loan,
+        to_email=to_email,
+        subject=f"Loan Payoff Letter — {customer_name}",
+        template="payoff-letter",
+        extra_data={
+            "customer_name": customer_name,
+            "loan": loan,
+            "payoff_type": payoff_type,
+        },
+        attachments=attachments,
     )
 
 

@@ -949,15 +949,17 @@ def send_payoff_letter(loan, payoff_type="Flooring"):
 
     pdf_content = frappe.get_print("Loan", loan, print_format, as_pdf=True)
 
-    frappe.sendmail(
-        recipients=[email],
-        subject=f"Loan Payoff Letter \u2014 {customer_doc.customer_name}",
-        message=f"Please find attached your {payoff_type} payoff letter.",
+    from dcr.api.dcr_email import send_payoff_letter as _send_payoff_letter_email
+
+    _send_payoff_letter_email(
+        customer_name=customer_doc.customer_name,
+        loan=loan,
+        payoff_type=payoff_type,
+        to_email=email,
         attachments=[{
-            "fname": f"Payoff-{payoff_type}-{loan_doc.applicant}.pdf",
-            "fcontent": pdf_content,
+            "filename": f"Payoff-{payoff_type}-{loan_doc.applicant}.pdf",
+            "content": base64.b64encode(pdf_content).decode("utf-8"),
         }],
-        reference_doctype="Loan",
         reference_name=loan,
     )
 
