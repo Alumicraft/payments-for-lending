@@ -85,6 +85,7 @@ class HomeBuildRequest(Document):
 
     def on_submit(self):
         """Submission locks the deal record. Downstream docs created manually."""
+        self.db_set("status", "Submitted")
         self.sync_checklist_files()
 
     def sync_checklist_files(self):

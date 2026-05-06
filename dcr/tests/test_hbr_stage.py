@@ -178,6 +178,17 @@ class TestHbrStageSetup(unittest.TestCase):
         self.assertIn("ensure_hbr_stage_field_options()", patch)
         self.assertIn("sync_hbr_stages(hbr_name)", patch)
 
+    def test_submit_status_is_backfilled_and_maintained(self):
+        controller = (
+            ROOT / "dcr/dcr/doctype/home_build_request/home_build_request.py"
+        ).read_text()
+        patches = (ROOT / "dcr/patches.txt").read_text()
+        patch = (ROOT / "dcr/patches/sync_hbr_submit_status.py").read_text()
+
+        self.assertIn('self.db_set("status", "Submitted")', controller)
+        self.assertIn("dcr.patches.sync_hbr_submit_status", patches)
+        self.assertIn("WHERE docstatus = 1", patch)
+
 
 if __name__ == "__main__":
     unittest.main()
