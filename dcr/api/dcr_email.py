@@ -9,6 +9,18 @@ import frappe
 from frappe import _
 
 
+def _format_currency_amount(amount):
+    """Format numeric email amounts with thousands separators."""
+    try:
+        value = float(amount)
+    except (TypeError, ValueError):
+        return amount or ""
+
+    if value.is_integer():
+        return f"{value:,.0f}"
+    return f"{value:,.2f}"
+
+
 def _send(
     doctype,
     docname,
@@ -271,18 +283,19 @@ def send_flooring_packet_signed(customer_name, loan_application, signed_date, to
 @frappe.whitelist()
 def send_loan_disbursed(customer_name, factory_name, loan, home_build_request, amount, to_email, reference_name=None):
     """Send notification that loan advance has been disbursed to factory."""
+    formatted_amount = _format_currency_amount(amount)
     return _send(
         doctype="Loan",
         docname=reference_name or loan,
         to_email=to_email,
-        subject=f"Loan Advance Disbursed — ${amount}",
+        subject=f"Loan Advance Disbursed — ${formatted_amount}",
         template="loan-disbursed",
         extra_data={
             "customer_name": customer_name,
             "factory_name": factory_name,
             "loan": loan,
             "home_build_request": home_build_request,
-            "amount": amount,
+            "amount": formatted_amount,
         },
     )
 
