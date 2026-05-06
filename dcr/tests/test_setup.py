@@ -222,6 +222,16 @@ class TestMapWorkspaceClientCode(unittest.TestCase):
         self.assertIn("m.once('moveend', close)", setup_code)
         self.assertIn("selectHit(hits[active])", setup_code)
 
+    def test_map_popup_actions_use_frappe_router(self):
+        setup_code = (ROOT / "dcr/setup.py").read_text()
+
+        self.assertIn("function openDeskDoc(doctype, name)", setup_code)
+        self.assertIn("frappe.set_route('Form', doctype, name)", setup_code)
+        self.assertIn("openDeskDoc('Home Build Request', name)", setup_code)
+        self.assertIn("openDeskDoc('Supplier', name)", setup_code)
+        self.assertNotIn("window.open('/app/home-build-request/", setup_code)
+        self.assertNotIn("window.open('/app/supplier/", setup_code)
+
     def test_map_click_guard_only_queries_existing_layers(self):
         setup_code = (ROOT / "dcr/setup.py").read_text()
 

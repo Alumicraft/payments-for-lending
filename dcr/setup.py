@@ -1584,6 +1584,29 @@ def ensure_map_block():
             +  '</div>';
     }
 
+    function openDeskDoc(doctype, name) {
+        if (!doctype || !name) return;
+        if (_activePopup) _activePopup.remove();
+        if (window.frappe && frappe.set_route) {
+            frappe.set_route('Form', doctype, name);
+            return;
+        }
+        var slug = doctype.toLowerCase().replace(/\s+/g, '-');
+        window.location.href = '/desk/' + slug + '/' + encodeURIComponent(name);
+    }
+
+    function openDeskList(doctype, routeOptions) {
+        if (!doctype) return;
+        if (_activePopup) _activePopup.remove();
+        if (window.frappe && frappe.set_route) {
+            if (routeOptions) frappe.route_options = routeOptions;
+            frappe.set_route('List', doctype);
+            return;
+        }
+        var slug = doctype.toLowerCase().replace(/\s+/g, '-');
+        window.location.href = '/desk/' + slug;
+    }
+
     // Delegate clicks inside any open popup. Registered idempotently so
     // SPA re-mount doesn't accumulate handlers.
     registerDocListener('PopupClick', 'click', function(e) {
@@ -1592,13 +1615,15 @@ def ensure_map_block():
         var act = t.getAttribute('data-act');
         var name = t.getAttribute('data-name');
         if (act === 'open-hbr' && name) {
-            window.open('/app/home-build-request/' + encodeURIComponent(name), '_top');
+            openDeskDoc('Home Build Request', name);
         } else if (act === 'open-supplier' && name) {
-            window.open('/app/supplier/' + encodeURIComponent(name), '_top');
+            openDeskDoc('Supplier', name);
         } else if (act === 'open-list') {
             var p = _activePopup._dcrProps;
             if (p && p.address) {
-                window.open('/app/home-build-request?delivery_address=' + encodeURIComponent(p.address), '_top');
+                openDeskList('Home Build Request', {
+                    delivery_address: ['like', p.address]
+                });
             }
         } else if (act === 'drill') {
             var p2 = _activePopup._dcrProps;
