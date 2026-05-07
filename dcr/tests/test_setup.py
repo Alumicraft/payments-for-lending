@@ -173,7 +173,10 @@ class TestMapBlockContent(unittest.TestCase):
         self.assertIn("margin-left: 0 !important", css)
         self.assertIn("margin-right: 0 !important", css)
         self.assertIn('body[data-route="Workspaces/Map"] .widget.custom-block-widget-box', css)
+        self.assertNotIn("body[data-route^=\"Workspaces/\"] .workspace-body", css)
+        self.assertNotIn("body[data-route^=\"Workspaces/\"] .codex-editor", css)
         self.assertNotIn("body[data-route^=\"Workspaces/\"] .ce-block,", css)
+        self.assertNotIn("body[data-route^=\"Workspaces/\"] .ce-block__content", css)
         self.assertNotIn("body[data-route^=\"Workspaces/\"] .widget,", css)
         self.assertNotIn("body[data-route^=\"Workspaces/\"] .number-card", css)
 

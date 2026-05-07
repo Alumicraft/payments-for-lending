@@ -12,9 +12,8 @@
  * `Workspaces/<Name>` shape.
  *
  * The constraint comes from `.container.page-body` (Bootstrap container
- * max-width), container padding, and the editor.js wrappers around dashboard
- * widgets. The main wrappers are widened below, then the outer page body gets
- * a small horizontal gutter so cards and charts do not sit against the edge.
+ * max-width). Only page-shell containers are widened below; Frappe's workspace
+ * editor/card/chart internals keep their own padding and grid behavior.
  */
 
 body.dcr-workspace-fullbleed {
@@ -34,11 +33,6 @@ body.dcr-workspace-fullbleed .layout-main-section-wrapper,
 body.dcr-workspace-fullbleed .layout-main-section,
 body.dcr-workspace-fullbleed .layout-main-section > .container,
 body.dcr-workspace-fullbleed .layout-main-section > .container-fluid,
-body.dcr-workspace-fullbleed .workspace-body,
-body.dcr-workspace-fullbleed .workspace-content,
-body.dcr-workspace-fullbleed .editor-js-container,
-body.dcr-workspace-fullbleed .codex-editor,
-body.dcr-workspace-fullbleed .codex-editor__redactor,
 body[data-route^="Workspaces/"] .main-section,
 body[data-route^="Workspaces/"] .page-container,
 body[data-route^="Workspaces/"] .page-wrapper,
@@ -49,24 +43,13 @@ body[data-route^="Workspaces/"] .layout-main,
 body[data-route^="Workspaces/"] .layout-main-section-wrapper,
 body[data-route^="Workspaces/"] .layout-main-section,
 body[data-route^="Workspaces/"] .layout-main-section > .container,
-body[data-route^="Workspaces/"] .layout-main-section > .container-fluid,
-body[data-route^="Workspaces/"] .workspace-body,
-body[data-route^="Workspaces/"] .workspace-content,
-body[data-route^="Workspaces/"] .editor-js-container,
-body[data-route^="Workspaces/"] .codex-editor,
-body[data-route^="Workspaces/"] .codex-editor__redactor {
+body[data-route^="Workspaces/"] .layout-main-section > .container-fluid {
 	max-width: none !important;
 	width: 100% !important;
 	margin-left: 0 !important;
 	margin-right: 0 !important;
 	padding-left: 0 !important;
 	padding-right: 0 !important;
-}
-
-body.dcr-workspace-fullbleed .ce-block__content,
-body[data-route^="Workspaces/"] .ce-block__content {
-	max-width: none !important;
-	width: 100% !important;
 }
 
 body.dcr-workspace-fullbleed .page-body,
@@ -96,23 +79,13 @@ body:has(.workspace-body) .layout-main,
 body:has(.workspace-body) .layout-main-section-wrapper,
 body:has(.workspace-body) .layout-main-section,
 body:has(.workspace-body) .layout-main-section > .container,
-body:has(.workspace-body) .layout-main-section > .container-fluid,
-body:has(.workspace-body) .workspace-body,
-body:has(.workspace-body) .workspace-content,
-body:has(.workspace-body) .editor-js-container,
-body:has(.workspace-body) .codex-editor,
-body:has(.workspace-body) .codex-editor__redactor {
+body:has(.workspace-body) .layout-main-section > .container-fluid {
 	max-width: none !important;
 	width: 100% !important;
 	margin-left: 0 !important;
 	margin-right: 0 !important;
 	padding-left: 0 !important;
 	padding-right: 0 !important;
-}
-
-body:has(.workspace-body) .ce-block__content {
-	max-width: none !important;
-	width: 100% !important;
 }
 
 body:has(.workspace-body) .page-body,
