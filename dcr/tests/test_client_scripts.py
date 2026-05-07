@@ -170,6 +170,8 @@ class TestSidebarFixClientScript(unittest.TestCase):
         self.assertIn("body.dcr-workspace-fullbleed[data-route=", script)
         self.assertIn("Workspaces/Map", script)
         self.assertIn('body.dcr-workspace-fullbleed[data-route=\\"Workspaces/Map\\"] .widget.custom-block-widget-box', script)
+        self.assertNotIn("margin-left: 0 !important", script)
+        self.assertNotIn("margin-right: 0 !important", script)
         self.assertNotIn("body.dcr-workspace-fullbleed .workspace-body,", script)
         self.assertNotIn("body.dcr-workspace-fullbleed .codex-editor", script)
         self.assertNotIn("body.dcr-workspace-fullbleed .ce-block,", script)

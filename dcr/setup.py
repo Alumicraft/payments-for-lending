@@ -957,15 +957,18 @@ def ensure_map_block():
         }
         window._dcrMapRefreshSearch = refreshSearch;
 
-        var refreshFrame = null;
+        var debounce;
         function scheduleRefresh(resetActive) {
             suppressMenuUntil = 0;
-            if (refreshFrame) cancelAnimationFrame(refreshFrame);
-            refreshFrame = requestAnimationFrame(function() {
-                refreshFrame = null;
+            clearTimeout(debounce);
+            debounce = setTimeout(function() {
                 if (resetActive) active = 0;
                 refreshSearch();
-            });
+            }, 30);
+            setTimeout(function() {
+                if (resetActive) active = 0;
+                refreshSearch();
+            }, 0);
         }
         function selectHit(item) {
             if (!item) return;
@@ -988,6 +991,16 @@ def ensure_map_block():
             keepSearchEventLocal(e);
             scheduleRefresh(true);
         });
+        input.addEventListener('keyup', function(e) {
+            keepSearchEventLocal(e);
+            if (['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].indexOf(e.key) === -1) {
+                scheduleRefresh(true);
+            }
+        });
+        input.addEventListener('paste', function(e) {
+            keepSearchEventLocal(e);
+            scheduleRefresh(true);
+        });
         input.addEventListener('focus', function() {
             if (input.value.trim().length >= 2) scheduleRefresh(true);
         });
@@ -997,6 +1010,9 @@ def ensure_map_block():
             else if (e.key === 'ArrowUp') { e.preventDefault(); active = Math.max(active - 1, 0); render(); }
             else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); selectHit(hits[active]); }
             else if (e.key === 'Escape') { close(); input.blur(); }
+            else if (e.key && e.key.length === 1) {
+                setTimeout(function() { scheduleRefresh(true); }, 0);
+            }
         });
         menu.addEventListener('mousedown', function(e) {
             var item = e.target.closest('.dcr-search__item');
@@ -1482,6 +1498,7 @@ def ensure_map_block():
             maxWidth: '420px'
         }, opts || {}));
         p.setLngLat(lngLat).setHTML(html).addTo(map);
+        bindPopupActions(p);
         p.on('close', function() {
             if (_activePopup === p) _activePopup = null;
         });
@@ -1516,7 +1533,7 @@ def ensure_map_block():
                    }).join('')
             +    '</div>'
             +    '<div class="dcr-popup__footer">'
-            +      '<button class="btn btn--primary" data-act="open-hbr" data-name="' + escHtml(home.name) + '">Open HBR</button>'
+            +      '<a class="btn btn--primary" href="/app/home-build-request/' + encodeURIComponent(home.name || '') + '" data-act="open-hbr" data-name="' + escHtml(home.name) + '">Open HBR</a>'
             +    '</div>'
             +  '</div>';
     }
@@ -1563,7 +1580,7 @@ def ensure_map_block():
             +    '</div>'
             +    '<div class="factory-total text-secondary">' + (props.total_12mo || 0) + ' deals routed here in the last 12 months</div>'
             +    '<div class="dcr-popup__footer">'
-            +      '<button class="btn btn--primary" data-act="open-supplier" data-name="' + escHtml(props.name) + '">Open Supplier</button>'
+            +      '<a class="btn btn--primary" href="/app/supplier/' + encodeURIComponent(props.name || '') + '" data-act="open-supplier" data-name="' + escHtml(props.name) + '">Open Supplier</a>'
             +    '</div>'
             +  '</div>';
     }
@@ -1576,7 +1593,7 @@ def ensure_map_block():
             return;
         }
         var slug = doctype.toLowerCase().replace(/\s+/g, '-');
-        window.location.href = '/desk/' + slug + '/' + encodeURIComponent(name);
+        window.location.href = '/app/' + slug + '/' + encodeURIComponent(name);
     }
 
     function openDeskList(doctype, routeOptions) {
@@ -1588,21 +1605,25 @@ def ensure_map_block():
             return;
         }
         var slug = doctype.toLowerCase().replace(/\s+/g, '-');
-        window.location.href = '/desk/' + slug;
+        window.location.href = '/app/' + slug;
     }
 
-    // Delegate clicks inside any open popup. Registered idempotently so
-    // SPA re-mount doesn't accumulate handlers.
-    registerDocListener('PopupClick', 'click', function(e) {
+    function handlePopupAction(e) {
         var t = e.target.closest('[data-act]');
         if (!t || !_activePopup) return;
         var act = t.getAttribute('data-act');
         var name = t.getAttribute('data-name');
         if (act === 'open-hbr' && name) {
+            e.preventDefault();
+            e.stopPropagation();
             openDeskDoc('Home Build Request', name);
         } else if (act === 'open-supplier' && name) {
+            e.preventDefault();
+            e.stopPropagation();
             openDeskDoc('Supplier', name);
         } else if (act === 'open-list') {
+            e.preventDefault();
+            e.stopPropagation();
             var p = _activePopup._dcrProps;
             if (p && p.address) {
                 openDeskList('Home Build Request', {
@@ -1610,12 +1631,25 @@ def ensure_map_block():
                 });
             }
         } else if (act === 'drill') {
+            e.preventDefault();
+            e.stopPropagation();
             var p2 = _activePopup._dcrProps;
             var homes = _activePopup._dcrHomes;
             var idx = parseInt(t.getAttribute('data-idx'), 10);
             if (p2 && homes && homes[idx]) drillIntoHome(p2, homes[idx]);
         }
-    });
+    }
+
+    function bindPopupActions(popup) {
+        var el = popup && popup.getElement && popup.getElement();
+        if (!el || el._dcrActionsBound) return;
+        el._dcrActionsBound = true;
+        el.addEventListener('click', handlePopupAction);
+    }
+
+    // Delegate clicks inside any open popup. Registered idempotently so
+    // SPA re-mount doesn't accumulate handlers.
+    registerDocListener('PopupClick', 'click', handlePopupAction);
 
     // Esc dismisses popup
     registerDocListener('PopupKey', 'keydown', function(e) {
