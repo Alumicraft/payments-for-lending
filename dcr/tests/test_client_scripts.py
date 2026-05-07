@@ -169,6 +169,10 @@ class TestSidebarFixClientScript(unittest.TestCase):
         self.assertIn("padding-right: var(--dcr-workspace-content-padding, 20px) !important", script)
         self.assertIn("body.dcr-workspace-fullbleed[data-route=", script)
         self.assertIn("Workspaces/Map", script)
+        self.assertIn('body.dcr-workspace-fullbleed[data-route=\\"Workspaces/Map\\"] .widget.custom-block-widget-box', script)
+        self.assertNotIn("body.dcr-workspace-fullbleed .ce-block,", script)
+        self.assertNotIn("body.dcr-workspace-fullbleed .widget,", script)
+        self.assertNotIn("body.dcr-workspace-fullbleed .number-card", script)
 
     def test_sidebar_setup_survives_missing_workspace_links(self):
         script = (ROOT / "dcr/public/js/sidebar_fix.js").read_text()

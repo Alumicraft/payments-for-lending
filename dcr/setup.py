@@ -864,7 +864,7 @@ def ensure_map_block():
                 searchText: ((f.properties.supplier_name || '') + ' ' + (f.properties.city || '')).toLowerCase()
             });
         });
-        _searchHydrated = true;
+        _searchHydrated = !!(_searchIndex.length);
         if (window._dcrMapRefreshSearch) window._dcrMapRefreshSearch();
     }
     function searchQuery(q) {
@@ -957,18 +957,15 @@ def ensure_map_block():
         }
         window._dcrMapRefreshSearch = refreshSearch;
 
-        var debounce;
+        var refreshFrame = null;
         function scheduleRefresh(resetActive) {
             suppressMenuUntil = 0;
-            clearTimeout(debounce);
-            debounce = setTimeout(function() {
+            if (refreshFrame) cancelAnimationFrame(refreshFrame);
+            refreshFrame = requestAnimationFrame(function() {
+                refreshFrame = null;
                 if (resetActive) active = 0;
                 refreshSearch();
-            }, 30);
-            setTimeout(function() {
-                if (resetActive) active = 0;
-                refreshSearch();
-            }, 0);
+            });
         }
         function selectHit(item) {
             if (!item) return;
@@ -991,16 +988,6 @@ def ensure_map_block():
             keepSearchEventLocal(e);
             scheduleRefresh(true);
         });
-        input.addEventListener('keyup', function(e) {
-            keepSearchEventLocal(e);
-            if (['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].indexOf(e.key) === -1) {
-                scheduleRefresh(true);
-            }
-        });
-        input.addEventListener('paste', function(e) {
-            keepSearchEventLocal(e);
-            scheduleRefresh(true);
-        });
         input.addEventListener('focus', function() {
             if (input.value.trim().length >= 2) scheduleRefresh(true);
         });
@@ -1010,9 +997,6 @@ def ensure_map_block():
             else if (e.key === 'ArrowUp') { e.preventDefault(); active = Math.max(active - 1, 0); render(); }
             else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); selectHit(hits[active]); }
             else if (e.key === 'Escape') { close(); input.blur(); }
-            else if (e.key && e.key.length === 1) {
-                setTimeout(function() { scheduleRefresh(true); }, 0);
-            }
         });
         menu.addEventListener('mousedown', function(e) {
             var item = e.target.closest('.dcr-search__item');

@@ -421,6 +421,7 @@ def _handle_envelope_completed(envelope_id, data):
     frappe.db.set_value("Signature Request", sig_req, update_values)
 
     doc.reload()
+    _mirror_signed_attachment_to_reference(doc)
     _update_reference_document(doc)
 
 
@@ -477,6 +478,45 @@ def _update_reference_document(sig_req):
         frappe.log_error(
             f"Failed to update reference doc {sig_req.reference_doctype}/{sig_req.reference_name}: {str(e)}",
             "DocuSign Reference Update"
+        )
+
+
+def _mirror_signed_attachment_to_reference(sig_req):
+    """Show signed PDFs in the referenced source document's file list too."""
+    if not (
+        sig_req.reference_doctype
+        and sig_req.reference_name
+        and sig_req.signed_attachment
+    ):
+        return
+
+    if frappe.db.exists(
+        "File",
+        {
+            "file_url": sig_req.signed_attachment,
+            "attached_to_doctype": sig_req.reference_doctype,
+            "attached_to_name": sig_req.reference_name,
+        },
+    ):
+        return
+
+    try:
+        signed_file = frappe.get_doc("File", {"file_url": sig_req.signed_attachment})
+        mirrored_file = frappe.get_doc(
+            {
+                "doctype": "File",
+                "file_name": signed_file.file_name,
+                "file_url": sig_req.signed_attachment,
+                "attached_to_doctype": sig_req.reference_doctype,
+                "attached_to_name": sig_req.reference_name,
+                "is_private": signed_file.is_private,
+            }
+        )
+        mirrored_file.insert(ignore_permissions=True)
+    except Exception as e:
+        frappe.log_error(
+            f"Failed to mirror signed PDF to {sig_req.reference_doctype}/{sig_req.reference_name}: {str(e)}",
+            "DocuSign Reference Attachment",
         )
 
 

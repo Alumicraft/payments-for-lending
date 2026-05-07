@@ -172,7 +172,10 @@ class TestMapBlockContent(unittest.TestCase):
         self.assertIn("box-sizing: border-box !important", css)
         self.assertIn("margin-left: 0 !important", css)
         self.assertIn("margin-right: 0 !important", css)
-        self.assertIn("body:has(.workspace-body) .widget.custom-block-widget-box", css)
+        self.assertIn('body[data-route="Workspaces/Map"] .widget.custom-block-widget-box', css)
+        self.assertNotIn("body[data-route^=\"Workspaces/\"] .ce-block,", css)
+        self.assertNotIn("body[data-route^=\"Workspaces/\"] .widget,", css)
+        self.assertNotIn("body[data-route^=\"Workspaces/\"] .number-card", css)
 
 
 class TestPackagingConfig(unittest.TestCase):
@@ -205,8 +208,12 @@ class TestMapWorkspaceClientCode(unittest.TestCase):
         self.assertIn("window._dcrMapRefreshSearch = refreshSearch", setup_code)
         self.assertIn("if (window._dcrMapRefreshSearch) window._dcrMapRefreshSearch()", setup_code)
         self.assertIn("function scheduleRefresh(resetActive)", setup_code)
-        self.assertIn("input.addEventListener('keyup'", setup_code)
-        self.assertIn("input.addEventListener('paste'", setup_code)
+        self.assertIn("input.addEventListener('input'", setup_code)
+        self.assertIn("requestAnimationFrame(function() {", setup_code)
+        self.assertNotIn("input.addEventListener('keyup'", setup_code)
+        self.assertNotIn("input.addEventListener('paste'", setup_code)
+        self.assertNotIn("setTimeout(function() { scheduleRefresh(true); }, 0);", setup_code)
+        self.assertIn("_searchHydrated = !!(_searchIndex.length)", setup_code)
         self.assertIn("Loading map results", setup_code)
         self.assertIn(".dcr-search { position: absolute", css)
         self.assertIn("z-index: 1000", css)

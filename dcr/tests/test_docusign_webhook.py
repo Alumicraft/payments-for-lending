@@ -225,6 +225,54 @@ class TestDocuSignWebhookVerification(unittest.TestCase):
             "https://backdesk.test/docusign-complete?event=signing_complete",
         )
 
+    @patch("dcr.api.docusign.frappe")
+    def test_mirrors_signed_attachment_to_reference_doc_files(self, mock_frappe):
+        source_file = MagicMock()
+        source_file.file_name = "Flooring-Packet-Test-Homes-signed.pdf"
+        source_file.is_private = 1
+        mirrored_file = MagicMock()
+        mock_frappe.get_doc.side_effect = [source_file, mirrored_file]
+        mock_frappe.db.exists.return_value = False
+
+        from dcr.api.docusign import _mirror_signed_attachment_to_reference
+
+        sig_req = MagicMock()
+        sig_req.reference_doctype = "Loan Application"
+        sig_req.reference_name = "LA-001"
+        sig_req.signed_attachment = "/private/files/flooring-packet.pdf"
+
+        _mirror_signed_attachment_to_reference(sig_req)
+
+        mock_frappe.get_doc.assert_any_call(
+            "File", {"file_url": "/private/files/flooring-packet.pdf"}
+        )
+        mock_frappe.get_doc.assert_any_call(
+            {
+                "doctype": "File",
+                "file_name": "Flooring-Packet-Test-Homes-signed.pdf",
+                "file_url": "/private/files/flooring-packet.pdf",
+                "attached_to_doctype": "Loan Application",
+                "attached_to_name": "LA-001",
+                "is_private": 1,
+            }
+        )
+        mirrored_file.insert.assert_called_once_with(ignore_permissions=True)
+
+    @patch("dcr.api.docusign.frappe")
+    def test_does_not_duplicate_existing_reference_file_link(self, mock_frappe):
+        mock_frappe.db.exists.return_value = True
+
+        from dcr.api.docusign import _mirror_signed_attachment_to_reference
+
+        sig_req = MagicMock()
+        sig_req.reference_doctype = "Loan Application"
+        sig_req.reference_name = "LA-001"
+        sig_req.signed_attachment = "/private/files/flooring-packet.pdf"
+
+        _mirror_signed_attachment_to_reference(sig_req)
+
+        mock_frappe.get_doc.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

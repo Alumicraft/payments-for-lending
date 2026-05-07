@@ -789,15 +789,17 @@
 			"body.dcr-workspace-fullbleed .workspace-content,",
 			"body.dcr-workspace-fullbleed .editor-js-container,",
 			"body.dcr-workspace-fullbleed .codex-editor,",
-			"body.dcr-workspace-fullbleed .codex-editor__redactor,",
-			"body.dcr-workspace-fullbleed .ce-block,",
-			"body.dcr-workspace-fullbleed .ce-block__content {",
+			"body.dcr-workspace-fullbleed .codex-editor__redactor {",
 			"  max-width: none !important;",
 			"  width: 100% !important;",
 			"  margin-left: 0 !important;",
 			"  margin-right: 0 !important;",
 			"  padding-left: 0 !important;",
 			"  padding-right: 0 !important;",
+			"}",
+			"body.dcr-workspace-fullbleed .ce-block__content {",
+			"  max-width: none !important;",
+			"  width: 100% !important;",
 			"}",
 			"body.dcr-workspace-fullbleed .page-body,",
 			"body.dcr-workspace-fullbleed .container.page-body {",
@@ -810,16 +812,7 @@
 			"  padding-left: 0 !important;",
 			"  padding-right: 0 !important;",
 			"}",
-			"body.dcr-workspace-fullbleed .widget-group,",
-			"body.dcr-workspace-fullbleed .widget-group-body,",
-			"body.dcr-workspace-fullbleed .widget,",
-			"body.dcr-workspace-fullbleed .number-card,",
-			"body.dcr-workspace-fullbleed .chart-container,",
-			"body.dcr-workspace-fullbleed .dashboard-section {",
-			"  max-width: none !important;",
-			"  width: 100% !important;",
-			"}",
-			"body.dcr-workspace-fullbleed .widget.custom-block-widget-box { padding: 0 !important; }"
+			"body.dcr-workspace-fullbleed[data-route=\"Workspaces/Map\"] .widget.custom-block-widget-box { padding: 0 !important; }"
 		].join("\n");
 		document.head.appendChild(style);
 	}
