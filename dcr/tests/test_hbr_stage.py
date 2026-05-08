@@ -170,6 +170,13 @@ class TestHbrStageSetup(unittest.TestCase):
         self.assertIn("custom_loan_stage", setup)
         self.assertIn("Not Applicable\\nNot Started\\nApplied", setup)
 
+    def test_stage_fields_are_read_only_derived_fields_after_migrate(self):
+        setup = (ROOT / "dcr/setup.py").read_text()
+
+        self.assertIn('updates["read_only"] = 1', setup)
+        self.assertIn('updates["allow_on_submit"] = 0', setup)
+        self.assertIn('frappe.db.set_value("Custom Field", custom_field, updates)', setup)
+
     def test_migrate_patch_backfills_existing_hbr_stages(self):
         patches = (ROOT / "dcr/patches.txt").read_text()
         patch = (ROOT / "dcr/patches/sync_hbr_stage_fields.py").read_text()

@@ -366,11 +366,19 @@ def ensure_hbr_stage_field_options():
         if not custom_field:
             continue
 
+        updates = {}
         current_options = frappe.db.get_value("Custom Field", custom_field, "options")
-        if current_options == options:
+        if current_options != options:
+            updates["options"] = options
+        if frappe.db.get_value("Custom Field", custom_field, "read_only") != 1:
+            updates["read_only"] = 1
+        if frappe.db.get_value("Custom Field", custom_field, "allow_on_submit") != 0:
+            updates["allow_on_submit"] = 0
+
+        if not updates:
             continue
 
-        frappe.db.set_value("Custom Field", custom_field, "options", options)
+        frappe.db.set_value("Custom Field", custom_field, updates)
         changed = True
 
     if changed:
@@ -831,6 +839,31 @@ def ensure_map_block():
     // ========== SEARCH INDEX + CONTROL ================================
     var _searchIndex = [];
     var _searchHydrated = false;
+    var _searchDataLoaded = { homes: false, factories: false };
+    function publishSearchState(extra) {
+        var state = Object.assign({
+            hydrated: _searchHydrated,
+            indexLength: _searchIndex.length,
+            homesLoaded: _searchDataLoaded.homes,
+            factoriesLoaded: _searchDataLoaded.factories,
+            homeFeatureCount: (window._dcrHomeFeatures || []).length,
+            factoryFeatureCount: (window._dcrFactoryFeatures || []).length,
+            updatedAt: Date.now()
+        }, extra || {});
+        window._dcrMapSearchState = state;
+        return state;
+    }
+    function notifySearchIndexReady() {
+        var state = publishSearchState();
+        if (window._dcrMapRefreshSearch) {
+            setTimeout(function() {
+                try { window._dcrMapRefreshSearch(); } catch (_) {}
+            }, 0);
+        }
+        try {
+            document.dispatchEvent(new CustomEvent('dcr-map-search-index-ready', { detail: state }));
+        } catch (_) {}
+    }
     function buildSearchIndex() {
         _searchIndex = [];
         var homes = window._dcrHomeFeatures || [];
@@ -864,8 +897,8 @@ def ensure_map_block():
                 searchText: ((f.properties.supplier_name || '') + ' ' + (f.properties.city || '')).toLowerCase()
             });
         });
-        _searchHydrated = !!(_searchIndex.length);
-        if (window._dcrMapRefreshSearch) window._dcrMapRefreshSearch();
+        _searchHydrated = !!(_searchIndex.length || (_searchDataLoaded.homes && _searchDataLoaded.factories));
+        notifySearchIndexReady();
     }
     function searchQuery(q) {
         if (!q || q.length < 2) return [];
@@ -953,6 +986,11 @@ def ensure_map_block():
         function refreshSearch() {
             hits = searchQuery(input.value.trim());
             active = hits.length ? Math.max(0, Math.min(active, hits.length - 1)) : -1;
+            publishSearchState({
+                query: input.value.trim(),
+                hitCount: hits.length,
+                refreshedAt: Date.now()
+            });
             render();
         }
         window._dcrMapRefreshSearch = refreshSearch;
@@ -1001,6 +1039,14 @@ def ensure_map_block():
             keepSearchEventLocal(e);
             scheduleRefresh(true);
         });
+        input.addEventListener('compositionend', function(e) {
+            keepSearchEventLocal(e);
+            scheduleRefresh(true);
+        });
+        input.addEventListener('change', function(e) {
+            keepSearchEventLocal(e);
+            scheduleRefresh(true);
+        });
         input.addEventListener('focus', function() {
             if (input.value.trim().length >= 2) scheduleRefresh(true);
         });
@@ -1023,6 +1069,11 @@ def ensure_map_block():
         });
         document.addEventListener('mousedown', function(e) {
             if (!wrap.contains(e.target)) close();
+        });
+        document.addEventListener('dcr-map-search-index-ready', function() {
+            if (input.value.trim().length >= 2 || menu.classList.contains('is-open')) {
+                scheduleRefresh(false);
+            }
         });
 
         // Theme support
@@ -1533,7 +1584,7 @@ def ensure_map_block():
                    }).join('')
             +    '</div>'
             +    '<div class="dcr-popup__footer">'
-            +      '<a class="btn btn--primary" href="/app/home-build-request/' + encodeURIComponent(home.name || '') + '" data-act="open-hbr" data-name="' + escHtml(home.name) + '">Open HBR</a>'
+            +      '<a class="btn btn--primary" href="/app/home-build-request/' + encodeURIComponent(home.name || '') + '" target="_top" data-act="open-hbr" data-name="' + escHtml(home.name) + '">Open HBR</a>'
             +    '</div>'
             +  '</div>';
     }
@@ -1580,7 +1631,7 @@ def ensure_map_block():
             +    '</div>'
             +    '<div class="factory-total text-secondary">' + (props.total_12mo || 0) + ' deals routed here in the last 12 months</div>'
             +    '<div class="dcr-popup__footer">'
-            +      '<a class="btn btn--primary" href="/app/supplier/' + encodeURIComponent(props.name || '') + '" data-act="open-supplier" data-name="' + escHtml(props.name) + '">Open Supplier</a>'
+            +      '<a class="btn btn--primary" href="/app/supplier/' + encodeURIComponent(props.name || '') + '" target="_top" data-act="open-supplier" data-name="' + escHtml(props.name) + '">Open Supplier</a>'
             +    '</div>'
             +  '</div>';
     }
@@ -1764,7 +1815,12 @@ def ensure_map_block():
 
     function loadData(map) {
         callOrCache('dcr.api.map.get_heatmap_data', function(r) {
-                if (!r.message || !r.message.length) return;
+                _searchDataLoaded.homes = true;
+                if (!r.message || !r.message.length) {
+                    window._dcrHomeFeatures = [];
+                    buildSearchIndex();
+                    return;
+                }
                 var geojson = {
                     type: 'FeatureCollection',
                     features: r.message.map(function(d) {
@@ -1899,10 +1955,19 @@ def ensure_map_block():
 
     function loadFactories(map) {
         callOrCache('dcr.api.map.get_factory_locations', function(r) {
-                if (!r.message || !r.message.length) return;
+                _searchDataLoaded.factories = true;
+                if (!r.message || !r.message.length) {
+                    window._dcrFactoryFeatures = [];
+                    buildSearchIndex();
+                    return;
+                }
                 geocodeFactoryRows(r.message, function(rows) {
                 rows = rows.filter(hasFactoryCoords);
-                if (!rows.length) return;
+                if (!rows.length) {
+                    window._dcrFactoryFeatures = [];
+                    buildSearchIndex();
+                    return;
+                }
                 var geojson = {
                     type: 'FeatureCollection',
                     features: rows.map(function(d) {
