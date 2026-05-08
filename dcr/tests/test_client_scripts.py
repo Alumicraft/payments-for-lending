@@ -161,22 +161,20 @@ class TestSidebarFixClientScript(unittest.TestCase):
             script.index('localStorage.getItem("dcr_last_workspace")'),
         )
 
-    def test_workspace_fullbleed_injected_style_is_scoped_to_map(self):
+    def test_workspace_fullbleed_injected_style_keeps_content_padding(self):
         script = (ROOT / "dcr/public/js/sidebar_fix.js").read_text()
 
+        self.assertIn("--dcr-workspace-content-padding: clamp(16px, 1.5vw, 24px)", script)
+        self.assertIn("padding-left: var(--dcr-workspace-content-padding, 20px) !important", script)
+        self.assertIn("padding-right: var(--dcr-workspace-content-padding, 20px) !important", script)
+        self.assertIn("body.dcr-workspace-fullbleed {", script)
+        self.assertIn("body.dcr-workspace-fullbleed .main-section", script)
+        self.assertIn("body.dcr-workspace-fullbleed .page-body", script)
+        self.assertIn("body.dcr-workspace-fullbleed .container.page-body", script)
         self.assertIn("body.dcr-workspace-fullbleed[data-route=", script)
         self.assertIn("Workspaces/Map", script)
         self.assertIn('body.dcr-workspace-fullbleed[data-route=\\"Workspaces/Map\\"] .widget.custom-block-widget-box', script)
-        self.assertIn('route_key === "workspaces/map"', script)
-        self.assertIn('body_route === "workspaces/map"', script)
-        self.assertIn('classList.toggle("dcr-workspace-fullbleed", is_map_workspace)', script)
-        self.assertNotIn("--dcr-workspace-content-padding", script)
-        self.assertNotIn("padding-left: var(--dcr-workspace-content-padding, 20px) !important", script)
-        self.assertNotIn("padding-right: var(--dcr-workspace-content-padding, 20px) !important", script)
-        self.assertNotIn("body.dcr-workspace-fullbleed {", script)
-        self.assertNotIn("body.dcr-workspace-fullbleed .main-section", script)
-        self.assertNotIn("body.dcr-workspace-fullbleed .page-body", script)
-        self.assertNotIn("body.dcr-workspace-fullbleed .container.page-body", script)
+        self.assertIn('classList.toggle("dcr-workspace-fullbleed", is_workspace)', script)
         self.assertNotIn("margin-left: 0 !important", script)
         self.assertNotIn("margin-right: 0 !important", script)
         self.assertNotIn("body.dcr-workspace-fullbleed .workspace-body,", script)

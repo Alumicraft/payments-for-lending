@@ -773,24 +773,29 @@
 		var style = document.createElement("style");
 		style.id = "dcr-workspace-fullbleed-js";
 		style.textContent = [
-			"body.dcr-workspace-fullbleed[data-route=\"Workspaces/Map\"] { --page-max-width: none; --content-width: 100%; }",
-			"body.dcr-workspace-fullbleed[data-route=\"Workspaces/Map\"] .main-section,",
-			"body.dcr-workspace-fullbleed[data-route=\"Workspaces/Map\"] .page-container,",
-			"body.dcr-workspace-fullbleed[data-route=\"Workspaces/Map\"] .page-wrapper,",
-			"body.dcr-workspace-fullbleed[data-route=\"Workspaces/Map\"] .page-content,",
-			"body.dcr-workspace-fullbleed[data-route=\"Workspaces/Map\"] .page-body,",
-			"body.dcr-workspace-fullbleed[data-route=\"Workspaces/Map\"] .container.page-body,",
-			"body.dcr-workspace-fullbleed[data-route=\"Workspaces/Map\"] .layout-main,",
-			"body.dcr-workspace-fullbleed[data-route=\"Workspaces/Map\"] .layout-main-section-wrapper,",
-			"body.dcr-workspace-fullbleed[data-route=\"Workspaces/Map\"] .layout-main-section,",
-			"body.dcr-workspace-fullbleed[data-route=\"Workspaces/Map\"] .layout-main-section > .container,",
-			"body.dcr-workspace-fullbleed[data-route=\"Workspaces/Map\"] .layout-main-section > .container-fluid {",
+			"body.dcr-workspace-fullbleed { --page-max-width: none; --content-width: 100%; --dcr-workspace-content-padding: clamp(16px, 1.5vw, 24px); }",
+			"body.dcr-workspace-fullbleed .main-section,",
+			"body.dcr-workspace-fullbleed .page-container,",
+			"body.dcr-workspace-fullbleed .page-wrapper,",
+			"body.dcr-workspace-fullbleed .page-content,",
+			"body.dcr-workspace-fullbleed .page-body,",
+			"body.dcr-workspace-fullbleed .container.page-body,",
+			"body.dcr-workspace-fullbleed .layout-main,",
+			"body.dcr-workspace-fullbleed .layout-main-section-wrapper,",
+			"body.dcr-workspace-fullbleed .layout-main-section,",
+			"body.dcr-workspace-fullbleed .layout-main-section > .container,",
+			"body.dcr-workspace-fullbleed .layout-main-section > .container-fluid {",
 			"  max-width: none !important;",
 			"  width: 100% !important;",
 			"}",
+			"body.dcr-workspace-fullbleed .page-body,",
+			"body.dcr-workspace-fullbleed .container.page-body {",
+			"  box-sizing: border-box !important;",
+			"  padding-left: var(--dcr-workspace-content-padding, 20px) !important;",
+			"  padding-right: var(--dcr-workspace-content-padding, 20px) !important;",
+			"}",
 			"body.dcr-workspace-fullbleed[data-route=\"Workspaces/Map\"] .page-body,",
 			"body.dcr-workspace-fullbleed[data-route=\"Workspaces/Map\"] .container.page-body {",
-			"  box-sizing: border-box !important;",
 			"  padding-left: 0 !important;",
 			"  padding-right: 0 !important;",
 			"}",
@@ -802,11 +807,12 @@
 	function set_workspace_fullbleed_class(reason) {
 		try {
 			var route = frappe.get_route() || [];
-			var route_key = route.join("/").toLowerCase();
-			var body_route = (document.body.getAttribute("data-route") || "").toLowerCase();
-			var is_map_workspace = route_key === "workspaces/map" || body_route === "workspaces/map";
-			document.body.classList.toggle("dcr-workspace-fullbleed", is_map_workspace);
-			if (is_map_workspace) document.body.setAttribute("data-dcr-workspace-fullbleed", reason || "1");
+			var is_workspace = !!workspace_slug_from_route(route);
+			if (!is_workspace && !route.length) {
+				is_workspace = !!document.querySelector(".workspace-body");
+			}
+			document.body.classList.toggle("dcr-workspace-fullbleed", is_workspace);
+			if (is_workspace) document.body.setAttribute("data-dcr-workspace-fullbleed", reason || "1");
 			else document.body.removeAttribute("data-dcr-workspace-fullbleed");
 		} catch (e) {
 			console.log("[DCR sidebar] fullbleed class error:", e);
