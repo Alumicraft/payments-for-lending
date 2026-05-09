@@ -7,22 +7,29 @@
    dcr_workspace.css.
 
    --------------------------------------------------------------
-   TOP NAVBAR / BREADCRUMB BAR
+   PAGE HEAD (breadcrumb bar)
 
-   Frappe v16 renders the breadcrumb chain (#navbar-breadcrumbs)
-   inside the top .navbar, alongside the app menu, search, and
-   user menu. Tint the whole navbar to match the sidebar so the
-   sidebar + top bar read as one continuous chrome surface in
-   both light and dark mode.
+   Frappe v16 renders a thin sticky strip at the top of the main
+   content column — `.page-head` — containing the page title,
+   the breadcrumb chain (`.navbar-breadcrumbs`), and the page
+   actions menu. It defaults to white, which leaves a visible
+   seam between it and the (now tinted) workspace/body bg.
 
-   Light: #f8f8f8  (matches .body-sidebar computed bg)
-   Dark:  #0F0F0F  (matches .body-sidebar computed bg)
+   Tint .page-head to match the sidebar + body so the whole
+   chrome reads as one continuous surface in both modes.
+
+   Light: #f8f8f8  (matches .body-sidebar + body bg)
+   Dark:  #0F0F0F  (matches .body-sidebar + body bg)
+
+   Note: this Frappe install does NOT render a top Bootstrap
+   `.navbar`, so there's no separate navbar to tint — `.page-head`
+   is the only horizontal bar above the content.
    ============================================================ */
 
-.navbar {
+.page-head {
     background-color: #f8f8f8 !important;
 }
 
-[data-theme="dark"] .navbar {
+[data-theme="dark"] .page-head {
     background-color: #0F0F0F !important;
 }
