@@ -28,6 +28,7 @@ app_include_js = [
 app_include_css = [
     versioned_asset("/assets/dcr/css/workspace_fullwidth.css"),
     versioned_asset("/assets/dcr/css/map.css"),
+    versioned_asset("/assets/dcr/css/dcr_workspace.css"),
 ]
 
 override_whitelisted_methods = {

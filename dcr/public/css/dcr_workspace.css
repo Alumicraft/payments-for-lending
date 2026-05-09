@@ -1,0 +1,90 @@
+/* ============================================================
+   DCR · Workspace styling
+   payments_for_lending/public/css/dcr_workspace.css
+
+   Tints the workspace background to match the sidebar in both
+   light and dark mode. Cards and chart widgets lift off that
+   tinted surface and read as cards.
+
+   Light mode:
+     workspace bg = #f3f3f3   (matches sidebar)
+     card bg      = white     (lifts off page)
+
+   Dark mode:
+     workspace bg = #0F0F0F            (matches .body-sidebar)
+     card bg      = var(--bg-color)    (= #171717, lifts off
+                                         the darker workspace)
+     card border  = var(--border-color) (subtle hairline)
+
+   Selector list covers the workspace ancestor chain so whichever
+   level Frappe paints with white gets overridden. !important is
+   needed to win against Frappe's own background rules.
+
+   Enable via hooks.py:
+       app_include_css = [
+           "/assets/payments_for_lending/css/dcr_workspace.css"
+       ]
+   Then: bench build && bench clear-cache, hard refresh.
+   ============================================================ */
+
+
+/* ------------------------------------------------------------
+   LIGHT MODE
+   ------------------------------------------------------------ */
+
+body,
+.main-section,
+.container.page-body,
+.page-wrapper,
+.page-content,
+.layout-main,
+.layout-main-section-wrapper,
+.layout-main-section,
+.editor-js-container,
+.desk-page.page-main-content {
+    background: #f3f3f3 !important;
+}
+
+.widget.number-widget-box {
+    background: white !important;
+    border: 1px solid #e8e8e8 !important;
+    transition: background-color 180ms ease;
+}
+
+
+/* ------------------------------------------------------------
+   DARK MODE
+   Selector: [data-theme="dark"] (Frappe v15 attribute on <html>)
+   ------------------------------------------------------------ */
+
+[data-theme="dark"] body,
+[data-theme="dark"] .main-section,
+[data-theme="dark"] .container.page-body,
+[data-theme="dark"] .page-wrapper,
+[data-theme="dark"] .page-content,
+[data-theme="dark"] .layout-main,
+[data-theme="dark"] .layout-main-section-wrapper,
+[data-theme="dark"] .layout-main-section,
+[data-theme="dark"] .editor-js-container,
+[data-theme="dark"] .desk-page.page-main-content {
+    background: #0F0F0F !important;
+}
+
+[data-theme="dark"] .widget.number-widget-box {
+    background: var(--bg-color) !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+
+/* ------------------------------------------------------------
+   SPACER WIDGETS
+
+   Frappe gives .widget.spacer a 1px min-height AND
+   background-color: var(--card-bg), which renders as a faint
+   horizontal line in either mode. Spacers exist for vertical
+   gap, not as dividers — make them transparent.
+   ------------------------------------------------------------ */
+
+.widget.spacer {
+    background-color: transparent !important;
+}
