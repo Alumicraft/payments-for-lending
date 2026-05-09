@@ -7,7 +7,7 @@
    tinted surface and read as cards.
 
    Light mode:
-     workspace bg = #f3f3f3   (matches sidebar)
+     workspace bg = #f8f8f8   (matches sidebar)
      card bg      = white     (lifts off page)
 
    Dark mode:
@@ -84,7 +84,7 @@ body.dcr-workspace-fullbleed .layout-main-section-wrapper,
 body.dcr-workspace-fullbleed .layout-main-section,
 body.dcr-workspace-fullbleed .editor-js-container,
 body.dcr-workspace-fullbleed .desk-page.page-main-content {
-    background: #f3f3f3 !important;
+    background: #f8f8f8 !important;
 }
 
 body[data-route^="Workspaces/"] .widget.number-widget-box,
