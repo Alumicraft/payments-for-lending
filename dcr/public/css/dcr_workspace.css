@@ -1,6 +1,6 @@
 /* ============================================================
    DCR · Workspace styling
-   payments_for_lending/public/css/dcr_workspace.css
+   dcr/public/css/dcr_workspace.css
 
    Tints the workspace background to match the sidebar in both
    light and dark mode. Cards and chart widgets lift off that
@@ -16,13 +16,35 @@
                                          the darker workspace)
      card border  = var(--border-color) (subtle hairline)
 
-   Selector list covers the workspace ancestor chain so whichever
-   level Frappe paints with white gets overridden. !important is
-   needed to win against Frappe's own background rules.
+   --------------------------------------------------------------
+   SCOPE — workspace home pages only
 
+   Every selector is gated on one of three workspace signals
+   (same set used by workspace_fullwidth.css):
+
+     1. body[data-route^="Workspaces/"]
+        Frappe v16 sets this on workspace routes.
+
+     2. body:has(.workspace-body)
+        Catches the gap between route change and data-route
+        attribute update.
+
+     3. body.dcr-workspace-fullbleed
+        Toggled by sidebar_fix.js for bare workspace routes
+        (e.g. /app/map) where data-route doesn't use the
+        Workspaces/<Name> shape.
+
+   Pages that are NOT workspaces are excluded by virtue of
+   not matching any of the three signals:
+
+     - Desktop icon grid (/desk, /app) — Frappe Desktop Icon
+       layout, no workspace markers
+     - List, form, report, dashboard, tree views
+
+   --------------------------------------------------------------
    Enable via hooks.py:
        app_include_css = [
-           "/assets/payments_for_lending/css/dcr_workspace.css"
+           "/assets/dcr/css/dcr_workspace.css"
        ]
    Then: bench build && bench clear-cache, hard refresh.
    ============================================================ */
@@ -32,20 +54,42 @@
    LIGHT MODE
    ------------------------------------------------------------ */
 
-body,
-.main-section,
-.container.page-body,
-.page-wrapper,
-.page-content,
-.layout-main,
-.layout-main-section-wrapper,
-.layout-main-section,
-.editor-js-container,
-.desk-page.page-main-content {
+body[data-route^="Workspaces/"],
+body:has(.workspace-body),
+body.dcr-workspace-fullbleed,
+body[data-route^="Workspaces/"] .main-section,
+body[data-route^="Workspaces/"] .container.page-body,
+body[data-route^="Workspaces/"] .page-wrapper,
+body[data-route^="Workspaces/"] .page-content,
+body[data-route^="Workspaces/"] .layout-main,
+body[data-route^="Workspaces/"] .layout-main-section-wrapper,
+body[data-route^="Workspaces/"] .layout-main-section,
+body[data-route^="Workspaces/"] .editor-js-container,
+body[data-route^="Workspaces/"] .desk-page.page-main-content,
+body:has(.workspace-body) .main-section,
+body:has(.workspace-body) .container.page-body,
+body:has(.workspace-body) .page-wrapper,
+body:has(.workspace-body) .page-content,
+body:has(.workspace-body) .layout-main,
+body:has(.workspace-body) .layout-main-section-wrapper,
+body:has(.workspace-body) .layout-main-section,
+body:has(.workspace-body) .editor-js-container,
+body:has(.workspace-body) .desk-page.page-main-content,
+body.dcr-workspace-fullbleed .main-section,
+body.dcr-workspace-fullbleed .container.page-body,
+body.dcr-workspace-fullbleed .page-wrapper,
+body.dcr-workspace-fullbleed .page-content,
+body.dcr-workspace-fullbleed .layout-main,
+body.dcr-workspace-fullbleed .layout-main-section-wrapper,
+body.dcr-workspace-fullbleed .layout-main-section,
+body.dcr-workspace-fullbleed .editor-js-container,
+body.dcr-workspace-fullbleed .desk-page.page-main-content {
     background: #f3f3f3 !important;
 }
 
-.widget.number-widget-box {
+body[data-route^="Workspaces/"] .widget.number-widget-box,
+body:has(.workspace-body) .widget.number-widget-box,
+body.dcr-workspace-fullbleed .widget.number-widget-box {
     background: white !important;
     border: 1px solid #e8e8e8 !important;
     transition: background-color 180ms ease;
@@ -57,20 +101,42 @@ body,
    Selector: [data-theme="dark"] (Frappe v15 attribute on <html>)
    ------------------------------------------------------------ */
 
-[data-theme="dark"] body,
-[data-theme="dark"] .main-section,
-[data-theme="dark"] .container.page-body,
-[data-theme="dark"] .page-wrapper,
-[data-theme="dark"] .page-content,
-[data-theme="dark"] .layout-main,
-[data-theme="dark"] .layout-main-section-wrapper,
-[data-theme="dark"] .layout-main-section,
-[data-theme="dark"] .editor-js-container,
-[data-theme="dark"] .desk-page.page-main-content {
+[data-theme="dark"] body[data-route^="Workspaces/"],
+[data-theme="dark"] body:has(.workspace-body),
+[data-theme="dark"] body.dcr-workspace-fullbleed,
+[data-theme="dark"] body[data-route^="Workspaces/"] .main-section,
+[data-theme="dark"] body[data-route^="Workspaces/"] .container.page-body,
+[data-theme="dark"] body[data-route^="Workspaces/"] .page-wrapper,
+[data-theme="dark"] body[data-route^="Workspaces/"] .page-content,
+[data-theme="dark"] body[data-route^="Workspaces/"] .layout-main,
+[data-theme="dark"] body[data-route^="Workspaces/"] .layout-main-section-wrapper,
+[data-theme="dark"] body[data-route^="Workspaces/"] .layout-main-section,
+[data-theme="dark"] body[data-route^="Workspaces/"] .editor-js-container,
+[data-theme="dark"] body[data-route^="Workspaces/"] .desk-page.page-main-content,
+[data-theme="dark"] body:has(.workspace-body) .main-section,
+[data-theme="dark"] body:has(.workspace-body) .container.page-body,
+[data-theme="dark"] body:has(.workspace-body) .page-wrapper,
+[data-theme="dark"] body:has(.workspace-body) .page-content,
+[data-theme="dark"] body:has(.workspace-body) .layout-main,
+[data-theme="dark"] body:has(.workspace-body) .layout-main-section-wrapper,
+[data-theme="dark"] body:has(.workspace-body) .layout-main-section,
+[data-theme="dark"] body:has(.workspace-body) .editor-js-container,
+[data-theme="dark"] body:has(.workspace-body) .desk-page.page-main-content,
+[data-theme="dark"] body.dcr-workspace-fullbleed .main-section,
+[data-theme="dark"] body.dcr-workspace-fullbleed .container.page-body,
+[data-theme="dark"] body.dcr-workspace-fullbleed .page-wrapper,
+[data-theme="dark"] body.dcr-workspace-fullbleed .page-content,
+[data-theme="dark"] body.dcr-workspace-fullbleed .layout-main,
+[data-theme="dark"] body.dcr-workspace-fullbleed .layout-main-section-wrapper,
+[data-theme="dark"] body.dcr-workspace-fullbleed .layout-main-section,
+[data-theme="dark"] body.dcr-workspace-fullbleed .editor-js-container,
+[data-theme="dark"] body.dcr-workspace-fullbleed .desk-page.page-main-content {
     background: #0F0F0F !important;
 }
 
-[data-theme="dark"] .widget.number-widget-box {
+[data-theme="dark"] body[data-route^="Workspaces/"] .widget.number-widget-box,
+[data-theme="dark"] body:has(.workspace-body) .widget.number-widget-box,
+[data-theme="dark"] body.dcr-workspace-fullbleed .widget.number-widget-box {
     background: var(--bg-color) !important;
     border: 1px solid var(--border-color) !important;
 }
@@ -83,8 +149,11 @@ body,
    background-color: var(--card-bg), which renders as a faint
    horizontal line in either mode. Spacers exist for vertical
    gap, not as dividers — make them transparent.
+   Scoped to workspace pages only, same as the rest of this file.
    ------------------------------------------------------------ */
 
-.widget.spacer {
+body[data-route^="Workspaces/"] .widget.spacer,
+body:has(.workspace-body) .widget.spacer,
+body.dcr-workspace-fullbleed .widget.spacer {
     background-color: transparent !important;
 }
