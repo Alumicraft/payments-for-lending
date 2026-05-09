@@ -157,3 +157,29 @@ body:has(.workspace-body) .widget.spacer,
 body.dcr-workspace-fullbleed .widget.spacer {
     background-color: transparent !important;
 }
+
+
+/* ------------------------------------------------------------
+   PAGE HEAD (breadcrumb bar) — workspace home only
+
+   The .page-head strip (page title + breadcrumb chain +
+   actions) defaults to white. On workspace home the white bar
+   sits on top of the tinted body bg and creates a visible seam.
+   Tint it so workspace home reads as one continuous surface.
+
+   Scoped to the same three workspace signals as the bg rules
+   above — list/form/report/dashboard pages keep their default
+   white .page-head.
+   ------------------------------------------------------------ */
+
+body[data-route^="Workspaces/"] .page-head,
+body:has(.workspace-body) .page-head,
+body.dcr-workspace-fullbleed .page-head {
+    background-color: #f8f8f8 !important;
+}
+
+[data-theme="dark"] body[data-route^="Workspaces/"] .page-head,
+[data-theme="dark"] body:has(.workspace-body) .page-head,
+[data-theme="dark"] body.dcr-workspace-fullbleed .page-head {
+    background-color: #0F0F0F !important;
+}
