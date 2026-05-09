@@ -1,0 +1,28 @@
+/* ============================================================
+   DCR · Global chrome styling
+   dcr/public/css/dcr_global.css
+
+   Cross-cutting rules that apply on every desk page (not just
+   workspace home). Keep workspace-only tweaks in
+   dcr_workspace.css.
+
+   --------------------------------------------------------------
+   TOP NAVBAR / BREADCRUMB BAR
+
+   Frappe v16 renders the breadcrumb chain (#navbar-breadcrumbs)
+   inside the top .navbar, alongside the app menu, search, and
+   user menu. Tint the whole navbar to match the sidebar so the
+   sidebar + top bar read as one continuous chrome surface in
+   both light and dark mode.
+
+   Light: #f8f8f8  (matches .body-sidebar computed bg)
+   Dark:  #0F0F0F  (matches .body-sidebar computed bg)
+   ============================================================ */
+
+.navbar {
+    background-color: #f8f8f8 !important;
+}
+
+[data-theme="dark"] .navbar {
+    background-color: #0F0F0F !important;
+}
