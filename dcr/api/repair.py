@@ -34,8 +34,8 @@ def _purge_orphan_workspace_refs(dry_run=False):
     """Internal entry point — no permission check. Called from `after_migrate`
     so deploys auto-heal workspaces that ERPNext's `sync_fixtures` restores
     with refs to charts/cards we have since deleted."""
-    charts = {c.name for c in frappe.get_all("Dashboard Chart", pluck="name")}
-    cards = {c.name for c in frappe.get_all("Number Card", pluck="name")}
+    charts = set(frappe.get_all("Dashboard Chart", pluck="name"))
+    cards = set(frappe.get_all("Number Card", pluck="name"))
 
     report = []
 
