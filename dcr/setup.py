@@ -78,6 +78,17 @@ def after_install():
     # which wipes any cards/charts placed via the Workspace Builder.
     # Add them manually: Workspace Builder → Access → drag in the card/chart.
 
+    # Frappe's `sync_fixtures` re-imports ERPNext Workspace JSON on every
+    # migrate, restoring chart/card references to docs we've since deleted.
+    # Stale refs in `content` blocks render with width 0 → negative SVG rect
+    # widths → frappe-charts retries forever → workspace skeleton hangs.
+    # Sweep orphans after fixtures have synced.
+    try:
+        from dcr.api.repair import _purge_orphan_workspace_refs
+        _purge_orphan_workspace_refs(dry_run=False)
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "purge_orphan_workspace_refs (after_install)")
+
     # The patches.txt entry runs the LA-connections cleanup once; the
     # standard Lending app re-syncs Loan Application's DocType Links on
     # every migrate, which resets our changes. Re-apply post-migrate.
