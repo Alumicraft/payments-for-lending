@@ -84,11 +84,24 @@ def _purge_orphan_workspace_refs(dry_run=False):
         report.append({"workspace": ws_name, "actions": actions})
 
         if not dry_run:
-            doc.set("charts", kept_charts)
-            doc.set("number_cards", kept_cards)
-            doc.content = json.dumps(kept_blocks)
-            doc.flags.ignore_permissions = True
-            doc.save()
+            # `doc.save()` runs Workspace.validate(), which in v16 rejects
+            # writes that remove linked cards/charts (raises ValidationError →
+            # HTTP 417). Bypass it: content is a single field (db.set_value),
+            # and child-table rows are removed directly. This matches what
+            # we did from the desk console manually.
+            frappe.db.set_value(
+                "Workspace", ws_name, "content", json.dumps(kept_blocks),
+                update_modified=True,
+            )
+            keep_chart_rows = {row.name for row in kept_charts if getattr(row, "name", None)}
+            for row in (doc.get("charts") or []):
+                if row.name and row.name not in keep_chart_rows:
+                    frappe.db.delete("Workspace Chart", {"name": row.name})
+            keep_card_rows = {row.name for row in kept_cards if getattr(row, "name", None)}
+            for row in (doc.get("number_cards") or []):
+                if row.name and row.name not in keep_card_rows:
+                    frappe.db.delete("Workspace Number Card", {"name": row.name})
+            frappe.clear_document_cache("Workspace", ws_name)
 
     if not dry_run:
         frappe.db.commit()
