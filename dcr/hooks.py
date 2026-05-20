@@ -32,7 +32,8 @@ app_include_css = [
 ]
 
 override_whitelisted_methods = {
-    "frappe.desk.doctype.desktop_layout.desktop_layout.get_layout": "dcr.api.boot.get_layout_with_icons"
+    "frappe.desk.doctype.desktop_layout.desktop_layout.get_layout": "dcr.api.boot.get_layout_with_icons",
+    "frappe.desk.doctype.workspace.workspace.save_page": "dcr.api.workspace.save_page",
 }
 
 after_install = "dcr.setup.after_install"
