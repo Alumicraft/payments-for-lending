@@ -66,6 +66,7 @@ class TestLoanApplicationGuards(unittest.TestCase):
         from dcr.api.lending import validate_loan_application
 
         hbr = _Doc(
+            name="HBR-FLOORED",
             customer="CUST-001",
             home_invoice_plus_freight=215000,
             home_buyer="BUYER-001",
@@ -144,6 +145,7 @@ class TestLoanApplicationGuards(unittest.TestCase):
         from dcr.api.lending import get_loan_application_defaults
 
         hbr = _Doc(
+            name="HBR-FLOORED",
             customer="CUST-001",
             home_invoice_plus_freight=215000,
             home_buyer="BUYER-001",
@@ -174,6 +176,7 @@ class TestLoanApplicationGuards(unittest.TestCase):
         defaults = get_loan_application_defaults("HBR-FLOORED")
 
         self.assertEqual(defaults["applicant_type"], "Customer")
+        self.assertEqual(defaults["home_build_request"], "HBR-FLOORED")
         self.assertEqual(defaults["applicant"], "CUST-001")
         self.assertEqual(defaults["loan_amount"], 215000)
         self.assertEqual(defaults["applicant_email_address"], "dealer@example.test")
@@ -294,6 +297,46 @@ class TestLoanDefaults(unittest.TestCase):
         self.assertEqual(defaults["home_serial_no"], "E2E-20260525-001")
         self.assertEqual(defaults["factory"], "Champion Home Builders")
         self.assertEqual(defaults["custom_rebate_percentage"], 2.5)
+
+    @patch("dcr.api.lending.frappe")
+    def test_loan_defaults_infers_hbr_for_older_application_without_link(
+        self, mock_frappe
+    ):
+        from dcr.api.lending import get_loan_defaults_from_application
+
+        def get_value(doctype, name_or_filters, fieldname, *args, **kwargs):
+            if doctype == "Loan Application":
+                return _Doc(
+                    docstatus=1,
+                    applicant="CUST-001",
+                    loan_product="Standard",
+                    loan_amount=25000,
+                    rate_of_interest=12,
+                    repayment_method="Repay Over Number of Periods",
+                    repayment_periods=12,
+                    home_build_request=None,
+                    home_serial_no="E2E-20260525-001",
+                    buyer_name=None,
+                    factory="Champion Home Builders",
+                )
+            if doctype == "Home Build Request":
+                self.assertEqual(
+                    name_or_filters,
+                    {
+                        "home_serial_no": "E2E-20260525-001",
+                        "docstatus": 1,
+                        "customer": "CUST-001",
+                        "factory": "Champion Home Builders",
+                    },
+                )
+                return "ACC-HBR-2026-00011"
+            return None
+
+        mock_frappe.db.get_value.side_effect = get_value
+
+        defaults = get_loan_defaults_from_application("ACC-LOAP-2026-00007")
+
+        self.assertEqual(defaults["home_build_request"], "ACC-HBR-2026-00011")
 
 
 if __name__ == "__main__":

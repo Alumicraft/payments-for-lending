@@ -224,6 +224,7 @@ def _populate_loan_application_from_hbr(doc, hbr):
 
 def _get_loan_application_hbr_defaults(hbr):
     return {
+        "home_build_request": hbr.get("name") or getattr(hbr, "name", None),
         "applicant_type": "Customer",
         "applicant": hbr.get("customer"),
         "loan_amount": hbr.get("home_invoice_plus_freight"),
@@ -373,6 +374,14 @@ def _compute_deal_reference(loan_application, applicant, current=None):
     if not la_fields:
         return updates
 
+    if not la_fields.get("home_build_request"):
+        inferred_hbr = _infer_hbr_from_loan_application_fields(la_fields, applicant)
+        if inferred_hbr:
+            if hasattr(la_fields, "set"):
+                la_fields.set("home_build_request", inferred_hbr)
+            else:
+                la_fields["home_build_request"] = inferred_hbr
+
     current = current or {}
 
     for field, value in la_fields.items():
@@ -391,6 +400,23 @@ def _compute_deal_reference(loan_application, applicant, current=None):
             updates["custom_rebate_percentage"] = rebate
 
     return updates
+
+
+def _infer_hbr_from_loan_application_fields(la_fields, applicant=None):
+    """Fallback for older Loan Applications created before the HBR link was saved."""
+    if not la_fields or not la_fields.get("home_serial_no"):
+        return None
+
+    filters = {
+        "home_serial_no": la_fields.get("home_serial_no"),
+        "docstatus": 1,
+    }
+    if applicant:
+        filters["customer"] = applicant
+    if la_fields.get("factory"):
+        filters["factory"] = la_fields.get("factory")
+
+    return frappe.db.get_value("Home Build Request", filters, "name")
 
 
 def _populate_deal_reference(doc):
@@ -452,6 +478,10 @@ def get_loan_defaults_from_application(loan_application):
             )
         )
 
+    home_build_request = la.home_build_request or _infer_hbr_from_loan_application_fields(
+        la, la.applicant
+    )
+
     defaults = {
         "loan_application": loan_application,
         "applicant": la.applicant,
@@ -460,7 +490,7 @@ def get_loan_defaults_from_application(loan_application):
         "rate_of_interest": la.rate_of_interest,
         "repayment_method": la.repayment_method,
         "repayment_periods": la.repayment_periods,
-        "home_build_request": la.home_build_request,
+        "home_build_request": home_build_request,
         "home_serial_no": la.home_serial_no,
         "buyer_name": la.buyer_name,
         "factory": la.factory,
@@ -470,7 +500,7 @@ def get_loan_defaults_from_application(loan_application):
             loan_application,
             la.applicant,
             {
-                "home_build_request": la.home_build_request,
+                "home_build_request": home_build_request,
                 "home_serial_no": la.home_serial_no,
                 "buyer_name": la.buyer_name,
                 "factory": la.factory,
