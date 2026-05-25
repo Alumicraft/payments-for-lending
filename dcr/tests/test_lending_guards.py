@@ -78,11 +78,10 @@ class TestLoanApplicationGuards(unittest.TestCase):
                 return 1
             if doctype == "Home Build Request" and fieldname == "financing_type":
                 return "Floored"
-            if doctype == "Customer" and fieldname == ["email_id", "mobile_no", "phone"]:
+            if doctype == "Customer" and fieldname == ["email_id", "mobile_no"]:
                 return {
                     "email_id": "dealer@example.test",
                     "mobile_no": "555-111-2222",
-                    "phone": None,
                 }
             if doctype == "Customer" and fieldname == "default_loan_product":
                 return "Dealer Floor Plan"
@@ -157,11 +156,10 @@ class TestLoanApplicationGuards(unittest.TestCase):
                 return 1
             if doctype == "Home Build Request" and fieldname == "financing_type":
                 return "Floored"
-            if doctype == "Customer" and fieldname == ["email_id", "mobile_no", "phone"]:
+            if doctype == "Customer" and fieldname == ["email_id", "mobile_no"]:
                 return {
                     "email_id": "dealer@example.test",
                     "mobile_no": "555-111-2222",
-                    "phone": None,
                 }
             if doctype == "Customer" and fieldname == "default_loan_product":
                 return "Dealer Floor Plan"
@@ -204,15 +202,14 @@ class TestLoanApplicationGuards(unittest.TestCase):
                 return 1
             if doctype == "Home Build Request" and fieldname == "financing_type":
                 return "Floored"
-            if doctype == "Customer" and fieldname == ["email_id", "mobile_no", "phone"]:
-                return {"email_id": None, "mobile_no": None, "phone": None}
+            if doctype == "Customer" and fieldname == ["email_id", "mobile_no"]:
+                return {"email_id": None, "mobile_no": None}
             if doctype == "Dynamic Link":
                 return "CONT-001"
-            if doctype == "Contact" and fieldname == ["email_id", "mobile_no", "phone"]:
+            if doctype == "Contact" and fieldname == ["email_id", "mobile_no"]:
                 return {
                     "email_id": "linked-contact@example.test",
-                    "mobile_no": None,
-                    "phone": "555-333-4444",
+                    "mobile_no": "555-333-4444",
                 }
             if doctype == "MIFA":
                 return None

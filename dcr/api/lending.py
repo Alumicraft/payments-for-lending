@@ -257,14 +257,11 @@ def _get_customer_contact_details(customer):
     customer_details = frappe.db.get_value(
         "Customer",
         customer,
-        ["email_id", "mobile_no", "phone"],
+        ["email_id", "mobile_no"],
         as_dict=True,
     ) or {}
     details["email"] = _get_value(customer_details, "email_id")
-    details["phone"] = (
-        _get_value(customer_details, "mobile_no")
-        or _get_value(customer_details, "phone")
-    )
+    details["phone"] = _get_value(customer_details, "mobile_no")
 
     if details["email"] and details["phone"]:
         return details
@@ -284,14 +281,11 @@ def _get_customer_contact_details(customer):
     contact_details = frappe.db.get_value(
         "Contact",
         contact_name,
-        ["email_id", "mobile_no", "phone"],
+        ["email_id", "mobile_no"],
         as_dict=True,
     ) or {}
     details["email"] = details["email"] or _get_value(contact_details, "email_id")
-    details["phone"] = details["phone"] or (
-        _get_value(contact_details, "mobile_no")
-        or _get_value(contact_details, "phone")
-    )
+    details["phone"] = details["phone"] or _get_value(contact_details, "mobile_no")
 
     return details
 
