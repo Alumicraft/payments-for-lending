@@ -96,6 +96,7 @@ class TestLoanClientScript(unittest.TestCase):
         )
         self.assertIn("function current_loan_application()", script)
         self.assertIn('new URLSearchParams(window.location.search).get("loan_application")', script)
+        self.assertIn('window.location.pathname === "/desk/loan"', script)
         self.assertIn("function is_create_loan_click(target)", script)
         self.assertIn('label === "Add Loan" || label === "Create a new Loan"', script)
         self.assertIn("method: \"dcr.api.lending.get_loan_defaults_from_application\"", script)

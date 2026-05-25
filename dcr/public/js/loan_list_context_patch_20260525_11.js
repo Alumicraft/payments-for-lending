@@ -17,7 +17,10 @@
     function on_loan_list_route() {
         var route = frappe.get_route ? frappe.get_route() : [];
         if (route[0] === "List" && route[1] === "Loan") return true;
-        return window.location.pathname.indexOf("/desk/loan/view/list") !== -1;
+        return (
+            window.location.pathname.indexOf("/desk/loan/view/list") !== -1 ||
+            window.location.pathname === "/desk/loan"
+        );
     }
 
     function create_loan_from_application(loan_application) {
