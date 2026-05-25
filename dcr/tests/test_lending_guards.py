@@ -84,6 +84,8 @@ class TestLoanApplicationGuards(unittest.TestCase):
                     "mobile_no": "555-111-2222",
                     "phone": None,
                 }
+            if doctype == "Customer" and fieldname == "default_loan_product":
+                return "Dealer Floor Plan"
             if doctype == "MIFA":
                 return None
             return None
@@ -131,6 +133,51 @@ class TestLoanApplicationGuards(unittest.TestCase):
         self.assertEqual(doc.custom_projected_sales_price, 250000)
         self.assertEqual(doc.applicant_email_address, "dealer@example.test")
         self.assertEqual(doc.applicant_phone_number, "555-111-2222")
+        self.assertEqual(doc.loan_product, "Dealer Floor Plan")
+
+    @patch("dcr.api.lending.frappe")
+    def test_loan_application_defaults_endpoint_returns_client_mandatory_fields(
+        self, mock_frappe
+    ):
+        from dcr.api.lending import get_loan_application_defaults
+
+        hbr = _Doc(
+            customer="CUST-001",
+            home_invoice_plus_freight=215000,
+            home_buyer="BUYER-001",
+            home_serial_no="SER-001",
+            factory="Factory A",
+            model_name="Model A",
+            space_rent=123,
+            selling_price=250000,
+        )
+
+        def get_value(doctype, name_or_filters, fieldname, *args, **kwargs):
+            if doctype == "Home Build Request" and fieldname == "docstatus":
+                return 1
+            if doctype == "Home Build Request" and fieldname == "financing_type":
+                return "Floored"
+            if doctype == "Customer" and fieldname == ["email_id", "mobile_no", "phone"]:
+                return {
+                    "email_id": "dealer@example.test",
+                    "mobile_no": "555-111-2222",
+                    "phone": None,
+                }
+            if doctype == "Customer" and fieldname == "default_loan_product":
+                return "Dealer Floor Plan"
+            return None
+
+        mock_frappe.db.get_value.side_effect = get_value
+        mock_frappe.get_doc.return_value = hbr
+
+        defaults = get_loan_application_defaults("HBR-FLOORED")
+
+        self.assertEqual(defaults["applicant_type"], "Customer")
+        self.assertEqual(defaults["applicant"], "CUST-001")
+        self.assertEqual(defaults["loan_amount"], 215000)
+        self.assertEqual(defaults["applicant_email_address"], "dealer@example.test")
+        self.assertEqual(defaults["applicant_phone_number"], "555-111-2222")
+        self.assertEqual(defaults["loan_product"], "Dealer Floor Plan")
 
     @patch("dcr.api.lending.validate_advance_date")
     @patch("dcr.api.lending.get_dealer_outstanding_balance")

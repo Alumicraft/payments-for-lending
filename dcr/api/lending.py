@@ -62,6 +62,44 @@ def get_available_credit(customer):
     }
 
 
+@frappe.whitelist()
+def get_loan_application_defaults(home_build_request):
+    """Return HBR-derived defaults needed before client-side mandatory validation."""
+    if not home_build_request:
+        return {}
+
+    hbr_status = frappe.db.get_value(
+        "Home Build Request", home_build_request, "docstatus"
+    )
+    if hbr_status != 1:
+        frappe.throw(
+            _("Home Build Request {0} must be submitted before linking to a Loan Application.").format(
+                home_build_request
+            )
+        )
+
+    financing_type = frappe.db.get_value(
+        "Home Build Request", home_build_request, "financing_type"
+    )
+    if financing_type != "Floored":
+        frappe.throw(
+            _("Loan Applications can only be created for Floored Home Build Requests. "
+              "{0} is {1}.").format(home_build_request, financing_type or _("not marked Floored"))
+        )
+
+    hbr = frappe.get_doc("Home Build Request", home_build_request)
+    defaults = _get_loan_application_hbr_defaults(hbr)
+    customer = defaults.get("applicant")
+    if customer:
+        contact = _get_customer_contact_details(customer)
+        defaults["applicant_email_address"] = contact.get("email")
+        defaults["applicant_phone_number"] = contact.get("phone")
+        defaults["loan_product"] = frappe.db.get_value(
+            "Customer", customer, "default_loan_product"
+        )
+    return defaults
+
+
 def validate_loan_application(doc, method):
     """Hook called on Loan Application validate.
 
@@ -169,7 +207,23 @@ def validate_loan_application(doc, method):
 
 def _populate_loan_application_from_hbr(doc, hbr):
     """Backfill HBR-derived fields when native connection creation skips fetches."""
-    defaults = {
+    defaults = _get_loan_application_hbr_defaults(hbr)
+    for fieldname, value in defaults.items():
+        if value is not None and not doc.get(fieldname):
+            doc.set(fieldname, value)
+
+    if doc.get("applicant") and not doc.get("loan_product"):
+        loan_product = frappe.db.get_value(
+            "Customer", doc.applicant, "default_loan_product"
+        )
+        if loan_product:
+            doc.set("loan_product", loan_product)
+
+    _populate_applicant_contact(doc)
+
+
+def _get_loan_application_hbr_defaults(hbr):
+    return {
         "applicant_type": "Customer",
         "applicant": hbr.get("customer"),
         "loan_amount": hbr.get("home_invoice_plus_freight"),
@@ -182,11 +236,6 @@ def _populate_loan_application_from_hbr(doc, hbr):
         "custom_monthly_space_rent": hbr.get("space_rent"),
         "custom_projected_sales_price": hbr.get("selling_price"),
     }
-    for fieldname, value in defaults.items():
-        if value is not None and not doc.get(fieldname):
-            doc.set(fieldname, value)
-
-    _populate_applicant_contact(doc)
 
 
 def _populate_applicant_contact(doc):
