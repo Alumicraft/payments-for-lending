@@ -25,6 +25,8 @@ frappe.ui.form.on('Loan Application', {
     },
 
     refresh: function(frm) {
+        hydrate_from_home_build_request(frm);
+
         // Force-show read-only fields (Frappe v15 hides empty read-only fields on new forms)
         ['rate_of_interest', 'buyer_name', 'available_credit', 'outstanding_loan_balance',
          'custom_current_yn', 'repayment_amount',

@@ -66,6 +66,7 @@ class TestLoanApplicationClientScript(unittest.TestCase):
 
         self.assertIn("onload: function(frm)", script)
         self.assertIn("hydrate_from_home_build_request(frm)", script)
+        self.assertIn("refresh: function(frm)", script)
         self.assertIn("function hydrate_from_home_build_request(frm)", script)
         self.assertIn("frm.doc.__hbr_hydrated === frm.doc.home_build_request", script)
         self.assertIn("frm.doc.__hbr_hydrated = frm.doc.home_build_request", script)
