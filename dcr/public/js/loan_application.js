@@ -21,11 +21,11 @@ frappe.ui.form.on('Loan Application', {
     },
 
     onload: function(frm) {
-        hydrate_from_home_build_request(frm);
+        schedule_hbr_hydration(frm);
     },
 
     refresh: function(frm) {
-        hydrate_from_home_build_request(frm);
+        schedule_hbr_hydration(frm);
 
         // Force-show read-only fields (Frappe v15 hides empty read-only fields on new forms)
         ['rate_of_interest', 'buyer_name', 'available_credit', 'outstanding_loan_balance',
@@ -127,7 +127,7 @@ frappe.ui.form.on('Loan Application', {
     },
 
     home_build_request: function(frm) {
-        hydrate_from_home_build_request(frm);
+        schedule_hbr_hydration(frm);
     },
 
     loan_amount: function(frm) {
@@ -149,15 +149,46 @@ frappe.ui.form.on('Loan Application', {
 });
 
 
+function schedule_hbr_hydration(frm) {
+    if (!frm.is_new()) return;
+
+    hydrate_from_home_build_request(frm);
+
+    if (hbr_defaults_complete(frm)) return;
+
+    frm.doc.__hbr_hydration_attempts = frm.doc.__hbr_hydration_attempts || 0;
+    if (frm.doc.__hbr_hydration_attempts >= 20) return;
+
+    frm.doc.__hbr_hydration_attempts += 1;
+    setTimeout(function() {
+        schedule_hbr_hydration(frm);
+    }, 300);
+}
+
+
+function hbr_defaults_complete(frm) {
+    if (!frm.doc.home_build_request) return false;
+    return !!(frm.doc.applicant && frm.doc.applicant_email_address && frm.doc.loan_product);
+}
+
+
 function hydrate_from_home_build_request(frm) {
-    if (!frm.is_new() || !frm.doc.home_build_request || frm.doc.__hbr_hydrated === frm.doc.home_build_request) return;
-    frm.doc.__hbr_hydrated = frm.doc.home_build_request;
+    if (!frm.is_new() || !frm.doc.home_build_request) return;
+    if (frm.doc.__hbr_hydrating === frm.doc.home_build_request) return;
+    if (frm.doc.__hbr_hydrated === frm.doc.home_build_request && hbr_defaults_complete(frm)) return;
+
+    frm.doc.__hbr_hydrating = frm.doc.home_build_request;
 
     frappe.call({
         method: 'dcr.api.lending.get_loan_application_defaults',
         args: { home_build_request: frm.doc.home_build_request },
         callback: function(r) {
             apply_loan_application_defaults(frm, r.message || {});
+            frm.doc.__hbr_hydrated = frm.doc.home_build_request;
+            frm.doc.__hbr_hydrating = null;
+        },
+        error: function() {
+            frm.doc.__hbr_hydrating = null;
         }
     });
 
