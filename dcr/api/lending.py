@@ -174,6 +174,7 @@ def _populate_loan_application_from_hbr(doc, hbr):
         "applicant": hbr.get("customer"),
         "loan_amount": hbr.get("home_invoice_plus_freight"),
         "requested_advance_amount": hbr.get("home_invoice_plus_freight"),
+        "custom_quote_amount": hbr.get("home_invoice_plus_freight"),
         "buyer_name": hbr.get("home_buyer"),
         "home_serial_no": hbr.get("home_serial_no"),
         "factory": hbr.get("factory"),
@@ -184,6 +185,72 @@ def _populate_loan_application_from_hbr(doc, hbr):
     for fieldname, value in defaults.items():
         if value is not None and not doc.get(fieldname):
             doc.set(fieldname, value)
+
+    _populate_applicant_contact(doc)
+
+
+def _populate_applicant_contact(doc):
+    if doc.get("applicant_type") != "Customer" or not doc.get("applicant"):
+        return
+
+    details = _get_customer_contact_details(doc.applicant)
+    if details.get("email") and not doc.get("applicant_email_address"):
+        doc.set("applicant_email_address", details.get("email"))
+    if details.get("phone") and not doc.get("applicant_phone_number"):
+        doc.set("applicant_phone_number", details.get("phone"))
+
+
+def _get_customer_contact_details(customer):
+    details = {"email": None, "phone": None}
+    if not customer:
+        return details
+
+    customer_details = frappe.db.get_value(
+        "Customer",
+        customer,
+        ["email_id", "mobile_no", "phone"],
+        as_dict=True,
+    ) or {}
+    details["email"] = _get_value(customer_details, "email_id")
+    details["phone"] = (
+        _get_value(customer_details, "mobile_no")
+        or _get_value(customer_details, "phone")
+    )
+
+    if details["email"] and details["phone"]:
+        return details
+
+    contact_name = frappe.db.get_value(
+        "Dynamic Link",
+        {
+            "parenttype": "Contact",
+            "link_doctype": "Customer",
+            "link_name": customer,
+        },
+        "parent",
+    )
+    if not contact_name:
+        return details
+
+    contact_details = frappe.db.get_value(
+        "Contact",
+        contact_name,
+        ["email_id", "mobile_no", "phone"],
+        as_dict=True,
+    ) or {}
+    details["email"] = details["email"] or _get_value(contact_details, "email_id")
+    details["phone"] = details["phone"] or (
+        _get_value(contact_details, "mobile_no")
+        or _get_value(contact_details, "phone")
+    )
+
+    return details
+
+
+def _get_value(source, key):
+    if isinstance(source, dict):
+        return source.get(key)
+    return getattr(source, key, None)
 
 
 def validate_advance_date(factory, requested_date):

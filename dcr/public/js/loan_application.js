@@ -29,7 +29,8 @@ frappe.ui.form.on('Loan Application', {
         ['rate_of_interest', 'buyer_name', 'available_credit', 'outstanding_loan_balance',
          'custom_current_yn', 'repayment_amount',
          'total_payable_amount', 'total_payable_interest', 'custom_projected_equity',
-         'custom_projected_ltv', 'custom_monthly_space_rent'].forEach(function(fn) {
+         'custom_projected_ltv', 'custom_monthly_space_rent', 'custom_quote_amount',
+         'applicant_email_address', 'applicant_phone_number'].forEach(function(fn) {
             var field = frm.fields_dict[fn];
             if (field && field.$wrapper) field.$wrapper.show();
         });
@@ -42,6 +43,7 @@ frappe.ui.form.on('Loan Application', {
 
         // Fetch loan product + credit info when applicant is set
         if (frm.doc.applicant) {
+            hydrate_applicant_contact(frm);
             if (!frm.doc.loan_product) {
                 frappe.db.get_value('Customer', frm.doc.applicant, 'default_loan_product', function(r) {
                     if (r && r.default_loan_product) {
@@ -157,12 +159,14 @@ function hydrate_from_home_build_request(frm) {
         set_if_empty(frm, 'applicant', hbr.customer);
         set_if_empty(frm, 'loan_amount', hbr.home_invoice_plus_freight);
         set_if_empty(frm, 'requested_advance_amount', hbr.home_invoice_plus_freight);
+        set_if_empty(frm, 'custom_quote_amount', hbr.home_invoice_plus_freight);
         set_if_empty(frm, 'buyer_name', hbr.home_buyer);
         set_if_empty(frm, 'home_serial_no', hbr.home_serial_no);
         set_if_empty(frm, 'factory', hbr.factory);
         set_if_empty(frm, 'floor_plan', hbr.model_name);
         set_if_empty(frm, 'custom_monthly_space_rent', hbr.space_rent);
         set_if_empty(frm, 'custom_projected_sales_price', hbr.selling_price);
+        hydrate_applicant_contact(frm);
 
         frappe.after_ajax(function() {
             frm.doc.__credit_fetched = false;
@@ -183,6 +187,44 @@ function apply_hbr_fetch_from_fields(frm, hbr, link_fieldname) {
 }
 
 
+function hydrate_applicant_contact(frm) {
+    if (!frm.doc.applicant || frm.doc.__contact_fetched_for === frm.doc.applicant) return;
+    frm.doc.__contact_fetched_for = frm.doc.applicant;
+
+    frappe.db.get_value('Customer', frm.doc.applicant, ['email_id', 'mobile_no', 'phone'], function(customer) {
+        apply_contact_details(frm, customer);
+        if (frm.doc.applicant_email_address && frm.doc.applicant_phone_number) return;
+
+        frappe.call({
+            method: 'frappe.client.get_list',
+            args: {
+                doctype: 'Dynamic Link',
+                filters: {
+                    parenttype: 'Contact',
+                    link_doctype: 'Customer',
+                    link_name: frm.doc.applicant
+                },
+                fields: ['parent'],
+                limit_page_length: 1
+            },
+            callback: function(r) {
+                if (!r.message || !r.message.length) return;
+                frappe.db.get_value('Contact', r.message[0].parent, ['email_id', 'mobile_no', 'phone'], function(contact) {
+                    apply_contact_details(frm, contact);
+                });
+            }
+        });
+    });
+}
+
+
+function apply_contact_details(frm, details) {
+    if (!details) return;
+    set_if_empty(frm, 'applicant_email_address', details.email_id);
+    set_if_empty(frm, 'applicant_phone_number', details.mobile_no || details.phone);
+}
+
+
 function set_if_empty(frm, fieldname, value) {
     if (value === undefined || value === null || value === '') return;
     if (frm.doc[fieldname]) return;
@@ -199,14 +241,35 @@ function render_hbr_documents(frm) {
     // is_virtual=1 so Frappe doesn't persist these mirrored rows on save.
     if (!frm.fields_dict.custom_hbr_documents) return; // field not added yet
     if (!frm.doc.home_build_request) {
-        frm.clear_table('custom_hbr_documents');
-        frm.refresh_field('custom_hbr_documents');
+        if ((frm.doc.custom_hbr_documents || []).length) {
+            frm.clear_table('custom_hbr_documents');
+            frm.refresh_field('custom_hbr_documents');
+        }
         return;
     }
 
     frappe.db.get_doc('Home Build Request', frm.doc.home_build_request).then(function(hbr) {
+        var target = (hbr.doc_checklist || []).map(function(r) {
+            return {
+                document_type: r.document_type || '',
+                waived: r.waived || 0,
+                attachment: r.attachment || '',
+                received_date: r.received_date || ''
+            };
+        });
+        var current = (frm.doc.custom_hbr_documents || []).map(function(r) {
+            return {
+                document_type: r.document_type || '',
+                waived: r.waived || 0,
+                attachment: r.attachment || '',
+                received_date: r.received_date || ''
+            };
+        });
+        if (JSON.stringify(current) === JSON.stringify(target)) return;
+
+        var was_dirty = frm.is_dirty && frm.is_dirty();
         frm.clear_table('custom_hbr_documents');
-        (hbr.doc_checklist || []).forEach(function(r) {
+        target.forEach(function(r) {
             var row = frm.add_child('custom_hbr_documents');
             row.document_type = r.document_type;
             row.waived = r.waived;
@@ -214,6 +277,10 @@ function render_hbr_documents(frm) {
             row.received_date = r.received_date;
         });
         frm.refresh_field('custom_hbr_documents');
+        if (!was_dirty && !frm.is_new()) {
+            frm.doc.__unsaved = 0;
+            frm.dirty_flag = false;
+        }
     });
 }
 

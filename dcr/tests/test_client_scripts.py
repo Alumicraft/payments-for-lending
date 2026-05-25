@@ -65,7 +65,31 @@ class TestLoanApplicationClientScript(unittest.TestCase):
         self.assertIn("df.fetch_from.indexOf(link_fieldname + '.')", script)
         self.assertIn("set_if_empty(frm, 'applicant', hbr.customer)", script)
         self.assertIn("set_if_empty(frm, 'loan_amount', hbr.home_invoice_plus_freight)", script)
+        self.assertIn("set_if_empty(frm, 'requested_advance_amount', hbr.home_invoice_plus_freight)", script)
+        self.assertIn("set_if_empty(frm, 'custom_quote_amount', hbr.home_invoice_plus_freight)", script)
         self.assertIn("set_if_empty(frm, 'buyer_name', hbr.home_buyer)", script)
+        self.assertIn("hydrate_applicant_contact(frm)", script)
+
+    def test_new_loan_application_fetches_required_contact_fields(self):
+        script = (ROOT / "dcr/public/js/loan_application.js").read_text()
+
+        self.assertIn("function hydrate_applicant_contact(frm)", script)
+        self.assertIn("frm.doc.__contact_fetched_for === frm.doc.applicant", script)
+        self.assertIn("frappe.db.get_value('Customer', frm.doc.applicant, ['email_id', 'mobile_no', 'phone']", script)
+        self.assertIn("method: 'frappe.client.get_list'", script)
+        self.assertIn("doctype: 'Dynamic Link'", script)
+        self.assertIn("link_doctype: 'Customer'", script)
+        self.assertIn("frappe.db.get_value('Contact', r.message[0].parent, ['email_id', 'mobile_no', 'phone']", script)
+        self.assertIn("set_if_empty(frm, 'applicant_email_address', details.email_id)", script)
+        self.assertIn("set_if_empty(frm, 'applicant_phone_number', details.mobile_no || details.phone)", script)
+
+    def test_hbr_documents_render_does_not_keep_saved_app_dirty(self):
+        script = (ROOT / "dcr/public/js/loan_application.js").read_text()
+
+        self.assertIn("if (JSON.stringify(current) === JSON.stringify(target)) return;", script)
+        self.assertIn("var was_dirty = frm.is_dirty && frm.is_dirty();", script)
+        self.assertIn("if (!was_dirty && !frm.is_new())", script)
+        self.assertIn("frm.doc.__unsaved = 0", script)
 
 
 class TestHbrConnectionDefaultsClientScript(unittest.TestCase):
