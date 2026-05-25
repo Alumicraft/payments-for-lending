@@ -14,6 +14,9 @@ class _Doc:
     def set(self, key, value):
         setattr(self, key, value)
 
+    def items(self):
+        return self.__dict__.items()
+
 
 class TestLoanApplicationGuards(unittest.TestCase):
 
@@ -247,6 +250,50 @@ class TestLoanApplicationGuards(unittest.TestCase):
 
         self.assertEqual(doc.applicant_email_address, "linked-contact@example.test")
         self.assertEqual(doc.applicant_phone_number, "555-333-4444")
+
+
+class TestLoanDefaults(unittest.TestCase):
+
+    @patch("dcr.api.lending.frappe")
+    def test_loan_defaults_endpoint_returns_application_and_deal_fields(
+        self, mock_frappe
+    ):
+        from dcr.api.lending import get_loan_defaults_from_application
+
+        def get_value(doctype, name_or_filters, fieldname, *args, **kwargs):
+            if doctype == "Loan Application":
+                return _Doc(
+                    docstatus=1,
+                    applicant="CUST-001",
+                    loan_product="Standard",
+                    loan_amount=25000,
+                    rate_of_interest=12,
+                    repayment_method="Repay Over Number of Periods",
+                    repayment_periods=12,
+                    home_build_request="ACC-HBR-2026-00011",
+                    home_serial_no="E2E-20260525-001",
+                    buyer_name=None,
+                    factory="Champion Home Builders",
+                )
+            if doctype == "Factory Assignment":
+                return 2.5
+            return None
+
+        mock_frappe.db.get_value.side_effect = get_value
+
+        defaults = get_loan_defaults_from_application("ACC-LOAP-2026-00007")
+
+        self.assertEqual(defaults["loan_application"], "ACC-LOAP-2026-00007")
+        self.assertEqual(defaults["applicant"], "CUST-001")
+        self.assertEqual(defaults["loan_product"], "Standard")
+        self.assertEqual(defaults["loan_amount"], 25000)
+        self.assertEqual(defaults["rate_of_interest"], 12)
+        self.assertEqual(defaults["repayment_method"], "Repay Over Number of Periods")
+        self.assertEqual(defaults["repayment_periods"], 12)
+        self.assertEqual(defaults["home_build_request"], "ACC-HBR-2026-00011")
+        self.assertEqual(defaults["home_serial_no"], "E2E-20260525-001")
+        self.assertEqual(defaults["factory"], "Champion Home Builders")
+        self.assertEqual(defaults["custom_rebate_percentage"], 2.5)
 
 
 if __name__ == "__main__":

@@ -84,6 +84,24 @@ class TestLoanClientScript(unittest.TestCase):
         self.assertIn("home_build_request: frm.doc.home_build_request || ''", script)
         self.assertNotIn("home_build_request: frm.doc.home_serial_no || ''", script)
 
+    def test_loan_list_create_uses_loan_application_context(self):
+        script = (
+            ROOT / "dcr/public/js/loan_list_context_patch_20260525_11.js"
+        ).read_text()
+        hooks = (ROOT / "dcr/hooks.py").read_text()
+
+        self.assertIn(
+            'versioned_asset("/assets/dcr/js/loan_list_context_patch_20260525_11.js")',
+            hooks,
+        )
+        self.assertIn("function current_loan_application()", script)
+        self.assertIn('new URLSearchParams(window.location.search).get("loan_application")', script)
+        self.assertIn("function is_create_loan_click(target)", script)
+        self.assertIn('label === "Add Loan" || label === "Create a new Loan"', script)
+        self.assertIn("method: \"dcr.api.lending.get_loan_defaults_from_application\"", script)
+        self.assertIn('frappe.new_doc("Loan", r.message || {})', script)
+        self.assertIn("document.addEventListener(\"click\", intercept, true)", script)
+
 
 class TestLoanApplicationClientScript(unittest.TestCase):
 

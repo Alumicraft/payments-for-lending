@@ -419,6 +419,67 @@ def get_loan_deal_reference(loan_application, applicant=None):
     return _compute_deal_reference(loan_application, applicant)
 
 
+@frappe.whitelist()
+def get_loan_defaults_from_application(loan_application):
+    """Return defaults for a Loan created from a submitted Loan Application."""
+    if not loan_application:
+        return {}
+
+    la = frappe.db.get_value(
+        "Loan Application",
+        loan_application,
+        [
+            "docstatus",
+            "applicant",
+            "loan_product",
+            "loan_amount",
+            "rate_of_interest",
+            "repayment_method",
+            "repayment_periods",
+            "home_build_request",
+            "home_serial_no",
+            "buyer_name",
+            "factory",
+        ],
+        as_dict=True,
+    )
+    if not la:
+        frappe.throw(_("Loan Application {0} was not found.").format(loan_application))
+    if la.docstatus != 1:
+        frappe.throw(
+            _("Loan Application {0} must be submitted before creating a Loan.").format(
+                loan_application
+            )
+        )
+
+    defaults = {
+        "loan_application": loan_application,
+        "applicant": la.applicant,
+        "loan_product": la.loan_product,
+        "loan_amount": la.loan_amount,
+        "rate_of_interest": la.rate_of_interest,
+        "repayment_method": la.repayment_method,
+        "repayment_periods": la.repayment_periods,
+        "home_build_request": la.home_build_request,
+        "home_serial_no": la.home_serial_no,
+        "buyer_name": la.buyer_name,
+        "factory": la.factory,
+    }
+    defaults.update(
+        _compute_deal_reference(
+            loan_application,
+            la.applicant,
+            {
+                "home_build_request": la.home_build_request,
+                "home_serial_no": la.home_serial_no,
+                "buyer_name": la.buyer_name,
+                "factory": la.factory,
+            },
+        )
+    )
+    return {field: value for field, value in defaults.items() if value is not None}
+
+
 def on_loan_on_update(doc, method):
     """On every save, check for bank account and auto-send setup email if missing."""
     if doc.get("home_build_request"):
