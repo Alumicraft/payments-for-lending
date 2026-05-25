@@ -49,6 +49,18 @@ class TestHomeBuildRequestClientScript(unittest.TestCase):
         self.assertIn("frappe.new_doc('Loan Application', Object.assign(defaults, r.message || {}))", script)
         self.assertIn("frappe.new_doc('Loan Application', defaults)", script)
 
+    def test_dashboard_loan_application_plus_uses_prefetch_path(self):
+        script = (ROOT / "dcr/public/js/home_build_request.js").read_text()
+        hooks = (ROOT / "dcr/hooks.py").read_text()
+
+        self.assertIn('"Home Build Request": versioned_doctype_asset("public/js/home_build_request.js")', hooks)
+        self.assertIn("bind_loan_application_connection_create(frm)", script)
+        self.assertIn("function bind_loan_application_connection_create(frm)", script)
+        self.assertIn('.document-link[data-doctype="Loan Application"]', script)
+        self.assertIn("click.dcrLoanApplicationFromHbr", script)
+        self.assertIn("e.stopImmediatePropagation()", script)
+        self.assertIn("create_loan_application_from_hbr(frm)", script)
+
 
 class TestLoanClientScript(unittest.TestCase):
 

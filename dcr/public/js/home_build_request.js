@@ -46,6 +46,7 @@ frappe.ui.form.on('Home Build Request', {
         // Disbursement) on Cash deals — those only exist for Floored.
         update_connections_visibility(frm);
         update_stage_field_visibility(frm);
+        bind_loan_application_connection_create(frm);
 
         // Create buttons only on submitted HBR
         if (frm.doc.docstatus !== 1) return;
@@ -154,6 +155,63 @@ function create_loan_application_from_hbr(frm) {
             frappe.new_doc('Loan Application', defaults);
         }
     });
+}
+
+
+function bind_loan_application_connection_create(frm) {
+    if (frm.doc.docstatus !== 1 || frm.doc.financing_type !== 'Floored') return;
+
+    function connection_wrappers() {
+        var wrappers = $();
+        if (frm.dashboard && frm.dashboard.wrapper) {
+            wrappers = wrappers.add(frm.dashboard.wrapper);
+        }
+        if (frm.wrapper) {
+            wrappers = wrappers.add($(frm.wrapper).find('.form-documents'));
+        }
+        wrappers = wrappers.add($('.form-documents'));
+        return wrappers;
+    }
+
+    function bind() {
+        var $cards = connection_wrappers().find('.document-link[data-doctype="Loan Application"]');
+        if (!$cards.length) return false;
+
+        $cards.each(function() {
+            var $card = $(this);
+            var $buttons = $card.find('button, .btn-new');
+            if (!$buttons.length) return;
+
+            $buttons.off('click.dcrLoanApplicationFromHbr');
+            $buttons.on('click.dcrLoanApplicationFromHbr', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                create_loan_application_from_hbr(frm);
+                return false;
+            });
+        });
+        return true;
+    }
+
+    var attempts = 0;
+    var iv = setInterval(function() {
+        attempts += 1;
+        bind();
+        if (attempts > 30) clearInterval(iv);
+    }, 300);
+    bind();
+
+    var wrapper = connection_wrappers().get(0);
+    if (wrapper && window.MutationObserver) {
+        if (frm._dcr_loan_application_connection_observer) {
+            frm._dcr_loan_application_connection_observer.disconnect();
+        }
+        frm._dcr_loan_application_connection_observer = new MutationObserver(function() {
+            bind();
+        });
+        frm._dcr_loan_application_connection_observer.observe(wrapper, { childList: true, subtree: true });
+    }
 }
 
 
