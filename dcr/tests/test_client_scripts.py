@@ -39,6 +39,16 @@ class TestHomeBuildRequestClientScript(unittest.TestCase):
         self.assertIn("$title.text().trim() !== 'Lending'", script)
         self.assertIn("if (attempts > 30) clearInterval(iv)", script)
 
+    def test_create_loan_application_prefetches_hbr_defaults(self):
+        script = (ROOT / "dcr/public/js/home_build_request.js").read_text()
+
+        self.assertIn("create_loan_application_from_hbr(frm)", script)
+        self.assertIn("function create_loan_application_from_hbr(frm)", script)
+        self.assertIn("method: 'dcr.api.lending.get_loan_application_defaults'", script)
+        self.assertIn("home_build_request: frm.doc.name", script)
+        self.assertIn("frappe.new_doc('Loan Application', Object.assign(defaults, r.message || {}))", script)
+        self.assertIn("frappe.new_doc('Loan Application', defaults)", script)
+
 
 class TestLoanClientScript(unittest.TestCase):
 

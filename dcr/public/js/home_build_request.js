@@ -57,11 +57,7 @@ frappe.ui.form.on('Home Build Request', {
             }).then(function(count) {
                 if (count === 0) {
                     frm.add_custom_button(__('Loan Application'), function() {
-                        frappe.new_doc('Loan Application', {
-                            applicant_type: 'Customer',
-                            applicant: frm.doc.customer,
-                            home_build_request: frm.doc.name
-                        });
+                        create_loan_application_from_hbr(frm);
                     }, __('Create'));
                 }
             });
@@ -139,6 +135,26 @@ frappe.ui.form.on('Home Build Request', {
     },
     property_type: function(frm) { populate_checklist(frm); },
 });
+
+
+function create_loan_application_from_hbr(frm) {
+    var defaults = {
+        applicant_type: 'Customer',
+        applicant: frm.doc.customer,
+        home_build_request: frm.doc.name
+    };
+
+    frappe.call({
+        method: 'dcr.api.lending.get_loan_application_defaults',
+        args: { home_build_request: frm.doc.name },
+        callback: function(r) {
+            frappe.new_doc('Loan Application', Object.assign(defaults, r.message || {}));
+        },
+        error: function() {
+            frappe.new_doc('Loan Application', defaults);
+        }
+    });
+}
 
 
 function update_connections_visibility(frm) {
