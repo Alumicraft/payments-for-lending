@@ -51,9 +51,16 @@ class TestHomeBuildRequestClientScript(unittest.TestCase):
 
     def test_dashboard_loan_application_plus_uses_prefetch_path(self):
         script = (ROOT / "dcr/public/js/home_build_request.js").read_text()
+        patch = (
+            ROOT / "dcr/public/js/hbr_dashboard_plus_patch_20260525_10.js"
+        ).read_text()
         hooks = (ROOT / "dcr/hooks.py").read_text()
 
         self.assertIn('"Home Build Request": versioned_doctype_asset("public/js/home_build_request.js")', hooks)
+        self.assertIn(
+            'versioned_asset("/assets/dcr/js/hbr_dashboard_plus_patch_20260525_10.js")',
+            hooks,
+        )
         self.assertIn("bind_loan_application_connection_create(frm)", script)
         self.assertIn("function bind_loan_application_connection_create(frm)", script)
         self.assertIn("function is_loan_application_connection_click(target)", script)
@@ -63,6 +70,10 @@ class TestHomeBuildRequestClientScript(unittest.TestCase):
         self.assertIn("click.dcrLoanApplicationFromHbr", script)
         self.assertIn("e.stopImmediatePropagation()", script)
         self.assertIn("create_loan_application_from_hbr(frm)", script)
+        self.assertIn("bind_hbr_loan_application_plus(frm)", patch)
+        self.assertIn("this.addEventListener('click', intercept, true)", patch)
+        self.assertIn("__dcr_hbr_plus_patch_20260525_10", patch)
+        self.assertIn("dcr.api.lending.get_loan_application_defaults", patch)
 
 
 class TestLoanClientScript(unittest.TestCase):
