@@ -11,10 +11,14 @@ boot_session = "dcr.api.boot.boot_session"
 # Frappe Cloud serves /assets files with a long immutable browser cache.
 # Keep these explicit URLs versioned so deployed client fixes are fetched
 # without requiring users to hard-refresh stale browser caches.
-DCR_ASSET_VERSION = "20260509-5"
+DCR_ASSET_VERSION = "20260525-1"
 
 
 def versioned_asset(path):
+    return f"{path}?v={DCR_ASSET_VERSION}"
+
+
+def versioned_doctype_asset(path):
     return f"{path}?v={DCR_ASSET_VERSION}"
 
 
@@ -85,7 +89,7 @@ fixtures = [
 # Include JS in doctype views
 doctype_js = {
     "Loan": "public/js/loan.js",
-    "Loan Application": "public/js/loan_application.js",
+    "Loan Application": versioned_doctype_asset("public/js/loan_application.js"),
     "Customer": "public/js/customer.js",
     "Home Build Request": "public/js/home_build_request.js",
     "MIFA": "public/js/mifa.js",
