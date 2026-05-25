@@ -191,7 +191,7 @@ function hydrate_applicant_contact(frm) {
     if (!frm.doc.applicant || frm.doc.__contact_fetched_for === frm.doc.applicant) return;
     frm.doc.__contact_fetched_for = frm.doc.applicant;
 
-    frappe.db.get_value('Customer', frm.doc.applicant, ['email_id', 'mobile_no', 'phone'], function(customer) {
+    frappe.db.get_value('Customer', frm.doc.applicant, ['email_id', 'mobile_no'], function(customer) {
         apply_contact_details(frm, customer);
         if (frm.doc.applicant_email_address && frm.doc.applicant_phone_number) return;
 
@@ -209,7 +209,7 @@ function hydrate_applicant_contact(frm) {
             },
             callback: function(r) {
                 if (!r.message || !r.message.length) return;
-                frappe.db.get_value('Contact', r.message[0].parent, ['email_id', 'mobile_no', 'phone'], function(contact) {
+                frappe.db.get_value('Contact', r.message[0].parent, ['email_id', 'mobile_no'], function(contact) {
                     apply_contact_details(frm, contact);
                 });
             }
@@ -221,7 +221,7 @@ function hydrate_applicant_contact(frm) {
 function apply_contact_details(frm, details) {
     if (!details) return;
     set_if_empty(frm, 'applicant_email_address', details.email_id);
-    set_if_empty(frm, 'applicant_phone_number', details.mobile_no || details.phone);
+    set_if_empty(frm, 'applicant_phone_number', details.mobile_no);
 }
 
 

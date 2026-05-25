@@ -75,13 +75,15 @@ class TestLoanApplicationClientScript(unittest.TestCase):
 
         self.assertIn("function hydrate_applicant_contact(frm)", script)
         self.assertIn("frm.doc.__contact_fetched_for === frm.doc.applicant", script)
-        self.assertIn("frappe.db.get_value('Customer', frm.doc.applicant, ['email_id', 'mobile_no', 'phone']", script)
+        self.assertIn("frappe.db.get_value('Customer', frm.doc.applicant, ['email_id', 'mobile_no']", script)
+        self.assertNotIn("frappe.db.get_value('Customer', frm.doc.applicant, ['email_id', 'mobile_no', 'phone']", script)
         self.assertIn("method: 'frappe.client.get_list'", script)
         self.assertIn("doctype: 'Dynamic Link'", script)
         self.assertIn("link_doctype: 'Customer'", script)
-        self.assertIn("frappe.db.get_value('Contact', r.message[0].parent, ['email_id', 'mobile_no', 'phone']", script)
+        self.assertIn("frappe.db.get_value('Contact', r.message[0].parent, ['email_id', 'mobile_no']", script)
+        self.assertNotIn("frappe.db.get_value('Contact', r.message[0].parent, ['email_id', 'mobile_no', 'phone']", script)
         self.assertIn("set_if_empty(frm, 'applicant_email_address', details.email_id)", script)
-        self.assertIn("set_if_empty(frm, 'applicant_phone_number', details.mobile_no || details.phone)", script)
+        self.assertIn("set_if_empty(frm, 'applicant_phone_number', details.mobile_no)", script)
 
     def test_hbr_documents_render_does_not_keep_saved_app_dirty(self):
         script = (ROOT / "dcr/public/js/loan_application.js").read_text()
