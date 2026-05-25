@@ -161,6 +161,34 @@ function create_loan_application_from_hbr(frm) {
 function bind_loan_application_connection_create(frm) {
     if (frm.doc.docstatus !== 1 || frm.doc.financing_type !== 'Floored') return;
 
+    function is_loan_application_connection_click(target) {
+        if (!target || !target.closest) return false;
+
+        var button = target.closest('button, .btn-new');
+        if (!button) return false;
+
+        var card = button.closest(
+            '.document-link, .document-link-badge, .link-item, ' +
+            '.col-md-4, .col-sm-6, .col-xs-12'
+        );
+        if (!card) return false;
+
+        var doctype = card.getAttribute('data-doctype') || $(card).data('doctype');
+        if (doctype) return doctype === 'Loan Application';
+
+        return $(card).text().trim().indexOf('Loan Application') !== -1;
+    }
+
+    function intercept(e) {
+        if (!is_loan_application_connection_click(e.target)) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        create_loan_application_from_hbr(frm);
+        return false;
+    }
+
     function connection_wrappers() {
         var wrappers = $();
         if (frm.dashboard && frm.dashboard.wrapper) {
@@ -174,7 +202,19 @@ function bind_loan_application_connection_create(frm) {
     }
 
     function bind() {
-        var $cards = connection_wrappers().find('.document-link[data-doctype="Loan Application"]');
+        var $wrapper = connection_wrappers();
+        $wrapper.each(function() {
+            if (this.__dcr_loan_application_connection_intercept) return;
+            this.__dcr_loan_application_connection_intercept = true;
+            this.addEventListener('click', intercept, true);
+        });
+
+        var $cards = $wrapper.find(
+            '.document-link[data-doctype="Loan Application"], ' +
+            '.document-link:contains("Loan Application"), ' +
+            '.document-link-badge:contains("Loan Application"), ' +
+            '.link-item:contains("Loan Application")'
+        );
         if (!$cards.length) return false;
 
         $cards.each(function() {
