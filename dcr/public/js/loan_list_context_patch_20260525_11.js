@@ -27,9 +27,30 @@
             freeze: true,
             freeze_message: __("Loading loan details..."),
             callback: function(r) {
-                frappe.new_doc("Loan", r.message || {});
+                var defaults = r.message || {};
+                frappe.new_doc("Loan", defaults);
+                apply_defaults_after_route(defaults, 0);
             }
         });
+    }
+
+    function apply_defaults_after_route(defaults, attempts) {
+        if (!defaults || !defaults.loan_application) return;
+
+        if (window.cur_frm && cur_frm.doctype === "Loan" && cur_frm.is_new()) {
+            Object.keys(defaults).forEach(function(field) {
+                if (defaults[field] !== undefined && defaults[field] !== null && !cur_frm.doc[field]) {
+                    cur_frm.set_value(field, defaults[field]);
+                }
+            });
+            cur_frm.refresh_fields();
+            return;
+        }
+
+        if (attempts >= 20) return;
+        setTimeout(function() {
+            apply_defaults_after_route(defaults, attempts + 1);
+        }, 250);
     }
 
     function is_create_loan_click(target) {

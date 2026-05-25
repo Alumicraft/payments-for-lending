@@ -99,7 +99,10 @@ class TestLoanClientScript(unittest.TestCase):
         self.assertIn("function is_create_loan_click(target)", script)
         self.assertIn('label === "Add Loan" || label === "Create a new Loan"', script)
         self.assertIn("method: \"dcr.api.lending.get_loan_defaults_from_application\"", script)
-        self.assertIn('frappe.new_doc("Loan", r.message || {})', script)
+        self.assertIn('frappe.new_doc("Loan", defaults)', script)
+        self.assertIn("apply_defaults_after_route(defaults, 0)", script)
+        self.assertIn('cur_frm.doctype === "Loan"', script)
+        self.assertIn("cur_frm.set_value(field, defaults[field])", script)
         self.assertIn("document.addEventListener(\"click\", intercept, true)", script)
 
 
