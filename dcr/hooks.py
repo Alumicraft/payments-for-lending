@@ -154,6 +154,7 @@ override_doctype_dashboards = {
 
 override_doctype_class = {
     "Loan Demand": "dcr.overrides.loan_demand.CustomLoanDemand",
+    "Process Loan Demand": "dcr.overrides.process_loan_demand.CustomProcessLoanDemand",
     "Loan Repayment Schedule": "dcr.overrides.loan_repayment_schedule.CustomLoanRepaymentSchedule",
 }
 

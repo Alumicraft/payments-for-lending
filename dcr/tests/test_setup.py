@@ -250,14 +250,21 @@ class TestSetupCustomFields(unittest.TestCase):
     def test_loan_demand_hook_backfills_borrower_fields(self):
         hooks = (ROOT / "dcr/hooks.py").read_text()
         override = (ROOT / "dcr/overrides/loan_demand.py").read_text()
+        process_override = (ROOT / "dcr/overrides/process_loan_demand.py").read_text()
 
         self.assertIn('"Loan Demand"', hooks)
         self.assertIn('"validate": "dcr.api.lending.populate_loan_demand_from_loan"', hooks)
         self.assertIn('"before_submit": "dcr.api.lending.populate_loan_demand_from_loan"', hooks)
         self.assertIn('"Loan Demand": "dcr.overrides.loan_demand.CustomLoanDemand"', hooks)
+        self.assertIn(
+            '"Process Loan Demand": '
+            '"dcr.overrides.process_loan_demand.CustomProcessLoanDemand"',
+            hooks,
+        )
         self.assertIn("populate_loan_demand_from_loan", hooks)
         self.assertIn("def make_gl_entries", override)
         self.assertIn("populate_loan_demand_from_loan(self)", override)
+        self.assertIn("create_loan_demand_with_context", process_override)
 
 
 class TestAchBankAccountMigration(unittest.TestCase):

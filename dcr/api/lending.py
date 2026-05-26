@@ -68,6 +68,77 @@ def populate_loan_demand_from_loan(doc, method=None):
             doc.set(fieldname, loan_values.get(fieldname))
 
 
+def create_loan_demand_with_context(
+    loan,
+    demand_date,
+    demand_type,
+    demand_subtype,
+    amount,
+    loan_repayment_schedule=None,
+    loan_disbursement=None,
+    repayment_schedule_detail=None,
+    sales_invoice=None,
+    process_loan_demand=None,
+    paid_amount=0,
+    posting_date=None,
+    loan_repayment=None,
+    is_imported=False,
+    is_partial_pre_paid_interest=0,
+):
+    """Create a Lending demand with borrower context before GL submission."""
+    from frappe.utils import cint, flt
+
+    precision = cint(frappe.db.get_default("currency_precision")) or 2
+    if not amount:
+        return
+
+    demand = frappe.new_doc("Loan Demand")
+    demand.loan = loan
+    demand.loan_repayment_schedule = loan_repayment_schedule
+    demand.loan_disbursement = loan_disbursement
+    demand.repayment_schedule_detail = repayment_schedule_detail
+    demand.demand_date = demand_date
+    demand.posting_date = posting_date
+    demand.demand_type = demand_type
+    demand.demand_subtype = demand_subtype
+    demand.demand_amount = flt(amount, precision)
+    demand.sales_invoice = sales_invoice
+    demand.process_loan_demand = process_loan_demand
+    demand.paid_amount = paid_amount
+    demand.loan_repayment = loan_repayment
+    demand.is_imported = is_imported
+    demand.is_partial_pre_paid_interest = is_partial_pre_paid_interest
+    populate_loan_demand_from_loan(demand)
+    demand.save()
+    demand.submit()
+
+
+@frappe.whitelist()
+def refresh_lending_runtime_hooks():
+    """Clear cached controllers/hooks and report the active Lending classes."""
+    from frappe.cache_manager import clear_controller_cache
+    from frappe.model.base_document import get_controller
+
+    frappe.client_cache.delete_value("app_hooks")
+    clear_controller_cache("Loan Demand")
+    clear_controller_cache("Process Loan Demand")
+    frappe.clear_cache(doctype="Loan Demand")
+    frappe.clear_cache(doctype="Process Loan Demand")
+
+    loan_demand_controller = get_controller("Loan Demand")
+    process_loan_demand_controller = get_controller("Process Loan Demand")
+    return {
+        "loan_demand_controller": (
+            f"{loan_demand_controller.__module__}.{loan_demand_controller.__name__}"
+        ),
+        "process_loan_demand_controller": (
+            f"{process_loan_demand_controller.__module__}."
+            f"{process_loan_demand_controller.__name__}"
+        ),
+        "override_doctype_class": frappe.get_hooks("override_doctype_class", {}),
+    }
+
+
 @frappe.whitelist()
 def get_available_credit(customer):
     """Calculate available credit for a dealer.
