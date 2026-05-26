@@ -5,6 +5,7 @@ import frappe
 # config even when hooks are skipped.
 _MAP_BLOCK_SYNCED = False
 _LOAN_DEMAND_OFFSET_SYNCED = False
+_LENDING_ACCOUNTING_SYNCED = False
 
 
 def boot_session(bootinfo):
@@ -30,6 +31,16 @@ def boot_session(bootinfo):
 			frappe.log_error(frappe.get_traceback(), "ensure_loan_demand_offset_order (boot_session)")
 		finally:
 			_LOAN_DEMAND_OFFSET_SYNCED = True
+
+	global _LENDING_ACCOUNTING_SYNCED
+	if not _LENDING_ACCOUNTING_SYNCED:
+		try:
+			from dcr.setup import ensure_lending_accounting_defaults
+			ensure_lending_accounting_defaults()
+		except Exception:
+			frappe.log_error(frappe.get_traceback(), "ensure_lending_accounting_defaults (boot_session)")
+		finally:
+			_LENDING_ACCOUNTING_SYNCED = True
 
 	for item in (bootinfo.desktop_icons or []):
 		url = item.get("logo_url") or item.get("icon_image")

@@ -171,6 +171,88 @@ class TestSetupCustomFields(unittest.TestCase):
         self.assertIn("dcr.patches.repair_loan_demand_offset_order", patches)
         self.assertIn("ensure_loan_demand_offset_order()", patch)
 
+    @patch("dcr.setup.frappe")
+    def test_ensure_lending_accounting_defaults_repairs_dcr_product(self, mock_frappe):
+        from dcr.setup import ensure_lending_accounting_defaults
+
+        def exists(doctype, name):
+            if doctype == "DocType":
+                return name in {"Loan Product", "Account"}
+            if doctype == "Account":
+                return name in {
+                    "10202 - Loans Receivable - DCR",
+                    "10201 - Accounts Receivable (NON QBO) - DCR",
+                    "40110 - Service/Fee Income - DCR",
+                    "50282 - Bad Debt - DCR",
+                    "10102 - Chase Checking 8778 (General) - DCR",
+                }
+            return False
+
+        def get_value(doctype, name, fieldname):
+            if doctype == "Account" and fieldname == "account_type":
+                return {
+                    "10102 - Chase Checking 8778 (General) - DCR": "Bank",
+                    "10202 - Loans Receivable - DCR": "",
+                    "10201 - Accounts Receivable (NON QBO) - DCR": "",
+                }.get(name)
+            if doctype == "Loan Product":
+                return {
+                    "interest_receivable_account": "10102 - Chase Checking 8778 (General) - DCR",
+                    "interest_accrued_account": "40110 - Service/Fee Income - DCR",
+                    "penalty_receivable_account": None,
+                    "write_off_account": None,
+                }.get(fieldname)
+            return None
+
+        mock_frappe.db.exists.side_effect = exists
+        mock_frappe.db.get_value.side_effect = get_value
+        mock_frappe.db.has_column.return_value = True
+        mock_frappe.get_all.return_value = [{"name": "Standard"}]
+
+        ensure_lending_accounting_defaults()
+
+        mock_frappe.db.set_value.assert_any_call(
+            "Account",
+            "10202 - Loans Receivable - DCR",
+            "account_type",
+            "Receivable",
+            update_modified=False,
+        )
+        mock_frappe.db.set_value.assert_any_call(
+            "Loan Product",
+            "Standard",
+            unittest.mock.ANY,
+            update_modified=False,
+        )
+        loan_product_updates = [
+            call.args[2]
+            for call in mock_frappe.db.set_value.call_args_list
+            if call.args[:2] == ("Loan Product", "Standard")
+        ][0]
+        self.assertEqual(
+            loan_product_updates["interest_receivable_account"],
+            "10202 - Loans Receivable - DCR",
+        )
+        self.assertEqual(
+            loan_product_updates["interest_accrued_account"],
+            "10202 - Loans Receivable - DCR",
+        )
+        self.assertEqual(loan_product_updates["write_off_account"], "50282 - Bad Debt - DCR")
+        mock_frappe.clear_cache.assert_any_call(doctype="Loan Product")
+
+    def test_lending_accounting_repair_runs_as_patch(self):
+        patches = (ROOT / "dcr/patches.txt").read_text()
+        patch = (ROOT / "dcr/patches/repair_lending_accounting_defaults.py").read_text()
+
+        self.assertIn("dcr.patches.repair_lending_accounting_defaults", patches)
+        self.assertIn("ensure_lending_accounting_defaults()", patch)
+
+    def test_loan_demand_hook_backfills_borrower_fields(self):
+        hooks = (ROOT / "dcr/hooks.py").read_text()
+
+        self.assertIn('"Loan Demand"', hooks)
+        self.assertIn("populate_loan_demand_from_loan", hooks)
+
 
 class TestAchBankAccountMigration(unittest.TestCase):
 

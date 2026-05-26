@@ -127,7 +127,95 @@ def after_install():
     except Exception:
         frappe.log_error(frappe.get_traceback(), "ensure_loan_demand_offset_order failed")
 
+    try:
+        ensure_lending_accounting_defaults()
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "ensure_lending_accounting_defaults failed")
+
     frappe.db.commit()
+
+
+def ensure_lending_accounting_defaults():
+    """Repair DCR Lending account mappings required for demand generation."""
+    if not frappe.db.exists("DocType", "Loan Product") or not frappe.db.exists("DocType", "Account"):
+        return
+
+    receivable_account = "10202 - Loans Receivable - DCR"
+    fallback_receivable_account = "10201 - Accounts Receivable (NON QBO) - DCR"
+    income_account = "40110 - Service/Fee Income - DCR"
+    write_off_account = "50282 - Bad Debt - DCR"
+
+    for account in (receivable_account, fallback_receivable_account):
+        if frappe.db.exists("Account", account):
+            current_type = frappe.db.get_value("Account", account, "account_type")
+            if current_type != "Receivable":
+                frappe.db.set_value("Account", account, "account_type", "Receivable", update_modified=False)
+
+    if not frappe.db.exists("Account", receivable_account):
+        return
+
+    loan_products = frappe.get_all(
+        "Loan Product",
+        filters={"company": "Dealer Capital Resources"},
+        fields=["name"],
+    )
+
+    receivable_fields = (
+        "loan_account",
+        "security_deposit_account",
+        "customer_refund_account",
+        "interest_accrued_account",
+        "interest_receivable_account",
+        "penalty_accrued_account",
+        "penalty_receivable_account",
+    )
+    income_fields = (
+        "interest_income_account",
+        "interest_waiver_account",
+        "broken_period_interest_recovery_account",
+        "penalty_income_account",
+        "penalty_waiver_account",
+        "write_off_recovery_account",
+    )
+
+    for product in loan_products:
+        product_name = product.name if hasattr(product, "name") else product.get("name")
+        updates = {}
+
+        for fieldname in receivable_fields:
+            if not frappe.db.has_column("Loan Product", fieldname):
+                continue
+
+            current = frappe.db.get_value("Loan Product", product_name, fieldname)
+            if not current or not _account_is_type(current, "Receivable"):
+                updates[fieldname] = receivable_account
+
+        for fieldname in income_fields:
+            if not frappe.db.has_column("Loan Product", fieldname):
+                continue
+
+            current = frappe.db.get_value("Loan Product", product_name, fieldname)
+            if not current and frappe.db.exists("Account", income_account):
+                updates[fieldname] = income_account
+
+        if (
+            frappe.db.has_column("Loan Product", "write_off_account")
+            and not frappe.db.get_value("Loan Product", product_name, "write_off_account")
+            and frappe.db.exists("Account", write_off_account)
+        ):
+            updates["write_off_account"] = write_off_account
+
+        if updates:
+            frappe.db.set_value("Loan Product", product_name, updates, update_modified=False)
+
+    frappe.clear_cache(doctype="Loan Product")
+    frappe.clear_cache(doctype="Account")
+
+
+def _account_is_type(account, account_type):
+    if not account or not frappe.db.exists("Account", account):
+        return False
+    return frappe.db.get_value("Account", account, "account_type") == account_type
 
 
 def ensure_loan_demand_offset_order():

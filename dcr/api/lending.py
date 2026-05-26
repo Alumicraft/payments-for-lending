@@ -39,6 +39,35 @@ def is_dealer_current(customer):
     return "Yes" if overdue == 0 else "No"
 
 
+def populate_loan_demand_from_loan(doc, method=None):
+    """Backfill borrower context on Lending-generated demands.
+
+    Frappe Lending creates term-loan demands server-side from repayment
+    schedule rows and does not always copy the Loan party fields before GL
+    posting. ERPNext then sees a receivable account with a missing party and
+    rejects the journal entry. Keep this server-side so UI, scheduler, and API
+    demand generation all get the same borrower context.
+    """
+    if not doc.get("loan"):
+        return
+
+    fields = [
+        "applicant_type",
+        "applicant",
+        "company",
+        "loan_product",
+        "is_term_loan",
+        "cost_center",
+    ]
+    loan_values = frappe.db.get_value("Loan", doc.loan, fields, as_dict=True)
+    if not loan_values:
+        return
+
+    for fieldname in fields:
+        if not doc.get(fieldname) and loan_values.get(fieldname) is not None:
+            doc.set(fieldname, loan_values.get(fieldname))
+
+
 @frappe.whitelist()
 def get_available_credit(customer):
     """Calculate available credit for a dealer.

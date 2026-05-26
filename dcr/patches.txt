@@ -13,3 +13,4 @@ dcr.patches.drop_monthly_interest_setter
 dcr.patches.sync_hbr_stage_fields
 dcr.patches.sync_hbr_submit_status
 dcr.patches.repair_loan_demand_offset_order
+dcr.patches.repair_lending_accounting_defaults
