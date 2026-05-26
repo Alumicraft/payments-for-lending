@@ -156,9 +156,17 @@ class TestHbrStageHookRegistration(unittest.TestCase):
 
         self.assertIn('"Purchase Order"', hooks)
         self.assertIn('"Purchase Receipt"', hooks)
+        self.assertIn('"Loan Repayment"', hooks)
         self.assertIn("dcr.api.hbr_stage.sync_from_doc", hooks)
         self.assertIn('"on_update_after_submit": "dcr.api.hbr_stage.sync_from_doc"', hooks)
         self.assertIn("sync_hbr_stages(doc.home_build_request)", lending)
+
+    def test_loan_repayment_resolves_hbr_from_against_loan(self):
+        hbr_stage = (ROOT / "dcr/api/hbr_stage.py").read_text()
+
+        self.assertIn('if doc.doctype == "Loan Repayment"', hbr_stage)
+        self.assertIn('doc.get("against_loan")', hbr_stage)
+        self.assertIn('frappe.db.get_value("Loan", loan_name, "home_build_request")', hbr_stage)
 
 
 class TestHbrStageSetup(unittest.TestCase):

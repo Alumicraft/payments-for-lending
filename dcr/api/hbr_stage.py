@@ -62,6 +62,7 @@ def sync_from_doc(doc, method=None):
         sync_hbr_stages(hbr_name)
 
 
+@frappe.whitelist()
 def sync_hbr_stages(hbr_name):
     """Update HBR custom stage fields if they exist on the site."""
     if not hbr_name:
@@ -140,6 +141,10 @@ def _hbr_from_doc(doc):
         return doc.get("home_build_request")
     if doc.doctype == "Loan Disbursement":
         return doc.get("home_build_request")
+    if doc.doctype == "Loan Repayment":
+        loan_name = doc.get("against_loan")
+        if loan_name:
+            return frappe.db.get_value("Loan", loan_name, "home_build_request")
     return None
 
 

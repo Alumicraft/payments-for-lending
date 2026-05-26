@@ -121,6 +121,10 @@ doc_events = {
         "on_submit": "dcr.api.hbr_stage.sync_from_doc",
         "on_cancel": "dcr.api.hbr_stage.sync_from_doc",
     },
+    "Loan Repayment": {
+        "on_submit": "dcr.api.hbr_stage.sync_from_doc",
+        "on_cancel": "dcr.api.hbr_stage.sync_from_doc",
+    },
     "Loan Demand": {
         "validate": "dcr.api.lending.populate_loan_demand_from_loan",
         "before_submit": "dcr.api.lending.populate_loan_demand_from_loan",
