@@ -149,7 +149,7 @@ class TestSetupCustomFields(unittest.TestCase):
         self.assertEqual(payload["title"], "DCR Standard Loan Demand Offset Order")
         self.assertEqual(
             [row["demand_type"] for row in payload["components"]],
-            ["Interest", "Penalty", "Charges", "Principal"],
+            ["EMI (Principal + Interest)", "Penalty", "Charges", "Principal"],
         )
         order_doc.insert.assert_called_once_with(ignore_permissions=True)
         mock_frappe.db.set_value.assert_called_once_with(
@@ -198,7 +198,7 @@ class TestSetupCustomFields(unittest.TestCase):
             if doctype == "Loan Product":
                 return {
                     "interest_receivable_account": "10102 - Chase Checking 8778 (General) - DCR",
-                    "interest_accrued_account": "40110 - Service/Fee Income - DCR",
+                    "interest_accrued_account": "10202 - Loans Receivable - DCR",
                     "penalty_receivable_account": None,
                     "write_off_account": None,
                 }.get(fieldname)
@@ -235,7 +235,7 @@ class TestSetupCustomFields(unittest.TestCase):
         )
         self.assertEqual(
             loan_product_updates["interest_accrued_account"],
-            "10202 - Loans Receivable - DCR",
+            "40110 - Service/Fee Income - DCR",
         )
         self.assertEqual(loan_product_updates["write_off_account"], "50282 - Bad Debt - DCR")
         mock_frappe.clear_cache.assert_any_call(doctype="Loan Product")

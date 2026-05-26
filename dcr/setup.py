@@ -164,10 +164,12 @@ def ensure_lending_accounting_defaults():
         "loan_account",
         "security_deposit_account",
         "customer_refund_account",
-        "interest_accrued_account",
         "interest_receivable_account",
-        "penalty_accrued_account",
         "penalty_receivable_account",
+    )
+    accrual_fields = (
+        "interest_accrued_account",
+        "penalty_accrued_account",
     )
     income_fields = (
         "interest_income_account",
@@ -196,6 +198,16 @@ def ensure_lending_accounting_defaults():
 
             current = frappe.db.get_value("Loan Product", product_name, fieldname)
             if not current and frappe.db.exists("Account", income_account):
+                updates[fieldname] = income_account
+
+        for fieldname in accrual_fields:
+            if not frappe.db.has_column("Loan Product", fieldname):
+                continue
+
+            current = frappe.db.get_value("Loan Product", product_name, fieldname)
+            if (
+                not current or current == receivable_account or _account_is_type(current, "Receivable")
+            ) and frappe.db.exists("Account", income_account):
                 updates[fieldname] = income_account
 
         if (
@@ -231,18 +243,26 @@ def ensure_loan_demand_offset_order():
         return
 
     order_name = "DCR Standard Loan Demand Offset Order"
+    components = [
+        {"demand_type": "EMI (Principal + Interest)"},
+        {"demand_type": "Penalty"},
+        {"demand_type": "Charges"},
+        {"demand_type": "Principal"},
+    ]
     if not frappe.db.exists("Loan Demand Offset Order", order_name):
         order = frappe.get_doc({
             "doctype": "Loan Demand Offset Order",
             "title": order_name,
-            "components": [
-                {"demand_type": "Interest"},
-                {"demand_type": "Penalty"},
-                {"demand_type": "Charges"},
-                {"demand_type": "Principal"},
-            ],
+            "components": components,
         })
         order.insert(ignore_permissions=True)
+    else:
+        order = frappe.get_doc("Loan Demand Offset Order", order_name)
+        current = [row.demand_type for row in order.get("components")]
+        expected = [row["demand_type"] for row in components]
+        if current != expected:
+            order.set("components", components)
+            order.save(ignore_permissions=True)
 
     fields = (
         "collection_offset_sequence_for_standard_asset",
