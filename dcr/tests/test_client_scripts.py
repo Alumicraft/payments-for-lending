@@ -86,12 +86,12 @@ class TestLoanClientScript(unittest.TestCase):
 
     def test_loan_list_create_uses_loan_application_context(self):
         script = (
-            ROOT / "dcr/public/js/loan_list_context_patch_20260525_11.js"
+            ROOT / "dcr/public/js/loan_list_context_patch_20260525_14.js"
         ).read_text()
         hooks = (ROOT / "dcr/hooks.py").read_text()
 
         self.assertIn(
-            'versioned_asset("/assets/dcr/js/loan_list_context_patch_20260525_11.js")',
+            'versioned_asset("/assets/dcr/js/loan_list_context_patch_20260525_14.js")',
             hooks,
         )
         self.assertIn("function current_loan_application()", script)
