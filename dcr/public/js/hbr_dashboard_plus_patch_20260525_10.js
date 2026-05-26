@@ -19,7 +19,7 @@
             home_build_request: frm.doc.name,
             home_serial_no: frm.doc.serial_number || '',
             factory: frm.doc.factory || '',
-            floor_plan: frm.doc.model_name || '',
+            floor_plan: frm.doc.floor_plan || '',
             custom_quote_amount: frm.doc.quote_amount || 0
         };
     }
