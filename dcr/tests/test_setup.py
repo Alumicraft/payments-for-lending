@@ -164,6 +164,13 @@ class TestSetupCustomFields(unittest.TestCase):
         )
         mock_frappe.clear_cache.assert_called_once_with(doctype="Company")
 
+    def test_loan_demand_offset_order_repair_runs_as_patch(self):
+        patches = (ROOT / "dcr/patches.txt").read_text()
+        patch = (ROOT / "dcr/patches/repair_loan_demand_offset_order.py").read_text()
+
+        self.assertIn("dcr.patches.repair_loan_demand_offset_order", patches)
+        self.assertIn("ensure_loan_demand_offset_order()", patch)
+
 
 class TestAchBankAccountMigration(unittest.TestCase):
 

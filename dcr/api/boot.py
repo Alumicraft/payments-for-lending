@@ -1,10 +1,10 @@
 import frappe
 
-# Fallback for after_migrate not firing on Frappe Cloud deploys. We run the
-# block sync once per worker process — cheap when the block is already current,
-# and guarantees the desk reflects the latest setup.py after a deploy restarts
-# the workers.
+# Fallback for after_migrate not firing on Frappe Cloud deploys. We run these
+# setup syncs once per worker process so restarted workers can repair stale site
+# config even when hooks are skipped.
 _MAP_BLOCK_SYNCED = False
+_LOAN_DEMAND_OFFSET_SYNCED = False
 
 
 def boot_session(bootinfo):
@@ -20,6 +20,16 @@ def boot_session(bootinfo):
 		finally:
 			# Set even on failure so we don't retry every session on a broken worker.
 			_MAP_BLOCK_SYNCED = True
+
+	global _LOAN_DEMAND_OFFSET_SYNCED
+	if not _LOAN_DEMAND_OFFSET_SYNCED:
+		try:
+			from dcr.setup import ensure_loan_demand_offset_order
+			ensure_loan_demand_offset_order()
+		except Exception:
+			frappe.log_error(frappe.get_traceback(), "ensure_loan_demand_offset_order (boot_session)")
+		finally:
+			_LOAN_DEMAND_OFFSET_SYNCED = True
 
 	for item in (bootinfo.desktop_icons or []):
 		url = item.get("logo_url") or item.get("icon_image")
