@@ -251,6 +251,8 @@ class TestSetupCustomFields(unittest.TestCase):
         hooks = (ROOT / "dcr/hooks.py").read_text()
 
         self.assertIn('"Loan Demand"', hooks)
+        self.assertIn('"validate": "dcr.api.lending.populate_loan_demand_from_loan"', hooks)
+        self.assertIn('"before_submit": "dcr.api.lending.populate_loan_demand_from_loan"', hooks)
         self.assertIn("populate_loan_demand_from_loan", hooks)
 
 
