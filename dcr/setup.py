@@ -524,7 +524,7 @@ def ensure_hbr_stage_field_options():
     this only updates existing field options and leaves layout untouched.
     """
     fields = {
-        "custom_order_stage": "Not Ordered\nOrdered\nDelivered\nClosed",
+        "custom_order_stage": "Pending\nOrdered\nDelivered\nClosed",
         "custom_loan_stage": (
             "Not Applicable\nNot Started\nApplied\nApproved\nFunded\nActive\nClosed"
         ),
@@ -1172,6 +1172,10 @@ def ensure_map_block():
         function scheduleRefresh(resetActive) {
             suppressMenuUntil = 0;
             clearTimeout(debounce);
+            window.requestAnimationFrame(function() {
+                if (resetActive) active = 0;
+                refreshSearch();
+            });
             debounce = setTimeout(function() {
                 if (resetActive) active = 0;
                 refreshSearch();
@@ -1221,6 +1225,12 @@ def ensure_map_block():
             scheduleRefresh(true);
         });
         input.addEventListener('focus', function() {
+            if (input.value.trim().length >= 2) scheduleRefresh(true);
+        });
+        input.addEventListener('focusin', function() {
+            if (input.value.trim().length >= 2) scheduleRefresh(true);
+        });
+        input.addEventListener('click', function() {
             if (input.value.trim().length >= 2) scheduleRefresh(true);
         });
         input.addEventListener('keydown', function(e) {

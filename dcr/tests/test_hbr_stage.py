@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class TestHbrOrderStageRules(unittest.TestCase):
-    def test_no_submitted_po_is_not_ordered(self):
+    def test_no_submitted_po_is_pending(self):
         from dcr.api.hbr_stage import derive_order_stage
 
         self.assertEqual(
@@ -18,7 +18,7 @@ class TestHbrOrderStageRules(unittest.TestCase):
                 has_submitted_pr=False,
                 has_closed_loan=False,
             ),
-            "Not Ordered",
+            "Pending",
         )
 
     def test_submitted_po_without_receipt_is_ordered(self):

@@ -34,7 +34,7 @@
   "latitude",
   "longitude",
   "home_section",
-  "model_name",
+  "floor_plan",
   "factory",
   "column_break_home",
   "home_serial_no",
@@ -244,11 +244,9 @@
    "label": "Deal Reference"
   },
   {
-   "fieldname": "model_name",
-   "fieldtype": "Link",
-   "label": "Model",
-   "options": "Model",
-   "reqd": 1
+   "fieldname": "floor_plan",
+   "fieldtype": "Data",
+   "label": "Floorplan"
   },
   {
    "fieldname": "home_serial_no",
@@ -268,12 +266,11 @@
    "fieldtype": "Column Break"
   },
   {
-   "fetch_from": "model_name.manufacturer",
    "fieldname": "factory",
    "fieldtype": "Link",
    "label": "Factory",
    "options": "Supplier",
-   "read_only": 1
+   "reqd": 1
   },
   {
    "fieldname": "quote_no",

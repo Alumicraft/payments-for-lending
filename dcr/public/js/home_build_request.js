@@ -7,8 +7,6 @@
  * - Create → Purchase Order / Purchase Invoice (all deals, after submission)
  */
 
-var _mapbox_bound = {};
-
 frappe.ui.form.on('Home Build Request', {
     refresh: function(frm) {
         // Factory filter
@@ -376,21 +374,27 @@ var _mapbox_token = null;
 var _address_fields = ['city', 'state', 'zip', 'latitude', 'longitude'];
 
 function setup_address_autofill(frm) {
-    var $input = frm.fields_dict.delivery_address && frm.fields_dict.delivery_address.$input;
-    if (!$input || _mapbox_bound[frm.doc.name]) return;
-    _mapbox_bound[frm.doc.name] = true;
+    var field = frm.fields_dict.delivery_address;
+    if (!field) return;
+    var $input = field.$input;
+    if (!$input || !$input.length) {
+        // Field not rendered yet — retry once Frappe finishes painting.
+        setTimeout(function() { setup_address_autofill(frm); }, 200);
+        return;
+    }
 
-    // If address already has auto-filled data, lock the dependent fields
     if (frm.doc.latitude && frm.doc.longitude) {
         set_address_fields_read_only(frm, true);
     }
 
     var _debounce = null;
 
-    $input.on('input', function() {
+    // Re-bind cleanly each refresh: form re-renders replace the <input> node,
+    // and previously-bound handlers go with it. Namespaced events make the
+    // off/on pair idempotent if the same node is re-used.
+    $input.off('input.dcrMapbox').on('input.dcrMapbox', function() {
         var query = $input.val();
 
-        // If field is cleared, reset all auto-filled fields
         if (!query) {
             clear_address_fields(frm);
             return;
@@ -401,7 +405,10 @@ function setup_address_autofill(frm) {
         clearTimeout(_debounce);
         _debounce = setTimeout(function() {
             get_mapbox_token(function(token) {
-                if (!token) return;
+                if (!token) {
+                    console.warn('DCR: Mapbox token missing — address autofill disabled.');
+                    return;
+                }
                 search_mapbox(token, query, function(suggestions) {
                     if (suggestions.length) show_address_dropdown(frm, $input, suggestions);
                 });

@@ -32,7 +32,7 @@ def derive_order_stage(
         return "Delivered"
     if has_submitted_po:
         return "Ordered"
-    return "Not Ordered"
+    return "Pending"
 
 
 def derive_loan_stage(financing_type, loan_application_status=None, loan_status=None):
@@ -114,9 +114,23 @@ def sync_hbr_stages(hbr_name):
 
 
 def apply_hbr_stage_defaults(doc):
-    """Apply safe defaults on HBR validate before linked docs exist."""
-    if _doc_has_field(doc, ORDER_STAGE_FIELD) and not doc.get(ORDER_STAGE_FIELD):
-        doc.set(ORDER_STAGE_FIELD, "Not Ordered")
+    """Derive HBR stage values from operational evidence on validate.
+
+    Always recomputes custom_order_stage from PO/PR/loan state so a kanban
+    drag to an unsupported column snaps back to the derived value.
+    """
+    if _doc_has_field(doc, ORDER_STAGE_FIELD):
+        has_po = bool(doc.name) and _has_submitted_purchase_order(doc.name)
+        has_pr = bool(doc.name) and _has_submitted_purchase_receipt(doc.name)
+        loan_status = _latest_loan_status(doc.name) if doc.name else None
+        order_stage = derive_order_stage(
+            financing_type=doc.get("financing_type"),
+            has_submitted_po=has_po,
+            has_submitted_pr=has_pr,
+            has_closed_loan=loan_status in LOAN_CLOSED_STATUSES,
+            current_order_stage=doc.get(ORDER_STAGE_FIELD),
+        )
+        doc.set(ORDER_STAGE_FIELD, order_stage)
 
     if not _doc_has_field(doc, LOAN_STAGE_FIELD):
         return

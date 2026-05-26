@@ -72,7 +72,7 @@ class TestLoanApplicationGuards(unittest.TestCase):
             home_buyer="BUYER-001",
             home_serial_no="SER-001",
             factory="Factory A",
-            model_name="Model A",
+            floor_plan="Model A",
             space_rent=123,
             selling_price=250000,
         )
@@ -151,7 +151,7 @@ class TestLoanApplicationGuards(unittest.TestCase):
             home_buyer="BUYER-001",
             home_serial_no="SER-001",
             factory="Factory A",
-            model_name="Model A",
+            floor_plan="Model A",
             space_rent=123,
             selling_price=250000,
         )
@@ -198,7 +198,7 @@ class TestLoanApplicationGuards(unittest.TestCase):
             home_buyer=None,
             home_serial_no=None,
             factory=None,
-            model_name=None,
+            floor_plan=None,
             space_rent=None,
             selling_price=None,
         )

@@ -14,3 +14,5 @@ dcr.patches.sync_hbr_stage_fields
 dcr.patches.sync_hbr_submit_status
 dcr.patches.repair_loan_demand_offset_order
 dcr.patches.repair_lending_accounting_defaults
+dcr.patches.rename_not_ordered_to_pending
+dcr.patches.retire_model_doctype

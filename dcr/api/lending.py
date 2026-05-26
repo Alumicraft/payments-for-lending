@@ -333,7 +333,7 @@ def _get_loan_application_hbr_defaults(hbr):
         "buyer_name": hbr.get("home_buyer"),
         "home_serial_no": hbr.get("home_serial_no"),
         "factory": hbr.get("factory"),
-        "floor_plan": hbr.get("model_name"),
+        "floor_plan": hbr.get("floor_plan"),
         "custom_monthly_space_rent": hbr.get("space_rent"),
         "custom_projected_sales_price": hbr.get("selling_price"),
     }

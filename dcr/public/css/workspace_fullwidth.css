@@ -2,14 +2,10 @@
  * Workspace Full-Width Override
  *
  * The user prefers Frappe's "Full Width" toggle OFF for forms and lists,
- * but workspace dashboards look cramped under the contained width. Frappe
- * v16 normally sets `body[data-route="Workspaces/<Name>"]` on workspace
- * routes, so we scope the main override to that attribute and leave forms/lists
- * alone. A second `:has(.workspace-body)` rule catches workspace renders where
- * the route attribute is not updated quickly enough after navigation.
- * The JS sidebar fix also toggles `body.dcr-workspace-fullbleed`, which covers
- * bare workspace routes like `/app/map` where `data-route` may not use the
- * `Workspaces/<Name>` shape.
+ * but workspace dashboards look cramped under the contained width. Keep the
+ * override behind the JS-managed body class instead of broad route/DOM
+ * selectors; Frappe can leave stale route attributes or detached workspace DOM
+ * around during Desk transitions, which leaks shell styling onto lists/forms.
  *
  * The constraint comes from `.container.page-body` (Bootstrap container
  * max-width). Only page-shell containers are widened below; Frappe's workspace
@@ -32,68 +28,24 @@ body.dcr-workspace-fullbleed .layout-main,
 body.dcr-workspace-fullbleed .layout-main-section-wrapper,
 body.dcr-workspace-fullbleed .layout-main-section,
 body.dcr-workspace-fullbleed .layout-main-section > .container,
-body.dcr-workspace-fullbleed .layout-main-section > .container-fluid,
-body[data-route^="Workspaces/"] .main-section,
-body[data-route^="Workspaces/"] .page-container,
-body[data-route^="Workspaces/"] .page-wrapper,
-body[data-route^="Workspaces/"] .page-content,
-body[data-route^="Workspaces/"] .page-body,
-body[data-route^="Workspaces/"] .container.page-body,
-body[data-route^="Workspaces/"] .layout-main,
-body[data-route^="Workspaces/"] .layout-main-section-wrapper,
-body[data-route^="Workspaces/"] .layout-main-section,
-body[data-route^="Workspaces/"] .layout-main-section > .container,
-body[data-route^="Workspaces/"] .layout-main-section > .container-fluid {
+body.dcr-workspace-fullbleed .layout-main-section > .container-fluid {
 	max-width: none !important;
 	width: 100% !important;
 }
 
 body.dcr-workspace-fullbleed .page-body,
-body.dcr-workspace-fullbleed .container.page-body,
-body[data-route^="Workspaces/"] .page-body,
-body[data-route^="Workspaces/"] .container.page-body {
+body.dcr-workspace-fullbleed .container.page-body {
 	box-sizing: border-box !important;
 	padding-left: var(--dcr-workspace-content-padding, 20px) !important;
 	padding-right: var(--dcr-workspace-content-padding, 20px) !important;
 }
 
 body.dcr-workspace-fullbleed[data-route="Workspaces/Map"] .page-body,
-body.dcr-workspace-fullbleed[data-route="Workspaces/Map"] .container.page-body,
-body[data-route="Workspaces/Map"] .page-body,
-body[data-route="Workspaces/Map"] .container.page-body {
+body.dcr-workspace-fullbleed[data-route="Workspaces/Map"] .container.page-body {
 	padding-left: 0 !important;
 	padding-right: 0 !important;
 }
 
-body:has(.workspace-body) .main-section,
-body:has(.workspace-body) .page-container,
-body:has(.workspace-body) .page-wrapper,
-body:has(.workspace-body) .page-content,
-body:has(.workspace-body) .page-body,
-body:has(.workspace-body) .container.page-body,
-body:has(.workspace-body) .layout-main,
-body:has(.workspace-body) .layout-main-section-wrapper,
-body:has(.workspace-body) .layout-main-section,
-body:has(.workspace-body) .layout-main-section > .container,
-body:has(.workspace-body) .layout-main-section > .container-fluid {
-	max-width: none !important;
-	width: 100% !important;
-}
-
-body:has(.workspace-body) .page-body,
-body:has(.workspace-body) .container.page-body {
-	box-sizing: border-box !important;
-	padding-left: var(--dcr-workspace-content-padding, 20px) !important;
-	padding-right: var(--dcr-workspace-content-padding, 20px) !important;
-}
-
-body[data-route="Workspaces/Map"]:has(.workspace-body) .page-body,
-body[data-route="Workspaces/Map"]:has(.workspace-body) .container.page-body {
-	padding-left: 0 !important;
-	padding-right: 0 !important;
-}
-
-body.dcr-workspace-fullbleed[data-route="Workspaces/Map"] .widget.custom-block-widget-box,
-body[data-route="Workspaces/Map"] .widget.custom-block-widget-box {
+body.dcr-workspace-fullbleed[data-route="Workspaces/Map"] .widget.custom-block-widget-box {
 	padding: 0 !important;
 }

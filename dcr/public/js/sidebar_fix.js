@@ -631,6 +631,10 @@
 		return null;
 	}
 
+	function is_workspace_page_route(route) {
+		return !!workspace_slug_from_route(route || []);
+	}
+
 	function pick_correct_workspace() {
 		try {
 			var route = frappe.get_route() || [];
@@ -807,11 +811,12 @@
 	function set_workspace_fullbleed_class(reason) {
 		try {
 			var route = frappe.get_route() || [];
-			var is_workspace = !!workspace_slug_from_route(route);
+			var is_workspace = is_workspace_page_route(route);
 			if (!is_workspace && !route.length) {
 				is_workspace = !!document.querySelector(".workspace-body");
 			}
 			document.body.classList.toggle("dcr-workspace-fullbleed", is_workspace);
+			document.body.classList.toggle("dcr-workspace-home", is_workspace);
 			if (is_workspace) document.body.setAttribute("data-dcr-workspace-fullbleed", reason || "1");
 			else document.body.removeAttribute("data-dcr-workspace-fullbleed");
 		} catch (e) {
