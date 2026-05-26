@@ -114,6 +114,56 @@ class TestSetupCustomFields(unittest.TestCase):
             ["Purchase Order", "Purchase Invoice", "Purchase Receipt", "Payment Entry"],
         )
 
+    @patch("dcr.setup.frappe")
+    def test_ensure_loan_demand_offset_order_repairs_stale_company_links(self, mock_frappe):
+        from dcr.setup import ensure_loan_demand_offset_order
+
+        order_doc = MagicMock()
+
+        def exists(doctype, name):
+            if doctype == "DocType":
+                return name == "Loan Demand Offset Order"
+            if doctype == "Loan Demand Offset Order":
+                return name == "Existing Offset Order"
+            return False
+
+        def get_value(doctype, name, fieldname):
+            values = {
+                "collection_offset_sequence_for_standard_asset": "IP...IP...IP...CCC",
+                "collection_offset_sequence_for_sub_standard_asset": "Existing Offset Order",
+                "collection_offset_sequence_for_written_off_asset": None,
+                "collection_offset_sequence_for_settlement_collection": "",
+            }
+            return values[fieldname]
+
+        mock_frappe.db.exists.side_effect = exists
+        mock_frappe.get_doc.return_value = order_doc
+        mock_frappe.get_all.return_value = ["Dealer Capital Resources"]
+        mock_frappe.db.has_column.return_value = True
+        mock_frappe.db.get_value.side_effect = get_value
+
+        ensure_loan_demand_offset_order()
+
+        payload = mock_frappe.get_doc.call_args.args[0]
+        self.assertEqual(payload["doctype"], "Loan Demand Offset Order")
+        self.assertEqual(payload["title"], "DCR Standard Loan Demand Offset Order")
+        self.assertEqual(
+            [row["demand_type"] for row in payload["components"]],
+            ["Interest", "Penalty", "Charges", "Principal"],
+        )
+        order_doc.insert.assert_called_once_with(ignore_permissions=True)
+        mock_frappe.db.set_value.assert_called_once_with(
+            "Company",
+            "Dealer Capital Resources",
+            {
+                "collection_offset_sequence_for_standard_asset": "DCR Standard Loan Demand Offset Order",
+                "collection_offset_sequence_for_written_off_asset": "DCR Standard Loan Demand Offset Order",
+                "collection_offset_sequence_for_settlement_collection": "DCR Standard Loan Demand Offset Order",
+            },
+            update_modified=False,
+        )
+        mock_frappe.clear_cache.assert_called_once_with(doctype="Company")
+
 
 class TestAchBankAccountMigration(unittest.TestCase):
 

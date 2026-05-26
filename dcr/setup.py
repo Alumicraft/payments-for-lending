@@ -122,7 +122,61 @@ def after_install():
     except Exception:
         frappe.log_error(frappe.get_traceback(), "sync_existing_hbr_stage_fields failed")
 
+    try:
+        ensure_loan_demand_offset_order()
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "ensure_loan_demand_offset_order failed")
+
     frappe.db.commit()
+
+
+def ensure_loan_demand_offset_order():
+    """Repair Lending's collection offset setup for repayment entry.
+
+    Some upgraded Lending sites keep old Select values such as
+    ``IP...IP...IP...CCC`` in Company collection-offset fields after those
+    fields become Links. Repayment save then tries to load a missing
+    Loan Demand Offset Order. Keep a valid standard order present and point
+    stale company values at it.
+    """
+    if not frappe.db.exists("DocType", "Loan Demand Offset Order"):
+        return
+
+    order_name = "DCR Standard Loan Demand Offset Order"
+    if not frappe.db.exists("Loan Demand Offset Order", order_name):
+        order = frappe.get_doc({
+            "doctype": "Loan Demand Offset Order",
+            "title": order_name,
+            "components": [
+                {"demand_type": "Interest"},
+                {"demand_type": "Penalty"},
+                {"demand_type": "Charges"},
+                {"demand_type": "Principal"},
+            ],
+        })
+        order.insert(ignore_permissions=True)
+
+    fields = (
+        "collection_offset_sequence_for_standard_asset",
+        "collection_offset_sequence_for_sub_standard_asset",
+        "collection_offset_sequence_for_written_off_asset",
+        "collection_offset_sequence_for_settlement_collection",
+    )
+
+    for company in frappe.get_all("Company", pluck="name"):
+        updates = {}
+        for fieldname in fields:
+            if not frappe.db.has_column("Company", fieldname):
+                continue
+            current = frappe.db.get_value("Company", company, fieldname)
+            if current and frappe.db.exists("Loan Demand Offset Order", current):
+                continue
+            updates[fieldname] = order_name
+
+        if updates:
+            frappe.db.set_value("Company", company, updates, update_modified=False)
+
+    frappe.clear_cache(doctype="Company")
 
 
 def ensure_supplier_geo_fields():
