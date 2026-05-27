@@ -6,9 +6,10 @@
   "doctype": "Dashboard Chart",
   "filters_json": "[]",
   "is_public": 1,
+  "is_standard": 1,
   "module": "DCR",
   "name": "Inflows vs Outflows",
-  "source": "dcr.api.dashboard.inflows_vs_outflows",
+  "source": "Inflows vs Outflows",
   "timeseries": 0,
   "type": "Bar"
  },
@@ -19,9 +20,10 @@
   "doctype": "Dashboard Chart",
   "filters_json": "[]",
   "is_public": 1,
+  "is_standard": 1,
   "module": "DCR",
   "name": "Past-Due Aging",
-  "source": "dcr.api.dashboard.past_due_aging",
+  "source": "Past-Due Aging",
   "timeseries": 0,
   "type": "Bar"
  },
@@ -32,9 +34,10 @@
   "doctype": "Dashboard Chart",
   "filters_json": "[]",
   "is_public": 1,
+  "is_standard": 1,
   "module": "DCR",
   "name": "New Deals by Type",
-  "source": "dcr.api.dashboard.new_deals_by_type",
+  "source": "New Deals by Type",
   "timeseries": 0,
   "type": "Bar"
  }

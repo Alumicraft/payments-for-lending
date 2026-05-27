@@ -1,0 +1,8 @@
+{
+ "doctype": "Dashboard Chart Source",
+ "module": "DCR",
+ "name": "Past-Due Aging",
+ "owner": "Administrator",
+ "source_name": "Past-Due Aging",
+ "timeseries": 0
+}

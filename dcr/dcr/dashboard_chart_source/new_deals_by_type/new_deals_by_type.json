@@ -1,0 +1,8 @@
+{
+ "doctype": "Dashboard Chart Source",
+ "module": "DCR",
+ "name": "New Deals by Type",
+ "owner": "Administrator",
+ "source_name": "New Deals by Type",
+ "timeseries": 0
+}

@@ -1,0 +1,8 @@
+{
+ "doctype": "Dashboard Chart Source",
+ "module": "DCR",
+ "name": "Inflows vs Outflows",
+ "owner": "Administrator",
+ "source_name": "Inflows vs Outflows",
+ "timeseries": 0
+}
