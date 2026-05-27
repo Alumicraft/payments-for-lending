@@ -5,7 +5,7 @@ onto the HBR factory field. It's been retired in favor of a free-text
 floor_plan column and a user-entered factory link.
 """
 import frappe
-from frappe.model.rename_field import rename_field
+from frappe.model.utils.rename_field import rename_field
 
 
 def execute():
