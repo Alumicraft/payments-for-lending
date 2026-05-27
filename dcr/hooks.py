@@ -86,6 +86,16 @@ fixtures = [
             ]]
         ]
     },
+    {
+        "doctype": "Dashboard Chart",
+        "filters": [
+            ["name", "in", [
+                "Inflows vs Outflows",
+                "Past-Due Aging",
+                "New Deals by Type",
+            ]]
+        ]
+    },
 ]
 
 # Include JS in doctype views

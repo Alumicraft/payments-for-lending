@@ -1,0 +1,38 @@
+[
+ {
+  "chart_name": "Inflows vs Outflows",
+  "chart_type": "Custom",
+  "custom_options": "{\"colors\":[\"#5e64ff\",\"#28a745\"]}",
+  "doctype": "Dashboard Chart",
+  "is_public": 1,
+  "module": "DCR",
+  "name": "Inflows vs Outflows",
+  "source": "dcr.api.dashboard.inflows_vs_outflows",
+  "timeseries": 0,
+  "type": "Bar"
+ },
+ {
+  "chart_name": "Past-Due Aging",
+  "chart_type": "Custom",
+  "custom_options": "{\"colors\":[\"#fbe687\",\"#fd7e14\",\"#dc3545\",\"#a02020\"]}",
+  "doctype": "Dashboard Chart",
+  "is_public": 1,
+  "module": "DCR",
+  "name": "Past-Due Aging",
+  "source": "dcr.api.dashboard.past_due_aging",
+  "timeseries": 0,
+  "type": "Bar"
+ },
+ {
+  "chart_name": "New Deals by Type",
+  "chart_type": "Custom",
+  "custom_options": "{\"colors\":[\"#449cf0\",\"#fd7e14\"],\"stacked\":1}",
+  "doctype": "Dashboard Chart",
+  "is_public": 1,
+  "module": "DCR",
+  "name": "New Deals by Type",
+  "source": "dcr.api.dashboard.new_deals_by_type",
+  "timeseries": 0,
+  "type": "Bar"
+ }
+]

@@ -19,9 +19,21 @@ frappe_mock.utils = MagicMock()
 frappe_mock.utils.now_datetime = MagicMock(return_value="2025-01-01 00:00:00")
 frappe_mock.utils.getdate = lambda d: __import__("datetime").date.fromisoformat(str(d)[:10]) if d else None
 frappe_mock.utils.today = MagicMock(return_value="2025-03-01")
+frappe_mock.utils.nowdate = MagicMock(return_value="2026-06-15")
 frappe_mock.utils.add_days = lambda d, n: (
     __import__("datetime").date.fromisoformat(str(d)[:10]) + __import__("datetime").timedelta(days=n)
 )
+frappe_mock.utils.get_first_day = lambda d: (
+    __import__("datetime").date.fromisoformat(str(d)[:10]).replace(day=1)
+)
+def _add_months(d, n):
+    datetime = __import__("datetime")
+    base = d if isinstance(d, datetime.date) else datetime.date.fromisoformat(str(d)[:10])
+    month_index = base.month - 1 + n
+    year = base.year + month_index // 12
+    month = month_index % 12 + 1
+    return datetime.date(year, month, 1)
+frappe_mock.utils.add_months = _add_months
 frappe_mock.utils.get_time = MagicMock()
 frappe_mock.utils.nowtime = MagicMock()
 
