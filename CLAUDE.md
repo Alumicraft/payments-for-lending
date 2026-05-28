@@ -18,6 +18,7 @@ Before improvising on a recurring task, check `docs/playbooks/` — read the mat
 - `deploy-to-frappe-cloud.md` — pre-deploy checks, patches, what to watch on the FC dashboard
 - `add-print-format.md` — single-file JSON pattern, Jinja conventions, DocuSign anchors
 - `add-doctype.md` — schema, validation, fixtures, the `custom + is_standard` v16 trap
+- `add-dashboard-chart.md` — when to use Custom vs UI-native, the `.js` source-config contract, v16 chart gotchas
 
 ## Agents
 Project-level agents live in `.claude/agents/`:
