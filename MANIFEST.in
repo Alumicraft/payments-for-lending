@@ -1,4 +1,4 @@
-recursive-include dcr/public *.css *.js *.png *.svg *.ico
+recursive-include dcr/public *.css *.js *.html *.png *.svg *.ico
 recursive-include dcr/fixtures *.json
 recursive-include dcr/dcr/doctype *.json
 recursive-include dcr/dcr/report *.json

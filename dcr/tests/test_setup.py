@@ -8,6 +8,15 @@ from unittest.mock import MagicMock, patch
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def _map_block_source():
+    """The map workspace block's HTML + JS now live in shipped asset files
+    (extracted out of setup.py). These tests assert on that content, so read
+    both files and concatenate to reproduce the original combined haystack."""
+    html = (ROOT / "dcr/public/html/map_block.html").read_text()
+    js = (ROOT / "dcr/public/js/map_block.js").read_text()
+    return html + "\n" + js
+
+
 class TestSetupCustomFields(unittest.TestCase):
 
     @patch("dcr.setup.frappe")
@@ -287,7 +296,7 @@ class TestAchBankAccountMigration(unittest.TestCase):
 class TestMapBlockContent(unittest.TestCase):
 
     def test_production_map_block_contains_preview_features(self):
-        setup_code = (ROOT / "dcr/setup.py").read_text()
+        setup_code = _map_block_source()
 
         self.assertIn("dcr-legend", setup_code)
         self.assertIn("dcr-search", setup_code)
@@ -345,10 +354,12 @@ class TestPackagingConfig(unittest.TestCase):
         self.assertIn('[tool.setuptools.package-data]', pyproject)
         self.assertIn('"public/js/*.js"', pyproject)
         self.assertIn('"public/css/*.css"', pyproject)
+        self.assertIn('"public/html/*.html"', pyproject)
         self.assertIn('"public/images/*.png"', pyproject)
         self.assertIn('"public/js/*.js"', setup_py)
-        self.assertIn("recursive-include dcr/public *.css *.js *.png", manifest)
-        self.assertIn('DCR_ASSET_VERSION = "20260528-3"', hooks)
+        self.assertIn('"public/html/*.html"', setup_py)
+        self.assertIn("recursive-include dcr/public *.css *.js *.html *.png", manifest)
+        self.assertIn('DCR_ASSET_VERSION = "20260528-5"', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/sidebar_fix.js")', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/hbr_dashboard_plus_patch_20260525_10.js")', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/loan_list_context_patch_20260525_14.js")', hooks)
@@ -361,7 +372,7 @@ class TestPackagingConfig(unittest.TestCase):
 class TestMapWorkspaceClientCode(unittest.TestCase):
 
     def test_map_search_refreshes_after_data_loads(self):
-        setup_code = (ROOT / "dcr/setup.py").read_text()
+        setup_code = _map_block_source()
         css = (ROOT / "dcr/public/css/map.css").read_text()
 
         self.assertIn("window._dcrMapRefreshSearch = refreshSearch", setup_code)
@@ -390,7 +401,7 @@ class TestMapWorkspaceClientCode(unittest.TestCase):
         self.assertIn(".dcr-search__menu.is-open { display: block !important; }", css)
 
     def test_map_search_closes_after_selecting_result(self):
-        setup_code = (ROOT / "dcr/setup.py").read_text()
+        setup_code = _map_block_source()
 
         self.assertIn("var suppressMenuUntil = 0", setup_code)
         self.assertIn("function selectHit(item)", setup_code)
@@ -399,7 +410,7 @@ class TestMapWorkspaceClientCode(unittest.TestCase):
         self.assertIn("selectHit(hits[active])", setup_code)
 
     def test_map_popup_actions_use_frappe_router(self):
-        setup_code = (ROOT / "dcr/setup.py").read_text()
+        setup_code = _map_block_source()
 
         self.assertIn("function openDeskDoc(doctype, name)", setup_code)
         self.assertIn("frappe.set_route('Form', doctype, name)", setup_code)
@@ -417,21 +428,21 @@ class TestMapWorkspaceClientCode(unittest.TestCase):
         self.assertNotIn("window.location.href = '/desk/'", setup_code)
 
     def test_map_click_guard_only_queries_existing_layers(self):
-        setup_code = (ROOT / "dcr/setup.py").read_text()
+        setup_code = _map_block_source()
 
         self.assertIn("function renderedClickLayers(map)", setup_code)
         self.assertIn("if (!layers.length) {", setup_code)
         self.assertIn("map.queryRenderedFeatures(e.point, { layers: layers })", setup_code)
 
     def test_embedded_map_block_uses_shorter_viewport_height(self):
-        setup_code = (ROOT / "dcr/setup.py").read_text()
+        setup_code = _map_block_source()
 
         self.assertIn("var availableHeight = Math.max(360, window.innerHeight - rect.top)", setup_code)
         self.assertIn("var targetHeight = isMapPage ? availableHeight : Math.round(availableHeight * 0.67)", setup_code)
         self.assertIn("container.style.height = targetHeight + 'px'", setup_code)
 
     def test_dark_legend_checkmark_uses_span_not_native_checkbox(self):
-        setup_code = (ROOT / "dcr/setup.py").read_text()
+        setup_code = _map_block_source()
         css = (ROOT / "dcr/public/css/map.css").read_text()
 
         self.assertIn('<span class="dcr-legend__check', setup_code)

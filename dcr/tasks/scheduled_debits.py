@@ -14,7 +14,7 @@ Hourly tasks:
 """
 
 import frappe
-from frappe.utils import today, add_days, getdate, now_datetime, get_time, nowtime
+from frappe.utils import today, add_days, getdate, get_time, nowtime
 
 
 def is_ach_enabled():
@@ -287,7 +287,7 @@ def check_pending_transactions():
     if not is_ach_enabled():
         return
 
-    from dcr.api.achq_integration import ACHQClient, ACHQ_STATUS_MAP
+    from dcr.api.achq_integration import ACHQClient
 
     try:
         client = ACHQClient()

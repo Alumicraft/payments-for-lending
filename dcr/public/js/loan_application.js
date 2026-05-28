@@ -106,18 +106,16 @@ frappe.ui.form.on('Loan Application', {
         }, __('Email'));
 
         // Create → Loan (available after submit; warns if packet unsigned)
-        if (frm.doc.docstatus === 1) {
-            frm.add_custom_button(__('Loan'), function() {
-                if (!frm.doc.signed_packet) {
-                    frappe.msgprint(__('Flooring Packet has not been signed. Please send and sign the packet before creating a Loan.'));
-                    return;
-                }
-                frappe.model.open_mapped_doc({
-                    method: 'lending.loan_management.doctype.loan_application.loan_application.create_loan',
-                    frm: frm
-                });
-            }, __('Create'));
-        }
+        frm.add_custom_button(__('Loan'), function() {
+            if (!frm.doc.signed_packet) {
+                frappe.msgprint(__('Flooring Packet has not been signed. Please send and sign the packet before creating a Loan.'));
+                return;
+            }
+            frappe.model.open_mapped_doc({
+                method: 'lending.loan_management.doctype.loan_application.loan_application.create_loan',
+                frm: frm
+            });
+        }, __('Create'));
     },
 
     applicant: function(frm) {

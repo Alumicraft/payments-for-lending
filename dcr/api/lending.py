@@ -247,12 +247,12 @@ def validate_loan_application(doc, method):
     else:
         doc.available_credit = 0
 
-    requested = doc.get("loan_amount") or 0
-    if mifa_limit and requested > doc.available_credit:
+    loan_amount = doc.get("loan_amount") or 0
+    if mifa_limit and loan_amount > doc.available_credit:
         frappe.msgprint(
             _("Requested amount {0} exceeds available credit {1} "
               "(Credit limit: {2}, Outstanding: {3})").format(
-                frappe.format_value(requested, {"fieldtype": "Currency"}),
+                frappe.format_value(loan_amount, {"fieldtype": "Currency"}),
                 frappe.format_value(doc.available_credit, {"fieldtype": "Currency"}),
                 frappe.format_value(mifa_limit, {"fieldtype": "Currency"}),
                 frappe.format_value(outstanding, {"fieldtype": "Currency"}),
@@ -265,7 +265,6 @@ def validate_loan_application(doc, method):
         if hbr.factory:
             validate_advance_date(hbr.factory, doc.advance_date_requested)
 
-    loan_amount = doc.get("loan_amount") or 0
     sales_price = doc.get("custom_projected_sales_price") or 0
     rate = doc.get("rate_of_interest") or 0
     periods = doc.get("repayment_periods") or 0
@@ -361,8 +360,8 @@ def _get_customer_contact_details(customer):
         ["email_id", "mobile_no"],
         as_dict=True,
     ) or {}
-    details["email"] = _get_value(customer_details, "email_id")
-    details["phone"] = _get_value(customer_details, "mobile_no")
+    details["email"] = customer_details.get("email_id")
+    details["phone"] = customer_details.get("mobile_no")
 
     if details["email"] and details["phone"]:
         return details
@@ -385,16 +384,10 @@ def _get_customer_contact_details(customer):
         ["email_id", "mobile_no"],
         as_dict=True,
     ) or {}
-    details["email"] = details["email"] or _get_value(contact_details, "email_id")
-    details["phone"] = details["phone"] or _get_value(contact_details, "mobile_no")
+    details["email"] = details["email"] or contact_details.get("email_id")
+    details["phone"] = details["phone"] or contact_details.get("mobile_no")
 
     return details
-
-
-def _get_value(source, key):
-    if isinstance(source, dict):
-        return source.get(key)
-    return getattr(source, key, None)
 
 
 def validate_advance_date(factory, requested_date):

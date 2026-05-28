@@ -16,6 +16,21 @@
 	window.__dcr_sidebar_debug = window.__dcr_sidebar_debug || {};
 	window.__dcr_sidebar_debug.version = "2026-05-03-direct-route";
 
+	// Diagnostic logging is OFF by default. These `[DCR sidebar]` traces were
+	// invaluable while diagnosing the blank-sidebar / workspace-swap bugs, so
+	// they're kept but gated behind a flag. Flip them on at runtime with:
+	//   window.DCR_SIDEBAR_DEBUG = true            (this tab, immediate)
+	//   localStorage.setItem("DCR_SIDEBAR_DEBUG","1")  (persists across reloads)
+	// The check runs per-call so toggling takes effect without a reload.
+	function dcr_debug_on() {
+		if (window.DCR_SIDEBAR_DEBUG === true) return true;
+		try { return localStorage.getItem("DCR_SIDEBAR_DEBUG") === "1"; }
+		catch (e) { return false; }
+	}
+	function dbg_log()  { if (dcr_debug_on()) try { console.log.apply(console, arguments); } catch (e) {} }
+	function dbg_info() { if (dcr_debug_on()) try { console.info.apply(console, arguments); } catch (e) {} }
+	function dbg_warn() { if (dcr_debug_on()) try { console.warn.apply(console, arguments); } catch (e) {} }
+
 	var _initialized = false;
 	var _last_clicked = null;
 	var ENTITY_WORKSPACE_PREFIX = "dcr_workspace_for_";
@@ -257,10 +272,10 @@
 			localStorage.setItem(ENTITY_WORKSPACE_PREFIX + normalize(entity), workspace.label);
 			localStorage.setItem("dcr_last_workspace", workspace.label);
 			localStorage.setItem(GLOBAL_KEY, workspace.label);
-			console.info("[DCR sidebar] remembered", reason || "", entity, workspace.label);
+			dbg_info("[DCR sidebar] remembered", reason || "", entity, workspace.label);
 			return true;
 		} catch (e) {
-			console.log("[DCR sidebar] remember error:", e);
+			dbg_log("[DCR sidebar] remember error:", e);
 			return false;
 		}
 	}
@@ -277,7 +292,7 @@
 			localStorage.setItem(GLOBAL_KEY, workspace.label);
 			return true;
 		} catch (e) {
-			console.log("[DCR sidebar] doctype remember error:", e);
+			dbg_log("[DCR sidebar] doctype remember error:", e);
 			return false;
 		}
 	}
@@ -503,7 +518,7 @@
 				// just refresh which sidebar item is highlighted.
 				sb.set_active_workspace_item();
 			} catch (e) {
-				console.log("DCR sidebar patch error:", e);
+				dbg_log("DCR sidebar patch error:", e);
 				return original(router);
 			}
 		};
@@ -537,7 +552,7 @@
 					}
 				}
 			} catch (e) {
-				console.log("DCR sidebar setup-patch error:", e);
+				dbg_log("DCR sidebar setup-patch error:", e);
 			}
 			return original_setup(workspace_title);
 		};
@@ -568,7 +583,7 @@
 				try {
 					return original.call(this);
 				} catch (e) {
-					console.warn("[DCR sidebar] get_path failed for item", this.item, e);
+					dbg_warn("[DCR sidebar] get_path failed for item", this.item, e);
 					return null;
 				}
 			};
@@ -609,7 +624,7 @@
 				try {
 					return original.call(this, filters);
 				} catch (e) {
-					console.warn("[DCR sidebar] transform_filters failed", this.item, e);
+					dbg_warn("[DCR sidebar] transform_filters failed", this.item, e);
 					return {};
 				}
 			};
@@ -717,20 +732,20 @@
 			var route = frappe.get_route() || [];
 			var slug = workspace_slug_from_route(route);
 			if (!slug) {
-				console.info("[DCR sidebar] save skip", reason || "", { route: route });
+				dbg_info("[DCR sidebar] save skip", reason || "", { route: route });
 				return false;
 			}
 			var workspace = workspace_from_slug(slug);
 			if (!workspace) {
-				console.info("[DCR sidebar] save no-map", reason || "", { slug: slug });
+				dbg_info("[DCR sidebar] save no-map", reason || "", { slug: slug });
 				return false;
 			}
 			localStorage.setItem("dcr_last_workspace", workspace.label);
 			localStorage.setItem(GLOBAL_KEY, workspace.label);
-			console.info("[DCR sidebar] saved", reason || "", workspace.label);
+			dbg_info("[DCR sidebar] saved", reason || "", workspace.label);
 			return true;
 		} catch (e) {
-			console.log("[DCR sidebar] save error:", e);
+			dbg_log("[DCR sidebar] save error:", e);
 			return false;
 		}
 	}
@@ -739,7 +754,7 @@
 		if (!frappe.app || !frappe.app.sidebar) return;
 		var sb = frappe.app.sidebar;
 		var correct = pick_correct_workspace();
-		console.info("[DCR sidebar] enforce", reason || "", {
+		dbg_info("[DCR sidebar] enforce", reason || "", {
 			route: frappe.get_route(),
 			current: sb.sidebar_title,
 			correct: correct,
@@ -759,10 +774,10 @@
 		}
 		if (typeof setup !== "function") return;
 		try {
-			console.info("[DCR sidebar] correcting", sb.sidebar_title, "→", correct);
+			dbg_info("[DCR sidebar] correcting", sb.sidebar_title, "→", correct);
 			setup(correct);
 		} catch (e) {
-			console.log("[DCR sidebar] enforce error:", e);
+			dbg_log("[DCR sidebar] enforce error:", e);
 		}
 	}
 
@@ -790,7 +805,7 @@
 			var current = el.getAttribute("data-title");
 			var correct = pick_correct_workspace();
 			if (!correct || current === correct) return;
-			console.info("[DCR sidebar] data-title swap detected", current, "→ reverting to", correct);
+			dbg_info("[DCR sidebar] data-title swap detected", current, "→ reverting to", correct);
 			reverting = true;
 			enforce_correct_workspace("title-mutation");
 			setTimeout(function () { reverting = false; }, 100);
@@ -854,7 +869,7 @@
 			if (is_workspace) document.body.setAttribute("data-dcr-workspace-fullbleed", reason || "1");
 			else document.body.removeAttribute("data-dcr-workspace-fullbleed");
 		} catch (e) {
-			console.log("[DCR sidebar] fullbleed class error:", e);
+			dbg_log("[DCR sidebar] fullbleed class error:", e);
 		}
 	}
 
@@ -884,7 +899,7 @@
 			setTimeout(function () { save_last_workspace("init+" + ms); }, ms);
 			setTimeout(function () { set_workspace_fullbleed_class("init+" + ms); }, ms);
 		});
-		console.info("[DCR sidebar] init", { route: frappe.get_route() });
+		dbg_info("[DCR sidebar] init", { route: frappe.get_route() });
 
 		sb.addEventListener("click", on_click, true);
 

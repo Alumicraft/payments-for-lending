@@ -22,6 +22,7 @@ setup(
             "fixtures/*.json",
             "public/css/*.css",
             "public/js/*.js",
+            "public/html/*.html",
             "public/images/*.png",
             "public/images/*.svg",
             "public/images/*.ico",

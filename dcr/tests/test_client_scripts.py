@@ -328,6 +328,27 @@ class TestSidebarFixClientScript(unittest.TestCase):
         # Must be installed in the early bootstrap, not only DOM-gated init().
         self.assertIn("patch_typelink_transform_filters();", script)
 
+    def test_diagnostic_logging_is_gated_behind_debug_flag(self):
+        # The [DCR sidebar] traces are noisy on every navigation. They must be
+        # OFF by default and only fire when DCR_SIDEBAR_DEBUG is flipped on, so
+        # the production console stays clean. Guard against regressing to raw
+        # console.* calls that always log.
+        script = (ROOT / "dcr/public/js/sidebar_fix.js").read_text()
+
+        self.assertIn("function dcr_debug_on()", script)
+        self.assertIn('window.DCR_SIDEBAR_DEBUG === true', script)
+        self.assertIn('localStorage.getItem("DCR_SIDEBAR_DEBUG")', script)
+
+        # The only console.* calls allowed are inside the gated dbg_* helpers.
+        for line in script.splitlines():
+            stripped = line.strip()
+            if "console." not in stripped:
+                continue
+            self.assertTrue(
+                stripped.startswith("function dbg_"),
+                f"ungated console call outside dbg_* helper: {stripped}",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

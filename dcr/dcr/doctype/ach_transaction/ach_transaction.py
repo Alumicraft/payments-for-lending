@@ -213,9 +213,8 @@ class ACHTransaction(Document):
         if return_code and return_code in ACHQ_REJECTION_CODES:
             return False
 
-        if return_code and return_code in RETRYABLE_RETURN_CODES:
-            return True
-
+        # Any other code (including those in RETRYABLE_RETURN_CODES) is
+        # retried until max_retries is hit.
         return True
 
     def schedule_retry(self):

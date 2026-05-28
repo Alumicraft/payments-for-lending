@@ -1,46 +1,35 @@
 import frappe
 
 # Fallback for after_migrate not firing on Frappe Cloud deploys. We run these
-# setup syncs once per worker process so restarted workers can repair stale site
-# config even when hooks are skipped.
-_MAP_BLOCK_SYNCED = False
-_LOAN_DEMAND_OFFSET_SYNCED = False
-_LENDING_ACCOUNTING_SYNCED = False
+# dcr.setup syncs once per worker process so restarted workers can repair stale
+# site config even when hooks are skipped. Names must match functions in
+# dcr.setup; each runs at most once per worker (tracked in _BOOT_SYNCS_DONE).
+_BOOT_SYNCS = (
+	"ensure_map_block",
+	"ensure_loan_demand_offset_order",
+	"ensure_lending_accounting_defaults",
+)
+_BOOT_SYNCS_DONE = set()
+
+
+def _run_boot_syncs():
+	import dcr.setup as setup
+	for fn_name in _BOOT_SYNCS:
+		if fn_name in _BOOT_SYNCS_DONE:
+			continue
+		try:
+			getattr(setup, fn_name)()
+		except Exception:
+			frappe.log_error(frappe.get_traceback(), f"{fn_name} (boot_session)")
+		finally:
+			# Mark done even on failure so a broken worker doesn't retry every session.
+			_BOOT_SYNCS_DONE.add(fn_name)
 
 
 def boot_session(bootinfo):
 	"""Fix field name mismatch: sidebar renderer reads icon_url but
 	Desktop Icon provides logo_url/icon_image."""
-	global _MAP_BLOCK_SYNCED
-	if not _MAP_BLOCK_SYNCED:
-		try:
-			from dcr.setup import ensure_map_block
-			ensure_map_block()
-		except Exception:
-			frappe.log_error(frappe.get_traceback(), "ensure_map_block (boot_session)")
-		finally:
-			# Set even on failure so we don't retry every session on a broken worker.
-			_MAP_BLOCK_SYNCED = True
-
-	global _LOAN_DEMAND_OFFSET_SYNCED
-	if not _LOAN_DEMAND_OFFSET_SYNCED:
-		try:
-			from dcr.setup import ensure_loan_demand_offset_order
-			ensure_loan_demand_offset_order()
-		except Exception:
-			frappe.log_error(frappe.get_traceback(), "ensure_loan_demand_offset_order (boot_session)")
-		finally:
-			_LOAN_DEMAND_OFFSET_SYNCED = True
-
-	global _LENDING_ACCOUNTING_SYNCED
-	if not _LENDING_ACCOUNTING_SYNCED:
-		try:
-			from dcr.setup import ensure_lending_accounting_defaults
-			ensure_lending_accounting_defaults()
-		except Exception:
-			frappe.log_error(frappe.get_traceback(), "ensure_lending_accounting_defaults (boot_session)")
-		finally:
-			_LENDING_ACCOUNTING_SYNCED = True
+	_run_boot_syncs()
 
 	for item in (bootinfo.desktop_icons or []):
 		url = item.get("logo_url") or item.get("icon_image")
@@ -49,21 +38,19 @@ def boot_session(bootinfo):
 		if item.get("icon_url") and item.get("icon"):
 			item["icon"] = None
 
-	# Remove broken workspace sidebar items that have null link_to.
-	# These cause TypeError in frappe.router.slug which kills the desktop.
 	sidebar_items = getattr(bootinfo, "workspace_sidebar_item", None) or {}
-	for name, sidebar in sidebar_items.items():
+	for _name, sidebar in sidebar_items.items():
+		# Remove broken workspace sidebar items that have null link_to.
+		# These cause TypeError in frappe.router.slug which kills the desktop.
 		if sidebar.get("items"):
 			sidebar["items"] = [
 				item for item in sidebar["items"]
 				if item.get("type") != "Link" or item.get("link_to") or item.get("link_type") == "URL"
 			]
 
-	# Fix sidebar item rendering quirks:
-	# - Spacer: needs standard=True to bypass TypeLink.make() guard
-	# - Section Break: needs indent=1 for icon+label style (vs bare divider)
-	sidebar_items = getattr(bootinfo, "workspace_sidebar_item", None) or {}
-	for _name, sidebar in sidebar_items.items():
+		# Fix sidebar item rendering quirks:
+		# - Spacer: needs standard=True to bypass TypeLink.make() guard
+		# - Section Break: needs indent=1 for icon+label style (vs bare divider)
 		for item in (sidebar.get("items") or []):
 			if item.get("type") == "Spacer":
 				item["standard"] = True

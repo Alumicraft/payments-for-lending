@@ -22,6 +22,10 @@ QBO_TYPE_MAP = {
     "Other Expense":             ("Expense",   "Expense Account",   "Other Expenses"),
 }
 
+# Reverse lookup: intermediate group name -> account_type (each group name is
+# unique in QBO_TYPE_MAP, so this is unambiguous).
+GROUP_ACCOUNT_TYPE = {gn: at for (_rt, at, gn) in QBO_TYPE_MAP.values() if gn}
+
 ROOT_ACCOUNTS = {
     "Asset":     {"name": "Assets",      "number": "10000"},
     "Liability": {"name": "Liabilities", "number": "20000"},
@@ -396,11 +400,7 @@ def import_chart_of_accounts(company, dry_run=False, limit=0):
         root_name = ROOT_ACCOUNTS[root_type]["name"]
         parent_account = _find_account(root_name, company)
 
-        group_account_type = None
-        for qbo_type, (rt, at, gn) in QBO_TYPE_MAP.items():
-            if gn == group_name:
-                group_account_type = at
-                break
+        group_account_type = GROUP_ACCOUNT_TYPE.get(group_name)
 
         action, name = _create_account(
             name=group_name,
@@ -420,26 +420,22 @@ def import_chart_of_accounts(company, dry_run=False, limit=0):
     if limit:
         rows = rows[:limit]
 
-    # Identify colon-parent names so we know which standalone accounts
-    # need to be is_group=1
+    # Single pass over rows to classify names:
+    # - colon_parents: parent part of "Parent:Child" names (these become is_group=1)
+    # - colon_parent_info: first-seen qbo_type for each colon parent (Pass 2b)
+    # - standalone_names: names with no colon (a standalone account can't be a group)
     colon_parents = set()
-    for row in rows:
-        if ":" in row["name"]:
-            parent_part = row["name"].split(":")[0].strip()
-            colon_parents.add(parent_part)
-
-    # ── Pass 2b: Create colon-parent groups ────────────────────────────
     colon_parent_info = {}
-    for row in rows:
-        if ":" in row["name"]:
-            parent_part = row["name"].split(":")[0].strip()
-            if parent_part not in colon_parent_info:
-                colon_parent_info[parent_part] = row["qbo_type"]
-
     standalone_names = set()
     for row in rows:
-        if ":" not in row["name"]:
-            standalone_names.add(row["name"])
+        name = row["name"]
+        if ":" in name:
+            parent_part = name.split(":")[0].strip()
+            colon_parents.add(parent_part)
+            if parent_part not in colon_parent_info:
+                colon_parent_info[parent_part] = row["qbo_type"]
+        else:
+            standalone_names.add(name)
 
     for parent_name, qbo_type in colon_parent_info.items():
         if parent_name in standalone_names:
