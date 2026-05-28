@@ -92,9 +92,17 @@ Auto-synced from the filesystem on `bench migrate` — **not** a `hooks.py` fixt
  "filters_json": "[]",
  "is_public": 1,
  "module": "DCR",
- "custom_options": "{\"colors\":[\"#fbe687\",\"#fd7e14\",\"#dc3545\",\"#a02020\"]}"
+ "custom_options": "{\"colors\":[\"#edba13\",\"#e86c13\",\"#e03636\",\"#b52a2a\"]}"
 }
 ```
+
+**Use Frappe's palette, not Bootstrap or ad-hoc hexes.** Frappe v16 (espresso theme) standard colors — shade 500 unless noted:
+
+| blue | green | orange | yellow | red | red-700 | purple | pink | gray |
+|---|---|---|---|---|---|---|---|---|
+| `#0289f7` | `#59ba8b` | `#e86c13` | `#edba13` | `#e03636` | `#b52a2a` | `#9c45e3` | `#e34aa6` | `#999999` |
+
+The aging example above is the escalating-danger ramp: yellow → orange → red → dark red.
 
 Add the chart name to the `Dashboard Chart` block in `hooks.py` `fixtures`. Key fields:
 

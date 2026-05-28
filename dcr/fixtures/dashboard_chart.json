@@ -2,7 +2,7 @@
  {
   "chart_name": "Inflows vs Outflows",
   "chart_type": "Custom",
-  "custom_options": "{\"colors\":[\"#5e64ff\",\"#28a745\"]}",
+  "custom_options": "{\"colors\":[\"#0289f7\",\"#59ba8b\"]}",
   "doctype": "Dashboard Chart",
   "filters_json": "[]",
   "is_public": 1,
@@ -17,7 +17,7 @@
  {
   "chart_name": "Past-Due Aging",
   "chart_type": "Custom",
-  "custom_options": "{\"colors\":[\"#fbe687\",\"#fd7e14\",\"#dc3545\",\"#a02020\"]}",
+  "custom_options": "{\"colors\":[\"#edba13\",\"#e86c13\",\"#e03636\",\"#b52a2a\"]}",
   "doctype": "Dashboard Chart",
   "filters_json": "[]",
   "is_public": 1,
@@ -32,7 +32,7 @@
  {
   "chart_name": "New Deals by Type",
   "chart_type": "Custom",
-  "custom_options": "{\"colors\":[\"#28a745\",\"#fd7e14\"],\"barOptions\":{\"stacked\":1}}",
+  "custom_options": "{\"colors\":[\"#59ba8b\",\"#e86c13\"],\"barOptions\":{\"stacked\":1}}",
   "doctype": "Dashboard Chart",
   "filters_json": "[]",
   "is_public": 1,
