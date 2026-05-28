@@ -34,6 +34,36 @@ class FakeRow(dict):
             raise AttributeError(name) from exc
 
 
+class TestFrameworkKwargsTolerance(unittest.TestCase):
+    """Frappe's chart_widget.js calls the custom-source method with framework
+    kwargs (chart_name, filters, refresh, time_interval, timespan, from_date,
+    to_date, heatmap_year). The methods must accept and ignore them, or the
+    chart render xcall TypeErrors. Regression guard for that contract.
+    """
+
+    FRAMEWORK_KWARGS = {
+        "chart_name": "X",
+        "filters": "[]",
+        "refresh": 1,
+        "time_interval": "Monthly",
+        "timespan": "Last Year",
+        "from_date": None,
+        "to_date": None,
+        "heatmap_year": None,
+    }
+
+    def test_all_three_methods_accept_framework_kwargs(self):
+        for fn in (
+            dashboard.inflows_vs_outflows,
+            dashboard.past_due_aging,
+            dashboard.new_deals_by_type,
+        ):
+            with patch.object(dashboard.frappe.db, "sql", return_value=[]):
+                result = fn(**self.FRAMEWORK_KWARGS)
+            self.assertIn("labels", result)
+            self.assertIn("datasets", result)
+
+
 class TestLastNMonths(unittest.TestCase):
     def test_returns_n_months_oldest_first(self):
         months = dashboard._last_n_months(12)

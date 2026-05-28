@@ -22,7 +22,7 @@ from frappe.utils import add_months, get_first_day, getdate, nowdate
 # --------------------------------------------------------------------------- #
 
 @frappe.whitelist()
-def inflows_vs_outflows():
+def inflows_vs_outflows(**kwargs):
     """Grouped monthly bars: principal advanced vs payments received, last 12 months.
 
     Outflows source: Loan Disbursement.disbursed_amount, grouped by posting_date month.
@@ -85,7 +85,7 @@ def inflows_vs_outflows():
 # --------------------------------------------------------------------------- #
 
 @frappe.whitelist()
-def past_due_aging():
+def past_due_aging(**kwargs):
     """Bucketed past-due dollars from submitted Loan Demands.
 
     Loan Demand is ERPNext Lending's canonical record for raised demands and
@@ -142,7 +142,7 @@ def past_due_aging():
 # --------------------------------------------------------------------------- #
 
 @frappe.whitelist()
-def new_deals_by_type():
+def new_deals_by_type(**kwargs):
     """Monthly Home Build Request counts, stacked by financing_type.
 
     Last 12 months, two datasets: Cash and Floored. Stacking is enabled on the
