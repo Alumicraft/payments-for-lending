@@ -895,5 +895,23 @@
 		if (!init()) setTimeout(function () { try_init(n - 1); }, 500);
 	}
 
+	// --- Apply the TypeLink.get_path guard as early as possible ---
+	// On a hard refresh Frappe builds the workspace sidebar during boot,
+	// BEFORE $(document).ready fires. If any sidebar item has malformed
+	// filters, TypeLink.transform_filters runs Object.entries(undefined) and
+	// throws inside create_sidebar's forEach — which aborts the WHOLE build,
+	// leaving a blank sidebar. patch_typelink_get_path wraps get_path to
+	// swallow that error (the bad item is skipped, every other item renders),
+	// but it only helps if it lands BEFORE that first build. init() gates the
+	// patch behind the sidebar DOM container, which is too late on cold load.
+	// So patch here, immediately: the TypeLink class ships in the core desk
+	// bundle (loaded before this app_include_js file), so this usually applies
+	// synchronously; the tight retry covers the case where it isn't ready yet.
+	(function patch_typelink_asap(n) {
+		if (patch_typelink_get_path()) return;
+		if (n <= 0) return;
+		setTimeout(function () { patch_typelink_asap(n - 1); }, 50);
+	})(100);
+
 	$(document).ready(function () { try_init(10); });
 })();

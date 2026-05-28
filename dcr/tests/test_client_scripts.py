@@ -294,6 +294,23 @@ class TestSidebarFixClientScript(unittest.TestCase):
         self.assertIn("return original.call(this)", script)
         self.assertIn("return null", script)
 
+    def test_typelink_guard_applied_before_dom_ready(self):
+        # The get_path guard must be installed at script-execution time, not
+        # only inside init() (which waits for the sidebar DOM container). On a
+        # hard refresh Frappe builds the sidebar during boot, before
+        # $(document).ready — so a DOM-gated patch lands too late and the first
+        # build aborts into a blank sidebar. Guard against regressing that.
+        script = (ROOT / "dcr/public/js/sidebar_fix.js").read_text()
+
+        self.assertIn("function patch_typelink_asap(n)", script)
+        # The early bootstrap must run outside (before) the $(document).ready
+        # init path so it can win the race against Frappe's boot-time build.
+        # Match the actual call (with "(function") so a comment mentioning
+        # $(document).ready doesn't skew the position check.
+        asap_at = script.index("(function patch_typelink_asap")
+        ready_at = script.index("$(document).ready(function")
+        self.assertLess(asap_at, ready_at, "early TypeLink patch must precede document.ready init")
+
 
 if __name__ == "__main__":
     unittest.main()

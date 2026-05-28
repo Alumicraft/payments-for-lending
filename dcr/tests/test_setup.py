@@ -348,7 +348,7 @@ class TestPackagingConfig(unittest.TestCase):
         self.assertIn('"public/images/*.png"', pyproject)
         self.assertIn('"public/js/*.js"', setup_py)
         self.assertIn("recursive-include dcr/public *.css *.js *.png", manifest)
-        self.assertIn('DCR_ASSET_VERSION = "20260526-1"', hooks)
+        self.assertIn('DCR_ASSET_VERSION = "20260528-1"', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/sidebar_fix.js")', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/hbr_dashboard_plus_patch_20260525_10.js")', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/loan_list_context_patch_20260525_14.js")', hooks)
