@@ -87,5 +87,8 @@
         frappe.router.on("change", bind);
     }
     $(document).on("page-change", bind);
-    frappe.ready(bind);
+    // frappe.ready is a website/portal API and is undefined in the desk app,
+    // where it throws "frappe.ready is not a function". Use jQuery's ready
+    // (already used above) for the initial-load bind. bind() is idempotent.
+    $(document).ready(bind);
 })();

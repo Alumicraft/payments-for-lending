@@ -105,6 +105,11 @@ class TestLoanClientScript(unittest.TestCase):
         self.assertIn('cur_frm.doctype === "Loan"', script)
         self.assertIn("cur_frm.set_value(field, defaults[field])", script)
         self.assertIn("document.addEventListener(\"click\", intercept, true)", script)
+        # frappe.ready is a website/portal API, undefined in the desk app —
+        # calling it throws "frappe.ready is not a function" on every load.
+        # The initial-load bind must use jQuery's ready instead.
+        self.assertNotIn("frappe.ready(", script)
+        self.assertIn("$(document).ready(bind)", script)
 
 
 class TestLoanApplicationClientScript(unittest.TestCase):
