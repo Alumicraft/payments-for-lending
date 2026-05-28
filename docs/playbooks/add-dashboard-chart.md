@@ -101,7 +101,7 @@ Add the chart name to the `Dashboard Chart` block in `hooks.py` `fixtures`. Key 
 - **`source`** = the DCS record name (NOT a Python path).
 - **`filters_json`: `"[]"`** — mandatory; fixture import fails without it.
 - **Do NOT set `is_standard`** — the validate hook throws "Cannot edit Standard charts" on fixture insert. Leave it off; the chart becomes a normal code-installed record.
-- **`custom_options`** — JSON string. `{"colors":[...]}` for series colors; add `"stacked":1` for stacked bars.
+- **`custom_options`** — JSON string. `{"colors":[...]}` for series colors. For **stacked** bars use `{"barOptions":{"stacked":1}}` — a top-level `"stacked":1` is silently ignored by frappe-charts.
 - **`timespan` / `time_interval` are irrelevant for Custom charts** (they drive the server date-window path, which Custom never hits). Don't bother setting them.
 
 ## 5. Add to a workspace

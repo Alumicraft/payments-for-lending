@@ -32,7 +32,7 @@
  {
   "chart_name": "New Deals by Type",
   "chart_type": "Custom",
-  "custom_options": "{\"colors\":[\"#449cf0\",\"#fd7e14\"],\"stacked\":1}",
+  "custom_options": "{\"colors\":[\"#28a745\",\"#fd7e14\"],\"barOptions\":{\"stacked\":1}}",
   "doctype": "Dashboard Chart",
   "filters_json": "[]",
   "is_public": 1,
