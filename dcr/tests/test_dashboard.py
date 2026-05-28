@@ -12,7 +12,6 @@ results are injected with patch.object(dashboard.frappe.db, "sql", ...).
 
 from __future__ import annotations
 
-import datetime
 import unittest
 from unittest.mock import patch
 
@@ -64,17 +63,24 @@ class TestFrameworkKwargsTolerance(unittest.TestCase):
             self.assertIn("datasets", result)
 
 
-class TestLastNMonths(unittest.TestCase):
-    def test_returns_n_months_oldest_first(self):
-        months = dashboard._last_n_months(12)
-        self.assertEqual(len(months), 12)
-        # All first-of-month
-        self.assertTrue(all(m.day == 1 for m in months))
-        # Oldest first
-        self.assertTrue(all(months[i] < months[i + 1] for i in range(len(months) - 1)))
-        # Last is the current month (frozen at 2026-06-15 in conftest)
-        self.assertEqual(months[-1], datetime.date(2026, 6, 1))
-        self.assertEqual(months[0], datetime.date(2025, 7, 1))
+class TestTrailingMonths(unittest.TestCase):
+    def test_returns_labels_and_keys_oldest_first(self):
+        labels, keys = dashboard._trailing_months()
+        self.assertEqual(len(labels), 12)
+        self.assertEqual(len(keys), 12)
+        # keys are YYYY-MM-01 strings, oldest first (frozen at 2026-06-15 in conftest)
+        self.assertEqual(keys[0], "2025-07-01")
+        self.assertEqual(keys[-1], "2026-06-01")
+        self.assertTrue(all(k.endswith("-01") for k in keys))
+        # labels are display strings aligned to the same months
+        self.assertEqual(labels[0], "Jul 25")
+        self.assertEqual(labels[-1], "Jun 26")
+
+
+class TestProject(unittest.TestCase):
+    def test_fills_missing_keys_with_zero_and_preserves_order(self):
+        result = dashboard._project({"b": 5, "d": 9}, ["a", "b", "c", "d"])
+        self.assertEqual(result, [0, 5, 0, 9])
 
 
 class TestPastDueAging(unittest.TestCase):

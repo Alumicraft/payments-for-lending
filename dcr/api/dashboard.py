@@ -3,86 +3,67 @@
 Each whitelisted method returns chart data in frappe-charts format:
     {"labels": [...], "datasets": [{"name": ..., "values": [...]}]}
 
-These methods are wired to Dashboard Chart records with chart_type = "Custom"
-and source = "dcr.api.dashboard.<method_name>".
+Wiring: each chart is a Dashboard Chart (chart_type="Custom") whose `source`
+names a Dashboard Chart Source record. That source's .js config
+(dcr/dcr/dashboard_chart_source/<name>/<name>.js) points at one of the methods
+below; Frappe's chart widget calls it client-side, passing framework kwargs
+(chart_name, filters, timespan, ...) that these methods ignore.
 
 Why custom methods (not built-in Count/Sum charts):
   - Inflows vs Outflows needs two datasets from two different doctypes
   - Past-Due Aging needs CASE WHEN bucketing — not available in the UI form
   - New Deals by Type needs a stacked time-series, which Frappe v16's
-    Dashboard Chart UI doesn't render reliably when combining time-series + group by
+    Dashboard Chart UI doesn't render reliably
 """
 
 import frappe
 from frappe.utils import add_months, get_first_day, getdate, nowdate
 
 
-# --------------------------------------------------------------------------- #
-# Chart 1: Inflows vs Outflows — Monthly (Accounting workspace, full-width)
-# --------------------------------------------------------------------------- #
-
 @frappe.whitelist()
 def inflows_vs_outflows(**kwargs):
     """Grouped monthly bars: principal advanced vs payments received, last 12 months.
 
-    Outflows source: Loan Disbursement.disbursed_amount, grouped by posting_date month.
-    Inflows source:  Loan Repayment.amount_paid, grouped by posting_date month.
+    Outflows source: Loan Disbursement.disbursed_amount, by posting_date month.
+    Inflows source:  Loan Repayment.amount_paid, by posting_date month.
 
     Scope: floored deals only. Loan Disbursement is inherently floor-plan in DCR
     (cash deals don't generate disbursements through DCR's books), so no extra
     filter is applied. If cash deals ever generate Loan records, revisit this.
     """
-    months = _last_n_months(12)
-    labels = [m.strftime("%b %y") for m in months]
-    first_month = months[0]
+    labels, keys = _trailing_months()
 
     outflows = frappe.db.sql(
         """
         SELECT DATE_FORMAT(posting_date, '%%Y-%%m-01') AS m,
                COALESCE(SUM(disbursed_amount), 0) AS total
         FROM `tabLoan Disbursement`
-        WHERE docstatus = 1
-          AND posting_date >= %s
+        WHERE docstatus = 1 AND posting_date >= %s
         GROUP BY m
         """,
-        (first_month,),
+        (keys[0],),
         as_dict=True,
     )
-
     inflows = frappe.db.sql(
         """
         SELECT DATE_FORMAT(posting_date, '%%Y-%%m-01') AS m,
                COALESCE(SUM(amount_paid), 0) AS total
         FROM `tabLoan Repayment`
-        WHERE docstatus = 1
-          AND posting_date >= %s
+        WHERE docstatus = 1 AND posting_date >= %s
         GROUP BY m
         """,
-        (first_month,),
+        (keys[0],),
         as_dict=True,
     )
-
-    out_map = {r.m: r.total for r in outflows}
-    in_map = {r.m: r.total for r in inflows}
 
     return {
         "labels": labels,
         "datasets": [
-            {
-                "name": "Principal Advanced",
-                "values": [out_map.get(m.strftime("%Y-%m-01"), 0) for m in months],
-            },
-            {
-                "name": "Payments Received",
-                "values": [in_map.get(m.strftime("%Y-%m-01"), 0) for m in months],
-            },
+            {"name": "Principal Advanced", "values": _project({r.m: r.total for r in outflows}, keys)},
+            {"name": "Payments Received", "values": _project({r.m: r.total for r in inflows}, keys)},
         ],
     }
 
-
-# --------------------------------------------------------------------------- #
-# Chart 2: Past-Due Aging (Accounting workspace, half-width)
-# --------------------------------------------------------------------------- #
 
 @frappe.whitelist()
 def past_due_aging(**kwargs):
@@ -101,7 +82,7 @@ def past_due_aging(**kwargs):
 
     Buckets: 1-30, 31-60, 61-90, 90+ days past demand_date.
     """
-    today = nowdate()
+    buckets = ["1-30", "31-60", "61-90", "90+"]
 
     rows = frappe.db.sql(
         """
@@ -119,27 +100,17 @@ def past_due_aging(**kwargs):
           AND outstanding_amount > 0
         GROUP BY bucket
         """,
-        {"today": today},
+        {"today": nowdate()},
         as_dict=True,
     )
-
-    buckets = ["1-30", "31-60", "61-90", "90+"]
-    totals = {r.bucket: r.total for r in rows}
 
     return {
         "labels": buckets,
         "datasets": [
-            {
-                "name": "Past-Due Amount",
-                "values": [totals.get(b, 0) for b in buckets],
-            }
+            {"name": "Past-Due Amount", "values": _project({r.bucket: r.total for r in rows}, buckets)}
         ],
     }
 
-
-# --------------------------------------------------------------------------- #
-# Chart 3: New Deals by Financing Type (Deals workspace)
-# --------------------------------------------------------------------------- #
 
 @frappe.whitelist()
 def new_deals_by_type(**kwargs):
@@ -148,9 +119,7 @@ def new_deals_by_type(**kwargs):
     Last 12 months, two datasets: Cash and Floored. Stacking is enabled on the
     Dashboard Chart record via custom_options (not in this method).
     """
-    months = _last_n_months(12)
-    labels = [m.strftime("%b %y") for m in months]
-    first_month = months[0]
+    labels, keys = _trailing_months()
 
     rows = frappe.db.sql(
         """
@@ -158,32 +127,23 @@ def new_deals_by_type(**kwargs):
                financing_type,
                COUNT(*) AS n
         FROM `tabHome Build Request`
-        WHERE docstatus = 1
-          AND creation >= %s
+        WHERE docstatus = 1 AND creation >= %s
         GROUP BY m, financing_type
         """,
-        (first_month,),
+        (keys[0],),
         as_dict=True,
     )
 
-    cash, floored = {}, {}
+    by_type = {"Cash": {}, "Floored": {}}
     for r in rows:
-        if r.financing_type == "Cash":
-            cash[r.m] = r.n
-        elif r.financing_type == "Floored":
-            floored[r.m] = r.n
+        if r.financing_type in by_type:
+            by_type[r.financing_type][r.m] = r.n
 
     return {
         "labels": labels,
         "datasets": [
-            {
-                "name": "Cash",
-                "values": [cash.get(m.strftime("%Y-%m-01"), 0) for m in months],
-            },
-            {
-                "name": "Floored",
-                "values": [floored.get(m.strftime("%Y-%m-01"), 0) for m in months],
-            },
+            {"name": "Cash", "values": _project(by_type["Cash"], keys)},
+            {"name": "Floored", "values": _project(by_type["Floored"], keys)},
         ],
     }
 
@@ -192,12 +152,24 @@ def new_deals_by_type(**kwargs):
 # Helpers
 # --------------------------------------------------------------------------- #
 
-def _last_n_months(n):
-    """First-day-of-month date objects for the last n months, oldest first.
+def _trailing_months(n=12):
+    """Return (labels, keys) for the trailing n months, oldest first.
 
-    Includes the current month. Used to build chart labels and align bucketed
-    SQL results onto a complete x-axis (so months with zero activity still
-    render as empty bars, not skipped).
+    labels — display strings like "Jun 25".
+    keys   — "YYYY-MM-01" strings that MUST match the SQL DATE_FORMAT(date,
+             '%Y-%m-01') used in the queries above. Used both to align grouped
+             rows onto a gap-free month axis and as the inclusive lower bound
+             (keys[0]) for each query's date filter.
     """
     today = getdate(nowdate())
-    return [getdate(get_first_day(add_months(today, -i))) for i in range(n - 1, -1, -1)]
+    months = [get_first_day(add_months(today, -i)) for i in range(n - 1, -1, -1)]
+    return [m.strftime("%b %y") for m in months], [m.strftime("%Y-%m-01") for m in months]
+
+
+def _project(values_by_key, keys):
+    """Map {key: value} onto an ordered key list, filling 0 for missing keys.
+
+    Aligns grouped SQL aggregates onto a fixed axis (months or aging buckets)
+    so the chart renders empty slots instead of skipping them.
+    """
+    return [values_by_key.get(k, 0) for k in keys]
