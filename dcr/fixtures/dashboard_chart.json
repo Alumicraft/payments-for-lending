@@ -10,7 +10,9 @@
   "module": "DCR",
   "name": "Inflows vs Outflows",
   "source": "Inflows vs Outflows",
+  "time_interval": "Monthly",
   "timeseries": 0,
+  "timespan": "Last Year",
   "type": "Bar"
  },
  {
@@ -24,7 +26,9 @@
   "module": "DCR",
   "name": "Past-Due Aging",
   "source": "Past-Due Aging",
+  "time_interval": "Monthly",
   "timeseries": 0,
+  "timespan": "Last Year",
   "type": "Bar"
  },
  {
@@ -38,7 +42,9 @@
   "module": "DCR",
   "name": "New Deals by Type",
   "source": "New Deals by Type",
+  "time_interval": "Monthly",
   "timeseries": 0,
+  "timespan": "Last Year",
   "type": "Bar"
  }
 ]
