@@ -311,6 +311,18 @@ class TestSidebarFixClientScript(unittest.TestCase):
         ready_at = script.index("$(document).ready(function")
         self.assertLess(asap_at, ready_at, "early TypeLink patch must precede document.ready init")
 
+    def test_transform_filters_guarded_against_null(self):
+        # Frappe v16.19's transform_filters runs Object.entries(filters) with no
+        # null guard, so a no-filter DocType sidebar link throws and aborts the
+        # whole sidebar build. We patch it to coerce null/undefined to {}.
+        script = (ROOT / "dcr/public/js/sidebar_fix.js").read_text()
+
+        self.assertIn("function patch_typelink_transform_filters()", script)
+        self.assertIn("proto.transform_filters = function", script)
+        self.assertIn("filters === undefined || filters === null", script)
+        # Must be installed in the early bootstrap, not only DOM-gated init().
+        self.assertIn("patch_typelink_transform_filters();", script)
+
 
 if __name__ == "__main__":
     unittest.main()

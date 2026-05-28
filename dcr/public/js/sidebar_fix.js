@@ -586,6 +586,40 @@
 		}
 	}
 
+	// Root cause of the blank-sidebar bug: Frappe v16.19's
+	// TypeLink.transform_filters runs Object.entries(filters) with no null
+	// guard, so any sidebar DocType link that has NO filters (Home Build
+	// Requests, ACH Transactions, Factory Assignments, MIFAs, ...) throws
+	// "Cannot convert undefined or null to object" — which aborts the entire
+	// create_sidebar() forEach and leaves a blank sidebar. Guard the input so a
+	// no-filter link transforms to empty route_options (a plain list route)
+	// instead of throwing. This fixes the links properly; the get_path catch
+	// above remains as a defense-in-depth backstop.
+	function patch_typelink_transform_filters() {
+		try {
+			if (!frappe.ui || !frappe.ui.sidebar_item || !frappe.ui.sidebar_item.TypeLink) return false;
+			var proto = frappe.ui.sidebar_item.TypeLink.prototype;
+			if (proto._dcr_transform_filters_patched) return true;
+			var original = proto.transform_filters;
+			// Older Frappe versions inline the filter logic in get_path and have
+			// no transform_filters method — nothing to patch there.
+			if (typeof original !== "function") return false;
+			proto.transform_filters = function (filters) {
+				if (filters === undefined || filters === null) filters = {};
+				try {
+					return original.call(this, filters);
+				} catch (e) {
+					console.warn("[DCR sidebar] transform_filters failed", this.item, e);
+					return {};
+				}
+			};
+			proto._dcr_transform_filters_patched = true;
+			return true;
+		} catch (e) {
+			return false;
+		}
+	}
+
 	// -- Pick the right workspace on (hard) refresh --
 	// On reload Frappe has no remembered workspace, so its module-based
 	// fallback picks whichever workspace "owns" the doctype — usually the
@@ -835,6 +869,7 @@
 		inject_workspace_fullbleed_styles();
 		set_workspace_fullbleed_class("init");
 		try_patch_typelink_get_path(20);
+		patch_typelink_transform_filters();
 		try_patch_workspace_switch(20);
 		enforce_retry(20);
 		try_watch_sidebar_title(20);
@@ -908,6 +943,10 @@
 	// bundle (loaded before this app_include_js file), so this usually applies
 	// synchronously; the tight retry covers the case where it isn't ready yet.
 	(function patch_typelink_asap(n) {
+		// transform_filters is the real root fix (prevents the throw); get_path
+		// is the backstop. Both live on the same prototype, so they patch
+		// together. Loop until get_path is in place (the essential guard).
+		patch_typelink_transform_filters();
 		if (patch_typelink_get_path()) return;
 		if (n <= 0) return;
 		setTimeout(function () { patch_typelink_asap(n - 1); }, 50);
