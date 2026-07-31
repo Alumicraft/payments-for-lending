@@ -17,7 +17,7 @@ Why custom methods (not built-in Count/Sum charts):
 """
 
 import frappe
-from frappe.utils import add_months, get_first_day, getdate, nowdate
+from frappe.utils import add_months, flt, get_first_day, getdate, nowdate
 
 
 @frappe.whitelist()
@@ -145,6 +145,122 @@ def new_deals_by_type(**kwargs):
             {"name": "Cash", "values": _project(by_type["Cash"], keys)},
             {"name": "Floored", "values": _project(by_type["Floored"], keys)},
         ],
+    }
+
+
+@frappe.whitelist()
+def repayment_breakdown(**kwargs):
+    """Monthly principal, interest, and penalty collected, last 12 months."""
+    labels, keys = _trailing_months()
+    rows = frappe.db.sql(
+        """
+        SELECT DATE_FORMAT(posting_date, '%%Y-%%m-01') AS m,
+               COALESCE(SUM(principal_amount_paid), 0) AS principal,
+               COALESCE(SUM(total_interest_paid), 0) AS interest,
+               COALESCE(SUM(total_penalty_paid), 0) AS penalty
+        FROM `tabLoan Repayment`
+        WHERE docstatus = 1 AND posting_date >= %s
+        GROUP BY m
+        """,
+        (keys[0],),
+        as_dict=True,
+    )
+    by_month = {row.m: row for row in rows}
+
+    return {
+        "labels": labels,
+        "datasets": [
+            {
+                "name": "Principal",
+                "values": [flt(by_month.get(key, {}).get("principal", 0)) for key in keys],
+            },
+            {
+                "name": "Interest",
+                "values": [flt(by_month.get(key, {}).get("interest", 0)) for key in keys],
+            },
+            {
+                "name": "Penalty",
+                "values": [flt(by_month.get(key, {}).get("penalty", 0)) for key in keys],
+            },
+        ],
+    }
+
+
+@frappe.whitelist()
+def deal_pipeline_by_factory(**kwargs):
+    """Submitted HBR counts by factory and backend-derived order stage."""
+    _, keys = _trailing_months()
+    rows = frappe.db.sql(
+        """
+        SELECT
+            COALESCE(NULLIF(hbr.factory, ''), 'Unassigned') AS factory,
+            EXISTS (
+                SELECT 1
+                FROM `tabPurchase Receipt Item` pri
+                JOIN `tabPurchase Receipt` pr ON pr.name = pri.parent
+                JOIN `tabPurchase Order` po ON po.name = pri.purchase_order
+                WHERE po.custom_home_build_request = hbr.name
+                  AND pr.docstatus = 1
+            ) AS has_pr,
+            EXISTS (
+                SELECT 1
+                FROM `tabPurchase Order` po
+                WHERE po.custom_home_build_request = hbr.name
+                  AND po.docstatus = 1
+            ) AS has_po
+        FROM `tabHome Build Request` hbr
+        WHERE hbr.docstatus = 1 AND hbr.creation >= %s
+        """,
+        (keys[0],),
+        as_dict=True,
+    )
+
+    counts = {}
+    for row in rows:
+        bucket = counts.setdefault(
+            row.factory,
+            {"Pending": 0, "Ordered": 0, "Delivered": 0},
+        )
+        if row.has_pr:
+            bucket["Delivered"] += 1
+        elif row.has_po:
+            bucket["Ordered"] += 1
+        else:
+            bucket["Pending"] += 1
+
+    labels = sorted(
+        counts,
+        key=lambda factory: (-sum(counts[factory].values()), factory),
+    )[:8]
+    return {
+        "labels": labels,
+        "datasets": [
+            {
+                "name": stage,
+                "values": [counts[factory][stage] for factory in labels],
+            }
+            for stage in ("Pending", "Ordered", "Delivered")
+        ],
+    }
+
+
+@frappe.whitelist()
+def cash_collected_mtd(filters=None, **kwargs):
+    """Return a currency-safe zero when no repayments exist this month."""
+    result = frappe.db.sql(
+        """
+        SELECT COALESCE(SUM(amount_paid), 0) AS total
+        FROM `tabLoan Repayment`
+        WHERE docstatus = 1
+          AND posting_date >= %s
+          AND posting_date < DATE_ADD(%s, INTERVAL 1 MONTH)
+        """,
+        (get_first_day(getdate(nowdate())), get_first_day(getdate(nowdate()))),
+        as_dict=True,
+    )
+    return {
+        "value": flt(result[0].total if result else 0),
+        "fieldtype": "Currency",
     }
 
 

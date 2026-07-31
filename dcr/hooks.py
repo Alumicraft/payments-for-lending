@@ -11,7 +11,7 @@ boot_session = "dcr.api.boot.boot_session"
 # Frappe Cloud serves /assets files with a long immutable browser cache.
 # Keep these explicit URLs versioned so deployed client fixes are fetched
 # without requiring users to hard-refresh stale browser caches.
-DCR_ASSET_VERSION = "20260528-5"
+DCR_ASSET_VERSION = "20260730-1"
 
 
 def versioned_asset(path):
@@ -27,6 +27,7 @@ app_include_js = [
     versioned_asset("/assets/dcr/js/sidebar_fix.js"),
     versioned_asset("/assets/dcr/js/hbr_dashboard_plus_patch_20260525_10.js"),
     versioned_asset("/assets/dcr/js/loan_list_context_patch_20260525_14.js"),
+    versioned_asset("/assets/dcr/js/hbr_kanban_lock.js"),
     # Preconnects to Mapbox CDN, preloads icon assets, lazy-loads
     # mapbox-gl.js, and prefetches the map API responses on idle.
     versioned_asset("/assets/dcr/js/map_warmup.js"),
@@ -40,6 +41,11 @@ app_include_css = [
 override_whitelisted_methods = {
     "frappe.desk.doctype.desktop_layout.desktop_layout.get_layout": "dcr.api.boot.get_layout_with_icons",
     "frappe.desk.doctype.workspace.workspace.save_page": "dcr.api.workspace.save_page",
+    "frappe.desk.doctype.kanban_board.kanban_board.update_order": "dcr.api.kanban.update_order",
+    "frappe.desk.doctype.kanban_board.kanban_board.update_order_for_single_card": "dcr.api.kanban.update_order_for_single_card",
+    "frappe.desk.doctype.kanban_board.kanban_board.add_column": "dcr.api.kanban.add_column",
+    "frappe.desk.doctype.kanban_board.kanban_board.archive_restore_column": "dcr.api.kanban.archive_restore_column",
+    "frappe.desk.doctype.kanban_board.kanban_board.update_column_order": "dcr.api.kanban.update_column_order",
 }
 
 after_install = "dcr.setup.after_install"
@@ -93,6 +99,8 @@ fixtures = [
                 "Inflows vs Outflows",
                 "Past-Due Aging",
                 "New Deals by Type",
+                "Repayment Breakdown",
+                "Deal Pipeline by Factory",
             ]]
         ]
     },

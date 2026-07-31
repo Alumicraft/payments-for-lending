@@ -45,6 +45,7 @@ class HomeBuildRequest(Document):
         from dcr.api.hbr_stage import apply_hbr_stage_defaults
 
         apply_hbr_stage_defaults(self)
+        self.ensure_required_checklist()
 
         # Warn if factory has no approved Factory Assignment for this dealer
         if self.factory and self.customer:
@@ -105,6 +106,39 @@ class HomeBuildRequest(Document):
                 ),
                 title=_("Document checklist incomplete"),
             )
+
+    def ensure_required_checklist(self):
+        """Keep the checklist aligned with the selected deal combination.
+
+        The browser script provides immediate feedback, but the server is the
+        source of truth. This prevents a stale asset or interrupted callback
+        from allowing an empty checklist to be submitted.
+        """
+        required = DOC_REQUIREMENTS.get(
+            (self.home_type, self.financing_type, self.property_type),
+            [],
+        )
+        if not required:
+            return
+
+        current_rows = list(self.get("doc_checklist") or [])
+        current_types = [row.get("document_type") for row in current_rows]
+        if current_types == required:
+            return
+
+        existing_by_type = {
+            row.get("document_type"): row
+            for row in current_rows
+            if row.get("document_type")
+        }
+        self.set("doc_checklist", [])
+        for document_type in required:
+            existing = existing_by_type.get(document_type)
+            row = self.append("doc_checklist", {"document_type": document_type})
+            if not existing:
+                continue
+            row.attachment = existing.get("attachment")
+            row.waived = existing.get("waived") or 0
 
 
 @frappe.whitelist()

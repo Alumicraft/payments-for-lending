@@ -24,10 +24,30 @@ class TestHomeBuildRequestClientScript(unittest.TestCase):
 
         self.assertIn("update_stage_field_visibility(frm)", script)
         self.assertIn("function update_stage_field_visibility(frm)", script)
-        self.assertIn("frm.toggle_display('custom_loan_stage', !is_cash)", script)
-        self.assertIn("frm.toggle_reqd('custom_loan_stage', !is_cash)", script)
         self.assertIn("frm.set_df_property('custom_loan_stage', 'hidden', is_cash ? 1 : 0)", script)
         self.assertIn("var is_cash = frm.doc.financing_type === 'Cash'", script)
+        self.assertNotIn("setTimeout(apply, 500)", script)
+        self.assertNotIn("setTimeout(apply, 1500)", script)
+
+    def test_delivery_address_search_runs_through_server(self):
+        script = (ROOT / "dcr/public/js/home_build_request.js").read_text()
+
+        self.assertIn("method: 'dcr.api.map.search_address'", script)
+        self.assertIn("frm._dcr_address_query", script)
+        self.assertNotIn("api.mapbox.com/geocoding/v5", script)
+        self.assertNotIn("function get_mapbox_token", script)
+
+    def test_hbr_kanban_is_locked_without_blocking_card_links(self):
+        script = (ROOT / "dcr/public/js/hbr_kanban_lock.js").read_text()
+        hooks = (ROOT / "dcr/hooks.py").read_text()
+
+        self.assertIn("Sortable.get(element)", script)
+        self.assertIn("sortable.option('disabled', true)", script)
+        self.assertIn(".add-new-column, .kanban .column-options", script)
+        self.assertIn("frappe.router.on('change', watch_route)", script)
+        self.assertNotIn("pointer-events: none", script)
+        self.assertIn('versioned_asset("/assets/dcr/js/hbr_kanban_lock.js")', hooks)
+        self.assertIn("dcr.api.kanban.update_order_for_single_card", hooks)
 
     def test_cash_deals_keep_lending_connections_hidden_after_async_render(self):
         script = (ROOT / "dcr/public/js/home_build_request.js").read_text()

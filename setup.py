@@ -32,6 +32,8 @@ setup(
             "dcr/doctype/*/*.json",
             "dcr/report/*/*.json",
             "dcr/print_format/*/*.json",
+            "dcr/dashboard_chart_source/*/*.json",
+            "dcr/dashboard_chart_source/*/*.js",
         ],
     },
     install_requires=install_requires,

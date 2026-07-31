@@ -3,5 +3,6 @@ recursive-include dcr/fixtures *.json
 recursive-include dcr/dcr/doctype *.json
 recursive-include dcr/dcr/report *.json
 recursive-include dcr/dcr/print_format *.json
+recursive-include dcr/dcr/dashboard_chart_source *.json *.js
 recursive-include dcr/www *.html *.css *.js
 include dcr/*.txt

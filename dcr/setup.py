@@ -1,5 +1,7 @@
-import frappe
+import json
 import os
+
+import frappe
 
 
 def _read_map_asset(*relparts):
@@ -126,6 +128,7 @@ def after_install():
         ensure_order_hbr_fields,
         ensure_hbr_stage_field_options,
         sync_existing_hbr_stage_fields,
+        ensure_dcr_dashboard_configuration,
         ensure_loan_demand_offset_order,
         ensure_lending_accounting_defaults,
     ):
@@ -135,6 +138,168 @@ def after_install():
             frappe.log_error(frappe.get_traceback(), f"{fn.__name__} failed")
 
     frappe.db.commit()
+
+
+FACTORY_ADDRESSES = {
+    "Durango Homes": {
+        "address_line1": "2502 W Durango St",
+        "city": "Phoenix",
+        "state": "AZ",
+        "pincode": "85009",
+    },
+    "Fleetwood Homes": {
+        "address_line1": "7007 Jurupa Ave",
+        "city": "Riverside",
+        "state": "CA",
+        "pincode": "92504",
+    },
+    "Skyline Homes": {
+        "address_line1": "499 W Esplanade Ave",
+        "city": "San Jacinto",
+        "state": "CA",
+        "pincode": "92583",
+    },
+}
+
+
+def ensure_factory_addresses():
+    """Create primary manufacturing addresses for imported factory suppliers."""
+    if not frappe.db.exists("DocType", "Address"):
+        return
+
+    from dcr.api.map import geocode_supplier
+
+    for supplier_name, values in FACTORY_ADDRESSES.items():
+        if not frappe.db.exists("Supplier", supplier_name):
+            continue
+
+        address_name = frappe.db.exists(
+            "Address",
+            {
+                "address_title": f"{supplier_name} Factory",
+                "address_line1": values["address_line1"],
+            },
+        )
+        if not address_name:
+            address = frappe.get_doc({
+                "doctype": "Address",
+                "address_title": f"{supplier_name} Factory",
+                "address_type": "Shipping",
+                "is_primary_address": 1,
+                "country": "United States",
+                "links": [{
+                    "link_doctype": "Supplier",
+                    "link_name": supplier_name,
+                }],
+                **values,
+            })
+            address.insert(ignore_permissions=True)
+            address_name = address.name
+
+        if frappe.db.has_column("Supplier", "supplier_primary_address"):
+            frappe.db.set_value(
+                "Supplier",
+                supplier_name,
+                "supplier_primary_address",
+                address_name,
+                update_modified=False,
+            )
+        geocode_supplier(frappe.get_doc("Supplier", supplier_name))
+
+
+def submit_imported_factory_assignments():
+    """Submit active assignments already marked Approved by the dealer import."""
+    names = frappe.get_all(
+        "Factory Assignment",
+        filters={
+            "docstatus": 0,
+            "active": 1,
+            "retailer_application_status": "Approved",
+        },
+        pluck="name",
+    )
+    for name in names:
+        frappe.get_doc("Factory Assignment", name).submit()
+
+
+def ensure_dcr_dashboard_configuration():
+    """Repair DCR cards and add the shipped custom charts to their workspaces."""
+    card_updates = {
+        "New Dealers Pending": {
+            "label": "New Dealers Pending",
+            "type": "Document Type",
+            "document_type": "Customer",
+            "function": "Count",
+            "aggregate_function_based_on": None,
+            "filters_json": json.dumps([
+                ["Customer", "customer_group", "=", "Dealer"],
+                ["Customer", "disabled", "=", 0],
+                ["Customer", "dealer_agreement_status", "=", "Sent"],
+            ]),
+            "show_percentage_stats": 0,
+        },
+        "Active Dealers": {
+            "label": "Active Dealers",
+            "type": "Document Type",
+            "document_type": "Customer",
+            "function": "Count",
+            "aggregate_function_based_on": None,
+            "filters_json": json.dumps([
+                ["Customer", "customer_group", "=", "Dealer"],
+                ["Customer", "disabled", "=", 0],
+            ]),
+        },
+        "Cash Collected MTD": {
+            "label": "Cash Collected MTD",
+            "type": "Custom",
+            "document_type": "Loan Repayment",
+            "method": "dcr.api.dashboard.cash_collected_mtd",
+            "currency": "USD",
+            "filters_json": "[]",
+            "dynamic_filters_json": "[]",
+            "show_percentage_stats": 0,
+        },
+    }
+    for card_name, updates in card_updates.items():
+        if frappe.db.exists("Number Card", card_name):
+            frappe.db.set_value("Number Card", card_name, updates)
+            frappe.clear_document_cache("Number Card", card_name)
+
+    _ensure_workspace_chart("Accounting", "Repayment Breakdown", 6)
+    _ensure_workspace_chart("Deals", "Deal Pipeline by Factory", 12)
+
+
+def _ensure_workspace_chart(workspace_name, chart_name, col):
+    if not (
+        frappe.db.exists("Workspace", workspace_name)
+        and frappe.db.exists("Dashboard Chart", chart_name)
+    ):
+        return
+
+    raw_content = frappe.db.get_value("Workspace", workspace_name, "content") or "[]"
+    try:
+        content = json.loads(raw_content)
+    except (TypeError, ValueError):
+        return
+
+    if any(
+        block.get("type") == "chart"
+        and block.get("data", {}).get("chart_name") == chart_name
+        for block in content
+    ):
+        return
+
+    content.append({
+        "type": "chart",
+        "data": {"chart_name": chart_name, "col": col},
+    })
+    frappe.db.set_value(
+        "Workspace",
+        workspace_name,
+        "content",
+        json.dumps(content),
+    )
+    frappe.clear_document_cache("Workspace", workspace_name)
 
 
 def ensure_lending_accounting_defaults():
@@ -549,6 +714,8 @@ def ensure_hbr_stage_field_options():
             updates["read_only"] = 1
         if frappe.db.get_value("Custom Field", custom_field, "allow_on_submit") != 0:
             updates["allow_on_submit"] = 0
+        if frappe.db.get_value("Custom Field", custom_field, "reqd") != 0:
+            updates["reqd"] = 0
 
         if not updates:
             continue

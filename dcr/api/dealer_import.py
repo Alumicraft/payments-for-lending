@@ -451,6 +451,6 @@ def _create_factory_assignment(customer_name, supplier_name):
         "assignment_date": today(),
         "active": 1,
         "retailer_application_status": "Approved",
-        "docstatus": 0,
     })
     doc.insert(ignore_permissions=True)
+    doc.submit()

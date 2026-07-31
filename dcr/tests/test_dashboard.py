@@ -51,11 +51,13 @@ class TestFrameworkKwargsTolerance(unittest.TestCase):
         "heatmap_year": None,
     }
 
-    def test_all_three_methods_accept_framework_kwargs(self):
+    def test_all_chart_methods_accept_framework_kwargs(self):
         for fn in (
             dashboard.inflows_vs_outflows,
             dashboard.past_due_aging,
             dashboard.new_deals_by_type,
+            dashboard.repayment_breakdown,
+            dashboard.deal_pipeline_by_factory,
         ):
             with patch.object(dashboard.frappe.db, "sql", return_value=[]):
                 result = fn(**self.FRAMEWORK_KWARGS)
@@ -184,6 +186,61 @@ class TestNewDealsByType(unittest.TestCase):
         self.assertEqual(result["datasets"][0]["values"][11], 2)
         # Mystery did not bleed into Floored
         self.assertEqual(result["datasets"][1]["values"][11], 0)
+
+
+class TestRepaymentBreakdown(unittest.TestCase):
+    def test_returns_zero_filled_component_series(self):
+        with patch.object(dashboard.frappe.db, "sql", return_value=[]):
+            result = dashboard.repayment_breakdown()
+
+        self.assertEqual(
+            [dataset["name"] for dataset in result["datasets"]],
+            ["Principal", "Interest", "Penalty"],
+        )
+        for dataset in result["datasets"]:
+            self.assertEqual(dataset["values"], [0] * 12)
+
+    def test_month_values_are_aligned(self):
+        rows = [
+            FakeRow(
+                m="2026-06-01",
+                principal=900,
+                interest=75,
+                penalty=5,
+            )
+        ]
+        with patch.object(dashboard.frappe.db, "sql", return_value=rows):
+            result = dashboard.repayment_breakdown()
+
+        self.assertEqual(result["datasets"][0]["values"][11], 900)
+        self.assertEqual(result["datasets"][1]["values"][11], 75)
+        self.assertEqual(result["datasets"][2]["values"][11], 5)
+
+
+class TestDealPipelineByFactory(unittest.TestCase):
+    def test_groups_factories_by_derived_order_stage(self):
+        rows = [
+            FakeRow(factory="Champion", has_pr=0, has_po=0),
+            FakeRow(factory="Champion", has_pr=0, has_po=1),
+            FakeRow(factory="Champion", has_pr=1, has_po=1),
+            FakeRow(factory="Skyline", has_pr=0, has_po=0),
+        ]
+        with patch.object(dashboard.frappe.db, "sql", return_value=rows):
+            result = dashboard.deal_pipeline_by_factory()
+
+        self.assertEqual(result["labels"], ["Champion", "Skyline"])
+        self.assertEqual(result["datasets"][0]["values"], [1, 1])
+        self.assertEqual(result["datasets"][1]["values"], [1, 0])
+        self.assertEqual(result["datasets"][2]["values"], [1, 0])
+
+
+class TestCashCollectedMtd(unittest.TestCase):
+    def test_empty_month_returns_numeric_zero(self):
+        with patch.object(dashboard.frappe.db, "sql", return_value=[]):
+            result = dashboard.cash_collected_mtd()
+
+        self.assertEqual(result["value"], 0)
+        self.assertEqual(result["fieldtype"], "Currency")
 
 
 if __name__ == "__main__":

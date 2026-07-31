@@ -14,7 +14,7 @@ FACTORY_SUPPLIER_GROUP = "Factory"
 
 @frappe.whitelist()
 def search_address(query):
-    """Search for addresses using Mapbox Search Box API.
+    """Search for addresses using Mapbox Geocoding v6.
 
     Called from HBR form's address autofill dropdown.
     Returns a list of structured address suggestions.
@@ -27,7 +27,7 @@ def search_address(query):
     if not token:
         return []
 
-    url = "https://api.mapbox.com/search/searchbox/v1/suggest"
+    url = "https://api.mapbox.com/search/geocode/v6/forward"
     params = {
         "q": query,
         "access_token": token,
@@ -35,6 +35,7 @@ def search_address(query):
         "country": "US",
         "types": "address",
         "limit": 5,
+        "autocomplete": "true",
     }
 
     try:
@@ -44,34 +45,10 @@ def search_address(query):
     except Exception:
         return []
 
-    suggestions = data.get("suggestions", [])
-    if not suggestions:
-        return []
-
-    # Retrieve full details for each suggestion
-    results = []
-    for s in suggestions:
-        mapbox_id = s.get("mapbox_id")
-        if not mapbox_id:
-            continue
-
-        try:
-            detail_url = f"https://api.mapbox.com/search/searchbox/v1/retrieve/{mapbox_id}"
-            detail_resp = requests.get(
-                detail_url,
-                params={"access_token": token},
-                timeout=5
-            )
-            detail_resp.raise_for_status()
-            detail_data = detail_resp.json()
-        except Exception:
-            continue
-
-        features = detail_data.get("features", [])
-        if features:
-            results.append(_parse_mapbox_feature(features[0]))
-
-    return results
+    return [
+        _parse_mapbox_feature(feature)
+        for feature in data.get("features", [])
+    ]
 
 
 @frappe.whitelist()

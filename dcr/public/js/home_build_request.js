@@ -319,19 +319,11 @@ function update_connections_visibility(frm) {
 function update_stage_field_visibility(frm) {
     var is_cash = frm.doc.financing_type === 'Cash';
 
-    function apply() {
-        if (frm.fields_dict.custom_loan_stage) {
-            frm.toggle_display('custom_loan_stage', !is_cash);
-            frm.toggle_reqd('custom_loan_stage', !is_cash);
-            frm.set_df_property('custom_loan_stage', 'hidden', is_cash ? 1 : 0);
-            frm.set_df_property('custom_loan_stage', 'reqd', is_cash ? 0 : 1);
-        }
+    if (frm.fields_dict.custom_loan_stage) {
+        // The previous retry timers repeatedly toggled this field while
+        // Frappe painted the form, which caused the visible flash.
+        frm.set_df_property('custom_loan_stage', 'hidden', is_cash ? 1 : 0);
     }
-
-    apply();
-    setTimeout(apply, 0);
-    setTimeout(apply, 500);
-    setTimeout(apply, 1500);
 }
 
 
@@ -348,29 +340,35 @@ function populate_checklist(frm) {
             property_type: frm.doc.property_type
         },
         callback: function(r) {
-            if (!r.message || r.message.length === 0) {
+            var required = r.message || [];
+            if (required.length === 0) {
                 return;
             }
 
-            // Clear existing checklist rows
+            // Preserve uploads and waivers for requirements that still apply.
+            var existing = {};
+            (frm.doc.doc_checklist || []).forEach(function(row) {
+                if (row.document_type) existing[row.document_type] = row;
+            });
             frm.clear_table('doc_checklist');
 
-            // Add required docs
-            for (const doc_type of r.message) {
+            for (const doc_type of required) {
+                let previous = existing[doc_type] || {};
                 let row = frm.add_child('doc_checklist');
                 row.document_type = doc_type;
+                row.attachment = previous.attachment || '';
+                row.waived = previous.waived || 0;
             }
 
             frm.refresh_field('doc_checklist');
             frappe.show_alert({
-                message: __('Document checklist updated — {0} documents required', [r.message.length]),
+                message: __('Document checklist updated — {0} documents required', [required.length]),
                 indicator: 'blue'
             });
         }
     });
 }
 
-var _mapbox_token = null;
 var _address_fields = ['city', 'state', 'zip', 'latitude', 'longitude'];
 
 function setup_address_autofill(frm) {
@@ -404,62 +402,23 @@ function setup_address_autofill(frm) {
 
         clearTimeout(_debounce);
         _debounce = setTimeout(function() {
-            get_mapbox_token(function(token) {
-                if (!token) {
-                    console.warn('DCR: Mapbox token missing — address autofill disabled.');
-                    return;
+            var request_query = query;
+            frm._dcr_address_query = request_query;
+            frappe.call({
+                method: 'dcr.api.map.search_address',
+                args: { query: request_query },
+                callback: function(r) {
+                    if (frm._dcr_address_query !== request_query) return;
+                    var suggestions = r.message || [];
+                    if (suggestions.length) {
+                        show_address_dropdown(frm, $input, suggestions);
+                    } else {
+                        $input.parent().find('.mapbox-dropdown').remove();
+                    }
                 }
-                search_mapbox(token, query, function(suggestions) {
-                    if (suggestions.length) show_address_dropdown(frm, $input, suggestions);
-                });
             });
         }, 300);
     });
-}
-
-function get_mapbox_token(callback) {
-    if (_mapbox_token) { callback(_mapbox_token); return; }
-    frappe.call({
-        method: 'dcr.api.map.get_map_settings',
-        callback: function(r) {
-            if (r.message && r.message.access_token) {
-                _mapbox_token = r.message.access_token;
-                callback(_mapbox_token);
-            } else {
-                callback(null);
-            }
-        }
-    });
-}
-
-function search_mapbox(token, query, callback) {
-    // Geocoding API v5 — simpler, no session tokens needed
-    var url = 'https://api.mapbox.com/geocoding/v5/mapbox.places/'
-        + encodeURIComponent(query) + '.json'
-        + '?access_token=' + token
-        + '&country=US&types=address&limit=5&autocomplete=true';
-
-    fetch(url).then(function(r) { return r.json(); }).then(function(data) {
-        var results = (data.features || []).map(function(f) {
-            var coords = f.geometry.coordinates || [0, 0];
-            var ctx = {};
-            (f.context || []).forEach(function(c) {
-                if (c.id.indexOf('place') === 0) ctx.city = c.text;
-                if (c.id.indexOf('region') === 0) ctx.state = c.short_code ? c.short_code.replace('US-', '') : c.text;
-                if (c.id.indexOf('postcode') === 0) ctx.zip = c.text;
-            });
-            return {
-                full_address: f.place_name || '',
-                address: f.address ? f.address + ' ' + (f.text || '') : f.text || '',
-                city: ctx.city || '',
-                state: ctx.state || '',
-                zip: ctx.zip || '',
-                latitude: coords[1] || 0,
-                longitude: coords[0] || 0
-            };
-        });
-        callback(results);
-    }).catch(function() { callback([]); });
 }
 
 function set_address_fields_read_only(frm, read_only) {

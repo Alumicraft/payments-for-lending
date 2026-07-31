@@ -1,0 +1,8 @@
+{
+ "doctype": "Dashboard Chart Source",
+ "module": "DCR",
+ "name": "Deal Pipeline by Factory",
+ "owner": "Administrator",
+ "source_name": "Deal Pipeline by Factory",
+ "timeseries": 0
+}

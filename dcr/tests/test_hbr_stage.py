@@ -183,6 +183,7 @@ class TestHbrStageSetup(unittest.TestCase):
 
         self.assertIn('updates["read_only"] = 1', setup)
         self.assertIn('updates["allow_on_submit"] = 0', setup)
+        self.assertIn('updates["reqd"] = 0', setup)
         self.assertIn('frappe.db.set_value("Custom Field", custom_field, updates)', setup)
 
     def test_migrate_patch_backfills_existing_hbr_stages(self):

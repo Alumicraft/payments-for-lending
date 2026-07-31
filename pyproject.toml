@@ -37,6 +37,8 @@ dcr = [
     "dcr/doctype/*/*.json",
     "dcr/report/*/*.json",
     "dcr/print_format/*/*.json",
+    "dcr/dashboard_chart_source/*/*.json",
+    "dcr/dashboard_chart_source/*/*.js",
 ]
 
 [tool.bench.frappe-dependencies]

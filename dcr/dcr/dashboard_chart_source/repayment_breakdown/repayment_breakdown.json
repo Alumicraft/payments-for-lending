@@ -1,0 +1,8 @@
+{
+ "doctype": "Dashboard Chart Source",
+ "module": "DCR",
+ "name": "Repayment Breakdown",
+ "owner": "Administrator",
+ "source_name": "Repayment Breakdown",
+ "timeseries": 0
+}

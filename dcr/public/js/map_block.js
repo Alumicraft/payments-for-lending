@@ -1400,9 +1400,9 @@
     }
 
     function geocodeFactoryAddress(token, query, callback) {
-        var url = 'https://api.mapbox.com/geocoding/v5/mapbox.places/'
-            + encodeURIComponent(query) + '.json'
-            + '?access_token=' + encodeURIComponent(token)
+        var url = 'https://api.mapbox.com/search/geocode/v6/forward'
+            + '?q=' + encodeURIComponent(query)
+            + '&access_token=' + encodeURIComponent(token)
             + '&country=US&types=address&limit=1';
         fetch(url).then(function(resp) {
             return resp.json();

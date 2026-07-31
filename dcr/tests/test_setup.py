@@ -356,10 +356,14 @@ class TestPackagingConfig(unittest.TestCase):
         self.assertIn('"public/css/*.css"', pyproject)
         self.assertIn('"public/html/*.html"', pyproject)
         self.assertIn('"public/images/*.png"', pyproject)
+        self.assertIn('"dcr/dashboard_chart_source/*/*.js"', pyproject)
+        self.assertIn('"dcr/dashboard_chart_source/*/*.json"', pyproject)
         self.assertIn('"public/js/*.js"', setup_py)
         self.assertIn('"public/html/*.html"', setup_py)
+        self.assertIn('"dcr/dashboard_chart_source/*/*.js"', setup_py)
         self.assertIn("recursive-include dcr/public *.css *.js *.html *.png", manifest)
-        self.assertIn('DCR_ASSET_VERSION = "20260528-5"', hooks)
+        self.assertIn("recursive-include dcr/dcr/dashboard_chart_source *.json *.js", manifest)
+        self.assertIn('DCR_ASSET_VERSION = "20260730-1"', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/sidebar_fix.js")', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/hbr_dashboard_plus_patch_20260525_10.js")', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/loan_list_context_patch_20260525_14.js")', hooks)
@@ -367,6 +371,41 @@ class TestPackagingConfig(unittest.TestCase):
         self.assertIn('versioned_asset("/assets/dcr/css/map.css")', hooks)
         self.assertIn('versioned_doctype_asset("public/js/loan_application.js")', hooks)
         self.assertIn('versioned_doctype_asset("public/js/home_build_request.js")', hooks)
+
+    def test_imported_factory_assignments_are_submitted_without_resending_email(self):
+        dealer_import = (ROOT / "dcr/api/dealer_import.py").read_text()
+        controller = (
+            ROOT / "dcr/dcr/doctype/factory_assignment/factory_assignment.py"
+        ).read_text()
+        setup = (ROOT / "dcr/setup.py").read_text()
+        patches = (ROOT / "dcr/patches.txt").read_text()
+
+        self.assertIn("doc.submit()", dealer_import)
+        self.assertIn('if self.retailer_application_status == "Approved":', controller)
+        self.assertIn("submit_imported_factory_assignments", setup)
+        self.assertIn('"retailer_application_status": "Approved"', setup)
+        self.assertIn("dcr.patches.submit_imported_factory_assignments", patches)
+        self.assertIn("dcr.patches.backfill_submitted_hbr_checklists", patches)
+
+    def test_factory_address_repair_contains_all_missing_factories(self):
+        setup = (ROOT / "dcr/setup.py").read_text()
+
+        self.assertIn('"Durango Homes"', setup)
+        self.assertIn('"2502 W Durango St"', setup)
+        self.assertIn('"Fleetwood Homes"', setup)
+        self.assertIn('"7007 Jurupa Ave"', setup)
+        self.assertIn('"Skyline Homes"', setup)
+        self.assertIn('"499 W Esplanade Ave"', setup)
+
+    def test_dashboard_repair_uses_explicit_pending_status_and_zero_safe_method(self):
+        setup = (ROOT / "dcr/setup.py").read_text()
+        fixtures = (ROOT / "dcr/fixtures/dashboard_chart.json").read_text()
+
+        self.assertIn('["Customer", "dealer_agreement_status", "=", "Sent"]', setup)
+        self.assertIn('"method": "dcr.api.dashboard.cash_collected_mtd"', setup)
+        self.assertIn('"Repayment Breakdown"', setup)
+        self.assertIn('"Deal Pipeline by Factory"', setup)
+        self.assertIn('#59ba8b\\",\\"#0289f7', fixtures)
 
 
 class TestMapWorkspaceClientCode(unittest.TestCase):

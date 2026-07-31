@@ -129,6 +129,63 @@ class TestGetRequiredDocs(unittest.TestCase):
             self.assertIn("Factory Quote", docs, f"Missing Factory Quote for {key}")
 
 
+class _ChecklistDoc:
+    def __init__(self, rows=None):
+        self.home_type = "Spec"
+        self.financing_type = "Floored"
+        self.property_type = "Park"
+        self.doc_checklist = rows or []
+
+    def get(self, fieldname):
+        return getattr(self, fieldname)
+
+    def set(self, fieldname, value):
+        setattr(self, fieldname, value)
+
+    def append(self, fieldname, values):
+        row = MagicMock()
+        row.get.side_effect = values.get
+        row.document_type = values["document_type"]
+        row.attachment = None
+        row.waived = 0
+        getattr(self, fieldname).append(row)
+        return row
+
+
+class TestRequiredChecklistServerGuard(unittest.TestCase):
+    def test_empty_checklist_is_populated_before_submit_validation(self):
+        from dcr.dcr.doctype.home_build_request.home_build_request import HomeBuildRequest
+
+        doc = _ChecklistDoc()
+        HomeBuildRequest.ensure_required_checklist(doc)
+
+        self.assertEqual(
+            [row.document_type for row in doc.doc_checklist],
+            DOC_REQUIREMENTS[("Spec", "Floored", "Park")],
+        )
+
+    def test_existing_attachment_and_waiver_are_preserved(self):
+        from dcr.dcr.doctype.home_build_request.home_build_request import HomeBuildRequest
+
+        existing = MagicMock()
+        values = {
+            "document_type": "Factory Quote",
+            "attachment": "/files/quote.pdf",
+            "waived": 1,
+        }
+        existing.get.side_effect = values.get
+        doc = _ChecklistDoc([existing])
+
+        HomeBuildRequest.ensure_required_checklist(doc)
+
+        quote = next(
+            row for row in doc.doc_checklist
+            if row.document_type == "Factory Quote"
+        )
+        self.assertEqual(quote.attachment, "/files/quote.pdf")
+        self.assertEqual(quote.waived, 1)
+
+
 class TestHomeBuildRequestAttachmentSync(unittest.TestCase):
 
     @patch("dcr.dcr.doctype.home_build_request.home_build_request.frappe")

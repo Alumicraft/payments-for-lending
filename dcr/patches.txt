@@ -8,3 +8,6 @@ dcr.patches.sync_hbr_submit_status
 dcr.patches.repair_loan_demand_offset_order
 dcr.patches.repair_lending_accounting_defaults
 dcr.patches.retire_model_doctype
+dcr.patches.seed_factory_addresses
+dcr.patches.submit_imported_factory_assignments
+dcr.patches.backfill_submitted_hbr_checklists

@@ -56,6 +56,37 @@ class TestParseMapboxResponse(unittest.TestCase):
         self.assertEqual(result["latitude"], 0)
         self.assertEqual(result["longitude"], 0)
 
+    @patch("dcr.api.map.requests.get")
+    @patch("dcr.api.map.frappe")
+    def test_search_address_uses_single_geocoding_v6_request(self, mock_frappe, mock_get):
+        from dcr.api.map import search_address
+
+        settings = MagicMock()
+        settings.get_password.return_value = "test-token"
+        mock_frappe.get_single.return_value = settings
+        response = MagicMock()
+        response.json.return_value = {
+            "features": [{
+                "geometry": {"coordinates": [-118.82, 34.14]},
+                "properties": {
+                    "full_address": "123 Main St, Westlake Village, CA 93065",
+                    "address": "123 Main St",
+                    "place": "Westlake Village",
+                    "region_code": "CA",
+                    "postcode": "93065",
+                },
+            }],
+        }
+        mock_get.return_value = response
+
+        result = search_address("123 Main")
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["zip"], "93065")
+        self.assertIn("/search/geocode/v6/forward", mock_get.call_args.args[0])
+        self.assertEqual(mock_get.call_args.kwargs["params"]["autocomplete"], "true")
+        self.assertEqual(mock_get.call_count, 1)
+
 
 class TestAggregateHeatmapData(unittest.TestCase):
     """Test the aggregation logic that groups HBRs by location + space."""

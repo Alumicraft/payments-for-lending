@@ -36,6 +36,7 @@ def _add_months(d, n):
 frappe_mock.utils.add_months = _add_months
 frappe_mock.utils.get_time = MagicMock()
 frappe_mock.utils.nowtime = MagicMock()
+frappe_mock.utils.flt = lambda value=0: float(value or 0)
 
 frappe_model = MagicMock()
 frappe_model.document = MagicMock()

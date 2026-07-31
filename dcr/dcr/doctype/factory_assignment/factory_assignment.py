@@ -5,6 +5,12 @@ from frappe.model.document import Document
 
 class FactoryAssignment(Document):
     def on_submit(self):
+        # Dealer imports represent assignments that were already approved in
+        # the source system. Submit them without reopening the retailer
+        # application workflow or sending duplicate factory emails.
+        if self.retailer_application_status == "Approved":
+            return
+
         # Auto-set status to Submitted
         self.db_set("retailer_application_status", "Submitted")
         self.send_retailer_application()
