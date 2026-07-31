@@ -37,14 +37,21 @@ frappe.ui.form.on('Loan Application', {
             if (field && field.$wrapper) field.$wrapper.show();
         });
 
-        // Run client-side calcs once with whatever values are in scope
-        // (handles fetch_from populating rate_of_interest etc. without a
-        // user keystroke firing the field handler).
-        calculate_monthly_interest(frm);
-        calculate_preapproval_fields(frm);
+        // Submitted applications are authoritative snapshots. Re-running
+        // client calculations or credit hydration on refresh marks them
+        // "Not Saved" even when the calculated values have not changed.
+        // Drafts still need the live preview while the user edits.
+        if (frm.doc.docstatus === 0) {
+            // Run client-side calcs once with whatever values are in scope
+            // (handles fetch_from populating rate_of_interest etc. without a
+            // user keystroke firing the field handler).
+            calculate_monthly_interest(frm);
+            calculate_preapproval_fields(frm);
+        }
 
-        // Fetch loan product + credit info when applicant is set
-        if (frm.doc.applicant) {
+        // Fetch loan product + credit info only while the application is
+        // editable. The server recalculates these fields again on validate.
+        if (frm.doc.docstatus === 0 && frm.doc.applicant) {
             hydrate_applicant_contact(frm);
             if (!frm.doc.loan_product) {
                 frappe.db.get_value('Customer', frm.doc.applicant, 'default_loan_product', function(r) {

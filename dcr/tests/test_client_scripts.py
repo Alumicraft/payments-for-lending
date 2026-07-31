@@ -195,6 +195,17 @@ class TestLoanApplicationClientScript(unittest.TestCase):
         self.assertIn("if (!was_dirty && !frm.is_new())", script)
         self.assertIn("frm.doc.__unsaved = 0", script)
 
+    def test_submitted_application_refresh_does_not_rewrite_calculated_fields(self):
+        script = (ROOT / "dcr/public/js/loan_application.js").read_text()
+
+        self.assertIn("if (frm.doc.docstatus === 0)", script)
+        self.assertIn(
+            "if (frm.doc.docstatus === 0 && frm.doc.applicant)",
+            script,
+        )
+        self.assertIn("calculate_monthly_interest(frm)", script)
+        self.assertIn("calculate_preapproval_fields(frm)", script)
+
 
 class TestHbrConnectionDefaultsClientScript(unittest.TestCase):
 

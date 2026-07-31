@@ -156,6 +156,9 @@ doc_events = {
         "on_submit": "dcr.api.hbr_stage.sync_from_doc",
         "on_cancel": "dcr.api.hbr_stage.sync_from_doc",
     },
+    "Purchase Invoice": {
+        "before_validate": "dcr.api.accounting.ensure_purchase_invoice_expense_accounts",
+    },
     "Bank Account": {
         "validate": "dcr.api.bank_account_ach.validate_single_default"
     },
