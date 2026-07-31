@@ -46,11 +46,33 @@ class TestSetupCustomFields(unittest.TestCase):
         from dcr.setup import ensure_hbr_kanban_columns
 
         board = MagicMock()
-        columns = []
-        board.get.side_effect = lambda field: None if field == "filters" else columns
-        board.append.side_effect = lambda field, value: MagicMock(
-            column_name=value["column_name"]
-        )
+        columns = [
+            MagicMock(column_name="Pending"),
+            MagicMock(column_name="Ordered"),
+            MagicMock(column_name="Delivered"),
+            MagicMock(column_name="Draft"),
+        ]
+        for column in columns:
+            column.get.side_effect = lambda field, row=column: getattr(row, field)
+
+        def get_board_field(field):
+            if field == "filters":
+                return None
+            return columns
+
+        def clear_board_field(field, value):
+            if field == "columns" and value == []:
+                columns.clear()
+
+        def append_board_field(field, value):
+            column = MagicMock(column_name=value["column_name"])
+            column.get.side_effect = lambda name: getattr(column, name)
+            columns.append(column)
+            return column
+
+        board.get.side_effect = get_board_field
+        board.set.side_effect = clear_board_field
+        board.append.side_effect = append_board_field
         mock_frappe.db.exists.return_value = True
         mock_frappe.get_all.return_value = ["Home Build Requests"]
         mock_frappe.get_doc.return_value = board
@@ -62,9 +84,10 @@ class TestSetupCustomFields(unittest.TestCase):
             '[["Home Build Request", "docstatus", "in", [0, 1]]]',
         )
         self.assertEqual(
-            [column.column_name for column in board.columns],
+            [column.column_name for column in columns],
             ["Draft", "Pending", "Ordered", "Delivered"],
         )
+        board.set.assert_called_once_with("columns", [])
         board.save.assert_called_once_with(ignore_permissions=True)
         mock_frappe.clear_document_cache.assert_called_once_with(
             "Kanban Board", "Home Build Requests"
@@ -647,8 +670,8 @@ class TestPackagingConfig(unittest.TestCase):
         lock = (ROOT / "dcr/public/js/hbr_kanban_lock.js").read_text()
 
         self.assertIn("ensure_hbr_kanban_columns,", setup)
-        self.assertIn('column.get("column_name") == "Not Ordered"', setup)
-        self.assertIn('column.column_name = "Pending"', setup)
+        self.assertIn('board.set("columns", [])', setup)
+        self.assertIn('board.append("columns", {"column_name": column_name})', setup)
         self.assertIn('["Home Build Request", "docstatus", "in", [0, 1]]', setup)
         self.assertIn('desired_columns = ["Draft", "Pending", "Ordered", "Delivered"]', setup)
         self.assertIn('board.filters = active_filter', setup)

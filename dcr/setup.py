@@ -390,27 +390,17 @@ def ensure_hbr_kanban_columns():
             changed = True
 
         desired_columns = ["Draft", "Pending", "Ordered", "Delivered"]
-        columns_by_name = {}
-        for column in list(board.get("columns") or []):
-            if column.get("column_name") == "Not Ordered":
-                column.column_name = "Pending"
-                changed = True
-            if (
-                column.column_name in desired_columns
-                and column.column_name not in columns_by_name
-            ):
-                columns_by_name[column.column_name] = column
-
-        for column_name in desired_columns:
-            if column_name not in columns_by_name:
-                columns_by_name[column_name] = board.append(
-                    "columns", {"column_name": column_name}
-                )
-                changed = True
-
-        ordered_columns = [columns_by_name[name] for name in desired_columns]
-        if list(board.get("columns") or []) != ordered_columns:
-            board.columns = ordered_columns
+        current_columns = [
+            column.get("column_name")
+            for column in (board.get("columns") or [])
+        ]
+        if current_columns != desired_columns:
+            # Rebuild the child table so Frappe persists fresh idx values.
+            # Assigning a reordered Python list is not enough: the database
+            # can retain the former indices and render Draft/"Pending" last.
+            board.set("columns", [])
+            for column_name in desired_columns:
+                board.append("columns", {"column_name": column_name})
             changed = True
         if changed:
             board.save(ignore_permissions=True)
