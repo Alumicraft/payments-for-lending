@@ -123,9 +123,12 @@ def after_install():
     # Idempotent field/option syncs. Each runs in isolation so one failure
     # can't block the rest; the log label matches the function name.
     for fn in (
+        ensure_bank_account_types,
         ensure_bank_account_ach_fields,
         ensure_supplier_geo_fields,
         ensure_order_hbr_fields,
+        ensure_payment_entry_calculated_fields,
+        ensure_loan_application_field_repairs,
         ensure_hbr_stage_field_options,
         sync_existing_hbr_stage_fields,
         ensure_dcr_dashboard_configuration,
@@ -654,6 +657,20 @@ def ensure_bank_account_ach_fields():
         frappe.clear_cache(doctype="Bank Account")
 
 
+def ensure_bank_account_types():
+    """Install the ACH account types required by Bank Account link fields."""
+    if not frappe.db.exists("DocType", "Bank Account Type"):
+        return
+
+    for account_type in ("Checking", "Savings"):
+        if frappe.db.exists("Bank Account Type", account_type):
+            continue
+        frappe.get_doc({
+            "doctype": "Bank Account Type",
+            "account_type": account_type,
+        }).insert(ignore_permissions=True)
+
+
 def ensure_purchase_order_hbr_field():
     """Create the Purchase Order link used by HBR create buttons and map status."""
     ensure_order_hbr_fields(["Purchase Order"])
@@ -723,6 +740,123 @@ def ensure_order_hbr_fields(only_doctypes=None):
             "no_copy": 0,
         }).insert(ignore_permissions=True)
         frappe.clear_cache(doctype=field["dt"])
+
+
+def ensure_payment_entry_calculated_fields():
+    """Install calculated Payment Entry fields owned by the DCR client app."""
+    fieldname = "custom_total_outstanding"
+    existing = frappe.db.exists(
+        "Custom Field",
+        {"dt": "Payment Entry", "fieldname": fieldname},
+    )
+    if not existing:
+        frappe.get_doc({
+            "doctype": "Custom Field",
+            "dt": "Payment Entry",
+            "fieldname": fieldname,
+            "label": "Selected Outstanding",
+            "fieldtype": "Currency",
+            "options": "Company:company:default_currency",
+            "insert_after": "total_allocated_amount",
+            "read_only": 1,
+            "no_copy": 1,
+        }).insert(ignore_permissions=True)
+        frappe.clear_cache(doctype="Payment Entry")
+
+    # This legacy site Client Script duplicated app logic, referenced the field
+    # before it existed, and dirtied submitted Payment Entries on every refresh.
+    legacy_script = frappe.db.exists(
+        "Client Script",
+        "Payment Entry - Get Outstanding Balance of Reference Invoices",
+    )
+    if legacy_script and frappe.db.get_value("Client Script", legacy_script, "enabled"):
+        frappe.db.set_value("Client Script", legacy_script, "enabled", 0)
+        frappe.clear_cache(doctype="Payment Entry")
+
+
+def ensure_loan_application_field_repairs():
+    """Keep Lending fields aligned with DCR's current HBR and dealer data."""
+    floor_plan_field = frappe.db.exists(
+        "Custom Field",
+        {"dt": "Loan Application", "fieldname": "floor_plan"},
+    )
+    if floor_plan_field:
+        fetch_from = frappe.db.get_value("Custom Field", floor_plan_field, "fetch_from")
+        if fetch_from != "home_build_request.floor_plan":
+            frappe.db.set_value(
+                "Custom Field",
+                floor_plan_field,
+                "fetch_from",
+                "home_build_request.floor_plan",
+            )
+
+    phone_options_name = "Loan Application-applicant_phone_number-options"
+    phone_options = frappe.db.exists("Property Setter", phone_options_name)
+    if not phone_options:
+        frappe.get_doc({
+            "doctype": "Property Setter",
+            "name": phone_options_name,
+            "doc_type": "Loan Application",
+            "doctype_or_field": "DocField",
+            "field_name": "applicant_phone_number",
+            "property": "options",
+            "property_type": "Data",
+            "value": "country",
+        }).insert(ignore_permissions=True)
+    elif frappe.db.get_value("Property Setter", phone_options_name, "value") != "country":
+        frappe.db.set_value("Property Setter", phone_options_name, "value", "country")
+
+    # Repair older submitted applications that were saved before address
+    # hydration existed. Database writes are deliberate here: normal document
+    # saves reject these standard fields after submit.
+    from dcr.api.lending import _get_customer_address_details
+
+    applications = frappe.get_all(
+        "Loan Application",
+        filters={"docstatus": 1, "applicant_type": "Customer"},
+        fields=[
+            "name",
+            "applicant",
+            "address_line_1",
+            "address_line_2",
+            "city",
+            "state",
+            "zip_code",
+            "country",
+        ],
+    )
+    address_fields = (
+        "address_line_1",
+        "address_line_2",
+        "city",
+        "state",
+        "zip_code",
+        "country",
+    )
+    for application in applications:
+        get_value = (
+            (lambda fieldname: getattr(application, fieldname, None))
+            if hasattr(application, "name")
+            else application.get
+        )
+        missing = [fieldname for fieldname in address_fields if not get_value(fieldname)]
+        if not missing:
+            continue
+        address = _get_customer_address_details(get_value("applicant"))
+        updates = {
+            fieldname: address.get(fieldname)
+            for fieldname in missing
+            if address.get(fieldname)
+        }
+        if updates:
+            frappe.db.set_value(
+                "Loan Application",
+                get_value("name"),
+                updates,
+                update_modified=False,
+            )
+
+    frappe.clear_cache(doctype="Loan Application")
 
 
 def ensure_hbr_stage_field_options():

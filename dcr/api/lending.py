@@ -194,6 +194,7 @@ def get_loan_application_defaults(home_build_request):
         contact = _get_customer_contact_details(customer)
         defaults["applicant_email_address"] = contact.get("email")
         defaults["applicant_phone_number"] = contact.get("phone")
+        defaults.update(_get_customer_address_details(customer))
         defaults["loan_product"] = frappe.db.get_value(
             "Customer", customer, "default_loan_product"
         )
@@ -319,6 +320,7 @@ def _populate_loan_application_from_hbr(doc, hbr):
             doc.set("loan_product", loan_product)
 
     _populate_applicant_contact(doc)
+    _populate_applicant_address(doc)
 
 
 def _get_loan_application_hbr_defaults(hbr):
@@ -347,6 +349,60 @@ def _populate_applicant_contact(doc):
         doc.set("applicant_email_address", details.get("email"))
     if details.get("phone") and not doc.get("applicant_phone_number"):
         doc.set("applicant_phone_number", details.get("phone"))
+
+
+def _populate_applicant_address(doc):
+    if doc.get("applicant_type") != "Customer" or not doc.get("applicant"):
+        return
+
+    for fieldname, value in _get_customer_address_details(doc.applicant).items():
+        if value is not None and not doc.get(fieldname):
+            doc.set(fieldname, value)
+
+
+def _get_customer_address_details(customer):
+    """Map a customer's primary Address into Lending's application fields."""
+    details = {
+        "address_line_1": None,
+        "address_line_2": None,
+        "city": None,
+        "state": None,
+        "zip_code": None,
+        "country": None,
+    }
+    if not customer:
+        return details
+
+    address_name = frappe.db.get_value(
+        "Customer", customer, "customer_primary_address"
+    )
+    if not address_name:
+        address_name = frappe.db.get_value(
+            "Dynamic Link",
+            {
+                "parenttype": "Address",
+                "link_doctype": "Customer",
+                "link_name": customer,
+            },
+            "parent",
+        )
+    if not address_name:
+        return details
+
+    address = frappe.db.get_value(
+        "Address",
+        address_name,
+        ["address_line1", "address_line2", "city", "state", "pincode", "country"],
+        as_dict=True,
+    ) or {}
+    return {
+        "address_line_1": address.get("address_line1"),
+        "address_line_2": address.get("address_line2"),
+        "city": address.get("city"),
+        "state": address.get("state"),
+        "zip_code": address.get("pincode"),
+        "country": address.get("country"),
+    }
 
 
 def _get_customer_contact_details(customer):

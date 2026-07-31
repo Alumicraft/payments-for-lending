@@ -58,13 +58,30 @@ def derive_loan_stage(financing_type, loan_application_status=None, loan_status=
 def sync_from_doc(doc, method=None):
     """Doc-event entrypoint for documents linked to an HBR."""
     hbr_name = _hbr_from_doc(doc)
-    if hbr_name:
-        sync_hbr_stages(hbr_name)
+    if not hbr_name:
+        return
+
+    submitted_pr_override = None
+    if doc.doctype == "Purchase Receipt" and method == "on_submit":
+        # on_submit runs before the receipt's docstatus is visible to a fresh
+        # database query, so use the current transaction as authoritative.
+        submitted_pr_override = True
+    elif doc.doctype == "Purchase Receipt" and method == "on_cancel":
+        submitted_pr_override = _has_submitted_purchase_receipt(
+            hbr_name,
+            exclude_receipt=doc.name,
+        )
+
+    _sync_hbr_stages(hbr_name, submitted_pr_override)
 
 
 @frappe.whitelist()
 def sync_hbr_stages(hbr_name):
     """Update HBR custom stage fields if they exist on the site."""
+    return _sync_hbr_stages(hbr_name)
+
+
+def _sync_hbr_stages(hbr_name, submitted_pr_override=None):
     if not hbr_name:
         return
 
@@ -86,10 +103,15 @@ def sync_hbr_stages(hbr_name):
     updates = {}
 
     if has_order_stage:
+        has_submitted_pr = (
+            submitted_pr_override
+            if submitted_pr_override is not None
+            else _has_submitted_purchase_receipt(hbr_name)
+        )
         order_stage = derive_order_stage(
             financing_type=hbr.get("financing_type"),
             has_submitted_po=_has_submitted_purchase_order(hbr_name),
-            has_submitted_pr=_has_submitted_purchase_receipt(hbr_name),
+            has_submitted_pr=has_submitted_pr,
             has_closed_loan=loan_status in LOAN_CLOSED_STATUSES,
             current_order_stage=hbr.get(ORDER_STAGE_FIELD),
         )
@@ -198,18 +220,27 @@ def _has_submitted_purchase_order(hbr_name):
     )
 
 
-def _has_submitted_purchase_receipt(hbr_name):
+def _has_submitted_purchase_receipt(hbr_name, exclude_receipt=None):
+    receipt_filters = {
+        "custom_home_build_request": hbr_name,
+        "docstatus": 1,
+    }
+    if exclude_receipt:
+        receipt_filters["name"] = ["!=", exclude_receipt]
+
     if _has_column("Purchase Receipt", "custom_home_build_request") and frappe.db.exists(
         "Purchase Receipt",
-        {
-            "custom_home_build_request": hbr_name,
-            "docstatus": 1,
-        },
+        receipt_filters,
     ):
         return True
 
     if not _has_column("Purchase Order", "custom_home_build_request"):
         return False
+
+    exclude_clause = "AND pr.name != %s" if exclude_receipt else ""
+    params = [hbr_name]
+    if exclude_receipt:
+        params.append(exclude_receipt)
 
     result = frappe.db.sql(
         """
@@ -219,9 +250,10 @@ def _has_submitted_purchase_receipt(hbr_name):
         JOIN `tabPurchase Order` po ON po.name = pri.purchase_order
         WHERE po.custom_home_build_request = %s
           AND pr.docstatus = 1
+          {exclude_clause}
         LIMIT 1
-        """,
-        (hbr_name,),
+        """.format(exclude_clause=exclude_clause),
+        tuple(params),
     )
     return bool(result)
 

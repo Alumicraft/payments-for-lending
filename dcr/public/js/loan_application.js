@@ -166,7 +166,8 @@ function schedule_hbr_hydration(frm) {
 
 function hbr_defaults_complete(frm) {
     if (!frm.doc.home_build_request) return false;
-    return !!(frm.doc.applicant && frm.doc.applicant_email_address && frm.doc.loan_product);
+    return !!(frm.doc.applicant && frm.doc.applicant_email_address &&
+        frm.doc.loan_product && frm.doc.address_line_1);
 }
 
 
@@ -217,6 +218,12 @@ function apply_loan_application_defaults(frm, defaults) {
     set_if_empty(frm, 'custom_projected_sales_price', defaults.custom_projected_sales_price);
     set_if_empty(frm, 'applicant_email_address', defaults.applicant_email_address);
     set_if_empty(frm, 'applicant_phone_number', defaults.applicant_phone_number);
+    set_if_empty(frm, 'address_line_1', defaults.address_line_1);
+    set_if_empty(frm, 'address_line_2', defaults.address_line_2);
+    set_if_empty(frm, 'city', defaults.city);
+    set_if_empty(frm, 'state', defaults.state);
+    set_if_empty(frm, 'zip_code', defaults.zip_code);
+    set_if_empty(frm, 'country', defaults.country);
     set_if_empty(frm, 'loan_product', defaults.loan_product);
     hydrate_applicant_contact(frm);
 }
@@ -237,30 +244,36 @@ function hydrate_applicant_contact(frm) {
     if (!frm.doc.applicant || frm.doc.__contact_fetched_for === frm.doc.applicant) return;
     frm.doc.__contact_fetched_for = frm.doc.applicant;
 
-    frappe.db.get_value('Customer', frm.doc.applicant, ['email_id', 'mobile_no'], function(customer) {
-        apply_contact_details(frm, customer);
-        if (frm.doc.applicant_email_address && frm.doc.applicant_phone_number) return;
+    frappe.db.get_value(
+        'Customer',
+        frm.doc.applicant,
+        ['email_id', 'mobile_no', 'customer_primary_address'],
+        function(customer) {
+            apply_contact_details(frm, customer);
+            hydrate_applicant_address(frm, customer && customer.customer_primary_address);
+            if (frm.doc.applicant_email_address && frm.doc.applicant_phone_number) return;
 
-        frappe.call({
-            method: 'frappe.client.get_list',
-            args: {
-                doctype: 'Dynamic Link',
-                filters: {
-                    parenttype: 'Contact',
-                    link_doctype: 'Customer',
-                    link_name: frm.doc.applicant
+            frappe.call({
+                method: 'frappe.client.get_list',
+                args: {
+                    doctype: 'Dynamic Link',
+                    filters: {
+                        parenttype: 'Contact',
+                        link_doctype: 'Customer',
+                        link_name: frm.doc.applicant
+                    },
+                    fields: ['parent'],
+                    limit_page_length: 1
                 },
-                fields: ['parent'],
-                limit_page_length: 1
-            },
-            callback: function(r) {
-                if (!r.message || !r.message.length) return;
-                frappe.db.get_value('Contact', r.message[0].parent, ['email_id', 'mobile_no'], function(contact) {
-                    apply_contact_details(frm, contact);
-                });
-            }
-        });
-    });
+                callback: function(r) {
+                    if (!r.message || !r.message.length) return;
+                    frappe.db.get_value('Contact', r.message[0].parent, ['email_id', 'mobile_no'], function(contact) {
+                        apply_contact_details(frm, contact);
+                    });
+                }
+            });
+        }
+    );
 }
 
 
@@ -271,8 +284,30 @@ function apply_contact_details(frm, details) {
 }
 
 
+function hydrate_applicant_address(frm, address_name) {
+    if (!address_name || frm.doc.__address_fetched_for === address_name) return;
+    frm.doc.__address_fetched_for = address_name;
+
+    frappe.db.get_value(
+        'Address',
+        address_name,
+        ['address_line1', 'address_line2', 'city', 'state', 'pincode', 'country'],
+        function(address) {
+            if (!address) return;
+            set_if_empty(frm, 'address_line_1', address.address_line1);
+            set_if_empty(frm, 'address_line_2', address.address_line2);
+            set_if_empty(frm, 'city', address.city);
+            set_if_empty(frm, 'state', address.state);
+            set_if_empty(frm, 'zip_code', address.pincode);
+            set_if_empty(frm, 'country', address.country);
+        }
+    );
+}
+
+
 function set_if_empty(frm, fieldname, value) {
     if (value === undefined || value === null || value === '') return;
+    if (!frm.fields_dict[fieldname]) return;
     if (frm.doc[fieldname]) return;
     frm.set_value(fieldname, value);
 }

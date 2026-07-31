@@ -166,6 +166,9 @@ class TestLoanApplicationClientScript(unittest.TestCase):
         self.assertIn("set_if_empty(frm, 'buyer_name', defaults.buyer_name)", script)
         self.assertIn("set_if_empty(frm, 'applicant_email_address', defaults.applicant_email_address)", script)
         self.assertIn("set_if_empty(frm, 'applicant_phone_number', defaults.applicant_phone_number)", script)
+        self.assertIn("set_if_empty(frm, 'address_line_1', defaults.address_line_1)", script)
+        self.assertIn("hydrate_applicant_address(frm, customer && customer.customer_primary_address)", script)
+        self.assertIn("if (!frm.fields_dict[fieldname]) return", script)
         self.assertIn("set_if_empty(frm, 'loan_product', defaults.loan_product)", script)
         self.assertIn("hydrate_applicant_contact(frm)", script)
 
@@ -174,7 +177,7 @@ class TestLoanApplicationClientScript(unittest.TestCase):
 
         self.assertIn("function hydrate_applicant_contact(frm)", script)
         self.assertIn("frm.doc.__contact_fetched_for === frm.doc.applicant", script)
-        self.assertIn("frappe.db.get_value('Customer', frm.doc.applicant, ['email_id', 'mobile_no']", script)
+        self.assertIn("['email_id', 'mobile_no', 'customer_primary_address']", script)
         self.assertNotIn("frappe.db.get_value('Customer', frm.doc.applicant, ['email_id', 'mobile_no', 'phone']", script)
         self.assertIn("method: 'frappe.client.get_list'", script)
         self.assertIn("doctype: 'Dynamic Link'", script)
@@ -211,6 +214,25 @@ class TestHbrConnectionDefaultsClientScript(unittest.TestCase):
         self.assertIn("frappe.meta.get_docfields(frm.doc.doctype)", script)
         self.assertIn('df.fetch_from.indexOf(link_fieldname + ".")', script)
         self.assertIn("frm.set_value(df.fieldname, hbr[source_field])", script)
+
+    def test_generated_invoice_and_payment_infer_hbr_from_source_documents(self):
+        script = (ROOT / "dcr/public/js/hbr_connection_defaults.js").read_text()
+
+        self.assertIn("function infer_purchase_invoice_hbr(frm, link_fieldname)", script)
+        self.assertIn('"Purchase Receipt"', script)
+        self.assertIn("item.purchase_receipt", script)
+        self.assertIn("function infer_payment_entry_hbr(frm, link_fieldname)", script)
+        self.assertIn('row.reference_doctype === "Purchase Invoice"', script)
+        self.assertIn("return frm.set_value(link_fieldname, hbr)", script)
+
+    def test_payment_outstanding_calculation_does_not_dirty_submitted_docs(self):
+        script = (ROOT / "dcr/public/js/hbr_connection_defaults.js").read_text()
+
+        self.assertIn("function recompute_selected_outstanding(frm)", script)
+        self.assertIn("if (!frm.fields_dict.custom_total_outstanding) return;", script)
+        self.assertIn("if (frm.doc.docstatus === 0)", script)
+        self.assertIn("frm.doc.custom_total_outstanding = total", script)
+        self.assertIn('frm.refresh_field("custom_total_outstanding")', script)
 
     def test_signature_request_connection_sets_hbr_reference_doctype(self):
         script = (ROOT / "dcr/public/js/hbr_connection_defaults.js").read_text()

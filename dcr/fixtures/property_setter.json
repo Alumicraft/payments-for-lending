@@ -271,6 +271,16 @@
   },
   {
     "doctype": "Property Setter",
+    "name": "Loan Application-applicant_phone_number-options",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "applicant_phone_number",
+    "property": "options",
+    "property_type": "Data",
+    "value": "country"
+  },
+  {
+    "doctype": "Property Setter",
     "name": "Loan Application-dcr_documents_section-depends_on",
     "doc_type": "Loan Application",
     "doctype_or_field": "DocField",

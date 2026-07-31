@@ -168,6 +168,14 @@ class TestHbrStageHookRegistration(unittest.TestCase):
         self.assertIn('doc.get("against_loan")', hbr_stage)
         self.assertIn('frappe.db.get_value("Loan", loan_name, "home_build_request")', hbr_stage)
 
+    def test_purchase_receipt_submit_uses_current_transaction_as_stage_evidence(self):
+        hbr_stage = (ROOT / "dcr/api/hbr_stage.py").read_text()
+
+        self.assertIn('doc.doctype == "Purchase Receipt" and method == "on_submit"', hbr_stage)
+        self.assertIn("submitted_pr_override = True", hbr_stage)
+        self.assertIn("_sync_hbr_stages(hbr_name, submitted_pr_override)", hbr_stage)
+        self.assertIn("exclude_receipt=doc.name", hbr_stage)
+
 
 class TestHbrStageSetup(unittest.TestCase):
     def test_cash_loan_stage_option_is_preserved_after_migrate(self):

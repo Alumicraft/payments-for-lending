@@ -87,6 +87,17 @@ class TestLoanApplicationGuards(unittest.TestCase):
                     "email_id": "dealer@example.test",
                     "mobile_no": "555-111-2222",
                 }
+            if doctype == "Customer" and fieldname == "customer_primary_address":
+                return "CUST-001-Billing"
+            if doctype == "Address":
+                return {
+                    "address_line1": "41888 Arbor Glen",
+                    "address_line2": None,
+                    "city": "Temecula",
+                    "state": "CA",
+                    "pincode": "92592",
+                    "country": "United States",
+                }
             if doctype == "Customer" and fieldname == "default_loan_product":
                 return "Dealer Floor Plan"
             if doctype == "MIFA":
@@ -113,6 +124,12 @@ class TestLoanApplicationGuards(unittest.TestCase):
             custom_projected_sales_price=None,
             applicant_email_address=None,
             applicant_phone_number=None,
+            address_line_1=None,
+            address_line_2=None,
+            city=None,
+            state=None,
+            zip_code=None,
+            country=None,
             loan_product=None,
             advance_date_requested=None,
             rate_of_interest=0,
@@ -136,6 +153,11 @@ class TestLoanApplicationGuards(unittest.TestCase):
         self.assertEqual(doc.custom_projected_sales_price, 250000)
         self.assertEqual(doc.applicant_email_address, "dealer@example.test")
         self.assertEqual(doc.applicant_phone_number, "555-111-2222")
+        self.assertEqual(doc.address_line_1, "41888 Arbor Glen")
+        self.assertEqual(doc.city, "Temecula")
+        self.assertEqual(doc.state, "CA")
+        self.assertEqual(doc.zip_code, "92592")
+        self.assertEqual(doc.country, "United States")
         self.assertEqual(doc.loan_product, "Dealer Floor Plan")
 
     @patch("dcr.api.lending.frappe")
@@ -168,6 +190,17 @@ class TestLoanApplicationGuards(unittest.TestCase):
                 }
             if doctype == "Customer" and fieldname == "default_loan_product":
                 return "Dealer Floor Plan"
+            if doctype == "Customer" and fieldname == "customer_primary_address":
+                return "CUST-001-Billing"
+            if doctype == "Address":
+                return {
+                    "address_line1": "41888 Arbor Glen",
+                    "address_line2": None,
+                    "city": "Temecula",
+                    "state": "CA",
+                    "pincode": "92592",
+                    "country": "United States",
+                }
             return None
 
         mock_frappe.db.get_value.side_effect = get_value
@@ -182,6 +215,7 @@ class TestLoanApplicationGuards(unittest.TestCase):
         self.assertEqual(defaults["applicant_email_address"], "dealer@example.test")
         self.assertEqual(defaults["applicant_phone_number"], "555-111-2222")
         self.assertEqual(defaults["loan_product"], "Dealer Floor Plan")
+        self.assertEqual(defaults["address_line_1"], "41888 Arbor Glen")
 
     @patch("dcr.api.lending.validate_advance_date")
     @patch("dcr.api.lending.get_dealer_outstanding_balance")

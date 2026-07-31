@@ -20,6 +20,29 @@ def _map_block_source():
 class TestSetupCustomFields(unittest.TestCase):
 
     @patch("dcr.setup.frappe")
+    def test_ensure_bank_account_types_creates_ach_link_targets(self, mock_frappe):
+        from dcr.setup import ensure_bank_account_types
+
+        inserted = MagicMock()
+
+        def exists(doctype, name):
+            if doctype == "DocType":
+                return True
+            return name == "Savings"
+
+        mock_frappe.db.exists.side_effect = exists
+        mock_frappe.get_doc.return_value = inserted
+
+        ensure_bank_account_types()
+
+        payload = mock_frappe.get_doc.call_args.args[0]
+        self.assertEqual(payload, {
+            "doctype": "Bank Account Type",
+            "account_type": "Checking",
+        })
+        inserted.insert.assert_called_once_with(ignore_permissions=True)
+
+    @patch("dcr.setup.frappe")
     def test_ensure_bank_account_ach_fields_creates_required_fields(self, mock_frappe):
         from dcr.setup import ensure_bank_account_ach_fields
 
@@ -105,6 +128,111 @@ class TestSetupCustomFields(unittest.TestCase):
         mock_frappe.clear_cache.assert_any_call(doctype="Purchase Invoice")
         mock_frappe.clear_cache.assert_any_call(doctype="Purchase Receipt")
         mock_frappe.clear_cache.assert_any_call(doctype="Payment Entry")
+
+    @patch("dcr.setup.frappe")
+    def test_ensure_payment_entry_calculated_fields_installs_field_and_disables_legacy_script(
+        self, mock_frappe
+    ):
+        from dcr.setup import ensure_payment_entry_calculated_fields
+
+        field_doc = MagicMock()
+
+        def exists(doctype, filters):
+            if doctype == "Custom Field":
+                return False
+            if doctype == "Client Script":
+                return "Payment Entry - Get Outstanding Balance of Reference Invoices"
+            return False
+
+        mock_frappe.db.exists.side_effect = exists
+        mock_frappe.db.get_value.return_value = 1
+        mock_frappe.get_doc.return_value = field_doc
+
+        ensure_payment_entry_calculated_fields()
+
+        payload = mock_frappe.get_doc.call_args.args[0]
+        self.assertEqual(payload["dt"], "Payment Entry")
+        self.assertEqual(payload["fieldname"], "custom_total_outstanding")
+        self.assertEqual(payload["fieldtype"], "Currency")
+        self.assertEqual(payload["read_only"], 1)
+        field_doc.insert.assert_called_once_with(ignore_permissions=True)
+        mock_frappe.db.set_value.assert_called_once_with(
+            "Client Script",
+            "Payment Entry - Get Outstanding Balance of Reference Invoices",
+            "enabled",
+            0,
+        )
+
+    @patch("dcr.api.lending.frappe")
+    @patch("dcr.setup.frappe")
+    def test_ensure_loan_application_field_repairs_updates_mapping_and_addresses(
+        self, mock_frappe, mock_lending_frappe
+    ):
+        from dcr.setup import ensure_loan_application_field_repairs
+
+        phone_property = MagicMock()
+
+        def exists(doctype, value):
+            if doctype == "Custom Field":
+                return "Loan Application-floor_plan"
+            if doctype == "Property Setter":
+                return False
+            return False
+
+        def get_value(doctype, name, fieldname, *args, **kwargs):
+            if doctype == "Custom Field":
+                return "home_build_request.model_name"
+            return None
+
+        mock_frappe.db.exists.side_effect = exists
+        mock_frappe.db.get_value.side_effect = get_value
+        mock_frappe.get_doc.return_value = phone_property
+        mock_frappe.get_all.return_value = [{
+            "name": "ACC-LOAP-2026-00008",
+            "applicant": "Test Homes 3",
+            "address_line_1": None,
+            "address_line_2": None,
+            "city": "Temecula",
+            "state": "CA",
+            "zip_code": 92592,
+            "country": "United States",
+        }]
+
+        def lending_get_value(doctype, name, fieldname, *args, **kwargs):
+            if doctype == "Customer":
+                return "Test Homes 3-Billing"
+            if doctype == "Address":
+                return {
+                    "address_line1": "41888 Arbor Glen",
+                    "address_line2": None,
+                    "city": "Temecula",
+                    "state": "CA",
+                    "pincode": 92592,
+                    "country": "United States",
+                }
+            return None
+
+        mock_lending_frappe.db.get_value.side_effect = lending_get_value
+
+        ensure_loan_application_field_repairs()
+
+        mock_frappe.db.set_value.assert_any_call(
+            "Custom Field",
+            "Loan Application-floor_plan",
+            "fetch_from",
+            "home_build_request.floor_plan",
+        )
+        phone_payload = mock_frappe.get_doc.call_args.args[0]
+        self.assertEqual(phone_payload["name"], "Loan Application-applicant_phone_number-options")
+        self.assertEqual(phone_payload["value"], "country")
+        phone_property.insert.assert_called_once_with(ignore_permissions=True)
+        mock_frappe.db.set_value.assert_any_call(
+            "Loan Application",
+            "ACC-LOAP-2026-00008",
+            {"address_line_1": "41888 Arbor Glen"},
+            update_modified=False,
+        )
+        mock_frappe.clear_cache.assert_called_once_with(doctype="Loan Application")
 
     def test_hbr_orders_connections_are_ordered_po_pi_pr_pe(self):
         import json
@@ -363,7 +491,7 @@ class TestPackagingConfig(unittest.TestCase):
         self.assertIn('"dcr/dashboard_chart_source/*/*.js"', setup_py)
         self.assertIn("recursive-include dcr/public *.css *.js *.html *.png", manifest)
         self.assertIn("recursive-include dcr/dcr/dashboard_chart_source *.json *.js", manifest)
-        self.assertIn('DCR_ASSET_VERSION = "20260730-3"', hooks)
+        self.assertIn('DCR_ASSET_VERSION = "20260730-4"', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/sidebar_fix.js")', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/hbr_dashboard_plus_patch_20260525_10.js")', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/loan_list_context_patch_20260525_14.js")', hooks)
@@ -419,6 +547,19 @@ class TestPackagingConfig(unittest.TestCase):
         self.assertIn('workspace.append("charts"', setup)
         self.assertIn('"label": chart_name', setup)
         self.assertIn("workspace.save(ignore_permissions=True)", setup)
+
+    def test_ach_bank_accounts_and_authorization_preserve_account_type(self):
+        integration = (ROOT / "dcr/api/achq_integration.py").read_text()
+        print_format = (
+            ROOT
+            / "dcr/dcr/print_format/ach_recurring_payment_authorization/"
+            / "ach_recurring_payment_authorization.json"
+        ).read_text()
+
+        self.assertIn("ba.account_type = account_type", integration)
+        self.assertIn('\\"account_type\\"', print_format)
+        self.assertIn('_ba.get(\\"account_type\\"', print_format)
+        self.assertIn('_ba.get(\\"custom_verification_status\\"', print_format)
 
     @patch("dcr.setup.frappe")
     def test_workspace_chart_repair_appends_missing_child_row(self, mock_frappe):

@@ -518,6 +518,7 @@ def _create_bank_account(customer, bank_name, account_type, token, token_source,
     ba.party = customer
     ba.is_default = 1 if is_default else 0
     ba.is_company_account = 0
+    ba.account_type = account_type
 
     # ACH custom fields
     ba.custom_ach_status = "Active"
