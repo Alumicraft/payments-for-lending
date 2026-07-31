@@ -8,6 +8,20 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class TestHbrOrderStageRules(unittest.TestCase):
+    def test_saved_unsubmitted_hbr_is_draft_stage(self):
+        from dcr.api.hbr_stage import derive_order_stage
+
+        self.assertEqual(
+            derive_order_stage(
+                financing_type="Floored",
+                has_submitted_po=False,
+                has_submitted_pr=False,
+                has_closed_loan=False,
+                docstatus=0,
+            ),
+            "Draft",
+        )
+
     def test_no_submitted_po_is_pending(self):
         from dcr.api.hbr_stage import derive_order_stage
 

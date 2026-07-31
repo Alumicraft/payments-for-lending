@@ -335,12 +335,12 @@ def _ensure_workspace_chart(workspace_name, chart_name, col):
 
 
 def ensure_hbr_kanban_columns():
-    """Align the HBR board with submitted, backend-derived order stages.
+    """Align the HBR board with the backend-derived deal lifecycle.
 
     The board was created with a "Not Ordered" column while HBR records store
     the canonical value "Pending". Frappe only renders a card when its value
     exactly matches a column name, so all pending requests were invisible.
-    Draft HBRs belong in the Pending Deals card, not this operational board.
+    Draft HBRs use the separate canonical value "Draft", displayed as Pending.
     """
     if not frappe.db.exists("DocType", "Kanban Board"):
         return
@@ -353,16 +353,36 @@ def ensure_hbr_kanban_columns():
     for board_name in board_names:
         board = frappe.get_doc("Kanban Board", board_name)
         changed = False
-        submitted_filter = json.dumps([
-            ["Home Build Request", "docstatus", "=", 1],
+        active_filter = json.dumps([
+            ["Home Build Request", "docstatus", "in", [0, 1]],
         ])
-        if board.get("filters") != submitted_filter:
-            board.filters = submitted_filter
+        if board.get("filters") != active_filter:
+            board.filters = active_filter
             changed = True
-        for column in board.get("columns") or []:
+
+        desired_columns = ["Draft", "Pending", "Ordered", "Delivered"]
+        columns_by_name = {}
+        for column in list(board.get("columns") or []):
             if column.get("column_name") == "Not Ordered":
                 column.column_name = "Pending"
                 changed = True
+            if (
+                column.column_name in desired_columns
+                and column.column_name not in columns_by_name
+            ):
+                columns_by_name[column.column_name] = column
+
+        for column_name in desired_columns:
+            if column_name not in columns_by_name:
+                columns_by_name[column_name] = board.append(
+                    "columns", {"column_name": column_name}
+                )
+                changed = True
+
+        ordered_columns = [columns_by_name[name] for name in desired_columns]
+        if list(board.get("columns") or []) != ordered_columns:
+            board.columns = ordered_columns
+            changed = True
         if changed:
             board.save(ignore_permissions=True)
             frappe.clear_document_cache("Kanban Board", board_name)
@@ -888,7 +908,7 @@ def ensure_hbr_stage_field_options():
     this only updates existing field options and leaves layout untouched.
     """
     fields = {
-        "custom_order_stage": "Pending\nOrdered\nDelivered\nClosed",
+        "custom_order_stage": "Draft\nPending\nOrdered\nDelivered\nClosed",
         "custom_loan_stage": (
             "Not Applicable\nNot Started\nApplied\nApproved\nFunded\nActive\nClosed"
         ),

@@ -22,8 +22,11 @@ def derive_order_stage(
     has_submitted_pr,
     has_closed_loan,
     current_order_stage=None,
+    docstatus=1,
 ):
     """Return the HBR kanban stage from operational evidence."""
+    if docstatus == 0:
+        return "Draft"
     if has_submitted_pr:
         if financing_type == "Floored" and has_closed_loan:
             return "Closed"
@@ -90,7 +93,7 @@ def _sync_hbr_stages(hbr_name, submitted_pr_override=None):
     if not has_order_stage and not has_loan_stage:
         return
 
-    fields = ["financing_type"]
+    fields = ["financing_type", "docstatus"]
     if has_order_stage:
         fields.append(ORDER_STAGE_FIELD)
 
@@ -114,6 +117,7 @@ def _sync_hbr_stages(hbr_name, submitted_pr_override=None):
             has_submitted_pr=has_submitted_pr,
             has_closed_loan=loan_status in LOAN_CLOSED_STATUSES,
             current_order_stage=hbr.get(ORDER_STAGE_FIELD),
+            docstatus=hbr.get("docstatus"),
         )
         if hbr.get(ORDER_STAGE_FIELD) != order_stage:
             updates[ORDER_STAGE_FIELD] = order_stage
@@ -151,6 +155,7 @@ def apply_hbr_stage_defaults(doc):
             has_submitted_pr=has_pr,
             has_closed_loan=loan_status in LOAN_CLOSED_STATUSES,
             current_order_stage=doc.get(ORDER_STAGE_FIELD),
+            docstatus=doc.get("docstatus"),
         )
         doc.set(ORDER_STAGE_FIELD, order_stage)
 

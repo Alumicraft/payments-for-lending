@@ -52,8 +52,10 @@
         $('.kanban-card:not(.new-card-area)').each(function() {
             append_hbr_number(this);
         });
-        // The stored stage remains Pending so Frappe can match records to the
-        // column; keep the operational wording users already know in the UI.
+        // Frappe must group by stored backend values. Present those values as
+        // the four business lifecycle labels users expect.
+        $('.kanban-column[data-column-value="Draft"] .kanban-title')
+            .text(__('Pending'));
         $('.kanban-column[data-column-value="Pending"] .kanban-title')
             .text(__('Not Ordered'));
         $('.kanban .add-new-column, .kanban .column-options').remove();

@@ -42,11 +42,15 @@ class TestSetupCustomFields(unittest.TestCase):
         mock_ensure_workspace_chart.assert_any_call("Deals", "Deal Pipeline by Factory", 12)
 
     @patch("dcr.setup.frappe")
-    def test_hbr_kanban_only_contains_submitted_requests(self, mock_frappe):
+    def test_hbr_kanban_has_four_fixed_lifecycle_columns(self, mock_frappe):
         from dcr.setup import ensure_hbr_kanban_columns
 
         board = MagicMock()
-        board.get.side_effect = lambda field: None if field == "filters" else []
+        columns = []
+        board.get.side_effect = lambda field: None if field == "filters" else columns
+        board.append.side_effect = lambda field, value: MagicMock(
+            column_name=value["column_name"]
+        )
         mock_frappe.db.exists.return_value = True
         mock_frappe.get_all.return_value = ["Home Build Requests"]
         mock_frappe.get_doc.return_value = board
@@ -55,7 +59,11 @@ class TestSetupCustomFields(unittest.TestCase):
 
         self.assertEqual(
             board.filters,
-            '[["Home Build Request", "docstatus", "=", 1]]',
+            '[["Home Build Request", "docstatus", "in", [0, 1]]]',
+        )
+        self.assertEqual(
+            [column.column_name for column in board.columns],
+            ["Draft", "Pending", "Ordered", "Delivered"],
         )
         board.save.assert_called_once_with(ignore_permissions=True)
         mock_frappe.clear_document_cache.assert_called_once_with(
@@ -534,7 +542,7 @@ class TestPackagingConfig(unittest.TestCase):
         self.assertIn('"dcr/dashboard_chart_source/*/*.js"', setup_py)
         self.assertIn("recursive-include dcr/public *.css *.js *.html *.png", manifest)
         self.assertIn("recursive-include dcr/dcr/dashboard_chart_source *.json *.js", manifest)
-        self.assertIn('DCR_ASSET_VERSION = "20260731-1"', hooks)
+        self.assertIn('DCR_ASSET_VERSION = "20260731-2"', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/sidebar_fix.js")', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/hbr_dashboard_plus_patch_20260525_10.js")', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/loan_list_context_patch_20260525_14.js")', hooks)
@@ -636,9 +644,12 @@ class TestPackagingConfig(unittest.TestCase):
         self.assertIn("ensure_hbr_kanban_columns,", setup)
         self.assertIn('column.get("column_name") == "Not Ordered"', setup)
         self.assertIn('column.column_name = "Pending"', setup)
-        self.assertIn('["Home Build Request", "docstatus", "=", 1]', setup)
-        self.assertIn('board.filters = submitted_filter', setup)
+        self.assertIn('["Home Build Request", "docstatus", "in", [0, 1]]', setup)
+        self.assertIn('desired_columns = ["Draft", "Pending", "Ordered", "Delivered"]', setup)
+        self.assertIn('board.filters = active_filter', setup)
         self.assertIn("var route = frappe.get_route() || []", lock)
+        self.assertIn('data-column-value="Draft"', lock)
+        self.assertIn(".text(__('Pending'))", lock)
         self.assertIn('data-column-value="Pending"', lock)
         self.assertIn("__('Not Ordered')", lock)
         self.assertIn("function append_hbr_number(card)", lock)
