@@ -99,6 +99,28 @@ class TestHomeBuildRequestClientScript(unittest.TestCase):
         self.assertIn("dcr.api.lending.get_loan_application_defaults", patch)
 
 
+class TestCustomerClientScript(unittest.TestCase):
+
+    def test_dealer_document_uploads_wait_for_each_save(self):
+        script = (ROOT / "dcr/public/js/customer.js").read_text()
+
+        self.assertIn("patch_dealer_document_uploads(frm)", script)
+        for fieldname in [
+            "dealer_license_copy",
+            "sellers_permit_copy",
+            "w9_copy",
+            "retailer_application_copy",
+        ]:
+            self.assertIn(f"'{fieldname}'", script)
+        self.assertIn("frm.__dcr_dealer_document_save_queue", script)
+        self.assertIn("control.on_upload_complete = function(attachment)", script)
+        self.assertIn("await frm.save()", script)
+        self.assertLess(
+            script.index("await frm.save()"),
+            script.index("attach_control.set_value(attachment.file_url)"),
+        )
+
+
 class TestLoanClientScript(unittest.TestCase):
 
     def test_disbursement_notice_passes_hbr_not_serial_number(self):

@@ -16,6 +16,8 @@ frappe.ui.form.on('Customer', {
             return;
         }
 
+        patch_dealer_document_uploads(frm);
+
         // Signing status indicator
         if (frm.doc.dealer_agreement_status === 'Signed') {
             frm.page.set_indicator(__('Agreement Signed'), 'green');
@@ -53,6 +55,47 @@ frappe.ui.form.on('Customer', {
 
     }
 });
+
+
+var DEALER_DOCUMENT_FIELDS = [
+    'dealer_license_copy',
+    'sellers_permit_copy',
+    'w9_copy',
+    'retailer_application_copy'
+];
+
+
+function patch_dealer_document_uploads(frm) {
+    DEALER_DOCUMENT_FIELDS.forEach(function(fieldname) {
+        var control = frm.fields_dict[fieldname];
+        if (!control || control.__dcr_serial_upload) return;
+
+        control.__dcr_serial_upload = true;
+        control.on_upload_complete = function(attachment) {
+            var attach_control = this;
+            var previous_save = frm.__dcr_dealer_document_save_queue || Promise.resolve();
+
+            // Frappe v16 starts frm.save() from ControlAttach without awaiting
+            // it. Uploading another dealer document can therefore start a
+            // second save with the old modified timestamp. Queue the complete
+            // field update and await each save so every following upload uses
+            // the document version returned by the preceding one.
+            var queued_save = previous_save
+                .catch(function() {
+                    // A failed upload must not permanently block later files.
+                })
+                .then(async function() {
+                    await attach_control.parse_validate_and_set_in_model(attachment.file_url);
+                    frm.attachments.update_attachment(attachment);
+                    await frm.save();
+                    attach_control.set_value(attachment.file_url);
+                });
+
+            frm.__dcr_dealer_document_save_queue = queued_save;
+            return queued_save;
+        };
+    });
+}
 
 
 function send_dealer_agreement(frm) {
