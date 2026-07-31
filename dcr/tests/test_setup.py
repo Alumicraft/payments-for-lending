@@ -363,14 +363,18 @@ class TestPackagingConfig(unittest.TestCase):
         self.assertIn('"dcr/dashboard_chart_source/*/*.js"', setup_py)
         self.assertIn("recursive-include dcr/public *.css *.js *.html *.png", manifest)
         self.assertIn("recursive-include dcr/dcr/dashboard_chart_source *.json *.js", manifest)
-        self.assertIn('DCR_ASSET_VERSION = "20260730-1"', hooks)
+        self.assertIn('DCR_ASSET_VERSION = "20260730-2"', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/sidebar_fix.js")', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/hbr_dashboard_plus_patch_20260525_10.js")', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/loan_list_context_patch_20260525_14.js")', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/map_warmup.js")', hooks)
         self.assertIn('versioned_asset("/assets/dcr/css/map.css")', hooks)
-        self.assertIn('versioned_doctype_asset("public/js/loan_application.js")', hooks)
-        self.assertIn('versioned_doctype_asset("public/js/home_build_request.js")', hooks)
+        self.assertIn('versioned_asset("/assets/dcr/js/loan_application.js")', hooks)
+        self.assertIn('versioned_asset("/assets/dcr/js/home_build_request.js")', hooks)
+        self.assertNotIn(
+            '"Home Build Request": versioned_doctype_asset("public/js/home_build_request.js")',
+            hooks,
+        )
 
     def test_imported_factory_assignments_are_submitted_without_resending_email(self):
         dealer_import = (ROOT / "dcr/api/dealer_import.py").read_text()
@@ -403,9 +407,27 @@ class TestPackagingConfig(unittest.TestCase):
 
         self.assertIn('["Customer", "dealer_agreement_status", "=", "Sent"]', setup)
         self.assertIn('"method": "dcr.api.dashboard.cash_collected_mtd"', setup)
+        self.assertIn('"show_full_number": 1', setup)
         self.assertIn('"Repayment Breakdown"', setup)
         self.assertIn('"Deal Pipeline by Factory"', setup)
         self.assertIn('#59ba8b\\",\\"#0289f7', fixtures)
+
+    def test_dashboard_repair_rebuilds_workspace_chart_children(self):
+        setup = (ROOT / "dcr/setup.py").read_text()
+
+        self.assertIn('workspace = frappe.get_doc("Workspace", workspace_name)', setup)
+        self.assertIn("workspace.save(ignore_permissions=True)", setup)
+
+    def test_hbr_kanban_repair_matches_pending_backend_value(self):
+        setup = (ROOT / "dcr/setup.py").read_text()
+        lock = (ROOT / "dcr/public/js/hbr_kanban_lock.js").read_text()
+
+        self.assertIn("ensure_hbr_kanban_columns,", setup)
+        self.assertIn('column.get("column_name") == "Not Ordered"', setup)
+        self.assertIn('column.column_name = "Pending"', setup)
+        self.assertIn("var route = frappe.get_route() || []", lock)
+        self.assertIn('data-column-value="Pending"', lock)
+        self.assertIn("__('Not Ordered')", lock)
 
 
 class TestMapWorkspaceClientCode(unittest.TestCase):

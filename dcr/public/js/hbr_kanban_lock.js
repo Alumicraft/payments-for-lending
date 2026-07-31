@@ -11,7 +11,7 @@
 
     function is_hbr_kanban() {
         if (!window.frappe || !frappe.get_route) return false;
-        var route = frappe.get_route();
+        var route = frappe.get_route() || [];
         return route[0] === 'List'
             && route[1] === 'Home Build Request'
             && route[2] === 'Kanban';
@@ -30,6 +30,10 @@
         $('.kanban, .kanban-cards').each(function() {
             disable_sortable(this);
         });
+        // The stored stage remains Pending so Frappe can match records to the
+        // column; keep the operational wording users already know in the UI.
+        $('.kanban-column[data-column-value="Pending"] .kanban-title')
+            .text(__('Not Ordered'));
         $('.kanban .add-new-column, .kanban .column-options').remove();
         $('.kanban-card-body, .kanban-column-title').css('cursor', 'default');
     }

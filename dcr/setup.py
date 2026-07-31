@@ -129,6 +129,7 @@ def after_install():
         ensure_hbr_stage_field_options,
         sync_existing_hbr_stage_fields,
         ensure_dcr_dashboard_configuration,
+        ensure_hbr_kanban_columns,
         ensure_loan_demand_offset_order,
         ensure_lending_accounting_defaults,
     ):
@@ -258,6 +259,9 @@ def ensure_dcr_dashboard_configuration():
             "filters_json": "[]",
             "dynamic_filters_json": "[]",
             "show_percentage_stats": 0,
+            # Frappe v16's compact-number helper turns numeric zero into an
+            # empty string, which the currency formatter then parses as NaN.
+            "show_full_number": 1,
         },
     }
     for card_name, updates in card_updates.items():
@@ -276,30 +280,57 @@ def _ensure_workspace_chart(workspace_name, chart_name, col):
     ):
         return
 
-    raw_content = frappe.db.get_value("Workspace", workspace_name, "content") or "[]"
+    workspace = frappe.get_doc("Workspace", workspace_name)
+    raw_content = workspace.content or "[]"
     try:
         content = json.loads(raw_content)
     except (TypeError, ValueError):
         return
 
-    if any(
+    has_block = any(
         block.get("type") == "chart"
         and block.get("data", {}).get("chart_name") == chart_name
         for block in content
-    ):
+    )
+    if not has_block:
+        content.append({
+            "type": "chart",
+            "data": {"chart_name": chart_name, "col": col},
+        })
+
+    # Workspace.save() rebuilds the chart child table from content. Updating
+    # content directly leaves a valid-looking block that the renderer cannot
+    # resolve, which is why the new charts were missing from the dashboard.
+    workspace.content = json.dumps(content)
+    workspace.save(ignore_permissions=True)
+    frappe.clear_document_cache("Workspace", workspace_name)
+
+
+def ensure_hbr_kanban_columns():
+    """Align the HBR board's stored values with backend-derived stages.
+
+    The board was created with a "Not Ordered" column while HBR records store
+    the canonical value "Pending". Frappe only renders a card when its value
+    exactly matches a column name, so all pending requests were invisible.
+    """
+    if not frappe.db.exists("DocType", "Kanban Board"):
         return
 
-    content.append({
-        "type": "chart",
-        "data": {"chart_name": chart_name, "col": col},
-    })
-    frappe.db.set_value(
-        "Workspace",
-        workspace_name,
-        "content",
-        json.dumps(content),
+    board_names = frappe.get_all(
+        "Kanban Board",
+        filters={"reference_doctype": "Home Build Request"},
+        pluck="name",
     )
-    frappe.clear_document_cache("Workspace", workspace_name)
+    for board_name in board_names:
+        board = frappe.get_doc("Kanban Board", board_name)
+        changed = False
+        for column in board.get("columns") or []:
+            if column.get("column_name") == "Not Ordered":
+                column.column_name = "Pending"
+                changed = True
+        if changed:
+            board.save(ignore_permissions=True)
+            frappe.clear_document_cache("Kanban Board", board_name)
 
 
 def ensure_lending_accounting_defaults():

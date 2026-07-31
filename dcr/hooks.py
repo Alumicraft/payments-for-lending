@@ -11,20 +11,22 @@ boot_session = "dcr.api.boot.boot_session"
 # Frappe Cloud serves /assets files with a long immutable browser cache.
 # Keep these explicit URLs versioned so deployed client fixes are fetched
 # without requiring users to hard-refresh stale browser caches.
-DCR_ASSET_VERSION = "20260730-1"
+DCR_ASSET_VERSION = "20260730-2"
 
 
 def versioned_asset(path):
     return f"{path}?v={DCR_ASSET_VERSION}"
 
 
-def versioned_doctype_asset(path):
-    return f"{path}?v={DCR_ASSET_VERSION}"
-
-
 app_include_js = [
     versioned_asset("/assets/dcr/js/icon_fix.js"),
     versioned_asset("/assets/dcr/js/sidebar_fix.js"),
+    # Frappe treats doctype_js values as filesystem paths, so adding a query
+    # string there prevents the form script from loading at all. Load these
+    # versioned assets globally instead so cache busting and form handlers
+    # both work on Frappe Cloud.
+    versioned_asset("/assets/dcr/js/home_build_request.js"),
+    versioned_asset("/assets/dcr/js/loan_application.js"),
     versioned_asset("/assets/dcr/js/hbr_dashboard_plus_patch_20260525_10.js"),
     versioned_asset("/assets/dcr/js/loan_list_context_patch_20260525_14.js"),
     versioned_asset("/assets/dcr/js/hbr_kanban_lock.js"),
@@ -109,9 +111,7 @@ fixtures = [
 # Include JS in doctype views
 doctype_js = {
     "Loan": "public/js/loan.js",
-    "Loan Application": versioned_doctype_asset("public/js/loan_application.js"),
     "Customer": "public/js/customer.js",
-    "Home Build Request": versioned_doctype_asset("public/js/home_build_request.js"),
     "MIFA": "public/js/mifa.js",
     "Factory Assignment": "public/js/factory_assignment.js",
     "Loan Disbursement": "public/js/loan_disbursement.js",

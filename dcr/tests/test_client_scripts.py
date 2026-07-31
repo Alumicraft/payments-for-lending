@@ -76,7 +76,7 @@ class TestHomeBuildRequestClientScript(unittest.TestCase):
         ).read_text()
         hooks = (ROOT / "dcr/hooks.py").read_text()
 
-        self.assertIn('"Home Build Request": versioned_doctype_asset("public/js/home_build_request.js")', hooks)
+        self.assertIn('versioned_asset("/assets/dcr/js/home_build_request.js")', hooks)
         self.assertIn(
             'versioned_asset("/assets/dcr/js/hbr_dashboard_plus_patch_20260525_10.js")',
             hooks,
