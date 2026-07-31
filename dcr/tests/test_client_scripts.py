@@ -114,11 +114,11 @@ class TestCustomerClientScript(unittest.TestCase):
             self.assertIn(f"'{fieldname}'", script)
         self.assertIn("frm.__dcr_dealer_document_save_queue", script)
         self.assertIn("control.on_upload_complete = function(attachment)", script)
-        self.assertIn("await frm.save()", script)
-        self.assertLess(
-            script.index("await frm.save()"),
-            script.index("attach_control.set_value(attachment.file_url)"),
-        )
+        self.assertIn("dcr.api.dealer_documents.set_dealer_document", script)
+        self.assertIn("frm.doc.modified = response.message.modified", script)
+        self.assertIn("frm.doc.__unsaved = 0", script)
+        self.assertNotIn("await frm.save()", script)
+        self.assertNotIn("attach_control.set_value(attachment.file_url)", script)
 
 
 class TestLoanClientScript(unittest.TestCase):

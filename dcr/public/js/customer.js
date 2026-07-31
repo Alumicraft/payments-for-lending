@@ -75,20 +75,38 @@ function patch_dealer_document_uploads(frm) {
             var attach_control = this;
             var previous_save = frm.__dcr_dealer_document_save_queue || Promise.resolve();
 
-            // Frappe v16 starts frm.save() from ControlAttach without awaiting
-            // it. Uploading another dealer document can therefore start a
-            // second save with the old modified timestamp. Queue the complete
-            // field update and await each save so every following upload uses
-            // the document version returned by the preceding one.
+            // Frappe's upload endpoint adds an Attachment comment before the
+            // Attach control saves the field. That comment advances the parent
+            // Customer's modified timestamp, so saving the already-open form
+            // immediately afterwards can fail its optimistic-lock check. Save
+            // only this field through a fresh server-side Customer document,
+            // and queue calls so consecutive uploads cannot race each other.
             var queued_save = previous_save
                 .catch(function() {
                     // A failed upload must not permanently block later files.
                 })
                 .then(async function() {
+                    var was_dirty = frm.is_dirty && frm.is_dirty();
                     await attach_control.parse_validate_and_set_in_model(attachment.file_url);
                     frm.attachments.update_attachment(attachment);
-                    await frm.save();
-                    attach_control.set_value(attachment.file_url);
+
+                    var response = await frappe.call({
+                        method: 'dcr.api.dealer_documents.set_dealer_document',
+                        args: {
+                            customer: frm.doc.name,
+                            fieldname: fieldname,
+                            file_url: attachment.file_url
+                        }
+                    });
+
+                    if (response.message && response.message.modified) {
+                        frm.doc.modified = response.message.modified;
+                    }
+                    if (!was_dirty) {
+                        frm.doc.__unsaved = 0;
+                        frm.refresh_header();
+                    }
+                    attach_control.refresh();
                 });
 
             frm.__dcr_dealer_document_save_queue = queued_save;
