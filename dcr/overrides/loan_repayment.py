@@ -8,6 +8,14 @@ from dcr.lending_rules import has_material_outstanding_principal
 
 
 class CustomLoanRepayment(LoanRepayment):
+    def on_submit(self):
+        super().on_submit()
+        self._reopen_legacy_interest_only_loan()
+
+    def on_cancel(self):
+        super().on_cancel()
+        self._reopen_legacy_interest_only_loan()
+
     def auto_close_loan(self):
         """Do not close an interest-only loan while principal is outstanding.
 
@@ -50,3 +58,52 @@ class CustomLoanRepayment(LoanRepayment):
             self.flags.auto_close = False
 
         return self.flags.auto_close
+
+    def _reopen_legacy_interest_only_loan(self):
+        """Repair loans closed by the old interest-only auto-close behavior."""
+        if self.repayment_type in (
+            "Full Settlement",
+            "Write Off Settlement",
+            "Write Off Recovery",
+        ):
+            return
+
+        loan = frappe.db.get_value(
+            "Loan",
+            self.against_loan,
+            [
+                "status",
+                "loan_amount",
+                "total_principal_paid",
+                "loan_product",
+                "repayment_schedule_type",
+            ],
+            as_dict=True,
+        )
+        if not loan or loan.get("status") != "Closed":
+            return
+
+        write_off_amount = frappe.get_cached_value(
+            "Loan Product",
+            loan.get("loan_product"),
+            "write_off_amount",
+        )
+        precision = cint(frappe.db.get_default("currency_precision")) or 2
+        if not has_material_outstanding_principal(
+            loan_amount=flt(loan.get("loan_amount")),
+            total_principal_paid=flt(loan.get("total_principal_paid")),
+            write_off_amount=flt(write_off_amount),
+            precision=precision,
+        ):
+            return
+
+        status = (
+            "Active"
+            if loan.get("repayment_schedule_type") == "Line of Credit"
+            else "Disbursed"
+        )
+        frappe.db.set_value(
+            "Loan",
+            self.against_loan,
+            {"status": status, "closure_date": None},
+        )
