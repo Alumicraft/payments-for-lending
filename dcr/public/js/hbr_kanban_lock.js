@@ -23,12 +23,34 @@
         if (sortable) sortable.option('disabled', true);
     }
 
+    function append_hbr_number(card) {
+        var $card = $(card);
+        var $properties = $card.find('.kanban-card-doc').first();
+        if (!$properties.length || $properties.find('.dcr-hbr-number').length) return;
+
+        var href = $card
+            .find('a[href*="/desk/home-build-request/"]')
+            .first()
+            .attr('href');
+        if (!href) return;
+
+        var hbr_number = decodeURIComponent(href.split('/').filter(Boolean).pop() || '');
+        if (!hbr_number) return;
+
+        $('<div>', {
+            class: 'text-muted text-truncate dcr-hbr-number'
+        }).append($('<span>').text(hbr_number)).appendTo($properties);
+    }
+
     function apply_lock() {
         apply_timer = null;
         if (!is_hbr_kanban()) return;
 
         $('.kanban, .kanban-cards').each(function() {
             disable_sortable(this);
+        });
+        $('.kanban-card:not(.new-card-area)').each(function() {
+            append_hbr_number(this);
         });
         // The stored stage remains Pending so Frappe can match records to the
         // column; keep the operational wording users already know in the UI.

@@ -491,7 +491,7 @@ class TestPackagingConfig(unittest.TestCase):
         self.assertIn('"dcr/dashboard_chart_source/*/*.js"', setup_py)
         self.assertIn("recursive-include dcr/public *.css *.js *.html *.png", manifest)
         self.assertIn("recursive-include dcr/dcr/dashboard_chart_source *.json *.js", manifest)
-        self.assertIn('DCR_ASSET_VERSION = "20260730-4"', hooks)
+        self.assertIn('DCR_ASSET_VERSION = "20260731-1"', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/sidebar_fix.js")', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/hbr_dashboard_plus_patch_20260525_10.js")', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/loan_list_context_patch_20260525_14.js")', hooks)
@@ -594,6 +594,10 @@ class TestPackagingConfig(unittest.TestCase):
         self.assertIn("var route = frappe.get_route() || []", lock)
         self.assertIn('data-column-value="Pending"', lock)
         self.assertIn("__('Not Ordered')", lock)
+        self.assertIn("function append_hbr_number(card)", lock)
+        self.assertIn("'.kanban-card-doc'", lock)
+        self.assertIn("'.dcr-hbr-number'", lock)
+        self.assertIn("appendTo($properties)", lock)
 
 
 class TestMapWorkspaceClientCode(unittest.TestCase):
