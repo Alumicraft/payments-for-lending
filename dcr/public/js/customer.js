@@ -104,6 +104,7 @@ function patch_dealer_document_uploads(frm) {
                     }
                     if (!was_dirty) {
                         frm.doc.__unsaved = 0;
+                        removeEventListener('beforeunload', frm.beforeUnloadListener, { capture: true });
                         frm.refresh_header();
                     }
                     attach_control.refresh();

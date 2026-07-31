@@ -117,6 +117,10 @@ class TestCustomerClientScript(unittest.TestCase):
         self.assertIn("dcr.api.dealer_documents.set_dealer_document", script)
         self.assertIn("frm.doc.modified = response.message.modified", script)
         self.assertIn("frm.doc.__unsaved = 0", script)
+        self.assertIn(
+            "removeEventListener('beforeunload', frm.beforeUnloadListener, { capture: true })",
+            script,
+        )
         self.assertNotIn("await frm.save()", script)
         self.assertNotIn("attach_control.set_value(attachment.file_url)", script)
 
