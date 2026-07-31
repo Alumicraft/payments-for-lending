@@ -447,6 +447,29 @@ class TestFactoryCoordinates(unittest.TestCase):
             "6420 W Allison Rd, Chandler, AZ 85226",
         )
 
+    def test_overlapping_factory_locations_are_both_visible(self):
+        from dcr.api.map import _spread_overlapping_factory_coords
+
+        factories = [
+            {
+                "name": "Champion Home Builders",
+                "latitude": 33.301,
+                "longitude": -111.958,
+            },
+            {
+                "name": "Skyline Homes",
+                "latitude": 33.301,
+                "longitude": -111.958,
+            },
+        ]
+
+        _spread_overlapping_factory_coords(factories)
+
+        self.assertNotEqual(
+            (factories[0]["latitude"], factories[0]["longitude"]),
+            (factories[1]["latitude"], factories[1]["longitude"]),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

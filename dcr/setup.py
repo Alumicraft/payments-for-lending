@@ -131,6 +131,7 @@ def after_install():
         ensure_loan_application_field_repairs,
         ensure_hbr_stage_field_options,
         sync_existing_hbr_stage_fields,
+        ensure_factory_addresses,
         ensure_dcr_dashboard_configuration,
         ensure_hbr_kanban_columns,
         ensure_loan_demand_offset_order,
@@ -152,22 +153,29 @@ FACTORY_ADDRESSES = {
         "pincode": "85009",
     },
     "Fleetwood Homes": {
-        "address_line1": "7007 Jurupa Ave",
-        "city": "Riverside",
-        "state": "CA",
-        "pincode": "92504",
+        "address_line1": "3636 N Central Ave",
+        "address_line2": "Suite 1200",
+        "city": "Phoenix",
+        "state": "AZ",
+        "pincode": "85012",
     },
     "Skyline Homes": {
-        "address_line1": "499 W Esplanade Ave",
-        "city": "San Jacinto",
-        "state": "CA",
-        "pincode": "92583",
+        "address_line1": "6420 W Allison Rd",
+        "city": "Chandler",
+        "state": "AZ",
+        "pincode": "85226",
+    },
+    "Champion Home Builders": {
+        "address_line1": "6420 W Allison Rd",
+        "city": "Chandler",
+        "state": "AZ",
+        "pincode": "85226",
     },
 }
 
 
 def ensure_factory_addresses():
-    """Create primary manufacturing addresses for imported factory suppliers."""
+    """Repair primary Phoenix-area addresses for imported factory suppliers."""
     if not frappe.db.exists("DocType", "Address"):
         return
 
@@ -177,17 +185,13 @@ def ensure_factory_addresses():
         if not frappe.db.exists("Supplier", supplier_name):
             continue
 
-        address_name = frappe.db.exists(
-            "Address",
-            {
-                "address_title": f"{supplier_name} Factory",
-                "address_line1": values["address_line1"],
-            },
-        )
+        address_title = f"{supplier_name} Factory"
+        address_name = frappe.db.exists("Address", {"address_title": address_title})
+        address_changed = False
         if not address_name:
             address = frappe.get_doc({
                 "doctype": "Address",
-                "address_title": f"{supplier_name} Factory",
+                "address_title": address_title,
                 "address_type": "Shipping",
                 "is_primary_address": 1,
                 "country": "United States",
@@ -199,6 +203,22 @@ def ensure_factory_addresses():
             })
             address.insert(ignore_permissions=True)
             address_name = address.name
+            address_changed = True
+        else:
+            address = frappe.get_doc("Address", address_name)
+            desired = {
+                "address_type": "Shipping",
+                "is_primary_address": 1,
+                "country": "United States",
+                "address_line2": "",
+                **values,
+            }
+            for fieldname, value in desired.items():
+                if (address.get(fieldname) or "") != value:
+                    address.set(fieldname, value)
+                    address_changed = True
+            if address_changed:
+                address.save(ignore_permissions=True)
 
         if frappe.db.has_column("Supplier", "supplier_primary_address"):
             frappe.db.set_value(
@@ -206,6 +226,15 @@ def ensure_factory_addresses():
                 supplier_name,
                 "supplier_primary_address",
                 address_name,
+                update_modified=False,
+            )
+        if address_changed:
+            # Never leave a corrected Phoenix-area address attached to stale
+            # California coordinates if geocoding is temporarily unavailable.
+            frappe.db.set_value(
+                "Supplier",
+                supplier_name,
+                {"latitude": 0, "longitude": 0},
                 update_modified=False,
             )
         geocode_supplier(frappe.get_doc("Supplier", supplier_name))

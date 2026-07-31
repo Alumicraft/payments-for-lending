@@ -238,7 +238,34 @@ def get_factory_locations():
             "address_query": s.get("address_query") or "",
             **c,
         })
+    _spread_overlapping_factory_coords(out)
     return out
+
+
+def _spread_overlapping_factory_coords(factories):
+    """Separate factory icons that share one Phoenix-area business address."""
+    cells = {}
+    for factory in factories:
+        lat = factory.get("latitude") or 0
+        lng = factory.get("longitude") or 0
+        if not lat or not lng:
+            continue
+        cells.setdefault((round(lat, 5), round(lng, 5)), []).append(factory)
+
+    for members in cells.values():
+        if len(members) < 2:
+            continue
+        members.sort(key=lambda item: item.get("name") or "")
+        for index, factory in enumerate(members):
+            angle = (2 * math.pi * index) / len(members)
+            # About 35 metres: enough to make both pins clickable without
+            # implying that a shared manufacturing site is a different city.
+            lat = factory["latitude"]
+            factory["latitude"] = lat + math.sin(angle) * (35.0 / 111000.0)
+            cos_lat = max(0.1, math.cos(math.radians(lat)))
+            factory["longitude"] = factory["longitude"] + math.cos(angle) * (
+                35.0 / (111000.0 * cos_lat)
+            )
 
 
 def _ensure_supplier_coords(supplier):

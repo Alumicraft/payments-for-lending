@@ -576,9 +576,14 @@ class TestPackagingConfig(unittest.TestCase):
         self.assertIn('"Durango Homes"', setup)
         self.assertIn('"2502 W Durango St"', setup)
         self.assertIn('"Fleetwood Homes"', setup)
-        self.assertIn('"7007 Jurupa Ave"', setup)
+        self.assertIn('"3636 N Central Ave"', setup)
         self.assertIn('"Skyline Homes"', setup)
-        self.assertIn('"499 W Esplanade Ave"', setup)
+        self.assertIn('"6420 W Allison Rd"', setup)
+        self.assertIn('"Champion Home Builders"', setup)
+        self.assertIn('"city": "Phoenix"', setup)
+        self.assertNotIn('"city": "Riverside"', setup)
+        self.assertNotIn('"city": "San Jacinto"', setup)
+        self.assertIn("ensure_factory_addresses,", setup)
 
     def test_dashboard_repair_uses_explicit_pending_status_and_zero_safe_method(self):
         setup = (ROOT / "dcr/setup.py").read_text()
