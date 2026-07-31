@@ -274,14 +274,32 @@ def _ensure_supplier_coords(supplier):
 def _parse_mapbox_feature(feature):
     """Extract structured address data from a Mapbox GeoJSON feature."""
     props = feature.get("properties", {})
+    context = props.get("context") or {}
     coords = feature.get("geometry", {}).get("coordinates", [0, 0])
+    region = context.get("region") or {}
+    region_code = (
+        props.get("region_code")
+        or region.get("region_code")
+        or region.get("short_code")
+        or ""
+    )
+    if "-" in region_code:
+        region_code = region_code.rsplit("-", 1)[-1]
+
+    place = context.get("place") or context.get("locality") or {}
+    postcode = context.get("postcode") or {}
 
     return {
         "full_address": props.get("full_address", ""),
-        "address": props.get("address", ""),
-        "city": props.get("place", ""),
-        "state": props.get("region_code", "") or props.get("region", ""),
-        "zip": props.get("postcode", ""),
+        "address": (
+            props.get("address")
+            or props.get("name_preferred")
+            or props.get("name")
+            or ""
+        ),
+        "city": props.get("place", "") or place.get("name", ""),
+        "state": region_code or props.get("region", "") or region.get("name", ""),
+        "zip": props.get("postcode", "") or postcode.get("name", ""),
         "latitude": coords[1] if len(coords) > 1 else 0,
         "longitude": coords[0] if len(coords) > 0 else 0,
     }

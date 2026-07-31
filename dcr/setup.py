@@ -298,9 +298,19 @@ def _ensure_workspace_chart(workspace_name, chart_name, col):
             "data": {"chart_name": chart_name, "col": col},
         })
 
-    # Workspace.save() rebuilds the chart child table from content. Updating
-    # content directly leaves a valid-looking block that the renderer cannot
-    # resolve, which is why the new charts were missing from the dashboard.
+    has_chart_row = any(
+        row.get("chart_name") == chart_name
+        for row in workspace.get("charts") or []
+    )
+    if not has_chart_row:
+        workspace.append("charts", {
+            "chart_name": chart_name,
+            "label": chart_name,
+        })
+
+    # Frappe requires both the visual content block and a Workspace Chart
+    # child row. Updating only content leaves a valid-looking block that the
+    # renderer silently skips.
     workspace.content = json.dumps(content)
     workspace.save(ignore_permissions=True)
     frappe.clear_document_cache("Workspace", workspace_name)

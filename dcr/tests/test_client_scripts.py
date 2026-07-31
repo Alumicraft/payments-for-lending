@@ -29,13 +29,16 @@ class TestHomeBuildRequestClientScript(unittest.TestCase):
         self.assertNotIn("setTimeout(apply, 500)", script)
         self.assertNotIn("setTimeout(apply, 1500)", script)
 
-    def test_delivery_address_search_runs_through_server(self):
+    def test_delivery_address_search_falls_back_to_url_restricted_browser_token(self):
         script = (ROOT / "dcr/public/js/home_build_request.js").read_text()
 
         self.assertIn("method: 'dcr.api.map.search_address'", script)
         self.assertIn("frm._dcr_address_query", script)
+        self.assertIn("function search_address_in_browser(frm, query, callback)", script)
+        self.assertIn("method: 'dcr.api.map.get_map_settings'", script)
+        self.assertIn("api.mapbox.com/search/geocode/v6/forward", script)
+        self.assertIn("function parse_mapbox_address_feature(feature)", script)
         self.assertNotIn("api.mapbox.com/geocoding/v5", script)
-        self.assertNotIn("function get_mapbox_token", script)
 
     def test_hbr_kanban_is_locked_without_blocking_card_links(self):
         script = (ROOT / "dcr/public/js/hbr_kanban_lock.js").read_text()

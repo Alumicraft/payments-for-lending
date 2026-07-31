@@ -363,7 +363,7 @@ class TestPackagingConfig(unittest.TestCase):
         self.assertIn('"dcr/dashboard_chart_source/*/*.js"', setup_py)
         self.assertIn("recursive-include dcr/public *.css *.js *.html *.png", manifest)
         self.assertIn("recursive-include dcr/dcr/dashboard_chart_source *.json *.js", manifest)
-        self.assertIn('DCR_ASSET_VERSION = "20260730-2"', hooks)
+        self.assertIn('DCR_ASSET_VERSION = "20260730-3"', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/sidebar_fix.js")', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/hbr_dashboard_plus_patch_20260525_10.js")', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/loan_list_context_patch_20260525_14.js")', hooks)
@@ -416,7 +416,32 @@ class TestPackagingConfig(unittest.TestCase):
         setup = (ROOT / "dcr/setup.py").read_text()
 
         self.assertIn('workspace = frappe.get_doc("Workspace", workspace_name)', setup)
+        self.assertIn('workspace.append("charts"', setup)
+        self.assertIn('"label": chart_name', setup)
         self.assertIn("workspace.save(ignore_permissions=True)", setup)
+
+    @patch("dcr.setup.frappe")
+    def test_workspace_chart_repair_appends_missing_child_row(self, mock_frappe):
+        from dcr.setup import _ensure_workspace_chart
+
+        workspace = MagicMock()
+        workspace.content = (
+            '[{"type":"chart","data":{"chart_name":"Repayment Breakdown","col":6}}]'
+        )
+        workspace.get.return_value = []
+        mock_frappe.db.exists.return_value = True
+        mock_frappe.get_doc.return_value = workspace
+
+        _ensure_workspace_chart("Accounting", "Repayment Breakdown", 6)
+
+        workspace.append.assert_called_once_with(
+            "charts",
+            {
+                "chart_name": "Repayment Breakdown",
+                "label": "Repayment Breakdown",
+            },
+        )
+        workspace.save.assert_called_once_with(ignore_permissions=True)
 
     def test_hbr_kanban_repair_matches_pending_backend_value(self):
         setup = (ROOT / "dcr/setup.py").read_text()

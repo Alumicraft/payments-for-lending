@@ -413,12 +413,92 @@ function setup_address_autofill(frm) {
                     if (suggestions.length) {
                         show_address_dropdown(frm, $input, suggestions);
                     } else {
-                        $input.parent().find('.mapbox-dropdown').remove();
+                        // Mapbox tokens can be URL-restricted. The same token
+                        // powers the browser map successfully but Mapbox
+                        // rejects the server-side request, so retry from the
+                        // authenticated browser before reporting no matches.
+                        search_address_in_browser(frm, request_query, function(browser_suggestions) {
+                            if (frm._dcr_address_query !== request_query) return;
+                            if (browser_suggestions.length) {
+                                show_address_dropdown(frm, $input, browser_suggestions);
+                            } else {
+                                $input.parent().find('.mapbox-dropdown').remove();
+                            }
+                        });
                     }
                 }
             });
         }, 300);
     });
+}
+
+function search_address_in_browser(frm, query, callback) {
+    function search(token) {
+        if (!token || !window.fetch || !window.URLSearchParams) {
+            callback([]);
+            return;
+        }
+
+        var params = new URLSearchParams({
+            q: query,
+            access_token: token,
+            language: 'en',
+            country: 'US',
+            types: 'address',
+            limit: '5',
+            autocomplete: 'true'
+        });
+        fetch('https://api.mapbox.com/search/geocode/v6/forward?' + params.toString())
+            .then(function(response) {
+                if (!response.ok) return { features: [] };
+                return response.json();
+            })
+            .then(function(data) {
+                callback((data.features || []).map(parse_mapbox_address_feature));
+            })
+            .catch(function() {
+                callback([]);
+            });
+    }
+
+    if (frm._dcr_mapbox_token) {
+        search(frm._dcr_mapbox_token);
+        return;
+    }
+
+    frappe.call({
+        method: 'dcr.api.map.get_map_settings',
+        callback: function(r) {
+            frm._dcr_mapbox_token = (r.message && r.message.access_token) || '';
+            search(frm._dcr_mapbox_token);
+        },
+        error: function() {
+            callback([]);
+        }
+    });
+}
+
+function parse_mapbox_address_feature(feature) {
+    var props = feature.properties || {};
+    var context = props.context || {};
+    var region = context.region || {};
+    var place = context.place || context.locality || {};
+    var postcode = context.postcode || {};
+    var coords = (feature.geometry && feature.geometry.coordinates) || [0, 0];
+    var region_code = props.region_code || region.region_code || region.short_code || '';
+    if (region_code.indexOf('-') !== -1) {
+        region_code = region_code.split('-').pop();
+    }
+
+    return {
+        full_address: props.full_address || '',
+        address: props.address || props.name_preferred || props.name || '',
+        city: props.place || place.name || '',
+        state: region_code || props.region || region.name || '',
+        zip: props.postcode || postcode.name || '',
+        latitude: coords.length > 1 ? coords[1] : 0,
+        longitude: coords.length ? coords[0] : 0
+    };
 }
 
 function set_address_fields_read_only(frm, read_only) {

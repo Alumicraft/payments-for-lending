@@ -48,6 +48,29 @@ class TestParseMapboxResponse(unittest.TestCase):
         self.assertEqual(result["zip"], "")
         self.assertEqual(result["full_address"], "Unknown")
 
+    def test_parse_geocoding_v6_nested_context(self):
+        from dcr.api.map import _parse_mapbox_feature
+
+        feature = {
+            "geometry": {"coordinates": [-117.448107, 33.961513]},
+            "properties": {
+                "full_address": "7007 Jurupa Avenue, Riverside, California 92504",
+                "name_preferred": "7007 Jurupa Avenue",
+                "context": {
+                    "place": {"name": "Riverside"},
+                    "region": {"name": "California", "region_code": "US-CA"},
+                    "postcode": {"name": "92504"},
+                },
+            },
+        }
+
+        result = _parse_mapbox_feature(feature)
+
+        self.assertEqual(result["address"], "7007 Jurupa Avenue")
+        self.assertEqual(result["city"], "Riverside")
+        self.assertEqual(result["state"], "CA")
+        self.assertEqual(result["zip"], "92504")
+
     def test_parse_empty_feature(self):
         from dcr.api.map import _parse_mapbox_feature
 
