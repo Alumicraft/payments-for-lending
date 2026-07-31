@@ -229,6 +229,21 @@ def submit_imported_factory_assignments():
 def ensure_dcr_dashboard_configuration():
     """Repair DCR cards and add the shipped custom charts to their workspaces."""
     card_updates = {
+        "Pending Deals": {
+            "label": "Pending Deals",
+            "type": "Document Type",
+            "document_type": "Home Build Request",
+            "function": "Count",
+            "aggregate_function_based_on": None,
+            # A pending deal is an HBR the team saved but has not submitted.
+            # Do not use custom_order_stage here: both drafts and submitted
+            # requests without a PO store the backend value "Pending".
+            "filters_json": json.dumps([
+                ["Home Build Request", "docstatus", "=", 0],
+            ]),
+            "dynamic_filters_json": "[]",
+            "show_percentage_stats": 0,
+        },
         "New Dealers Pending": {
             "label": "New Dealers Pending",
             "type": "Document Type",
@@ -320,11 +335,12 @@ def _ensure_workspace_chart(workspace_name, chart_name, col):
 
 
 def ensure_hbr_kanban_columns():
-    """Align the HBR board's stored values with backend-derived stages.
+    """Align the HBR board with submitted, backend-derived order stages.
 
     The board was created with a "Not Ordered" column while HBR records store
     the canonical value "Pending". Frappe only renders a card when its value
     exactly matches a column name, so all pending requests were invisible.
+    Draft HBRs belong in the Pending Deals card, not this operational board.
     """
     if not frappe.db.exists("DocType", "Kanban Board"):
         return
@@ -337,6 +353,12 @@ def ensure_hbr_kanban_columns():
     for board_name in board_names:
         board = frappe.get_doc("Kanban Board", board_name)
         changed = False
+        submitted_filter = json.dumps([
+            ["Home Build Request", "docstatus", "=", 1],
+        ])
+        if board.get("filters") != submitted_filter:
+            board.filters = submitted_filter
+            changed = True
         for column in board.get("columns") or []:
             if column.get("column_name") == "Not Ordered":
                 column.column_name = "Pending"

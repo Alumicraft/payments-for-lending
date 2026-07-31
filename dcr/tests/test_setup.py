@@ -19,6 +19,49 @@ def _map_block_source():
 
 class TestSetupCustomFields(unittest.TestCase):
 
+    @patch("dcr.setup._ensure_workspace_chart")
+    @patch("dcr.setup.frappe")
+    def test_pending_deals_card_counts_saved_unsubmitted_hbrs(
+        self, mock_frappe, mock_ensure_workspace_chart
+    ):
+        from dcr.setup import ensure_dcr_dashboard_configuration
+
+        mock_frappe.db.exists.side_effect = (
+            lambda doctype, name: doctype == "Number Card" and name == "Pending Deals"
+        )
+
+        ensure_dcr_dashboard_configuration()
+
+        updates = mock_frappe.db.set_value.call_args.args[2]
+        self.assertEqual(updates["document_type"], "Home Build Request")
+        self.assertEqual(
+            updates["filters_json"],
+            '[["Home Build Request", "docstatus", "=", 0]]',
+        )
+        mock_ensure_workspace_chart.assert_any_call("Accounting", "Repayment Breakdown", 6)
+        mock_ensure_workspace_chart.assert_any_call("Deals", "Deal Pipeline by Factory", 12)
+
+    @patch("dcr.setup.frappe")
+    def test_hbr_kanban_only_contains_submitted_requests(self, mock_frappe):
+        from dcr.setup import ensure_hbr_kanban_columns
+
+        board = MagicMock()
+        board.get.side_effect = lambda field: None if field == "filters" else []
+        mock_frappe.db.exists.return_value = True
+        mock_frappe.get_all.return_value = ["Home Build Requests"]
+        mock_frappe.get_doc.return_value = board
+
+        ensure_hbr_kanban_columns()
+
+        self.assertEqual(
+            board.filters,
+            '[["Home Build Request", "docstatus", "=", 1]]',
+        )
+        board.save.assert_called_once_with(ignore_permissions=True)
+        mock_frappe.clear_document_cache.assert_called_once_with(
+            "Kanban Board", "Home Build Requests"
+        )
+
     @patch("dcr.setup.frappe")
     def test_ensure_bank_account_types_creates_ach_link_targets(self, mock_frappe):
         from dcr.setup import ensure_bank_account_types
@@ -533,6 +576,8 @@ class TestPackagingConfig(unittest.TestCase):
         setup = (ROOT / "dcr/setup.py").read_text()
         fixtures = (ROOT / "dcr/fixtures/dashboard_chart.json").read_text()
 
+        self.assertIn('"Pending Deals": {', setup)
+        self.assertIn('["Home Build Request", "docstatus", "=", 0]', setup)
         self.assertIn('["Customer", "dealer_agreement_status", "=", "Sent"]', setup)
         self.assertIn('"method": "dcr.api.dashboard.cash_collected_mtd"', setup)
         self.assertIn('"show_full_number": 1', setup)
@@ -591,6 +636,8 @@ class TestPackagingConfig(unittest.TestCase):
         self.assertIn("ensure_hbr_kanban_columns,", setup)
         self.assertIn('column.get("column_name") == "Not Ordered"', setup)
         self.assertIn('column.column_name = "Pending"', setup)
+        self.assertIn('["Home Build Request", "docstatus", "=", 1]', setup)
+        self.assertIn('board.filters = submitted_filter', setup)
         self.assertIn("var route = frappe.get_route() || []", lock)
         self.assertIn('data-column-value="Pending"', lock)
         self.assertIn("__('Not Ordered')", lock)
