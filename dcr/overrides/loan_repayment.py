@@ -8,6 +8,10 @@ from dcr.lending_rules import has_material_outstanding_principal
 
 
 class CustomLoanRepayment(LoanRepayment):
+    def validate(self):
+        self._reopen_legacy_interest_only_loan()
+        super().validate()
+
     def on_submit(self):
         super().on_submit()
         self._reopen_legacy_interest_only_loan()

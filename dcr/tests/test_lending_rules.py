@@ -49,5 +49,6 @@ class TestLoanRepaymentOverrideRegistration(unittest.TestCase):
         self.assertIn("class CustomLoanRepayment(LoanRepayment)", override)
         self.assertIn("has_material_outstanding_principal", override)
         self.assertIn("def _reopen_legacy_interest_only_loan(self):", override)
+        self.assertIn("super().validate()", override)
         self.assertIn("super().on_submit()", override)
         self.assertIn("super().on_cancel()", override)
