@@ -40,6 +40,7 @@
             'financing_type',
             function(r) {
                 if (!r || !r.financing_type || frm.doc.custom_payment_type) return;
+                if (frm.doc.docstatus === 1) return;
                 frm.set_value(
                     'custom_payment_type',
                     r.financing_type === 'Floored' ? 'Flooring' : 'COD'
