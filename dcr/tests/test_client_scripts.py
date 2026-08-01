@@ -133,6 +133,8 @@ class TestLoanClientScript(unittest.TestCase):
 
         self.assertIn("function calculate_loan_preview(frm)", script)
         self.assertIn("amount * rate / 1200", script)
+        self.assertIn("frm.doc.loan_amount || frm.doc.qualifying_amount", script)
+        self.assertIn("qualifying_amount: function(frm)", script)
         self.assertIn("set_loan_calculated_value(frm, 'monthly_repayment_amount', monthly)", script)
         self.assertIn("set_loan_calculated_value(frm, 'total_payment', total_amount)", script)
         self.assertIn("custom_projected_ltv", script)

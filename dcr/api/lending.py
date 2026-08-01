@@ -87,8 +87,12 @@ def _doc_has_field(doc, fieldname):
 
 def _apply_loan_calculation_values(doc):
     """Apply calculated aliases to whichever fields exist on ``doc``."""
+    # Lending's Loan DocType stores the principal as ``qualifying_amount``
+    # on some releases, while Loan Application uses ``loan_amount``. Keep
+    # both workflows on the same interest-only calculation path.
+    loan_amount = doc.get("loan_amount") or doc.get("qualifying_amount")
     values = _loan_calculation_values(
-        doc.get("loan_amount"),
+        loan_amount,
         doc.get("rate_of_interest"),
         doc.get("repayment_periods"),
         doc.get("custom_projected_sales_price"),

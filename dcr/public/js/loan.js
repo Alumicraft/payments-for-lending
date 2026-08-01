@@ -59,6 +59,10 @@ frappe.ui.form.on('Loan', {
         calculate_loan_preview(frm);
     },
 
+    qualifying_amount: function(frm) {
+        calculate_loan_preview(frm);
+    },
+
     rate_of_interest: function(frm) {
         calculate_loan_preview(frm);
     },
@@ -104,7 +108,7 @@ function calculate_loan_preview(frm) {
     // has already persisted them, so do not dirty a submitted form on refresh.
     if (frm.doc.docstatus && frm.doc.docstatus !== 0) return;
 
-    var amount = parseFloat(frm.doc.loan_amount || 0);
+    var amount = parseFloat(frm.doc.loan_amount || frm.doc.qualifying_amount || 0);
     var rate = parseFloat(frm.doc.rate_of_interest || 0);
     var periods = parseInt(frm.doc.repayment_periods || 0, 10);
     var sales_price = parseFloat(frm.doc.custom_projected_sales_price || 0);

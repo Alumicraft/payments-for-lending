@@ -334,6 +334,22 @@ class TestLoanDefaults(unittest.TestCase):
 
 
 class TestLoanCalculations(unittest.TestCase):
+    def test_loan_calculation_uses_qualifying_amount_alias(self):
+        from dcr.api.lending import _apply_loan_calculation_values
+
+        doc = _Doc(
+            loan_amount=None,
+            qualifying_amount=220000,
+            rate_of_interest=12,
+            repayment_periods=12,
+            custom_projected_sales_price=None,
+        )
+
+        _apply_loan_calculation_values(doc)
+
+        self.assertEqual(doc.total_interest_payable, 26400)
+        self.assertEqual(doc.total_payment, 246400)
+
     def test_interest_only_calculation_matches_floor_plan_schedule(self):
         from dcr.api.lending import _loan_calculation_values
 
