@@ -1016,11 +1016,11 @@ def ensure_loan_application_field_repairs():
 
 
 def ensure_lending_calculation_values():
-    """Backfill blank read-only loan totals after the calculation fix ships.
+    """Repair read-only loan totals after the calculation fix ships.
 
     Submitted Lending documents cannot be saved through the normal form after
-    their read-only fields are corrected. Fill only blank calculated fields via
-    the database and leave any existing schedule totals untouched.
+    their read-only fields are corrected. Update derived totals directly in the
+    database, including older rows that contain the former interest-only total.
     """
     from dcr.api.lending import _loan_calculation_values
 
@@ -1035,13 +1035,6 @@ def ensure_lending_calculation_values():
         "custom_projected_equity",
         "custom_projected_ltv",
     )
-    input_fields = (
-        "loan_amount",
-        "rate_of_interest",
-        "repayment_periods",
-        "custom_projected_sales_price",
-    )
-
     for doctype in ("Loan Application", "Loan"):
         if not frappe.db.exists("DocType", doctype):
             continue
@@ -1051,18 +1044,28 @@ def ensure_lending_calculation_values():
         except Exception:
             continue
 
-        required = [field for field in input_fields if field in available]
-        if len(required) < 3:
+        amount_fields = [
+            field for field in ("loan_amount", "qualifying_amount")
+            if field in available
+        ]
+        required = amount_fields + [
+            field for field in ("rate_of_interest", "repayment_periods")
+            if field in available
+        ]
+        if not amount_fields or len(required) < 3:
             continue
 
-        fields = ["name"] + required + [
+        sales_fields = [
+            "custom_projected_sales_price"
+        ] if "custom_projected_sales_price" in available else []
+        fields = ["name"] + required + sales_fields + [
             field for field in calculation_fields if field in available
         ]
         rows = frappe.get_all(doctype, filters={"docstatus": 1}, fields=fields)
         for row in rows:
             get_value = row.get if hasattr(row, "get") else lambda key: getattr(row, key, None)
             values = _loan_calculation_values(
-                get_value("loan_amount"),
+                get_value("loan_amount") or get_value("qualifying_amount"),
                 get_value("rate_of_interest"),
                 get_value("repayment_periods"),
                 get_value("custom_projected_sales_price"),
@@ -1072,8 +1075,16 @@ def ensure_lending_calculation_values():
                 value = values.get(fieldname)
                 if fieldname not in available or value is None:
                     continue
-                if not get_value(fieldname):
+                current = get_value(fieldname)
+                if current is None or current == "":
                     updates[fieldname] = value
+                    continue
+                try:
+                    if abs(float(current) - float(value)) > 0.000001:
+                        updates[fieldname] = value
+                except (TypeError, ValueError):
+                    if current != value:
+                        updates[fieldname] = value
             if updates:
                 frappe.db.set_value(
                     doctype,
