@@ -505,6 +505,16 @@ class TestSetupCustomFields(unittest.TestCase):
         self.assertIn("dcr.patches.repair_lending_accounting_defaults", patches)
         self.assertIn("ensure_lending_accounting_defaults()", patch)
 
+    def test_loan_calculation_repair_runs_as_patch_and_uses_qualifying_amount(self):
+        patches = (ROOT / "dcr/patches.txt").read_text()
+        patch = (ROOT / "dcr/patches/repair_loan_calculation_totals.py").read_text()
+        setup = (ROOT / "dcr/setup.py").read_text()
+
+        self.assertIn("dcr.patches.repair_loan_calculation_totals", patches)
+        self.assertIn("ensure_lending_calculation_values()", patch)
+        self.assertIn('get_value("loan_amount") or get_value("qualifying_amount")', setup)
+        self.assertIn("frappe.db.sql(", setup)
+
     def test_loan_demand_hook_backfills_borrower_fields(self):
         hooks = (ROOT / "dcr/hooks.py").read_text()
         override = (ROOT / "dcr/overrides/loan_demand.py").read_text()

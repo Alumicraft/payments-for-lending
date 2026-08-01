@@ -1042,7 +1042,19 @@ def ensure_lending_calculation_values():
             meta = frappe.get_meta(doctype)
             available = {df.fieldname for df in meta.fields}
         except Exception:
-            continue
+            available = set()
+        for fieldname in (
+            "loan_amount",
+            "qualifying_amount",
+            "rate_of_interest",
+            "repayment_periods",
+            "custom_projected_sales_price",
+        ):
+            try:
+                if frappe.db.has_column(doctype, fieldname):
+                    available.add(fieldname)
+            except Exception:
+                pass
 
         amount_fields = [
             field for field in ("loan_amount", "qualifying_amount")
@@ -1061,7 +1073,11 @@ def ensure_lending_calculation_values():
         fields = ["name"] + required + sales_fields + [
             field for field in calculation_fields if field in available
         ]
-        rows = frappe.get_all(doctype, filters={"docstatus": 1}, fields=fields)
+        select_fields = [f"`{field}`" for field in dict.fromkeys(fields)]
+        rows = frappe.db.sql(
+            f"SELECT {', '.join(select_fields)} FROM `tab{doctype}` WHERE docstatus = 1",
+            as_dict=True,
+        )
         for row in rows:
             get_value = row.get if hasattr(row, "get") else lambda key: getattr(row, key, None)
             values = _loan_calculation_values(
