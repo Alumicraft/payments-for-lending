@@ -150,6 +150,7 @@ class TestPurchaseOrderEmailClientScript(unittest.TestCase):
 
         self.assertIn("frappe.ui.form.on('Purchase Order'", script)
         self.assertIn("function hydrate_payment_type(frm)", script)
+        self.assertIn("if (frm.doc.docstatus === 1) return;", script)
         self.assertIn("r.financing_type === 'Floored' ? 'Flooring' : 'COD'", script)
         self.assertIn("dcr.api.dcr_email.preview_document_email", script)
         self.assertIn("emails.api.send_document_email", script)
