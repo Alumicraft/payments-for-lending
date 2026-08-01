@@ -16,11 +16,16 @@ frappe.ui.form.on('Loan', {
     refresh: function(frm) {
         if (frm.is_new()) {
             prefill_deal_reference(frm);
+            calculate_loan_preview(frm);
             return;
         }
 
         // Auto-Pay status indicator (show on saved and submitted loans)
         show_autopay_indicator(frm);
+
+        // Draft loans need the same visible preview as Loan Applications.
+        // Submitted loans keep their server-authoritative totals untouched.
+        calculate_loan_preview(frm);
 
         // Submitted-only buttons
         if (frm.doc.docstatus !== 1) {
@@ -48,6 +53,22 @@ frappe.ui.form.on('Loan', {
                 send_payoff(frm, 'COD');
             }, __('Email'));
         }
+    },
+
+    loan_amount: function(frm) {
+        calculate_loan_preview(frm);
+    },
+
+    rate_of_interest: function(frm) {
+        calculate_loan_preview(frm);
+    },
+
+    repayment_periods: function(frm) {
+        calculate_loan_preview(frm);
+    },
+
+    custom_projected_sales_price: function(frm) {
+        calculate_loan_preview(frm);
     }
 });
 
@@ -72,8 +93,57 @@ function prefill_deal_reference(frm) {
                     frm.set_value(field, r.message[field]);
                 }
             });
+            calculate_loan_preview(frm);
         }
     });
+}
+
+
+function calculate_loan_preview(frm) {
+    // Calculated totals are read-only on submitted Loans. The validate hook
+    // has already persisted them, so do not dirty a submitted form on refresh.
+    if (frm.doc.docstatus && frm.doc.docstatus !== 0) return;
+
+    var amount = parseFloat(frm.doc.loan_amount || 0);
+    var rate = parseFloat(frm.doc.rate_of_interest || 0);
+    var periods = parseInt(frm.doc.repayment_periods || 0, 10);
+    var sales_price = parseFloat(frm.doc.custom_projected_sales_price || 0);
+    var monthly = amount && rate ? amount * rate / 1200 : null;
+    var total_interest = monthly && periods ? monthly * periods : null;
+    var total_amount = total_interest !== null ? amount + total_interest : null;
+
+    set_loan_calculated_value(frm, 'repayment_amount', monthly);
+    set_loan_calculated_value(frm, 'monthly_repayment_amount', monthly);
+    set_loan_calculated_value(frm, 'monthly_interest_amount', monthly);
+    set_loan_calculated_value(frm, 'total_payable_interest', total_interest);
+    set_loan_calculated_value(frm, 'total_interest_payable', total_interest);
+    set_loan_calculated_value(frm, 'total_payable_amount', total_amount);
+    set_loan_calculated_value(frm, 'total_payment', total_amount);
+    set_loan_calculated_value(
+        frm,
+        'custom_projected_equity',
+        amount && sales_price ? sales_price - amount : null
+    );
+    set_loan_calculated_value(
+        frm,
+        'custom_projected_ltv',
+        amount && sales_price ? amount / sales_price * 100 : null
+    );
+}
+
+
+function set_loan_calculated_value(frm, fieldname, value) {
+    if (!frm.fields_dict[fieldname]) return;
+    var current = frm.doc[fieldname];
+    if (value === null || value === undefined) {
+        if (current !== null && current !== undefined && current !== '') {
+            frm.set_value(fieldname, null);
+        }
+        return;
+    }
+    if (Math.abs(parseFloat(current || 0) - value) > 0.000001) {
+        frm.set_value(fieldname, value);
+    }
 }
 
 

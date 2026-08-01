@@ -94,6 +94,31 @@ class TestSetupCustomFields(unittest.TestCase):
         )
 
     @patch("dcr.setup.frappe")
+    def test_hbr_kanban_rebuild_preserves_or_restores_indicators(self, mock_frappe):
+        from dcr.setup import ensure_hbr_kanban_columns
+
+        board = MagicMock()
+        columns = [
+            {"column_name": "Draft", "indicator": "Gray"},
+            {"column_name": "Pending", "indicator": "Gray"},
+            {"column_name": "Ordered", "indicator": "Gray"},
+            {"column_name": "Delivered", "indicator": "Gray"},
+        ]
+        board.get.side_effect = lambda field: None if field == "filters" else columns
+        board.set.side_effect = lambda field, value: columns.clear()
+        board.append.side_effect = lambda field, value: columns.append(value)
+        mock_frappe.db.exists.return_value = True
+        mock_frappe.get_all.return_value = ["Home Build Requests"]
+        mock_frappe.get_doc.return_value = board
+
+        ensure_hbr_kanban_columns()
+
+        self.assertEqual(
+            [column["indicator"] for column in columns],
+            ["Gray", "Gray", "Orange", "Blue"],
+        )
+
+    @patch("dcr.setup.frappe")
     def test_ensure_bank_account_types_creates_ach_link_targets(self, mock_frappe):
         from dcr.setup import ensure_bank_account_types
 
@@ -170,6 +195,28 @@ class TestSetupCustomFields(unittest.TestCase):
         self.assertEqual(payload["options"], "Home Build Request")
         field_doc.insert.assert_called_once_with(ignore_permissions=True)
         mock_frappe.clear_cache.assert_called_once_with(doctype="Purchase Order")
+
+    @patch("dcr.setup.frappe")
+    def test_ensure_purchase_order_email_fields_creates_payment_selector(self, mock_frappe):
+        from dcr.setup import ensure_purchase_order_email_fields
+
+        field_doc = MagicMock()
+
+        def exists(doctype, name_or_filters):
+            if doctype == "DocType":
+                return name_or_filters == "Purchase Order"
+            return False
+
+        mock_frappe.db.exists.side_effect = exists
+        mock_frappe.get_doc.return_value = field_doc
+
+        ensure_purchase_order_email_fields()
+
+        payload = mock_frappe.get_doc.call_args.args[0]
+        self.assertEqual(payload["dt"], "Purchase Order")
+        self.assertEqual(payload["fieldname"], "custom_payment_type")
+        self.assertEqual(payload["options"], "\nCOD\nFlooring")
+        field_doc.insert.assert_called_once_with(ignore_permissions=True)
 
     @patch("dcr.setup.frappe")
     def test_ensure_order_hbr_fields_creates_only_missing_fields(self, mock_frappe):
@@ -565,7 +612,7 @@ class TestPackagingConfig(unittest.TestCase):
         self.assertIn('"dcr/dashboard_chart_source/*/*.js"', setup_py)
         self.assertIn("recursive-include dcr/public *.css *.js *.html *.png", manifest)
         self.assertIn("recursive-include dcr/dcr/dashboard_chart_source *.json *.js", manifest)
-        self.assertIn('DCR_ASSET_VERSION = "20260731-4"', hooks)
+        self.assertIn('DCR_ASSET_VERSION = "20260801-1"', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/sidebar_fix.js")', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/hbr_dashboard_plus_patch_20260525_10.js")', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/loan_list_context_patch_20260525_14.js")', hooks)
@@ -671,7 +718,8 @@ class TestPackagingConfig(unittest.TestCase):
 
         self.assertIn("ensure_hbr_kanban_columns,", setup)
         self.assertIn('board.set("columns", [])', setup)
-        self.assertIn('board.append("columns", {"column_name": column_name})', setup)
+        self.assertIn('"column_name": column_name', setup)
+        self.assertIn('"indicator": target_indicators[column_name]', setup)
         self.assertIn('["Home Build Request", "docstatus", "in", [0, 1]]', setup)
         self.assertIn('desired_columns = ["Draft", "Pending", "Ordered", "Delivered"]', setup)
         self.assertIn('board.filters = active_filter', setup)

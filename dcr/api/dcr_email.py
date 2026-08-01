@@ -5,6 +5,9 @@ Sends branded emails via the emails app generic pipeline.
 Each function passes template-specific data via extra_data override.
 """
 
+import json
+from html import escape
+
 import frappe
 from frappe import _
 
@@ -43,6 +46,194 @@ def _send(
         extra_data=extra_data,
         attachments=attachments or [],
         cc=cc,
+    )
+
+
+def _purchase_order_email_context(doc):
+    """Return DCR-specific context for the factory purchase-order email."""
+    if getattr(doc, "doctype", None) != "Purchase Order":
+        return {}
+
+    get_value = doc.get if hasattr(doc, "get") else lambda field: getattr(doc, field, None)
+    hbr_name = get_value("custom_home_build_request")
+    hbr = frappe.get_doc("Home Build Request", hbr_name) if hbr_name else None
+    hbr_get = hbr.get if hbr and hasattr(hbr, "get") else lambda field: getattr(hbr, field, None) if hbr else None
+
+    dealer_name = get_value("supplier_name") or get_value("supplier") or ""
+    if get_value("supplier"):
+        dealer_name = frappe.db.get_value(
+            "Supplier", get_value("supplier"), "supplier_name"
+        ) or dealer_name
+
+    customer_name = ""
+    if hbr_get("home_buyer"):
+        customer_name = frappe.db.get_value(
+            "Customer", hbr_get("home_buyer"), "customer_name"
+        ) or hbr_get("home_buyer")
+
+    financing_type = hbr_get("financing_type")
+    payment_type = get_value("custom_payment_type") or (
+        "Flooring" if financing_type == "Floored" else "COD" if financing_type == "Cash" else ""
+    )
+    amount = get_value("grand_total") or get_value("rounded_total") or 0
+
+    return {
+        "dealer_name": dealer_name,
+        "customer_name": customer_name,
+        "project_name": hbr_get("project_name") or hbr_get("name") or hbr_name or "",
+        "quote_number": hbr_get("quote_no") or hbr_get("custom_quote_no") or "",
+        "serial_number": hbr_get("home_serial_no") or "",
+        "payment_type": payment_type,
+        "po_amount": _format_currency_amount(amount),
+    }
+
+
+def _append_purchase_order_preview_context(body, context):
+    """Add the factory-facing order summary to the Email app preview."""
+    if not context:
+        return body
+    labels = (
+        ("Dealer", "dealer_name"),
+        ("Customer", "customer_name"),
+        ("Project", "project_name"),
+        ("PO Amount", "po_amount"),
+        ("Quote #", "quote_number"),
+        ("Serial #", "serial_number"),
+        ("Payment", "payment_type"),
+    )
+    rows = "".join(
+        f"<tr><td><b>{label}</b></td><td>{escape(str(context.get(key) or '—'))}</td></tr>"
+        for label, key in labels
+    )
+    return (
+        body
+        + '<hr><p><b>Factory order details</b></p>'
+        + '<table style="border-collapse:collapse">'
+        + rows
+        + "</table>"
+    )
+
+
+@frappe.whitelist()
+def preview_document_email(
+    doctype,
+    docname,
+    to_email=None,
+    custom_message=None,
+    extra_data=None,
+    template_override=None,
+    subject_override=None,
+):
+    """Build a send-safe preview without requiring an email API key.
+
+    The Email app's send API deliberately checks its service settings only at
+    send time. Reuse its template-data builder here so a user can inspect the
+    recipient, subject, body, and PDF attachment before pressing Send.
+    """
+    try:
+        from emails.email_service.generic_email import (
+            _build_email_preview,
+            build_template_data,
+            get_default_company_info,
+            resolve_recipient_email,
+        )
+        from emails.email_service.utils import get_company_info
+    except ImportError:
+        return {
+            "success": False,
+            "message": _("The Email app is not installed on this site."),
+        }
+
+    doc = frappe.get_doc(doctype, docname)
+    if isinstance(extra_data, str):
+        extra_data = json.loads(extra_data or "{}")
+    extra_data = extra_data or {}
+
+    recipient = to_email or resolve_recipient_email(doc)
+    if not recipient:
+        return {
+            "success": False,
+            "message": _("No recipient email was found for {0} {1}.").format(
+                doctype, docname
+            ),
+        }
+
+    company_name = getattr(doc, "company", None) or frappe.defaults.get_global_default(
+        "company"
+    )
+    company_info = get_company_info(company_name) if company_name else get_default_company_info()
+    template_data = build_template_data(doc, doctype, company_info, custom_message)
+    template_data.update(extra_data)
+    po_context = _purchase_order_email_context(doc)
+    template_data.update(po_context)
+    subject = subject_override or template_data.get("subject") or _(
+        "{0} {1}"
+    ).format(doctype, docname)
+    body = _build_email_preview(doctype, template_data, recipient)
+    body = _append_purchase_order_preview_context(body, po_context)
+    if custom_message:
+        body = f"<p>{escape(str(custom_message))}</p>{body}"
+
+    return {
+        "success": True,
+        "recipient": recipient,
+        "subject": subject,
+        "body": body,
+        "attachments": [
+            {
+                "filename": f"{frappe.scrub(doctype)}_{docname}.pdf",
+                "label": _("PDF attachment"),
+            }
+        ],
+    }
+
+
+@frappe.whitelist()
+def send_purchase_order_email(
+    purchase_order,
+    to_email,
+    cc=None,
+    bcc=None,
+    custom_message=None,
+):
+    """Send a Purchase Order through the Email app with DCR order context."""
+    try:
+        from emails.email_service.generic_email import send_document_email
+    except ImportError:
+        return {
+            "success": False,
+            "message": _("The Email app is not installed on this site."),
+        }
+
+    po = frappe.get_doc("Purchase Order", purchase_order)
+    context = _purchase_order_email_context(po)
+    dealer = context.get("dealer_name") or po.get("supplier") or purchase_order
+    context_message = "\n".join(
+        f"{label}: {context.get(key) or '—'}"
+        for label, key in (
+            ("Dealer", "dealer_name"),
+            ("Customer", "customer_name"),
+            ("Project", "project_name"),
+            ("PO Amount", "po_amount"),
+            ("Quote #", "quote_number"),
+            ("Serial #", "serial_number"),
+            ("Payment", "payment_type"),
+        )
+    )
+    if custom_message:
+        custom_message = f"{context_message}\n\n{custom_message}"
+    else:
+        custom_message = context_message
+    return send_document_email(
+        doctype="Purchase Order",
+        docname=purchase_order,
+        to_email=to_email,
+        cc=cc,
+        bcc=bcc,
+        custom_message=custom_message,
+        extra_data=context,
+        template_override="purchase-order",
+        subject_override=_("Purchase Order {0} — {1}").format(purchase_order, dealer),
     )
 
 

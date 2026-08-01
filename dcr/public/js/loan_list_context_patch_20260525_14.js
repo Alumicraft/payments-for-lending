@@ -42,7 +42,7 @@
 
         if (window.cur_frm && cur_frm.doctype === "Loan" && cur_frm.is_new()) {
             Object.keys(defaults).forEach(function(field) {
-                if (defaults[field] !== undefined && defaults[field] !== null && !cur_frm.doc[field]) {
+                if (cur_frm.fields_dict[field] && defaults[field] !== undefined && defaults[field] !== null && !cur_frm.doc[field]) {
                     cur_frm.set_value(field, defaults[field]);
                 }
             });

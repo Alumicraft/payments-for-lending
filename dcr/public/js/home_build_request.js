@@ -317,13 +317,15 @@ function update_connections_visibility(frm) {
 
 
 function update_stage_field_visibility(frm) {
-    var is_cash = frm.doc.financing_type === 'Cash';
+    var show_stage = frm.doc.financing_type === 'Floored';
 
-    if (frm.fields_dict.custom_loan_stage) {
-        // The previous retry timers repeatedly toggled this field while
-        // Frappe painted the form, which caused the visible flash.
-        frm.set_df_property('custom_loan_stage', 'hidden', is_cash ? 1 : 0);
-    }
+    if (!frm.fields_dict.custom_loan_stage) return;
+
+    // The Custom Field's depends_on is the authoritative rule. This one
+    // lightweight wrapper update handles an already-rendered form immediately
+    // after a financing-type change without mutating DocField metadata (which
+    // was the source of the Floored hide/show flicker).
+    frm.toggle_display('custom_loan_stage', show_stage);
 }
 
 

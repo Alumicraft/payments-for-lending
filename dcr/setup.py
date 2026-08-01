@@ -127,8 +127,10 @@ def after_install():
         ensure_bank_account_ach_fields,
         ensure_supplier_geo_fields,
         ensure_order_hbr_fields,
+        ensure_purchase_order_email_fields,
         ensure_payment_entry_calculated_fields,
         ensure_loan_application_field_repairs,
+        ensure_lending_calculation_values,
         ensure_hbr_stage_field_options,
         sync_existing_hbr_stage_fields,
         ensure_factory_addresses,
@@ -379,6 +381,20 @@ def ensure_hbr_kanban_columns():
         filters={"reference_doctype": "Home Build Request"},
         pluck="name",
     )
+    # Keep the lifecycle readable at a glance. If a prior migration rebuilt
+    # the child rows with only ``column_name``, Frappe defaults every indicator
+    # to Gray; detect that state and restore semantic colors. Any deliberate
+    # non-gray palette already present on the board is preserved.
+    indicator_palette = {
+        "Draft": "Gray",
+        "Pending": "Gray",
+        "Ordered": "Orange",
+        "Delivered": "Blue",
+    }
+    known_indicators = {
+        "Blue", "Cyan", "Gray", "Green", "Light Blue", "Orange",
+        "Pink", "Purple", "Red", "Yellow",
+    }
     for board_name in board_names:
         board = frappe.get_doc("Kanban Board", board_name)
         changed = False
@@ -390,17 +406,66 @@ def ensure_hbr_kanban_columns():
             changed = True
 
         desired_columns = ["Draft", "Pending", "Ordered", "Delivered"]
+        existing_by_name = {}
+        existing_indicators = {}
+        for column in (board.get("columns") or []):
+            column_name = column.get("column_name")
+            # Older boards used the display label "Not Ordered" for the
+            # canonical backend value Pending.
+            canonical_name = "Pending" if column_name == "Not Ordered" else column_name
+            if canonical_name and canonical_name not in existing_by_name:
+                existing_by_name[canonical_name] = column
+            indicator = column.get("indicator")
+            if canonical_name and indicator in known_indicators:
+                existing_indicators[canonical_name] = indicator
+
+        has_custom_palette = any(
+            indicator and indicator != "Gray"
+            for indicator in existing_indicators.values()
+        )
+        target_indicators = {
+            column_name: (
+                existing_indicators.get(column_name)
+                if has_custom_palette and existing_indicators.get(column_name)
+                else indicator_palette[column_name]
+            )
+            for column_name in desired_columns
+        }
         current_columns = [
             column.get("column_name")
             for column in (board.get("columns") or [])
         ]
-        if current_columns != desired_columns:
+        columns_need_update = current_columns != desired_columns
+        if not columns_need_update:
+            for column_name in desired_columns:
+                column = existing_by_name.get(column_name)
+                if not column:
+                    columns_need_update = True
+                    break
+                if column.get("indicator") != target_indicators[column_name]:
+                    columns_need_update = True
+                    break
+                if column.get("status") not in (None, "Active"):
+                    columns_need_update = True
+                    break
+
+        if columns_need_update:
             # Rebuild the child table so Frappe persists fresh idx values.
             # Assigning a reordered Python list is not enough: the database
             # can retain the former indices and render Draft/"Pending" last.
             board.set("columns", [])
             for column_name in desired_columns:
-                board.append("columns", {"column_name": column_name})
+                old_column = existing_by_name.get(column_name)
+                row = {
+                    "column_name": column_name,
+                    "status": (old_column.get("status") if old_column else None) or "Active",
+                    "indicator": target_indicators[column_name],
+                }
+                # ``order`` controls the card order inside a column. Preserve
+                # it when present while still repairing the column metadata.
+                if old_column and old_column.get("order"):
+                    row["order"] = old_column.get("order")
+                board.append("columns", row)
             changed = True
         if changed:
             board.save(ignore_permissions=True)
@@ -835,6 +900,36 @@ def ensure_payment_entry_calculated_fields():
         frappe.clear_cache(doctype="Payment Entry")
 
 
+def ensure_purchase_order_email_fields():
+    """Add the payment selector used by the factory PO email template."""
+    if not frappe.db.exists("DocType", "Purchase Order"):
+        return
+
+    fieldname = "custom_payment_type"
+    existing = frappe.db.exists(
+        "Custom Field",
+        {"dt": "Purchase Order", "fieldname": fieldname},
+    )
+    options = "\nCOD\nFlooring"
+    if not existing:
+        frappe.get_doc(
+            {
+                "doctype": "Custom Field",
+                "dt": "Purchase Order",
+                "fieldname": fieldname,
+                "label": "Payment Type",
+                "fieldtype": "Select",
+                "options": options,
+                "insert_after": "custom_home_build_request",
+                "description": "Used in the factory purchase-order email.",
+            }
+        ).insert(ignore_permissions=True)
+        frappe.clear_cache(doctype="Purchase Order")
+    elif frappe.db.get_value("Custom Field", existing, "options") != options:
+        frappe.db.set_value("Custom Field", existing, "options", options)
+        frappe.clear_cache(doctype="Purchase Order")
+
+
 def ensure_loan_application_field_repairs():
     """Keep Lending fields aligned with DCR's current HBR and dealer data."""
     floor_plan_field = frappe.db.exists(
@@ -920,6 +1015,74 @@ def ensure_loan_application_field_repairs():
     frappe.clear_cache(doctype="Loan Application")
 
 
+def ensure_lending_calculation_values():
+    """Backfill blank read-only loan totals after the calculation fix ships.
+
+    Submitted Lending documents cannot be saved through the normal form after
+    their read-only fields are corrected. Fill only blank calculated fields via
+    the database and leave any existing schedule totals untouched.
+    """
+    from dcr.api.lending import _loan_calculation_values
+
+    calculation_fields = (
+        "repayment_amount",
+        "monthly_repayment_amount",
+        "monthly_interest_amount",
+        "total_payable_interest",
+        "total_interest_payable",
+        "total_payable_amount",
+        "total_payment",
+        "custom_projected_equity",
+        "custom_projected_ltv",
+    )
+    input_fields = (
+        "loan_amount",
+        "rate_of_interest",
+        "repayment_periods",
+        "custom_projected_sales_price",
+    )
+
+    for doctype in ("Loan Application", "Loan"):
+        if not frappe.db.exists("DocType", doctype):
+            continue
+        try:
+            meta = frappe.get_meta(doctype)
+            available = {df.fieldname for df in meta.fields}
+        except Exception:
+            continue
+
+        required = [field for field in input_fields if field in available]
+        if len(required) < 3:
+            continue
+
+        fields = ["name"] + required + [
+            field for field in calculation_fields if field in available
+        ]
+        rows = frappe.get_all(doctype, filters={"docstatus": 1}, fields=fields)
+        for row in rows:
+            get_value = row.get if hasattr(row, "get") else lambda key: getattr(row, key, None)
+            values = _loan_calculation_values(
+                get_value("loan_amount"),
+                get_value("rate_of_interest"),
+                get_value("repayment_periods"),
+                get_value("custom_projected_sales_price"),
+            )
+            updates = {}
+            for fieldname in calculation_fields:
+                value = values.get(fieldname)
+                if fieldname not in available or value is None:
+                    continue
+                if not get_value(fieldname):
+                    updates[fieldname] = value
+            if updates:
+                frappe.db.set_value(
+                    doctype,
+                    get_value("name"),
+                    updates,
+                    update_modified=False,
+                )
+
+
 def ensure_hbr_stage_field_options():
     """Keep HBR stage Custom Field options aligned with derived stage values.
 
@@ -952,6 +1115,15 @@ def ensure_hbr_stage_field_options():
             updates["allow_on_submit"] = 0
         if frappe.db.get_value("Custom Field", custom_field, "reqd") != 0:
             updates["reqd"] = 0
+        if fieldname == "custom_loan_stage":
+            # Let Frappe's dependency engine own visibility. The old client
+            # script also mutated the hidden property, which caused a visible
+            # hide/show flicker whenever financing_type changed to Floored.
+            depends_on = "eval:doc.financing_type == 'Floored'"
+            if frappe.db.get_value("Custom Field", custom_field, "depends_on") != depends_on:
+                updates["depends_on"] = depends_on
+            if frappe.db.get_value("Custom Field", custom_field, "hidden") != 0:
+                updates["hidden"] = 0
 
         if not updates:
             continue

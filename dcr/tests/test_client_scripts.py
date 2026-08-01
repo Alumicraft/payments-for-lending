@@ -24,8 +24,9 @@ class TestHomeBuildRequestClientScript(unittest.TestCase):
 
         self.assertIn("update_stage_field_visibility(frm)", script)
         self.assertIn("function update_stage_field_visibility(frm)", script)
-        self.assertIn("frm.set_df_property('custom_loan_stage', 'hidden', is_cash ? 1 : 0)", script)
-        self.assertIn("var is_cash = frm.doc.financing_type === 'Cash'", script)
+        self.assertIn("frm.toggle_display('custom_loan_stage', show_stage)", script)
+        self.assertIn("var show_stage = frm.doc.financing_type === 'Floored'", script)
+        self.assertNotIn("set_df_property('custom_loan_stage', 'hidden'", script)
         self.assertNotIn("setTimeout(apply, 500)", script)
         self.assertNotIn("setTimeout(apply, 1500)", script)
 
@@ -127,6 +128,33 @@ class TestCustomerClientScript(unittest.TestCase):
 
 class TestLoanClientScript(unittest.TestCase):
 
+    def test_loan_form_recalculates_visible_interest_only_totals(self):
+        script = (ROOT / "dcr/public/js/loan.js").read_text()
+
+        self.assertIn("function calculate_loan_preview(frm)", script)
+        self.assertIn("amount * rate / 1200", script)
+        self.assertIn("set_loan_calculated_value(frm, 'monthly_repayment_amount', monthly)", script)
+        self.assertIn("set_loan_calculated_value(frm, 'total_payment', total_amount)", script)
+        self.assertIn("custom_projected_ltv", script)
+
+    def test_loan_defaults_only_apply_to_fields_on_the_new_loan_form(self):
+        script = (ROOT / "dcr/public/js/loan_list_context_patch_20260525_14.js").read_text()
+
+        self.assertIn("cur_frm.fields_dict[field]", script)
+
+
+class TestPurchaseOrderEmailClientScript(unittest.TestCase):
+    def test_purchase_order_preview_hydrates_payment_type_from_hbr(self):
+        script = (ROOT / "dcr/public/js/email_preview.js").read_text()
+        hooks = (ROOT / "dcr/hooks.py").read_text()
+
+        self.assertIn("frappe.ui.form.on('Purchase Order'", script)
+        self.assertIn("function hydrate_payment_type(frm)", script)
+        self.assertIn("r.financing_type === 'Floored' ? 'Flooring' : 'COD'", script)
+        self.assertIn("dcr.api.dcr_email.preview_document_email", script)
+        self.assertIn("emails.api.send_document_email", script)
+        self.assertIn('versioned_asset("/assets/dcr/js/email_preview.js")', hooks)
+
     def test_disbursement_notice_passes_hbr_not_serial_number(self):
         script = (ROOT / "dcr/public/js/loan.js").read_text()
 
@@ -163,6 +191,13 @@ class TestLoanClientScript(unittest.TestCase):
 
 class TestLoanApplicationClientScript(unittest.TestCase):
 
+    def test_loan_application_recalculates_after_async_hydration(self):
+        script = (ROOT / "dcr/public/js/loan_application.js").read_text()
+
+        self.assertIn("function refresh_calculations(frm)", script)
+        self.assertIn("refresh_calculations(frm);", script)
+        self.assertIn("function set_calculated_value(frm, fieldname, value)", script)
+
     def test_connection_created_new_loan_application_hydrates_from_hbr_onload(self):
         script = (ROOT / "dcr/public/js/loan_application.js").read_text()
 
@@ -196,6 +231,7 @@ class TestLoanApplicationClientScript(unittest.TestCase):
         self.assertIn("hydrate_applicant_address(frm, customer && customer.customer_primary_address)", script)
         self.assertIn("if (!frm.fields_dict[fieldname]) return", script)
         self.assertIn("set_if_empty(frm, 'loan_product', defaults.loan_product)", script)
+        self.assertIn("set_if_empty(frm, 'rate_of_interest', defaults.rate_of_interest)", script)
         self.assertIn("hydrate_applicant_contact(frm)", script)
 
     def test_new_loan_application_fetches_required_contact_fields(self):

@@ -332,6 +332,29 @@ class TestLoanDefaults(unittest.TestCase):
         self.assertEqual(defaults["factory"], "Champion Home Builders")
         self.assertEqual(defaults["custom_rebate_percentage"], 2.5)
 
+
+class TestLoanCalculations(unittest.TestCase):
+    def test_interest_only_calculation_matches_floor_plan_schedule(self):
+        from dcr.api.lending import _loan_calculation_values
+
+        values = _loan_calculation_values(120000, 12, 10, 150000)
+
+        self.assertEqual(values["repayment_amount"], 1200)
+        self.assertEqual(values["monthly_repayment_amount"], 1200)
+        self.assertEqual(values["total_payable_interest"], 12000)
+        self.assertEqual(values["total_payment"], 132000)
+        self.assertEqual(values["custom_projected_equity"], 30000)
+        self.assertEqual(values["custom_projected_ltv"], 80)
+
+    def test_calculation_clears_totals_when_rate_or_amount_is_missing(self):
+        from dcr.api.lending import _loan_calculation_values
+
+        values = _loan_calculation_values(120000, 0, 10, 150000)
+
+        self.assertIsNone(values["repayment_amount"])
+        self.assertIsNone(values["total_interest_payable"])
+        self.assertEqual(values["custom_projected_equity"], 30000)
+
     @patch("dcr.api.lending.frappe")
     def test_loan_defaults_infers_hbr_for_older_application_without_link(
         self, mock_frappe

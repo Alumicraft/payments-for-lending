@@ -45,8 +45,7 @@ frappe.ui.form.on('Loan Application', {
             // Run client-side calcs once with whatever values are in scope
             // (handles fetch_from populating rate_of_interest etc. without a
             // user keystroke firing the field handler).
-            calculate_monthly_interest(frm);
-            calculate_preapproval_fields(frm);
+            refresh_calculations(frm);
         }
 
         // Fetch loan product + credit info only while the application is
@@ -57,6 +56,7 @@ frappe.ui.form.on('Loan Application', {
                 frappe.db.get_value('Customer', frm.doc.applicant, 'default_loan_product', function(r) {
                     if (r && r.default_loan_product) {
                         frm.set_value('loan_product', r.default_loan_product);
+                        refresh_calculations(frm);
                     }
                 });
             }
@@ -190,6 +190,7 @@ function hydrate_from_home_build_request(frm) {
         args: { home_build_request: frm.doc.home_build_request },
         callback: function(r) {
             apply_loan_application_defaults(frm, r.message || {});
+            refresh_calculations(frm);
             frm.doc.__hbr_hydrated = frm.doc.home_build_request;
             frm.doc.__hbr_hydrating = null;
         },
@@ -201,6 +202,7 @@ function hydrate_from_home_build_request(frm) {
     frappe.db.get_doc('Home Build Request', frm.doc.home_build_request).then(function(hbr) {
         if (hbr) {
             apply_hbr_fetch_from_fields(frm, hbr, 'home_build_request');
+            refresh_calculations(frm);
         }
 
         frappe.after_ajax(function() {
@@ -232,7 +234,9 @@ function apply_loan_application_defaults(frm, defaults) {
     set_if_empty(frm, 'zip_code', defaults.zip_code);
     set_if_empty(frm, 'country', defaults.country);
     set_if_empty(frm, 'loan_product', defaults.loan_product);
+    set_if_empty(frm, 'rate_of_interest', defaults.rate_of_interest);
     hydrate_applicant_contact(frm);
+    refresh_calculations(frm);
 }
 
 
@@ -383,19 +387,19 @@ function calculate_monthly_interest(frm) {
 
     if (rate && amount) {
         var monthly = (rate / 100) * amount / 12;
-        frm.set_value('repayment_amount', monthly);
+        set_calculated_value(frm, 'repayment_amount', monthly);
         if (periods) {
             var total_interest = monthly * periods;
-            frm.set_value('total_payable_interest', total_interest);
-            frm.set_value('total_payable_amount', amount + total_interest);
+            set_calculated_value(frm, 'total_payable_interest', total_interest);
+            set_calculated_value(frm, 'total_payable_amount', amount + total_interest);
         } else {
-            frm.set_value('total_payable_interest', null);
-            frm.set_value('total_payable_amount', null);
+            set_calculated_value(frm, 'total_payable_interest', null);
+            set_calculated_value(frm, 'total_payable_amount', null);
         }
     } else {
-        frm.set_value('repayment_amount', null);
-        frm.set_value('total_payable_interest', null);
-        frm.set_value('total_payable_amount', null);
+        set_calculated_value(frm, 'repayment_amount', null);
+        set_calculated_value(frm, 'total_payable_interest', null);
+        set_calculated_value(frm, 'total_payable_amount', null);
     }
 }
 
@@ -405,11 +409,35 @@ function calculate_preapproval_fields(frm) {
     var loan_amount = frm.doc.loan_amount || 0;
 
     if (sales_price && loan_amount) {
-        frm.set_value('custom_projected_equity', sales_price - loan_amount);
-        frm.set_value('custom_projected_ltv', (loan_amount / sales_price) * 100);
+        set_calculated_value(frm, 'custom_projected_equity', sales_price - loan_amount);
+        set_calculated_value(frm, 'custom_projected_ltv', (loan_amount / sales_price) * 100);
     } else {
-        frm.set_value('custom_projected_equity', null);
-        frm.set_value('custom_projected_ltv', null);
+        set_calculated_value(frm, 'custom_projected_equity', null);
+        set_calculated_value(frm, 'custom_projected_ltv', null);
+    }
+}
+
+
+function refresh_calculations(frm) {
+    // Submitted applications are snapshots. Their values come from the
+    // validate hook and should not be re-written by a browser refresh.
+    if (frm.doc.docstatus && frm.doc.docstatus !== 0) return;
+    calculate_monthly_interest(frm);
+    calculate_preapproval_fields(frm);
+}
+
+
+function set_calculated_value(frm, fieldname, value) {
+    if (!frm.fields_dict[fieldname]) return;
+    var current = frm.doc[fieldname];
+    if (value === null || value === undefined) {
+        if (current !== null && current !== undefined && current !== '') {
+            frm.set_value(fieldname, null);
+        }
+        return;
+    }
+    if (Math.abs(parseFloat(current || 0) - value) > 0.000001) {
+        frm.set_value(fieldname, value);
     }
 }
 

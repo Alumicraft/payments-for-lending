@@ -3,6 +3,106 @@ from frappe import _
 from frappe.utils import getdate, add_days, today
 
 
+def _as_int(value):
+    """Return a safe integer for optional Lending tenure values."""
+    try:
+        return int(float(value or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _loan_calculation_values(
+    loan_amount,
+    rate_of_interest,
+    repayment_periods,
+    projected_sales_price=None,
+):
+    """Return DCR's interest-only preview values for a loan.
+
+    Frappe Lending uses several field names for the same concepts depending on
+    whether the document is a Loan Application or a Loan. Keeping the math in
+    one server-side helper prevents the two forms from drifting apart. The
+    caller applies only the aliases that actually exist on its DocType.
+    """
+    amount = float(loan_amount or 0)
+    rate = float(rate_of_interest or 0)
+    periods = _as_int(repayment_periods)
+    sales_price = float(projected_sales_price or 0)
+
+    values = {
+        "repayment_amount": None,
+        "monthly_repayment_amount": None,
+        "monthly_interest_amount": None,
+        "total_payable_interest": None,
+        "total_interest_payable": None,
+        "total_payable_amount": None,
+        "total_payment": None,
+        "custom_projected_equity": None,
+        "custom_projected_ltv": None,
+    }
+
+    # DCR floor-plan loans are interest-only. Principal is paid at payoff;
+    # this is also the convention used by the custom repayment schedule.
+    if amount and rate:
+        monthly_interest = amount * rate / 1200
+        values.update(
+            {
+                "repayment_amount": monthly_interest,
+                "monthly_repayment_amount": monthly_interest,
+                "monthly_interest_amount": monthly_interest,
+            }
+        )
+        if periods:
+            total_interest = monthly_interest * periods
+            values.update(
+                {
+                    "total_payable_interest": total_interest,
+                    "total_interest_payable": total_interest,
+                    "total_payable_amount": amount + total_interest,
+                    "total_payment": amount + total_interest,
+                }
+            )
+
+    if amount and sales_price:
+        values["custom_projected_equity"] = sales_price - amount
+        values["custom_projected_ltv"] = amount / sales_price * 100
+
+    return values
+
+
+def _doc_has_field(doc, fieldname):
+    """Check a field without making tests or lightweight document doubles brittle."""
+    meta = getattr(doc, "meta", None)
+    if meta is not None and hasattr(meta, "has_field"):
+        try:
+            return bool(meta.has_field(fieldname))
+        except Exception:
+            pass
+
+    # Frappe Documents expose every field through ``get`` even when it is
+    # empty. Small test doubles generally do not, so fall back to accepting the
+    # field; real Documents take the metadata path above.
+    return True
+
+
+def _apply_loan_calculation_values(doc):
+    """Apply calculated aliases to whichever fields exist on ``doc``."""
+    values = _loan_calculation_values(
+        doc.get("loan_amount"),
+        doc.get("rate_of_interest"),
+        doc.get("repayment_periods"),
+        doc.get("custom_projected_sales_price"),
+    )
+    for fieldname, value in values.items():
+        if not _doc_has_field(doc, fieldname):
+            continue
+        if hasattr(doc, "set"):
+            doc.set(fieldname, value)
+        else:
+            setattr(doc, fieldname, value)
+    return values
+
+
 @frappe.whitelist()
 def get_dealer_outstanding_balance(customer):
     """Get total outstanding loan balance for a dealer.
@@ -198,6 +298,10 @@ def get_loan_application_defaults(home_build_request):
         defaults["loan_product"] = frappe.db.get_value(
             "Customer", customer, "default_loan_product"
         )
+        if defaults.get("loan_product"):
+            defaults["rate_of_interest"] = frappe.db.get_value(
+                "Loan Product", defaults["loan_product"], "rate_of_interest"
+            )
     return defaults
 
 
@@ -233,6 +337,10 @@ def validate_loan_application(doc, method):
         hbr = frappe.get_doc("Home Build Request", doc.home_build_request)
         _populate_loan_application_from_hbr(doc, hbr)
     else:
+        # Keep the bottom-of-form preview useful even before an HBR link is
+        # selected. The linked-HBR guard below still applies whenever a link is
+        # present, but calculations should not depend on that workflow step.
+        _apply_loan_calculation_values(doc)
         return
 
     customer = doc.applicant
@@ -266,39 +374,11 @@ def validate_loan_application(doc, method):
         if hbr.factory:
             validate_advance_date(hbr.factory, doc.advance_date_requested)
 
-    sales_price = doc.get("custom_projected_sales_price") or 0
-    rate = doc.get("rate_of_interest") or 0
-    periods = doc.get("repayment_periods") or 0
-
-    # DCR floor-plan loans are interest-only: dealer pays just the
-    # accruing interest each period; principal balloons at payoff.
-    # Override Frappe Lending's stock EMI/amortizing calc so the
-    # Loan Application preview matches what the actual Loan will use
-    # (see dcr/overrides/loan_repayment_schedule.py for the loan-side
-    # interest-only schedule).
-    if rate and loan_amount:
-        monthly_interest = (rate / 100) * loan_amount / 12
-        doc.repayment_amount = monthly_interest
-        if periods:
-            doc.total_payable_interest = monthly_interest * periods
-            doc.total_payable_amount = loan_amount + doc.total_payable_interest
-        else:
-            doc.total_payable_interest = None
-            doc.total_payable_amount = None
-    else:
-        doc.repayment_amount = None
-        doc.total_payable_interest = None
-        doc.total_payable_amount = None
-
-    # Projected equity / LTV — only meaningful when both inputs are set.
-    # Explicitly clear if either becomes empty so a stale calc from a
-    # previous save doesn't stick around.
-    if loan_amount and sales_price:
-        doc.custom_projected_equity = sales_price - loan_amount
-        doc.custom_projected_ltv = (loan_amount / sales_price) * 100
-    else:
-        doc.custom_projected_equity = None
-        doc.custom_projected_ltv = None
+    # DCR floor-plan loans are interest-only: dealer pays just the accruing
+    # interest each period; principal balloons at payoff. Apply the same
+    # calculation aliases used by the Loan form so saved values never depend
+    # on which client-side event happened to fire first.
+    _apply_loan_calculation_values(doc)
 
     from dcr.api.hbr_stage import sync_hbr_stages
 
@@ -318,6 +398,13 @@ def _populate_loan_application_from_hbr(doc, hbr):
         )
         if loan_product:
             doc.set("loan_product", loan_product)
+
+    if doc.get("loan_product") and not doc.get("rate_of_interest"):
+        rate = frappe.db.get_value(
+            "Loan Product", doc.loan_product, "rate_of_interest"
+        )
+        if rate is not None:
+            doc.set("rate_of_interest", rate)
 
     _populate_applicant_contact(doc)
     _populate_applicant_address(doc)
@@ -470,6 +557,7 @@ def on_loan_validate(doc, method):
     and block submission if no active bank account is linked.
     """
     _populate_deal_reference(doc)
+    _apply_loan_calculation_values(doc)
 
     # Block submission without bank account
     if doc.docstatus == 1:
@@ -600,22 +688,29 @@ def get_loan_defaults_from_application(loan_application):
     if not loan_application:
         return {}
 
+    application_fields = [
+        "docstatus",
+        "applicant",
+        "loan_product",
+        "loan_amount",
+        "rate_of_interest",
+        "repayment_method",
+        "repayment_periods",
+        "home_build_request",
+        "home_serial_no",
+        "buyer_name",
+        "factory",
+    ]
+    try:
+        if frappe.get_meta("Loan Application").has_field("custom_projected_sales_price"):
+            application_fields.append("custom_projected_sales_price")
+    except Exception:
+        pass
+
     la = frappe.db.get_value(
         "Loan Application",
         loan_application,
-        [
-            "docstatus",
-            "applicant",
-            "loan_product",
-            "loan_amount",
-            "rate_of_interest",
-            "repayment_method",
-            "repayment_periods",
-            "home_build_request",
-            "home_serial_no",
-            "buyer_name",
-            "factory",
-        ],
+        application_fields,
         as_dict=True,
     )
     if not la:
@@ -630,13 +725,18 @@ def get_loan_defaults_from_application(loan_application):
     home_build_request = la.home_build_request or _infer_hbr_from_loan_application_fields(
         la, la.applicant
     )
+    rate_of_interest = la.get("rate_of_interest")
+    if not rate_of_interest and la.get("loan_product"):
+        rate_of_interest = frappe.db.get_value(
+            "Loan Product", la.get("loan_product"), "rate_of_interest"
+        )
 
     defaults = {
         "loan_application": loan_application,
         "applicant": la.applicant,
         "loan_product": la.loan_product,
         "loan_amount": la.loan_amount,
-        "rate_of_interest": la.rate_of_interest,
+        "rate_of_interest": rate_of_interest,
         "repayment_method": la.repayment_method,
         "repayment_periods": la.repayment_periods,
         "home_build_request": home_build_request,
@@ -644,6 +744,38 @@ def get_loan_defaults_from_application(loan_application):
         "buyer_name": la.buyer_name,
         "factory": la.factory,
     }
+    calculation_values = _loan_calculation_values(
+        la.get("loan_amount"),
+        rate_of_interest,
+        la.get("repayment_periods"),
+        la.get("custom_projected_sales_price"),
+    )
+    # Only pass fields that Loan actually exposes. This keeps the endpoint
+    # compatible with Lending releases that use different total-field names
+    # and avoids sending custom Loan Application fields into new_doc().
+    try:
+        loan_meta = frappe.get_meta("Loan")
+        for fieldname in (
+            "monthly_repayment_amount",
+            "total_interest_payable",
+            "total_payment",
+            "custom_projected_sales_price",
+            "custom_projected_equity",
+            "custom_projected_ltv",
+        ):
+            source_value = (
+                la.get("custom_projected_sales_price")
+                if fieldname == "custom_projected_sales_price"
+                else calculation_values.get(fieldname)
+            )
+            if loan_meta.has_field(fieldname) and source_value is not None:
+                defaults[fieldname] = (
+                    source_value
+                )
+    except Exception:
+        # The endpoint remains useful during an app install before the Loan
+        # controller metadata is warm; validate applies the values server-side.
+        pass
     defaults.update(
         _compute_deal_reference(
             loan_application,
