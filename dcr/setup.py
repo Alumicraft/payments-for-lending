@@ -127,6 +127,8 @@ def after_install():
         ensure_bank_account_ach_fields,
         ensure_supplier_geo_fields,
         ensure_order_hbr_fields,
+        ensure_dealer_portal_fields,
+        ensure_dealer_customer_document_fields,
         ensure_purchase_order_email_fields,
         ensure_payment_entry_calculated_fields,
         ensure_loan_application_field_repairs,
@@ -800,6 +802,132 @@ def ensure_bank_account_types():
 def ensure_purchase_order_hbr_field():
     """Create the Purchase Order link used by HBR create buttons and map status."""
     ensure_order_hbr_fields(["Purchase Order"])
+
+
+def ensure_dealer_portal_fields():
+    """Provision the dealer-facing HBR review state and audit fields.
+
+    Frappe's native ``docstatus`` is intentionally left alone: submitting an
+    HBR locks the record and requires a complete checklist.  Dealers therefore
+    use this separate review state while DCR staff retain the final submission
+    action in Desk.
+    """
+    options = "\n".join(("Draft", "Submitted for Review", "Changes Requested", "Accepted"))
+    fields = [
+        {
+            "fieldname": "custom_portal_status",
+            "label": "Dealer Portal Status",
+            "fieldtype": "Select",
+            "options": options,
+            "default": "Draft",
+            "insert_after": "status",
+        },
+        {
+            "fieldname": "custom_portal_submitted_on",
+            "label": "Dealer Portal Submitted On",
+            "fieldtype": "Datetime",
+            "read_only": 1,
+            "no_copy": 1,
+            "insert_after": "custom_portal_status",
+        },
+        {
+            "fieldname": "custom_portal_submitted_by",
+            "label": "Dealer Portal Submitted By",
+            "fieldtype": "Link",
+            "options": "User",
+            "read_only": 1,
+            "no_copy": 1,
+            "insert_after": "custom_portal_submitted_on",
+        },
+    ]
+
+    changed = False
+    for field in fields:
+        existing = frappe.db.exists(
+            "Custom Field",
+            {"dt": "Home Build Request", "fieldname": field["fieldname"]},
+        )
+        if not existing:
+            frappe.get_doc({"doctype": "Custom Field", "dt": "Home Build Request", **field}).insert(
+                ignore_permissions=True
+            )
+            changed = True
+            continue
+
+        updates = {}
+        if field.get("options") and frappe.db.get_value("Custom Field", existing, "options") != field["options"]:
+            updates["options"] = field["options"]
+        for property_name in ("read_only", "no_copy", "default"):
+            if property_name in field and frappe.db.get_value("Custom Field", existing, property_name) != field[property_name]:
+                updates[property_name] = field[property_name]
+        if updates:
+            frappe.db.set_value("Custom Field", existing, updates)
+            changed = True
+
+    if changed:
+        frappe.clear_cache(doctype="Home Build Request")
+
+
+def ensure_dealer_customer_document_fields():
+    """Ensure the Customer fields used by the dealer portal file area exist.
+
+    Older DCR sites may already have these fields from the original Customer
+    fixture, so this is intentionally idempotent and only creates a missing
+    field.  The portal still checks metadata before offering each upload.
+    """
+    fields = [
+        {
+            "fieldname": "dealer_documents_section",
+            "label": "Dealer Documents",
+            "fieldtype": "Section Break",
+            "insert_after": "customer_group",
+            "depends_on": "eval:doc.customer_group=='Dealer'",
+            "collapsible": 1,
+        },
+        {
+            "fieldname": "dealer_license_copy",
+            "label": "Dealer License",
+            "fieldtype": "Attach",
+            "insert_after": "dealer_documents_section",
+            "depends_on": "eval:doc.customer_group=='Dealer'",
+        },
+        {
+            "fieldname": "sellers_permit_copy",
+            "label": "Seller's Permit",
+            "fieldtype": "Attach",
+            "insert_after": "dealer_license_copy",
+            "depends_on": "eval:doc.customer_group=='Dealer'",
+        },
+        {
+            "fieldname": "w9_copy",
+            "label": "W-9",
+            "fieldtype": "Attach",
+            "insert_after": "sellers_permit_copy",
+            "depends_on": "eval:doc.customer_group=='Dealer'",
+        },
+        {
+            "fieldname": "retailer_application_copy",
+            "label": "Retailer Application",
+            "fieldtype": "Attach",
+            "insert_after": "w9_copy",
+            "depends_on": "eval:doc.customer_group=='Dealer'",
+        },
+    ]
+
+    created = False
+    for field in fields:
+        if frappe.db.exists(
+            "Custom Field",
+            {"dt": "Customer", "fieldname": field["fieldname"]},
+        ):
+            continue
+        frappe.get_doc({"doctype": "Custom Field", "dt": "Customer", **field}).insert(
+            ignore_permissions=True
+        )
+        created = True
+
+    if created:
+        frappe.clear_cache(doctype="Customer")
 
 
 def ensure_order_hbr_fields(only_doctypes=None):

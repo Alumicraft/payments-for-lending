@@ -27,6 +27,12 @@ class TestDcrEmailFormatting(unittest.TestCase):
         for field in ["quote_number", "serial_number", "payment_type", "po_amount"]:
             self.assertIn(f'"{field}"', email_api)
 
+    def test_dealer_welcome_includes_the_portal_link_in_shared_email_data(self):
+        email_api = (ROOT / "dcr/api/dcr_email.py").read_text()
+
+        self.assertIn('template="dealer-welcome"', email_api)
+        self.assertIn('"portal_url": frappe.utils.get_url("/portal")', email_api)
+
 
 if __name__ == "__main__":
     unittest.main()

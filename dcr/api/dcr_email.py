@@ -338,6 +338,7 @@ def send_dealer_welcome(customer_name, account_id, to_email, reference_name=None
         extra_data={
             "customer_name": customer_name,
             "dcr_account_no": account_id,
+            "portal_url": frappe.utils.get_url("/portal"),
         },
     )
 

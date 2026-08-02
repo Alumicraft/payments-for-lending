@@ -1,0 +1,152 @@
+{% extends "templates/web.html" %}
+
+{% block title %}Dealer Portal{% endblock %}
+
+{% block head_include %}
+<link rel="stylesheet" href="/assets/dcr/css/dealer_portal.css?v=20260801-6">
+{% endblock %}
+
+{% block page_content %}
+{% if is_guest %}
+<main class="dcr-portal-login">
+    <div class="dcr-login-card">
+        <div class="dcr-brand-mark">DCR</div>
+        <p class="dcr-eyebrow">Dealer Capital Resources</p>
+        <h1>Your dealer workspace</h1>
+        <p class="dcr-muted">Sign in to review your home requests, upload documents, and complete the next step in each deal.</p>
+        <a class="dcr-primary-button" href="{{ login_url }}">Sign in to continue</a>
+    </div>
+</main>
+{% else %}
+<div id="dcr-dealer-portal" class="dcr-portal-shell" data-csrf-token="{{ csrf_token }}">
+    <header class="dcr-portal-header">
+            <a class="dcr-wordmark" href="/portal" aria-label="Dealer portal home">
+            <span class="dcr-brand-mark dcr-brand-mark-small">DCR</span>
+            <span>Dealer Capital Resources</span>
+        </a>
+        <nav class="dcr-portal-nav" aria-label="Dealer portal navigation">
+            <button class="dcr-nav-button is-active" data-view="dashboard">Overview</button>
+            <button class="dcr-nav-button" data-view="documents">Documents</button>
+            <button class="dcr-nav-button" data-view="account">Account</button>
+        </nav>
+        <a class="dcr-signout" href="/logout">Sign out</a>
+    </header>
+
+    <div class="dcr-portal-content">
+        <div id="dcr-portal-alert" class="dcr-alert" role="alert" hidden></div>
+        <div id="dcr-portal-loading" class="dcr-loading" aria-live="polite">
+            <span class="dcr-spinner" aria-hidden="true"></span>
+            Loading your dealer workspace…
+        </div>
+
+        <main id="dcr-portal-app" hidden>
+            <section id="dcr-view-dashboard" data-view-panel="dashboard">
+                <div class="dcr-hero-row">
+                    <div>
+                        <p class="dcr-eyebrow">Dealer workspace</p>
+                        <h1>Good morning, <span data-customer-label>there</span>.</h1>
+                        <p class="dcr-muted">Keep each request moving from first documents to delivery.</p>
+                    </div>
+                    <button class="dcr-primary-button" data-action="new-request">Start a home request</button>
+                </div>
+
+                <div class="dcr-stat-grid" data-stats></div>
+                <div class="dcr-section-heading">
+                    <div>
+                        <p class="dcr-eyebrow">Your pipeline</p>
+                        <h2>Active home requests</h2>
+                    </div>
+                    <span class="dcr-muted dcr-small" data-deal-count></span>
+                </div>
+                <div id="dcr-deal-grid" class="dcr-deal-grid"></div>
+            </section>
+
+            <section id="dcr-view-deal" data-view-panel="deal" hidden>
+                <button class="dcr-back-button" data-action="back-dashboard">← Back to overview</button>
+                <div id="dcr-deal-detail"></div>
+            </section>
+
+            <section id="dcr-view-documents" data-view-panel="documents" hidden>
+                <div class="dcr-section-heading dcr-section-heading-first">
+                    <div>
+                        <p class="dcr-eyebrow">Keep your file current</p>
+                        <h1>Documents</h1>
+                        <p class="dcr-muted">Upload clear PDFs or images. DCR will review them and let you know if anything needs attention.</p>
+                    </div>
+                </div>
+                <div class="dcr-subsection">
+                    <div class="dcr-section-heading"><h2>Dealer onboarding</h2></div>
+                    <div id="dcr-onboarding-documents" class="dcr-document-grid"></div>
+                </div>
+                <div class="dcr-subsection">
+                    <div class="dcr-section-heading"><h2>Deal checklists</h2></div>
+                    <div id="dcr-checklist-documents"></div>
+                </div>
+            </section>
+
+            <section id="dcr-view-account" data-view-panel="account" hidden>
+                <div class="dcr-section-heading dcr-section-heading-first">
+                    <div>
+                        <p class="dcr-eyebrow">Account and actions</p>
+                        <h1>Account</h1>
+                        <p class="dcr-muted">Manage secure payment setup and documents waiting for your signature.</p>
+                    </div>
+                </div>
+                <div class="dcr-account-grid">
+                    <article class="dcr-panel">
+                        <div class="dcr-panel-heading"><div><p class="dcr-eyebrow">Auto-pay</p><h2>Bank connection</h2></div><span class="dcr-icon-badge">$</span></div>
+                        <div id="dcr-ach-status"></div>
+                    </article>
+                    <article class="dcr-panel">
+                        <div class="dcr-panel-heading"><div><p class="dcr-eyebrow">Signatures</p><h2>Documents to sign</h2></div><span class="dcr-icon-badge">✓</span></div>
+                        <div id="dcr-signatures"></div>
+                    </article>
+                </div>
+            </section>
+
+            <section id="dcr-view-request" data-view-panel="request" hidden>
+                <button class="dcr-back-button" data-action="back-dashboard">← Back to overview</button>
+                <div class="dcr-form-card">
+                    <div class="dcr-section-heading dcr-section-heading-first">
+                        <div><p class="dcr-eyebrow">New request</p><h1 data-request-title>Start a home request</h1><p class="dcr-muted" data-request-description>Save a draft as you gather details. Submit it to DCR for review when you are ready.</p></div>
+                    </div>
+                    <form id="dcr-hbr-form">
+                        <div class="dcr-form-grid">
+                            <label>Home type<select name="home_type" required><option value="">Choose one</option><option>Spec</option><option>Customer Sold</option></select></label>
+                            <label>Financing<select name="financing_type" required><option value="">Choose one</option><option>Cash</option><option>Floored</option></select></label>
+                            <label>Property type<select name="property_type" required><option value="">Choose one</option><option>Park</option><option>Private Property</option></select></label>
+                            <label>Assigned factory<select name="factory" data-factory-options required><option value="">Loading factories…</option></select></label>
+                            <label>Floorplan<input name="floor_plan" maxlength="140"></label>
+                            <label>Home serial number<input name="home_serial_no" maxlength="140"></label>
+                            <label>Quoted amount<input name="home_invoice_plus_freight" type="number" min="0" step="0.01"></label>
+                            <label>Delivery address<input name="delivery_address" maxlength="140"></label>
+                            <label>Address line 2<input name="address_line_2" maxlength="140"></label>
+                            <label>City<input name="city" maxlength="80"></label>
+                            <label>State<input name="state" maxlength="40"></label>
+                            <label>ZIP<input name="zip" maxlength="20"></label>
+                            <label>Community name<input name="community_name" maxlength="140"></label>
+                            <label>Space number<input name="space_number" maxlength="40"></label>
+                            <label class="dcr-checkbox-field"><input name="gated" type="checkbox"> Gated community</label>
+                            <label>Access code<input name="access_code" maxlength="80"></label>
+                            <label>Dealer contact<input name="contact_name" maxlength="140"></label>
+                            <label>Contact phone<input name="contact_phone" maxlength="40"></label>
+                            <label>Monthly space rent<input name="space_rent" type="number" min="0" step="0.01"></label>
+                            <label>End-buyer lender<input name="end_buyer_lender" maxlength="140"></label>
+                            <label>Customer deposit<input name="customer_deposit" type="number" min="0" step="0.01"></label>
+                            <label>Selling price<input name="selling_price" type="number" min="0" step="0.01"></label>
+                            <label>Escrow contact<input name="escrow_contact" maxlength="140"></label>
+                            <label>Escrow phone<input name="escrow_phone" maxlength="40"></label>
+                            <label>Escrow number<input name="escrow_number" maxlength="80"></label>
+                            <label>Broker contact<input name="broker_contact" maxlength="140"></label>
+                            <label>Broker phone<input name="broker_phone" maxlength="40"></label>
+                        </div>
+                        <div class="dcr-form-actions"><button type="button" class="dcr-secondary-button" data-action="back-dashboard">Cancel</button><button type="submit" class="dcr-primary-button">Save draft</button></div>
+                    </form>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+<script src="/assets/dcr/js/dealer_portal.js?v=20260801-6"></script>
+{% endif %}
+{% endblock %}

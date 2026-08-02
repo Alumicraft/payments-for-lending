@@ -11,6 +11,24 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 
+class TestDealerPortalClientScript(unittest.TestCase):
+
+    def test_portal_uses_scoped_api_and_review_actions(self):
+        script = (ROOT / "dcr/public/js/dealer_portal.js").read_text()
+        page = (ROOT / "dcr/www/dealer_portal.html").read_text()
+        css = (ROOT / "dcr/public/css/dealer_portal.css").read_text()
+
+        self.assertIn("dcr.api.dealer_portal.", script)
+        self.assertIn('api("get_portal_context")', script)
+        self.assertIn('api("submit_hbr_for_review"', script)
+        self.assertIn('api("save_hbr_draft"', script)
+        self.assertIn('data-action="edit-request"', script)
+        self.assertIn("upload_document", script)
+        self.assertIn('data-csrf-token="{{ csrf_token }}"', page)
+        self.assertIn("dealer_portal.css", page)
+        self.assertIn("dcr-portal-shell", css)
+
+
 class TestHomeBuildRequestClientScript(unittest.TestCase):
 
     def test_cash_deals_do_not_show_create_loan_application_button(self):

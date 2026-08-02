@@ -11,7 +11,7 @@ boot_session = "dcr.api.boot.boot_session"
 # Frappe Cloud serves /assets files with a long immutable browser cache.
 # Keep these explicit URLs versioned so deployed client fixes are fetched
 # without requiring users to hard-refresh stale browser caches.
-DCR_ASSET_VERSION = "20260801-4"
+DCR_ASSET_VERSION = "20260801-6"
 
 
 def versioned_asset(path):
@@ -202,4 +202,7 @@ scheduler_events = {
 website_route_rules = [
     {"from_route": "/plaid-setup", "to_route": "plaid_setup"},
     {"from_route": "/docusign-complete", "to_route": "docusign_complete"},
+    {"from_route": "/portal", "to_route": "dealer_portal"},
+    # Keep the original route alive for emailed links and existing bookmarks.
+    {"from_route": "/dealer-portal", "to_route": "dealer_portal"},
 ]

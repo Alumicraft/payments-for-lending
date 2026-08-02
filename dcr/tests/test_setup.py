@@ -606,6 +606,7 @@ class TestPackagingConfig(unittest.TestCase):
     def test_pyproject_packages_desk_assets_for_frappe_cloud(self):
         pyproject = (ROOT / "pyproject.toml").read_text()
         setup_py = (ROOT / "setup.py").read_text()
+        setup = (ROOT / "dcr/setup.py").read_text()
         manifest = (ROOT / "MANIFEST.in").read_text()
         hooks = (ROOT / "dcr/hooks.py").read_text()
 
@@ -622,7 +623,14 @@ class TestPackagingConfig(unittest.TestCase):
         self.assertIn('"dcr/dashboard_chart_source/*/*.js"', setup_py)
         self.assertIn("recursive-include dcr/public *.css *.js *.html *.png", manifest)
         self.assertIn("recursive-include dcr/dcr/dashboard_chart_source *.json *.js", manifest)
-        self.assertIn('DCR_ASSET_VERSION = "20260801-4"', hooks)
+        self.assertIn('DCR_ASSET_VERSION = "20260801-6"', hooks)
+        self.assertIn('{"from_route": "/portal", "to_route": "dealer_portal"}', hooks)
+        self.assertIn('{"from_route": "/dealer-portal", "to_route": "dealer_portal"}', hooks)
+        self.assertIn("ensure_dealer_portal_fields", setup)
+        self.assertIn("ensure_dealer_customer_document_fields", setup)
+        self.assertIn('"custom_portal_status"', setup)
+        self.assertIn('"Submitted for Review"', setup)
+        self.assertIn('"dealer_license_copy"', setup)
         self.assertIn('versioned_asset("/assets/dcr/js/sidebar_fix.js")', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/hbr_dashboard_plus_patch_20260525_10.js")', hooks)
         self.assertIn('versioned_asset("/assets/dcr/js/loan_list_context_patch_20260525_14.js")', hooks)
