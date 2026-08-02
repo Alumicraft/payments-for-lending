@@ -15,6 +15,7 @@
 frappe.ui.form.on('Loan', {
     refresh: function(frm) {
         if (frm.is_new()) {
+            ensure_loan_preview_defaults(frm);
             prefill_deal_reference(frm);
             calculate_loan_preview(frm);
             return;
@@ -77,6 +78,23 @@ frappe.ui.form.on('Loan', {
 });
 
 
+function ensure_loan_preview_defaults(frm) {
+    // DCR floor-plan loans use a 12-period interest-only term. Directly
+    // opening Add Loan does not inherit Loan Application defaults, so seed
+    // the same tenure used by the mapped workflow before calculating.
+    if (!frm.doc.repayment_periods && frm.fields_dict.repayment_periods) {
+        frm.set_value('repayment_periods', 12);
+    }
+
+    // Lending may carry the mapped principal in a hidden loan_amount field,
+    // while DCR shows qualifying_amount. Keep the visible input aligned so
+    // operators do not see $0 beside totals calculated from another value.
+    if (!frm.doc.qualifying_amount && frm.doc.loan_amount && frm.fields_dict.qualifying_amount) {
+        frm.set_value('qualifying_amount', frm.doc.loan_amount);
+    }
+}
+
+
 function prefill_deal_reference(frm) {
     // When a new Loan form opens (from "Create Loan" on a Loan Application),
     // fill in deal-reference fields right away so the user sees them before
@@ -108,7 +126,12 @@ function calculate_loan_preview(frm) {
     // has already persisted them, so do not dirty a submitted form on refresh.
     if (frm.doc.docstatus && frm.doc.docstatus !== 0) return;
 
-    var amount = parseFloat(frm.doc.loan_amount || frm.doc.qualifying_amount || 0);
+    // On Loan, qualifying_amount is the visible principal field. Do not fall
+    // back to a stale hidden loan_amount when an operator clears or zeroes it.
+    var amount_value = frm.fields_dict.qualifying_amount
+        ? frm.doc.qualifying_amount
+        : frm.doc.loan_amount;
+    var amount = parseFloat(amount_value || 0);
     var rate = parseFloat(frm.doc.rate_of_interest || 0);
     var periods = parseInt(frm.doc.repayment_periods || 0, 10);
     var sales_price = parseFloat(frm.doc.custom_projected_sales_price || 0);

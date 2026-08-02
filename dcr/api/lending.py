@@ -3,6 +3,9 @@ from frappe import _
 from frappe.utils import getdate, add_days, today
 
 
+DEFAULT_REPAYMENT_PERIODS = 12
+
+
 def _as_int(value):
     """Return a safe integer for optional Lending tenure values."""
     try:
@@ -90,7 +93,15 @@ def _apply_loan_calculation_values(doc):
     # Lending's Loan DocType stores the principal as ``qualifying_amount``
     # on some releases, while Loan Application uses ``loan_amount``. Keep
     # both workflows on the same interest-only calculation path.
-    loan_amount = doc.get("loan_amount") or doc.get("qualifying_amount")
+    # Loan exposes ``qualifying_amount`` as the editable principal while the
+    # stock ``loan_amount`` field can retain the Loan Application amount in a
+    # hidden field. Prefer the visible value on Loan so edits recalculate the
+    # totals the operator is looking at. Loan Application keeps loan_amount as
+    # its authoritative input.
+    if doc.get("doctype") == "Loan":
+        loan_amount = doc.get("qualifying_amount") or doc.get("loan_amount")
+    else:
+        loan_amount = doc.get("loan_amount") or doc.get("qualifying_amount")
     values = _loan_calculation_values(
         loan_amount,
         doc.get("rate_of_interest"),
@@ -561,6 +572,14 @@ def on_loan_validate(doc, method):
     and block submission if no active bank account is linked.
     """
     _populate_deal_reference(doc)
+    if not _as_int(doc.get("repayment_periods")):
+        doc.set("repayment_periods", DEFAULT_REPAYMENT_PERIODS)
+    if (
+        _doc_has_field(doc, "qualifying_amount")
+        and not doc.get("qualifying_amount")
+        and doc.get("loan_amount")
+    ):
+        doc.set("qualifying_amount", doc.get("loan_amount"))
     _apply_loan_calculation_values(doc)
 
     # Block submission without bank account
@@ -760,6 +779,7 @@ def get_loan_defaults_from_application(loan_application):
     try:
         loan_meta = frappe.get_meta("Loan")
         for fieldname in (
+            "qualifying_amount",
             "monthly_repayment_amount",
             "total_interest_payable",
             "total_payment",
@@ -768,9 +788,13 @@ def get_loan_defaults_from_application(loan_application):
             "custom_projected_ltv",
         ):
             source_value = (
-                la.get("custom_projected_sales_price")
-                if fieldname == "custom_projected_sales_price"
-                else calculation_values.get(fieldname)
+                la.get("loan_amount")
+                if fieldname == "qualifying_amount"
+                else (
+                    la.get("custom_projected_sales_price")
+                    if fieldname == "custom_projected_sales_price"
+                    else calculation_values.get(fieldname)
+                )
             )
             if loan_meta.has_field(fieldname) and source_value is not None:
                 defaults[fieldname] = (

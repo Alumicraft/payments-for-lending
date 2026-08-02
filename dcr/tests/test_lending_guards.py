@@ -327,6 +327,7 @@ class TestLoanDefaults(unittest.TestCase):
         self.assertEqual(defaults["rate_of_interest"], 12)
         self.assertEqual(defaults["repayment_method"], "Repay Over Number of Periods")
         self.assertEqual(defaults["repayment_periods"], 12)
+        self.assertEqual(defaults["qualifying_amount"], 25000)
         self.assertEqual(defaults["home_build_request"], "ACC-HBR-2026-00011")
         self.assertEqual(defaults["home_serial_no"], "E2E-20260525-001")
         self.assertEqual(defaults["factory"], "Champion Home Builders")
@@ -347,6 +348,44 @@ class TestLoanCalculations(unittest.TestCase):
 
         _apply_loan_calculation_values(doc)
 
+        self.assertEqual(doc.total_interest_payable, 26400)
+        self.assertEqual(doc.total_payment, 246400)
+
+    def test_loan_calculation_prefers_visible_qualifying_amount(self):
+        from dcr.api.lending import _apply_loan_calculation_values
+
+        doc = _Doc(
+            doctype="Loan",
+            loan_amount=220000,
+            qualifying_amount=100000,
+            rate_of_interest=12,
+            repayment_periods=12,
+            custom_projected_sales_price=None,
+        )
+
+        _apply_loan_calculation_values(doc)
+
+        self.assertEqual(doc.total_interest_payable, 12000)
+        self.assertEqual(doc.total_payment, 112000)
+
+    @patch("dcr.api.lending._populate_deal_reference")
+    def test_loan_validate_defaults_visible_amount_and_tenure(self, mock_reference):
+        from dcr.api.lending import on_loan_validate
+
+        doc = _Doc(
+            doctype="Loan",
+            docstatus=0,
+            loan_amount=220000,
+            qualifying_amount=None,
+            rate_of_interest=12,
+            repayment_periods=0,
+            custom_projected_sales_price=None,
+        )
+
+        on_loan_validate(doc, "validate")
+
+        self.assertEqual(doc.qualifying_amount, 220000)
+        self.assertEqual(doc.repayment_periods, 12)
         self.assertEqual(doc.total_interest_payable, 26400)
         self.assertEqual(doc.total_payment, 246400)
 
