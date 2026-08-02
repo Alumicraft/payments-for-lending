@@ -76,7 +76,9 @@ class TestHomeBuildRequestClientScript(unittest.TestCase):
         hooks = (ROOT / "dcr/hooks.py").read_text()
 
         self.assertIn('[data-theme="dark"] .kanban .kanban-card:not(.new-card-area)', css)
-        self.assertIn("background-color: #ffffff !important", css)
+        self.assertIn("background-color: var(--card-bg, #171717) !important", css)
+        self.assertIn("color: var(--text-color, #f8f8f8) !important", css)
+        self.assertNotIn("background-color: #ffffff", css)
         self.assertIn('[data-theme="dark"] .body-sidebar .standard-sidebar-item .item-anchor', css)
         self.assertIn("var(--ink-gray-9, #f8f8f8)", css)
         self.assertNotIn('[data-theme="light"]', css)
