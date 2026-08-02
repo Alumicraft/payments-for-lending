@@ -11,7 +11,7 @@ boot_session = "dcr.api.boot.boot_session"
 # Frappe Cloud serves /assets files with a long immutable browser cache.
 # Keep these explicit URLs versioned so deployed client fixes are fetched
 # without requiring users to hard-refresh stale browser caches.
-DCR_ASSET_VERSION = "20260801-6"
+DCR_ASSET_VERSION = "20260802-1"
 
 
 def versioned_asset(path):
@@ -39,6 +39,7 @@ app_include_css = [
     versioned_asset("/assets/dcr/css/workspace_fullwidth.css"),
     versioned_asset("/assets/dcr/css/map.css"),
     versioned_asset("/assets/dcr/css/dcr_workspace.css"),
+    versioned_asset("/assets/dcr/css/dark_mode_contrast.css"),
 ]
 
 override_whitelisted_methods = {

@@ -1,0 +1,44 @@
+/*
+ * DCR dark-mode contrast repairs.
+ *
+ * Keep this file narrowly scoped to dark mode. Frappe v16 maps Kanban cards
+ * to gray-800 and sidebar navigation links to ink-gray-6; both become muted
+ * against DCR's near-black desk surface. Light mode keeps Frappe's defaults.
+ */
+
+/* Kanban cards should read as distinct white records inside colored columns. */
+[data-theme="dark"] .kanban .kanban-card:not(.new-card-area) {
+    background-color: #ffffff !important;
+    border-color: #d8d8d8 !important;
+    color: #171717 !important;
+}
+
+[data-theme="dark"] .kanban .kanban-card:not(.new-card-area) .kanban-card-title,
+[data-theme="dark"] .kanban .kanban-card:not(.new-card-area) .kanban-card-title a,
+[data-theme="dark"] .kanban .kanban-card:not(.new-card-area) .kanban-title,
+[data-theme="dark"] .kanban .kanban-card:not(.new-card-area) .kanban-card-doc,
+[data-theme="dark"] .kanban .kanban-card:not(.new-card-area) .kanban-card-doc a {
+    color: #171717 !important;
+}
+
+[data-theme="dark"] .kanban .kanban-card:not(.new-card-area) .text-muted,
+[data-theme="dark"] .kanban .kanban-card:not(.new-card-area) .dcr-hbr-number {
+    color: #595959 !important;
+}
+
+[data-theme="dark"] .kanban .kanban-card:not(.new-card-area) .icon use,
+[data-theme="dark"] .kanban .kanban-card:not(.new-card-area) .es-icon use {
+    stroke: #595959 !important;
+}
+
+[data-theme="dark"] .kanban .kanban-card:not(.new-card-area):hover {
+    border-color: #b8b8b8 !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18),
+                0 4px 12px rgba(0, 0, 0, 0.14) !important;
+}
+
+/* Restore strong contrast for workspace and section navigation labels. */
+[data-theme="dark"] .body-sidebar .standard-sidebar-item .item-anchor,
+[data-theme="dark"] .body-sidebar .standard-sidebar-item .sidebar-item-label {
+    color: var(--ink-gray-9, #f8f8f8) !important;
+}

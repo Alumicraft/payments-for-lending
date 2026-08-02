@@ -71,6 +71,20 @@ class TestHomeBuildRequestClientScript(unittest.TestCase):
         self.assertIn('versioned_asset("/assets/dcr/js/hbr_kanban_lock.js")', hooks)
         self.assertIn("dcr.api.kanban.update_order_for_single_card", hooks)
 
+    def test_dark_mode_restores_kanban_and_sidebar_contrast(self):
+        css = (ROOT / "dcr/public/css/dark_mode_contrast.css").read_text()
+        hooks = (ROOT / "dcr/hooks.py").read_text()
+
+        self.assertIn('[data-theme="dark"] .kanban .kanban-card:not(.new-card-area)', css)
+        self.assertIn("background-color: #ffffff !important", css)
+        self.assertIn('[data-theme="dark"] .body-sidebar .standard-sidebar-item .item-anchor', css)
+        self.assertIn("var(--ink-gray-9, #f8f8f8)", css)
+        self.assertNotIn('[data-theme="light"]', css)
+        self.assertIn(
+            'versioned_asset("/assets/dcr/css/dark_mode_contrast.css")',
+            hooks,
+        )
+
     def test_cash_deals_keep_lending_connections_hidden_after_async_render(self):
         script = (ROOT / "dcr/public/js/home_build_request.js").read_text()
 
