@@ -7,17 +7,6 @@
 {% endblock %}
 
 {% block page_content %}
-{% if is_guest %}
-<main class="dcr-portal-login">
-    <div class="dcr-login-card">
-        <div class="dcr-brand-mark">DCR</div>
-        <p class="dcr-eyebrow">Dealer Capital Resources</p>
-        <h1>Your dealer workspace</h1>
-        <p class="dcr-muted">Sign in to review your home requests, upload documents, and complete the next step in each deal.</p>
-        <a class="dcr-primary-button" href="{{ login_url }}">Sign in to continue</a>
-    </div>
-</main>
-{% else %}
 <div id="dcr-dealer-portal" class="dcr-portal-shell" data-csrf-token="{{ csrf_token }}">
     <header class="dcr-portal-header">
             <a class="dcr-wordmark" href="/portal" aria-label="Dealer portal home">
@@ -148,5 +137,4 @@
     </div>
 </div>
 <script src="/assets/dcr/js/dealer_portal.js?v=20260801-6"></script>
-{% endif %}
 {% endblock %}

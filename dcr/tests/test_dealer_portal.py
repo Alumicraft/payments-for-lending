@@ -5,6 +5,41 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 
+class TestDealerPortalPage(unittest.TestCase):
+
+    @patch("dcr.www.dealer_portal.frappe")
+    def test_guest_goes_directly_to_frappe_login(self, mock_frappe):
+        from dcr.www.dealer_portal import get_context
+
+        class Redirect(Exception):
+            pass
+
+        mock_frappe.Redirect = Redirect
+        mock_frappe.session.user = "Guest"
+
+        with self.assertRaises(Redirect):
+            get_context(MagicMock())
+
+        self.assertEqual(
+            mock_frappe.local.flags.redirect_location,
+            "/login?redirect-to=/portal",
+        )
+
+    @patch("dcr.www.dealer_portal.frappe")
+    def test_signed_in_user_renders_portal(self, mock_frappe):
+        from dcr.www.dealer_portal import get_context
+
+        mock_frappe.session.user = "dealer@example.test"
+        mock_frappe.session.csrf_token = "csrf-test"
+        context = MagicMock()
+
+        get_context(context)
+
+        self.assertEqual(context.title, "Dealer Portal")
+        self.assertEqual(context.portal_user, "dealer@example.test")
+        self.assertEqual(context.csrf_token, "csrf-test")
+
+
 class TestDealerPortalIdentity(unittest.TestCase):
 
     @patch("dcr.api.dealer_portal.frappe")

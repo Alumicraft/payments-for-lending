@@ -7,8 +7,10 @@ no_cache = 1
 
 
 def get_context(context):
+    if frappe.session.user in (None, "Guest", "guest"):
+        frappe.local.flags.redirect_location = "/login?redirect-to=/portal"
+        raise frappe.Redirect
+
     context.title = "Dealer Portal"
     context.portal_user = frappe.session.user
-    context.is_guest = frappe.session.user in (None, "Guest", "guest")
-    context.login_url = "/login?redirect-to=/portal"
     context.csrf_token = getattr(frappe.session, "csrf_token", "")
