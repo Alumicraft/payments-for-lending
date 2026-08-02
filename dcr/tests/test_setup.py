@@ -625,7 +625,7 @@ class TestPackagingConfig(unittest.TestCase):
         self.assertIn("recursive-include dcr/dcr/dashboard_chart_source *.json *.js", manifest)
         self.assertIn('DCR_ASSET_VERSION = "20260801-6"', hooks)
         self.assertIn('{"from_route": "/portal", "to_route": "dealer_portal"}', hooks)
-        self.assertIn('{"from_route": "/dealer-portal", "to_route": "dealer_portal"}', hooks)
+        self.assertNotIn('"from_route": "/dealer-portal"', hooks)
         self.assertIn("ensure_dealer_portal_fields", setup)
         self.assertIn("ensure_dealer_customer_document_fields", setup)
         self.assertIn('"custom_portal_status"', setup)

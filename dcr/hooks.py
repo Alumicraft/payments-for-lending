@@ -203,6 +203,4 @@ website_route_rules = [
     {"from_route": "/plaid-setup", "to_route": "plaid_setup"},
     {"from_route": "/docusign-complete", "to_route": "docusign_complete"},
     {"from_route": "/portal", "to_route": "dealer_portal"},
-    # Keep the original route alive for emailed links and existing bookmarks.
-    {"from_route": "/dealer-portal", "to_route": "dealer_portal"},
 ]
