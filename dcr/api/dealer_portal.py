@@ -577,8 +577,13 @@ def save_hbr_draft(payload=None, name=None):
     if name:
         hbr = _get_owned_hbr(name, customer)
         _require_editable_hbr(hbr)
+        assigned_factory = (
+            payload["factory"]
+            if "factory" in payload
+            else _value(hbr, "factory")
+        )
         _require_active_factory(
-            _value(customer, "name"), payload.get("factory") or _value(hbr, "factory")
+            _value(customer, "name"), assigned_factory
         )
         _validate_portal_serial(payload.get("home_serial_no"), name)
         for fieldname, value in payload.items():

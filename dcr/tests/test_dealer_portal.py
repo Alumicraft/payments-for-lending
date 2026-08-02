@@ -103,6 +103,33 @@ class TestDealerPortalHBRWorkflow(unittest.TestCase):
         hbr.insert.assert_called_once_with(ignore_permissions=True)
         mock_factory.assert_called_once_with("DEALER-001", "FACTORY-001")
 
+    @patch("dcr.api.dealer_portal._serialize_hbr", return_value={"name": "HBR-001"})
+    @patch("dcr.api.dealer_portal._require_active_factory")
+    @patch("dcr.api.dealer_portal.get_current_dealer_customer")
+    @patch("dcr.api.dealer_portal._get_owned_hbr")
+    def test_existing_draft_cannot_clear_assigned_factory(
+        self,
+        mock_owned_hbr,
+        mock_customer,
+        mock_factory,
+        mock_serialize,
+    ):
+        from dcr.api.dealer_portal import save_hbr_draft
+
+        mock_customer.return_value = self._customer()
+        mock_owned_hbr.return_value = SimpleNamespace(
+            docstatus=0,
+            custom_portal_status="Draft",
+            factory="FACTORY-001",
+            name="HBR-001",
+        )
+        mock_factory.side_effect = ValueError
+
+        with self.assertRaises(ValueError):
+            save_hbr_draft(payload='{"factory":""}', name="HBR-001")
+
+        mock_factory.assert_called_once_with("DEALER-001", "")
+
     @patch("dcr.api.dealer_portal.frappe")
     def test_arbitrary_customer_field_is_rejected(self, mock_frappe):
         from dcr.api.dealer_portal import _parse_payload
