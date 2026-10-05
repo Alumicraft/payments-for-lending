@@ -111,6 +111,7 @@
 .dcr-primary-button:hover { background: var(--dcr-green-dark); box-shadow: 0 10px 24px rgba(20, 122, 97, .24); color: #fff; transform: translateY(-1px); }
 .dcr-secondary-button { background: #fff; border: 1px solid var(--dcr-line); color: var(--dcr-ink); }
 .dcr-secondary-button:hover { border-color: var(--dcr-green); color: var(--dcr-green-dark); }
+a.dcr-primary-button, a.dcr-secondary-button { text-decoration: none; }
 
 .dcr-stat-grid { display: grid; gap: 14px; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 58px; }
 .dcr-stat-card,

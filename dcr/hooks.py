@@ -44,6 +44,8 @@ app_include_css = [
 ]
 
 override_whitelisted_methods = {
+    "frappe.website.doctype.web_form.web_form.accept": "dcr.api.dealer_web_form.accept",
+    "frappe.website.doctype.web_form.web_form.get_form_data": "dcr.api.dealer_web_form.get_form_data",
     "frappe.desk.doctype.desktop_layout.desktop_layout.get_layout": "dcr.api.boot.get_layout_with_icons",
     "frappe.desk.doctype.workspace.workspace.save_page": "dcr.api.workspace.save_page",
     "frappe.desk.doctype.kanban_board.kanban_board.update_order": "dcr.api.kanban.update_order",
@@ -187,6 +189,7 @@ override_doctype_dashboards = {
 }
 
 override_doctype_class = {
+    "Web Form": "dcr.overrides.dealer_web_form.DealerWebForm",
     "Loan Demand": "dcr.overrides.loan_demand.CustomLoanDemand",
     "Process Loan Demand": "dcr.overrides.process_loan_demand.CustomProcessLoanDemand",
     "Loan Repayment": "dcr.overrides.loan_repayment.CustomLoanRepayment",

@@ -1,0 +1,24 @@
+.dcr-native-hbr {
+    margin: 0 auto;
+    max-width: 1100px;
+    padding: 0 24px 48px;
+    color: var(--dcr-ink);
+}
+.dcr-native-hbr .web-form-container { margin: 0; }
+.dcr-native-hbr .web-form-title h1 { white-space: normal; }
+.dcr-native-hbr .web-form-introduction { color: var(--dcr-muted); }
+.dcr-native-hbr .web-form {
+    border: 1px solid var(--dcr-line);
+    border-radius: 12px;
+    background: var(--dcr-card);
+}
+.dcr-native-hbr .btn-primary {
+    background: var(--dcr-green);
+    border-color: var(--dcr-green);
+}
+.dcr-native-hbr .btn-primary:hover { background: var(--dcr-green-dark); }
+@media (max-width: 600px) {
+    .dcr-native-hbr { padding: 0 16px 32px; }
+    .dcr-native-hbr .web-form { padding: 16px; }
+    .dcr-native-hbr .web-form-title { min-width: 0; }
+}
