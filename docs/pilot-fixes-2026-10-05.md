@@ -1,6 +1,6 @@
 # October 5 pilot fix batch
 
-This branch prepares source changes for the October 6 controlled pilot. It has not been deployed, does not configure providers, and does not send email or initiate payments.
+This branch prepares source changes for the October 6 controlled pilot. The source changes are deployed. Hosted API and UI acceptance now covers the intake, security and preview paths described below; provider delivery and financial posting remain separate checks. See the current delivery checklist and local hosted receipt.
 
 ## Changes
 

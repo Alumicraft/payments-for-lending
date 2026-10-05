@@ -53,7 +53,7 @@ Move all eight repositories from `Alumicraft` to `American-Signal-Works`, keepin
 
 **Current readiness:** the default account `Buddalish` owns/administers ASW and has source push access. A second, already-connected account, **Alumicraft**, was then discovered and verified to have **Admin on all eight source repositories**. Source Admin is therefore available; the default global GitHub account was not switched. The source namespace is a personal User account, not an organization.
 
-**Current execution blocker:** ASW's installed GitHub Apps list contains no **Frappe Cloud** installation. Vercel is installed with selected-repository access. Connect [Frappe Cloud](https://github.com/apps/frappe-cloud) to ASW, grant the destination repositories access, and verify the Cloud source associations before transferring. The source-owner account's permission to create repositories in ASW also needs confirmation; GitHub requires both source Admin and destination creation permission. The member lookup returned 404/scope errors, so it did not establish membership. No transfers or membership invitations were attempted. Browser control is prohibited by the user and there is no independent Cloud API credential in this task.
+**Current execution blocker:** ASW's installed GitHub Apps list contains no **Frappe Cloud** installation. Vercel is installed with selected-repository access. Connect [Frappe Cloud](https://github.com/apps/frappe-cloud) to ASW, grant the destination repositories access, and verify the Cloud source associations before transferring. The source-owner account's permission to create repositories in ASW also needs confirmation; GitHub requires both source Admin and destination creation permission. The member lookup returned 404/scope errors, so it did not establish membership. No transfers or membership invitations were attempted. The user authorized an isolated Codex browser for Cloud deployment and hosted acceptance. Their personal browser remains untouched. Installing the Cloud GitHub App into ASW materially expands access and needs the owner to approve that destination installation; deployment authorization does not grant that new access.
 
 ASW currently uses GitHub Free. Both private source repos have unprotected main branches in the readiness snapshot; preserve their private visibility and check any other private-repository feature dependencies. GitHub documents transfer behavior in [its transfer requirements](https://docs.github.com/en/repositories/creating-and-managing-repositories/transferring-a-repository). Frappe documents missing/invalid app installation IDs and repository URLs as deployment-fetch failures in [its app installation guidance](https://docs.frappe.io/cloud/faq/app-installation-issue). A local readiness snapshot records repository IDs, main SHAs, visibility and source Admin for all eight; no credentials are included.
 
@@ -84,7 +84,7 @@ GitHub source revisions read October 5, 2026 (DCR subsequently advanced through 
 | Repository | Commit |
 | --- | --- |
 | `alumicraft` | `8693aea300fb75ad228feb18fa457be987ea608b` |
-| `payments-for-lending` | `40cf1f7d4803bc4b3a41dd497ee7a2e959817d3b` after merged PR #12 |
+| `payments-for-lending` | `fb41a7b5b0b08c7f6fc3f625169ce12a6dc9d662` after merged PR #16 |
 | `theme` | `c917c3b09523b56c0847ed8ddcfbf40f228973f2` |
 | `emails` | `f50f47eb91f50e1336258cbebb841537c1a32dfe` |
 | `email-templates` | `6ff9d065ab7e2928e4bd214f02ccce2ed3727bd6` |

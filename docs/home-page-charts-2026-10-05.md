@@ -1,6 +1,6 @@
 # DCR home-page charts
 
-Prepared October 5 for review before the October 6 controlled pilot. This is a source change; live workspace layouts and chart rendering have not been changed or verified.
+Prepared October 5 for review before the October 6 controlled pilot. The seven charts are now deployed and visually verified on DCR Deals, Accounting, Contacts, Access, and grouped Overview pages. Existing site widgets were preserved.
 
 ## Layout
 
@@ -17,13 +17,15 @@ New Dealers by Month uses Frappe's native Count chart on Customer creation dates
 
 Existing cards, map blocks, links, and unrelated Overview charts are preserved. Existing section headings are reused. Workspace Chart rows and visual blocks are kept together, including custom row labels. Missing chart records are skipped rather than inserting broken links. Invalid layout JSON raises a visible setup error and is not overwritten. Repeated setup does not duplicate charts or save unchanged layouts.
 
-The existing Frappe Cloud deployment runs setup after migration. All work is implemented in the custom app; no Server Scripts or local server commands are required. Source checks used Frappe's `version-16` Workspace and Dashboard Chart schemas. Those checks are not verification of the exact hosted framework revision.
+The existing Frappe Cloud deployment runs setup after migration. All work is implemented in the custom app; no Server Scripts or local server commands are required. Source checks used Frappe's `version-16` Workspace and Dashboard Chart schemas. Hosted verification subsequently ran on Frappe 16.36.1.
 
 ## Local verification and hosted acceptance
 
 The layout tests exercise provisioning, grouping, preserving unrelated blocks, label repair, missing chart records, invalid layout preservation, and repeat setup. Frappe is mocked. Tests do not verify SQL metrics, browser rendering, native chart date bucketing, or the live site configuration.
 
-After deployment:
+Hosted checks confirmed all seven placements, custom business-chart reconciliation against underlying records, Daily Active Users reconciliation, and denial of dealer access to custom chart/report APIs. Native New Dealers monthly values, date range and zero months also reconciled against enabled Dealer Customer creation dates using the serialized chart configuration used by the client. All intended staff-role combinations remain follow-up checks. Synthetic accepted deals may affect aggregate counts until removed or excluded under an approved cleanup procedure.
+
+Acceptance procedure:
 
 1. Record the deployed DCR commit and confirm migration/setup completed without errors. Capture each existing workspace layout before deploying so its prior arrangement can be restored if needed.
 2. Open Deals, Accounting, Contacts, and Access, then Overview. Confirm all seven charts render and the Overview sections match the table. Verify any additional site-configured chart is present in its proper section.
