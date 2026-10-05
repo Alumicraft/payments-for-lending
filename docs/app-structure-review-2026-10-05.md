@@ -51,7 +51,11 @@ Move all eight repositories from `Alumicraft` to `American-Signal-Works`, keepin
 | `Alumicraft/quickbooks` | `American-Signal-Works/quickbooks` | Private |
 | `Alumicraft/items` | `American-Signal-Works/items` | Public |
 
-**Execution blocker:** live GitHub API checks identify the connected account as `Buddalish`, with active admin/owner membership in `American-Signal-Works`, but `permissions.admin=false` on every source repository. There are no matching repository names in the target organization inventory. GitHub requires source repository Admin access for a transfer. Grant that access, authenticate a source-admin account, or have the source owner execute the transfers. No transfer has been attempted. [GitHub transfer requirements](https://docs.github.com/en/repositories/creating-and-managing-repositories/transferring-a-repository)
+**Current readiness:** the default account `Buddalish` owns/administers ASW and has source push access. A second, already-connected account, **Alumicraft**, was then discovered and verified to have **Admin on all eight source repositories**. Source Admin is therefore available; the default global GitHub account was not switched. The source namespace is a personal User account, not an organization.
+
+**Current execution blocker:** ASW's installed GitHub Apps list contains no **Frappe Cloud** installation. Vercel is installed with selected-repository access. Connect [Frappe Cloud](https://github.com/apps/frappe-cloud) to ASW, grant the destination repositories access, and verify the Cloud source associations before transferring. The source-owner account's permission to create repositories in ASW also needs confirmation; GitHub requires both source Admin and destination creation permission. The member lookup returned 404/scope errors, so it did not establish membership. No transfers or membership invitations were attempted. Browser control is prohibited by the user and there is no independent Cloud API credential in this task.
+
+ASW currently uses GitHub Free. Both private source repos have unprotected main branches in the readiness snapshot; preserve their private visibility and check any other private-repository feature dependencies. GitHub documents transfer behavior in [its transfer requirements](https://docs.github.com/en/repositories/creating-and-managing-repositories/transferring-a-repository). Frappe documents missing/invalid app installation IDs and repository URLs as deployment-fetch failures in [its app installation guidance](https://docs.frappe.io/cloud/faq/app-installation-issue). A local readiness snapshot records repository IDs, main SHAs, visibility and source Admin for all eight; no credentials are included.
 
 ### Transfer and deployment verification
 
@@ -68,7 +72,7 @@ This scope moves GitHub source ownership. Moving Frappe Cloud teams, email hosti
 ## Sequence around tomorrow's handoff
 
 - Finish DCR pilot blockers and setup using [the delivery checklist](delivery-checklist-2026-10-06.md). ACHQ wiring and accounting-result verification remain required before calling that path ready.
-- Prepare the ownership move now; execute once source Admin access and hosting access are available. Preserve the existing tested application behavior.
+- Prepare the ownership move now; execute once destination creation permission and hosting access are verified. Preserve the existing tested application behavior.
 - After the handoff, establish one canonical email service, then extract shared shell behavior one responsibility at a time.
 - Preserve old module/API import paths during migration. Move DocTypes, fixtures, custom fields, and patches through explicit compatible migrations; changing repository ownership does not migrate app ownership in the database.
 - Verify the shared base on two separate test sites: DCR with Lending and Alumicraft without DCR-only requirements. Test upgrade of existing data as well as a fresh install, repeated migration, scheduler jobs, email, permissions, and one representative workflow per client.
@@ -80,7 +84,7 @@ GitHub source revisions read October 5, 2026 (DCR subsequently advanced through 
 | Repository | Commit |
 | --- | --- |
 | `alumicraft` | `8693aea300fb75ad228feb18fa457be987ea608b` |
-| `payments-for-lending` | `a9a636f` after PRs #10/#11; final pilot merge receipt in delivery update |
+| `payments-for-lending` | `40cf1f7d4803bc4b3a41dd497ee7a2e959817d3b` after merged PR #12 |
 | `theme` | `c917c3b09523b56c0847ed8ddcfbf40f228973f2` |
 | `emails` | `f50f47eb91f50e1336258cbebb841537c1a32dfe` |
 | `email-templates` | `6ff9d065ab7e2928e4bd214f02ccce2ed3727bd6` |

@@ -18,7 +18,7 @@ Delivery target: October 6 morning, usable handoff and controlled pilot. This do
 - Factory PO email includes the generated PO PDF and original uploaded Factory Quotes attached to the linked, readable HBR. Preview lists the attachments; the helper checks file ownership and read permission before sending.
 - **DCR Status Notice** stores review, order, loan, and storage transitions. Portal submission explicitly records its staff alert; native staff submission changes portal state to Accepted. **DCR Pilot Settings** defaults delivery off and requires a pilot recipient before enabling it. Every delivered status notice goes to that override, with its intended recipient retained for review.
 - Status notices and ACH event notices use the native Frappe Email Queue directly, bypassing the shared Emails app's immediate Vercel override. Upcoming/success/failure ACH notice flags are independent. A queued record is not called Sent until the native queue reports Sent.
-- DCR now declares the already-installed `emails` app as a required dependency. No app/DocType ownership migration or repository rename is included.
+- DCR now declares the already-installed `emails` app as a required dependency. No app/DocType ownership migration or repository rename is included. Source Admin for the eight-repo transfer was verified through the already-connected Alumicraft account; destination Frappe Cloud installation and source-account destination creation rights remain to be set up/verified.
 
 ## Verification
 
@@ -32,6 +32,7 @@ The repository refers to `.claude/agents/preflight` and `v16-linter`, but those 
 2. On private bench group **DCR / bench-37701**, deploy the tested `dcr` main revision. Keep the recorded framework/Lending/Emails versions unless a separate upgrade has been reviewed. Do not select an unrelated framework update just to deploy DCR.
 3. Watch the dashboard build and automatic migration. The existing `after_migrate` setup hook repairs configuration, workspaces, and some existing record state; review its errors even if the build succeeds.
 4. Read back the installed DCR SHA. The last dashboard snapshot observed during this task was `e18c32addeac4725dad3ac710e1d84ae20779bd9`; GitHub merge alone is not a deployed-SHA receipt. Dashboard deployment state cannot be verified while browser control is prohibited and no independent Cloud API connection is available.
+   A later direct HTTP read found the new signature-preview asset missing (404) and a portal script differing from merged source. This is front-end evidence only, not an installed app SHA or migration receipt.
 5. Confirm new `DCR Pilot Settings` and `DCR Status Notice` DocTypes, ACH/signature status options, pilot scope/loan fields, and HBR buyer/storage/value fields. Confirm storage can be changed on a submitted HBR.
 6. Check Deals, Accounting, Contacts, Access, and Overview. Overview should group the seven charts by section. Check the map and Kanban without changing operational stages manually.
 7. Check `ACH Settings`: scope **Controlled Pilot**, selected synthetic pilot loan, correct environment, real-debit activation disabled until setup and acceptance below. Check `DCR Pilot Settings`: notifications disabled until its controlled mailbox is configured.

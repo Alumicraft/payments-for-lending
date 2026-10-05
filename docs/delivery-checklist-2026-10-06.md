@@ -1,6 +1,6 @@
 # DCR delivery checklist — October 6 morning
 
-Scope agreed with Tristan: usable handoff and controlled pilot. DCR workspace home pages first; move the full custom/shared GitHub stack to American-Signal-Works when source Admin access is available. Source review is based on the Meeting Changes chat and recorded transcript, refreshed against today's source and the installed-app snapshot.
+Scope agreed with Tristan: usable handoff and controlled pilot. DCR workspace home pages first; move the full custom/shared GitHub stack to American-Signal-Works when destination creation rights and hosting connections are ready. Source review is based on the Meeting Changes chat and recorded transcript, refreshed against today's source and the installed-app snapshot.
 
 ## Completed in source
 
@@ -8,7 +8,7 @@ Scope agreed with Tristan: usable handoff and controlled pilot. DCR workspace ho
 |---|---|
 | Factory quote intake/readback; PO dealer context; map and document-email permissions | [Merged PR #10](https://github.com/Alumicraft/payments-for-lending/pull/10), main merge `f1a2e23`. |
 | DCR home pages and Overview charts | [Merged PR #11](https://github.com/Alumicraft/payments-for-lending/pull/11), main merge `a9a636f`. Deals: New Deals by Type, Deal Pipeline by Factory; Accounting: Inflows vs Outflows, Past-Due Aging, Repayment Breakdown; Contacts: New Dealers by Month; Access: Active Users Per Day. Overview groups all seven, preserving other widgets and valid site-configured charts. |
-| Controlled-pilot completion batch | [PR #12](https://github.com/Alumicraft/payments-for-lending/pull/12), branch `codex/dcr-pilot-completion`: staff/action/row authorization, native v16 repayment source and allocation, durable unknown payment/signature admission, restricted ACH scope/retries/cancellation, exact PDF review, buyer/value intake, storage/map detail, uploaded factory-quote attachments, and durable pilot status notices. Publication/merge receipt is recorded in the delivery update. See [source and operating notes](controlled-pilot-2026-10-05.md). |
+| Controlled-pilot completion batch | [Merged PR #12](https://github.com/Alumicraft/payments-for-lending/pull/12), main merge `40cf1f7d4803bc4b3a41dd497ee7a2e959817d3b` (tested head `a33a64a10f9e19825391ea488ce15895ff58f02a`, identical Git tree): staff/action/row authorization, native v16 repayment source and allocation, durable unknown payment/signature admission, restricted ACH scope/retries/cancellation, exact PDF review, buyer/value intake, storage/map detail, uploaded factory-quote attachments, and durable pilot status notices. See [source and operating notes](controlled-pilot-2026-10-05.md). |
 | Architecture and ASW inventory | [App structure review](app-structure-review-2026-10-05.md): eight repos, permissions/visibility, overlap, migration order, and handoff checks. Shared maintained base plus thin client apps is recommended over full independent forks. |
 
 Local verification: **330 passed, zero skipped** with mocked Frappe. Python/JSON/JavaScript and changed print-format Jinja syntax checks pass. These are source checks; no hosted provider/accounting/browser acceptance is inferred.
@@ -25,7 +25,7 @@ Site **https://backdesk.dealercapital.net**, Frappe Cloud site `dealercapitalres
 | Emails | `f50f47eb91f50e1336258cbebb841537c1a32dfe` |
 | Lending | 16.3.0 / `9c1a9d424111ea2446ea0b10b6d1100f735777b6` |
 
-The user has prohibited further browser control. No deployment click or live test was performed by the agent. A GitHub merge may trigger hosting automation, but it does not establish a successful deployment; read back the current installed DCR SHA. No independent Frappe Cloud API connection is available in this task. No real external email, signature invitation, or payment was initiated.
+The user has prohibited further browser control. No deployment click or live test was performed by the agent. A GitHub merge may trigger hosting automation, but it does not establish a successful deployment; read back the current installed DCR SHA. No independent Frappe Cloud API connection is available in this task. No real external email, signature invitation, or payment was initiated. A later read-only HTTP check found `signature_preview.js` returns 404 and the live `dealer_portal.js` does not match merged source; the new front end is not yet verified as deployed. No browser was used for that check.
 
 ## Remaining work and ownership
 
@@ -39,7 +39,7 @@ The user has prohibited further browser control. No deployment click or live tes
 | Model/Inventory home type | DCR decision required: exact third-type label and checklist rules. Spec and Customer Sold remain the supported choices. No invented checklist requirements. |
 | Financial rules | DCR decision required: 360/365 day count, regular/default/late fees, partial period and dated payoff examples, rebates/insurance and rounding, installed value versus selling price as the LTV denominator. Installed value is captured but does not replace the current denominator. |
 | Final documents | DCR approves Dealer Agreement, MIFA, flooring packet, pre-approval, payoff, and factory PO wording/payment instructions. Quote attachments and dealer/quote/buyer context are implemented; final legal/business wording and any further PO layout simplification remain review work. |
-| ASW transfer | Connected GitHub account `Buddalish` owns/administers ASW but lacks Admin on every source repo. Source owner must grant Admin, connect the source-admin account, or execute the transfers. No transfer has been attempted; no repository was copied as a substitute. |
+| ASW transfer | Source Admin is available through the already-connected `Alumicraft` account on all eight repos. ASW has no Frappe Cloud GitHub app installation; Vercel uses selected repos. Connect Cloud to ASW and verify its app source associations, destination creation permission for the source owner, and hosted email access. No transfer has been attempted. |
 | Final handoff | Provide working logins, portal URL, approved workflow, acceptance evidence, synthetic-record labels, and the explicit limitations below. |
 
 ## Setup before testing
