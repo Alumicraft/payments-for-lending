@@ -24,13 +24,16 @@ class TestDealerPortalPage(unittest.TestCase):
             mock_frappe.local.flags.redirect_location,
             "/login?redirect-to=/portal",
         )
+        mock_frappe.sessions.get_csrf_token.assert_not_called()
 
     @patch("dcr.www.dealer_portal.frappe")
     def test_signed_in_user_renders_portal(self, mock_frappe):
         from dcr.www.dealer_portal import get_context
 
         mock_frappe.session.user = "dealer@example.test"
-        mock_frappe.session.csrf_token = "csrf-test"
+        # Match v16's session shape: the helper reads/materializes data.csrf_token.
+        mock_frappe.session = SimpleNamespace(user="dealer@example.test", data={})
+        mock_frappe.sessions.get_csrf_token.return_value = "csrf-test"
         context = MagicMock()
 
         get_context(context)
@@ -38,6 +41,7 @@ class TestDealerPortalPage(unittest.TestCase):
         self.assertEqual(context.title, "Dealer Portal")
         self.assertEqual(context.portal_user, "dealer@example.test")
         self.assertEqual(context.csrf_token, "csrf-test")
+        mock_frappe.sessions.get_csrf_token.assert_called_once_with()
 
 
 class TestDealerPortalIdentity(unittest.TestCase):
