@@ -234,6 +234,12 @@
         retry.hidden = true;
         try {
             state.data = await api("get_portal_context");
+            if (state.currentDeal) {
+                state.currentDeal = (state.data.deals || []).find(function (deal) {
+                    return deal.name === state.currentDeal.name;
+                }) || null;
+                if (!state.currentDeal && state.view === "deal") state.view = "dashboard";
+            }
             render();
             loading.hidden = true;
             app.hidden = false;
