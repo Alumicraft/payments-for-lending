@@ -38,42 +38,5 @@ frappe.ui.form.on('MIFA', {
 });
 
 function send_mifa(frm) {
-    // Validate required fields before sending
-    if (!frm.doc.credit_limit || frm.doc.credit_limit <= 0) {
-        frappe.msgprint(__('Credit Limit must be set before sending for signature.'));
-        return;
-    }
-    if (!frm.doc.loan_product) {
-        frappe.msgprint(__('Loan Product must be set before sending for signature.'));
-        return;
-    }
-
-    // Validate customer has email
-    frappe.db.get_value('Customer', frm.doc.customer, 'email_id', function(r) {
-        if (!r || !r.email_id) {
-            frappe.msgprint(__('Customer {0} does not have an email address. Please update the Customer record first.', [frm.doc.customer]));
-            return;
-        }
-
-        frappe.confirm(
-            __('Send MIFA to {0} ({1}) for signature via DocuSign?', [frm.doc.customer, r.email_id]),
-            function() {
-                frappe.call({
-                    method: 'dcr.api.docusign.send_mifa_for_signature',
-                    args: { mifa_name: frm.doc.name },
-                    freeze: true,
-                    freeze_message: __('Sending MIFA for signature...'),
-                    callback: function(r) {
-                        if (r.message && r.message.success) {
-                            frappe.show_alert({
-                                message: __('MIFA sent for signature via DocuSign'),
-                                indicator: 'green'
-                            });
-                            frm.reload_doc();
-                        }
-                    }
-                });
-            }
-        );
-    });
+    return dcr.preview_signature(frm, 'MIFA', 'dcr.api.docusign.send_mifa_for_signature', 'mifa_name');
 }

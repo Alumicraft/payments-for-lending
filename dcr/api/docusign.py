@@ -5,7 +5,7 @@ Handles:
 - JWT Grant authentication (server-to-server, no user interaction)
 - Creating envelopes and sending for signature
 - Webhook for receiving signature completion events
-- Auto-send dealer agreement on Customer save
+- Staff review of PDFs and recipients before envelope creation
 """
 
 import base64
@@ -13,8 +13,10 @@ import hashlib
 import hmac
 import json
 import time
+import secrets
 
 import frappe
+from dcr.api.access import require_staff
 from frappe import _
 from frappe.utils import now_datetime
 import requests
@@ -104,7 +106,7 @@ class DocuSignClient:
             "Content-Type": "application/json",
         }
 
-    def create_envelope(self, name, recipients, documents, webhook_url=None, message="", client_user_id=None):
+    def create_envelope(self, name, recipients, documents, webhook_url=None, message="", client_user_id=None, transaction_id=None):
         """Create an envelope (send for signature).
 
         Args:
@@ -164,6 +166,9 @@ class DocuSignClient:
             "recipients": {"signers": signers},
             "status": "sent",
         }
+
+        if transaction_id:
+            payload["transactionId"] = transaction_id
 
         if message:
             payload["emailBlurb"] = message
@@ -293,8 +298,12 @@ def docusign_webhook():
             return {"status": "ok", "message": "Empty payload"}
 
         payload = json.loads(data)
-        envelope_id = payload.get("envelopeId")
-        status = payload.get("status", "").lower()
+        event_data = payload.get("data") or {}
+        summary = event_data.get("envelopeSummary") or {}
+        envelope_id = payload.get("envelopeId") or event_data.get("envelopeId")
+        status = str(payload.get("status") or summary.get("status") or "").lower()
+        if not status and str(payload.get("event", "")).startswith("envelope-"):
+            status = payload["event"][len("envelope-"):]
 
         frappe.logger().info(
             f"DocuSign webhook: status={status}, envelope={envelope_id}"
@@ -305,8 +314,8 @@ def docusign_webhook():
 
         if status == "completed":
             _handle_envelope_completed(envelope_id, payload)
-        elif status == "declined":
-            _handle_envelope_declined(envelope_id, payload)
+        elif status in ("declined", "voided"):
+            _handle_envelope_declined(envelope_id, payload, "Voided" if status == "voided" else "Declined")
 
         frappe.db.commit()
         return {"status": "success"}
@@ -316,6 +325,8 @@ def docusign_webhook():
             f"DocuSign webhook error: {str(e)}",
             "DocuSign Webhook Error"
         )
+        frappe.db.rollback()
+        frappe.local.response["http_status_code"] = 500
         return {"status": "error", "message": "Internal error"}
 
 
@@ -384,9 +395,12 @@ def _handle_envelope_completed(envelope_id, data):
             f"DocuSign webhook: No Signature Request found for envelope {envelope_id}",
             "DocuSign Webhook"
         )
-        return
+        raise ValueError("Signature Request not yet available; retry this callback")
 
+    frappe.db.get_value("Signature Request", sig_req, "name", for_update=True)
     doc = frappe.get_doc("Signature Request", sig_req)
+    if doc.status == "Signed" and doc.signed_attachment:
+        return  # The signed PDF and downstream effects were already processed.
     signed_attachment = None
 
     # Download signed PDF and attach
@@ -411,6 +425,7 @@ def _handle_envelope_completed(envelope_id, data):
             f"Failed to download signed PDF for {envelope_id}: {str(e)}",
             "DocuSign PDF Download"
         )
+        raise  # Retry delivery; never mark the source signed without its PDF.
 
     update_values = {
         "status": "Signed",
@@ -425,15 +440,17 @@ def _handle_envelope_completed(envelope_id, data):
     _update_reference_document(doc)
 
 
-def _handle_envelope_declined(envelope_id, data):
-    """Process a declined envelope."""
+def _handle_envelope_declined(envelope_id, data, status="Declined"):
+    """Record a terminal refusal without regressing an already signed envelope."""
     sig_req = frappe.db.get_value(
         "Signature Request",
         {"envelope_id": envelope_id},
         "name"
     )
     if sig_req:
-        frappe.db.set_value("Signature Request", sig_req, "status", "Declined")
+        current = frappe.db.get_value("Signature Request", sig_req, "status", for_update=True)
+        if current != "Signed":
+            frappe.db.set_value("Signature Request", sig_req, "status", status)
 
 
 def _update_reference_document(sig_req):
@@ -530,7 +547,7 @@ def _send_signed_email(sig_req):
         )
 
         customer_doc = frappe.get_doc("Customer", sig_req.customer)
-        email = customer_doc.email_id
+        email = sig_req.get("recipient_email") or customer_doc.email_id
         if not email:
             return
 
@@ -677,7 +694,7 @@ def sign_document(sig, token):
 
     sig_req = frappe.db.get_value(
         "Signature Request", sig,
-        ["envelope_id", "customer", "document_type", "status"],
+        ["envelope_id", "customer", "document_type", "status", "recipient_email", "recipient_name"],
         as_dict=True,
     )
 
@@ -696,7 +713,10 @@ def sign_document(sig, token):
         )
         return
 
+    # Recipient identity must match the envelope, even if Customer is later edited.
     customer_doc = frappe.get_doc("Customer", sig_req.customer)
+    recipient_email = sig_req.get("recipient_email") or customer_doc.email_id
+    recipient_name = sig_req.get("recipient_name") or customer_doc.customer_name
     client_user_id = f"{sig_req.customer}-{sig_req.document_type}"
     return_url = _get_signing_return_url(sig, token)
 
@@ -704,8 +724,8 @@ def sign_document(sig, token):
         client = DocuSignClient()
         url = client.get_signing_url(
             envelope_id=sig_req.envelope_id,
-            email=customer_doc.email_id,
-            name=customer_doc.customer_name,
+            email=recipient_email,
+            name=recipient_name,
             client_user_id=client_user_id,
             return_url=return_url,
         )
@@ -769,170 +789,128 @@ def signing_complete(sig, token, event=None):
 # Send Methods
 # ---------------------------------------------------------------------------
 
-def send_for_signature(document_type, reference_doctype, reference_name, customer,
-                       recipient_email, recipient_name, pdf_content, pdf_name, envelope_subject=None):
-    """Generic method to send a document for signature via DocuSign.
+def _signature_context(document_type, reference_name, permission="read"):
+    doctypes = {"Dealer Agreement": "Customer", "MIFA": "MIFA", "Flooring Packet": "Loan Application"}
+    if document_type not in doctypes or not reference_name:
+        frappe.throw(_("Unsupported signature document"))
+    doctype = doctypes[document_type]
+    require_staff(doctype, reference_name, permission)
+    reference = frappe.get_doc(doctype, reference_name)
+    reference.check_permission("read")
+    reference.check_permission("print")
+    customer_name = reference_name if doctype == "Customer" else (reference.customer if doctype == "MIFA" else reference.applicant)
+    customer = frappe.get_doc("Customer", customer_name)
+    customer.check_permission("read")
+    if customer.customer_group != "Dealer" or not customer.email_id:
+        frappe.throw(_("A Dealer customer with an email address is required"))
+    if document_type == "MIFA" and (not reference.loan_product or not reference.credit_limit or reference.credit_limit <= 0):
+        frappe.throw(_("MIFA requires a Loan Product and a positive Credit Limit"))
+    prints = [(doctype, reference_name, document_type, f"{document_type.replace(' ', '-')}-{reference_name}.pdf")]
+    sources = [reference, customer]
+    if document_type == "Flooring Packet":
+        if not reference.get("home_build_request"):
+            frappe.throw(_("Loan Application must be linked to a Home Build Request"))
+        hbr = frappe.get_doc("Home Build Request", reference.home_build_request)
+        hbr.check_permission("read")
+        hbr.check_permission("print")
+        if hbr.customer != customer_name:
+            frappe.throw(_("The linked deal belongs to a different dealer"))
+        sources.append(hbr)
+        prints = [
+            ("Home Build Request", hbr.name, "New Home Info Sheet", "New-Home-Info-Sheet.pdf"),
+            (doctype, reference_name, "Exhibit A Receipt", "Exhibit-A.pdf"),
+            (doctype, reference_name, "ACH Recurring Payment Authorization", "ACH-Approval.pdf"),
+        ]
+    formats = [(fmt, frappe.db.get_value("Print Format", fmt, "modified")) for _, _, fmt, _ in prints]
+    version = [(doc.doctype, doc.name, str(doc.modified)) for doc in sources]
+    fingerprint = hashlib.sha256(json.dumps([version, formats, customer.email_id, customer.customer_name], default=str).encode()).hexdigest()
+    return {"document_type": document_type, "reference_doctype": doctype, "reference_name": reference_name,
+        "customer": customer_name, "recipient_email": customer.email_id, "recipient_name": customer.customer_name,
+        "fingerprint": fingerprint, "prints": prints}
 
-    Uses embedded signing: DocuSign does NOT send emails. Instead, we generate
-    a signing URL and send it via our own email system.
 
-    Returns:
-        Signature Request document
-    """
+@frappe.whitelist()
+def preview_signature(document_type, reference_name):
+    """Render and cache the exact review PDFs without contacting DocuSign."""
+    context = _signature_context(document_type, reference_name)
+    documents = []
+    for doctype, name, print_format, filename in context.pop("prints"):
+        pdf = frappe.get_print(doctype, name, print_format, as_pdf=True)
+        documents.append({"name": filename, "content_base64": base64.b64encode(pdf).decode()})
+    token = secrets.token_urlsafe(32)
+    context["documents"] = documents
+    context["user"] = frappe.session.user
+    frappe.cache.set_value(f"dcr:signature-review:{token}", context, expires_in_sec=300)
+    return {"review_token": token, "recipient_email": context["recipient_email"], "recipient_name": context["recipient_name"],
+        "documents": documents, "expires_in_seconds": 300}
+
+
+def _send_reviewed_signature(document_type, reference_name, review_token):
+    context = _signature_context(document_type, reference_name, permission="email")
+    require_staff(context["reference_doctype"], reference_name, "write")
+    review = frappe.cache.get_value(f"dcr:signature-review:{review_token}") if review_token else None
+    if not review or review.get("user") != frappe.session.user or review.get("document_type") != document_type or review.get("reference_name") != reference_name:
+        frappe.throw(_("Preview these documents before sending. The review may have expired."))
+    frappe.db.get_value(context["reference_doctype"], reference_name, "name", for_update=True)
+    context = _signature_context(document_type, reference_name, permission="email")
+    if review.get("fingerprint") != context["fingerprint"]:
+        frappe.throw(_("The document or recipient changed. Open a fresh preview before sending."))
+    existing = frappe.db.exists("Signature Request", {"document_type": document_type,
+        "reference_doctype": context["reference_doctype"], "reference_name": reference_name,
+        "status": ["in", ["Sent", "Signed", "Outcome Unknown"]]})
+    if existing:
+        frappe.throw(_("A signature request already exists ({0}). Review it before sending another.").format(existing))
     client = DocuSignClient()
-    webhook_url = get_webhook_url()
-
-    # Use Signature Request name pattern as clientUserId for embedded signing
-    client_user_id = f"{customer}-{document_type}"
-
-    result = client.create_envelope(
-        name=envelope_subject or f"{document_type} - {customer}",
-        recipients=[{"email": recipient_email, "name": recipient_name, "role": "signer"}],
-        documents=[{"content": pdf_content, "name": pdf_name, "file_extension": "pdf"}],
-        webhook_url=webhook_url,
-        client_user_id=client_user_id,
-    )
-
-    envelope_id = result["envelope_id"]
-
     sig_req = frappe.new_doc("Signature Request")
-    sig_req.customer = customer
-    sig_req.document_type = document_type
-    sig_req.reference_doctype = reference_doctype
-    sig_req.reference_name = reference_name
-    sig_req.envelope_id = envelope_id
+    for field in ("customer", "document_type", "reference_doctype", "reference_name"):
+        sig_req.set(field, context[field])
+    sig_req.recipient_email = context["recipient_email"]
+    sig_req.recipient_name = context["recipient_name"]
+    sig_req.review_hash = hashlib.sha256(json.dumps(review["documents"], sort_keys=True).encode()).hexdigest()
+    sig_req.status = "Outcome Unknown"
+    sig_req.insert()
+    # Durable admission is retained if the request times out or the worker crashes.
+    frappe.db.commit()
+    frappe.cache.delete_value(f"dcr:signature-review:{review_token}")
+    client_user_id = f"{context['customer']}-{document_type}"
+    result = client.create_envelope(name=f"{document_type} - {context['customer']}",
+        recipients=[{"email": context["recipient_email"], "name": context["recipient_name"], "role": "signer"}],
+        documents=[{"content": base64.b64decode(doc["content_base64"]), "name": doc["name"], "file_extension": "pdf"} for doc in review["documents"]],
+        webhook_url=get_webhook_url(), client_user_id=client_user_id, transaction_id=sig_req.name)
+    if not result.get("envelope_id"):
+        frappe.throw(_("DocuSign did not return an envelope ID. Reconcile this request before sending again."))
+    sig_req.envelope_id = result["envelope_id"]
     sig_req.status = "Sent"
     sig_req.sent_date = now_datetime()
-    sig_req.insert()
-
+    sig_req.save()
+    if document_type == "Dealer Agreement":
+        customer = frappe.get_doc("Customer", context["customer"])
+        customer.dealer_agreement_status = "Sent"
+        customer.save()
     frappe.db.commit()
-
-    # Send signing link via our own email
-    _send_signing_email(sig_req, recipient_email, recipient_name, client_user_id)
-
-    return sig_req
-
-
-@frappe.whitelist()
-def send_dealer_agreement(customer):
-    """Send dealer agreement for signature."""
-    customer_doc = frappe.get_doc("Customer", customer)
-
-    if customer_doc.customer_group != "Dealer":
-        frappe.throw(_("Customer is not a Dealer"))
-
-    email = customer_doc.email_id
-    if not email:
-        frappe.throw(_("Customer does not have an email address"))
-
-    pdf_content = frappe.get_print(
-        "Customer", customer, "Dealer Agreement", as_pdf=True
-    )
-
-    sig_req = send_for_signature(
-        document_type="Dealer Agreement",
-        reference_doctype="Customer",
-        reference_name=customer,
-        customer=customer,
-        recipient_email=email,
-        recipient_name=customer_doc.customer_name,
-        pdf_content=pdf_content,
-        pdf_name=f"Dealer-Agreement-{customer}.pdf",
-    )
-
-    customer_doc.dealer_agreement_status = "Sent"
-    customer_doc.save()
-
+    _send_signing_email(sig_req, context["recipient_email"], context["recipient_name"], client_user_id)
     return {"success": True, "signature_request": sig_req.name}
 
 
 @frappe.whitelist()
-def send_mifa_for_signature(mifa_name):
-    """Send MIFA for signature via DocuSign."""
-    mifa = frappe.get_doc("MIFA", mifa_name)
-    customer_doc = frappe.get_doc("Customer", mifa.customer)
-
-    email = customer_doc.email_id
-    if not email:
-        frappe.throw(_("Customer does not have an email address"))
-
-    pdf_content = frappe.get_print("MIFA", mifa_name, "MIFA", as_pdf=True)
-
-    sig_req = send_for_signature(
-        document_type="MIFA",
-        reference_doctype="MIFA",
-        reference_name=mifa_name,
-        customer=mifa.customer,
-        recipient_email=email,
-        recipient_name=customer_doc.customer_name,
-        pdf_content=pdf_content,
-        pdf_name=f"MIFA-{mifa.customer}.pdf",
-    )
-
-    return {"success": True, "signature_request": sig_req.name}
+def send_dealer_agreement(customer, review_token=None):
+    return _send_reviewed_signature("Dealer Agreement", customer, review_token)
 
 
 @frappe.whitelist()
-def send_flooring_packet(loan_application):
-    """Send Info Sheet + Exhibit A + ACH Approval as a combined flooring packet."""
-    la = frappe.get_doc("Loan Application", loan_application)
-    customer_doc = frappe.get_doc("Customer", la.applicant)
+def send_mifa_for_signature(mifa_name, review_token=None):
+    return _send_reviewed_signature("MIFA", mifa_name, review_token)
 
-    email = customer_doc.email_id
-    if not email:
-        frappe.throw(_("Customer does not have an email address"))
 
-    if not la.get("home_build_request"):
-        frappe.throw(_("Loan Application must be linked to a Home Build Request"))
-
-    # Render all 3 documents
-    info_sheet = frappe.get_print(
-        "Home Build Request", la.home_build_request, "New Home Info Sheet", as_pdf=True
-    )
-    exhibit_a = frappe.get_print(
-        "Loan Application", loan_application, "Exhibit A Receipt", as_pdf=True
-    )
-    ach_approval = frappe.get_print(
-        "Loan Application", loan_application, "ACH Recurring Payment Authorization", as_pdf=True
-    )
-
-    client = DocuSignClient()
-    webhook_url = get_webhook_url()
-    client_user_id = f"{la.applicant}-Flooring Packet"
-
-    result = client.create_envelope(
-        name=f"Flooring Packet - {la.applicant}",
-        recipients=[{"email": email, "name": customer_doc.customer_name, "role": "signer"}],
-        documents=[
-            {"content": info_sheet, "name": "New-Home-Info-Sheet.pdf", "file_extension": "pdf"},
-            {"content": exhibit_a, "name": "Exhibit-A.pdf", "file_extension": "pdf"},
-            {"content": ach_approval, "name": "ACH-Approval.pdf", "file_extension": "pdf"},
-        ],
-        webhook_url=webhook_url,
-        client_user_id=client_user_id,
-    )
-
-    envelope_id = result["envelope_id"]
-
-    sig_req = frappe.new_doc("Signature Request")
-    sig_req.customer = la.applicant
-    sig_req.document_type = "Flooring Packet"
-    sig_req.reference_doctype = "Loan Application"
-    sig_req.reference_name = loan_application
-    sig_req.envelope_id = envelope_id
-    sig_req.status = "Sent"
-    sig_req.sent_date = now_datetime()
-    sig_req.insert()
-    frappe.db.commit()
-
-    _send_signing_email(sig_req, email, customer_doc.customer_name, client_user_id)
-
-    return {"success": True, "signature_request": sig_req.name}
+@frappe.whitelist()
+def send_flooring_packet(loan_application, review_token=None):
+    return _send_reviewed_signature("Flooring Packet", loan_application, review_token)
 
 
 @frappe.whitelist()
 def send_pre_approval(loan_application):
     """Send Advance Pre-Approval letter as PDF email attachment (no signature needed)."""
+    require_staff("Loan Application", loan_application, "email")
     from dcr.api.dcr_email import send_pre_approval as _send_pre_approval_email
 
     la = frappe.get_doc("Loan Application", loan_application)
@@ -975,6 +953,7 @@ def send_payoff_letter(loan, payoff_type="Flooring"):
         loan: Loan name
         payoff_type: "Flooring" or "COD"
     """
+    require_staff("Loan", loan, "email")
     loan_doc = frappe.get_doc("Loan", loan)
     customer_doc = frappe.get_doc("Customer", loan_doc.applicant)
 

@@ -13,6 +13,7 @@ import hmac
 import json
 
 import frappe
+from dcr.api.access import require_staff
 from frappe import _
 from frappe.utils import now_datetime, getdate, today
 import requests
@@ -38,13 +39,14 @@ class ACHQClient:
 
     BASE_URL = "https://www.speedchex.com/datalinks/transact.aspx"
 
-    def __init__(self):
+    def __init__(self, allow_disabled=False):
+        self.allow_disabled = allow_disabled
         self.settings = frappe.get_single("ACH Settings")
         self._validate_settings()
 
     def _validate_settings(self):
         """Validate that required settings are configured."""
-        if not self.settings.enable_ach_autopay:
+        if not self.settings.enable_ach_autopay and not self.allow_disabled:
             frappe.throw(_("ACH Autopay is not enabled"))
 
     def _get_auth_params(self):
@@ -78,7 +80,7 @@ class ACHQClient:
                 f"ACHQ API request failed: {str(e)}",
                 "ACHQ Integration"
             )
-            return {"success": False, "error_message": str(e)}
+            return {"success": False, "outcome_unknown": True, "error_message": str(e)}
 
     # Expected top-level keys in valid ACHQ responses
     _VALID_RESPONSE_KEYS = {
@@ -90,16 +92,16 @@ class ACHQClient:
     def _parse_response(self, response_text):
         """Parse and validate ACHQ JSON response."""
         if not response_text:
-            return {"success": False, "error_message": "Empty response"}
+            return {"success": False, "outcome_unknown": True, "error_message": "Empty response"}
 
         try:
             result = json.loads(response_text)
         except json.JSONDecodeError as e:
             frappe.log_error(
-                f"ACHQ response JSON parse error: {str(e)}\nResponse: {response_text[:500]}",
+                f"ACHQ response JSON parse error: {str(e)}",
                 "ACHQ Integration"
             )
-            return {"success": False, "error_message": f"Invalid JSON response: {str(e)}"}
+            return {"success": False, "outcome_unknown": True, "error_message": f"Invalid JSON response: {str(e)}"}
 
         # Basic schema validation — must be a dict with expected keys
         if not isinstance(result, dict):
@@ -107,7 +109,7 @@ class ACHQClient:
                 f"ACHQ response is not a JSON object: {type(result).__name__}",
                 "ACHQ Integration"
             )
-            return {"success": False, "error_message": "Invalid response format"}
+            return {"success": False, "outcome_unknown": True, "error_message": "Invalid response format"}
 
         # Warn if response contains unexpected keys (possible tampering)
         unexpected = set(result.keys()) - self._VALID_RESPONSE_KEYS
@@ -120,7 +122,7 @@ class ACHQClient:
         command_status = str(result.get("CommandStatus", "")).lower()
         response_code = str(result.get("ResponseCode", ""))
 
-        if command_status == "approved" or response_code == "000":
+        if (command_status == "approved" and response_code in ("", "000")) or (not command_status and response_code == "000"):
             result["success"] = True
         else:
             result["success"] = False
@@ -130,6 +132,7 @@ class ACHQClient:
                 else result.get("ErrorInformation", "Unknown error")
             )
             result["error_code"] = response_code
+            result["outcome_unknown"] = not bool(command_status in ("declined", "rejected", "error") or response_code not in ("", "000"))
 
         return result
 
@@ -221,10 +224,12 @@ class ACHQClient:
 
         result = self._make_request("ECheck.ProcessPayment", params)
 
+        if result.get("success") and not result.get("TransAct_ReferenceID"):
+            return {"success": False, "outcome_unknown": True, "error_message": "ACHQ accepted payment without a usable reference; reconcile by merchant reference"}
         if result.get("success"):
             return {
                 "success": True,
-                "transaction_id": result.get("TransactionID"),
+                "transaction_id": result.get("TransAct_ReferenceID"),
                 "status": result.get("PaymentStatus", "Scheduled"),
                 "transact_reference_id": result.get("TransAct_ReferenceID"),
             }
@@ -281,10 +286,10 @@ class ACHQClient:
             dict with success
         """
         params = {
-            "TransactionID": transaction_id,
+            "Transact_ReferenceID": transaction_id,
         }
 
-        result = self._make_request("ECheck.CancelPayment", params)
+        result = self._make_request("ECheck.Void", params)
         return result
 
 
@@ -360,61 +365,9 @@ def achq_webhook():
         }
         frappe.logger().info(f"ACHQ Webhook received: {safe_data}")
 
-        # Extract key fields
-        transaction_id = data.get("TransactionID")
-        merchant_ref_id = data.get("Merchant_ReferenceID")
-        payment_status = data.get("PaymentStatus", "").lower()
-        return_code = data.get("ReturnCode")
-        return_description = data.get("ReturnDescription")
-
-        if not transaction_id and not merchant_ref_id:
-            frappe.log_error("ACHQ Webhook: No transaction ID provided", "ACHQ Webhook")
-            return {"status": "error", "message": "No transaction ID"}
-
-        # Find the ACH Transaction
-        txn = None
-        if merchant_ref_id:
-            # Merchant_ReferenceID is our internal transaction name
-            if frappe.db.exists("ACH Transaction", merchant_ref_id):
-                txn = frappe.get_doc("ACH Transaction", merchant_ref_id)
-
-        if not txn and transaction_id:
-            # Look up by ACHQ transaction ID
-            txn_name = frappe.db.get_value(
-                "ACH Transaction",
-                {"achq_transaction_id": transaction_id},
-                "name"
-            )
-            if txn_name:
-                txn = frappe.get_doc("ACH Transaction", txn_name)
-
-        if not txn:
-            frappe.log_error(
-                f"ACHQ Webhook: Transaction not found - ACHQ ID: {transaction_id}, Merchant Ref: {merchant_ref_id}",
-                "ACHQ Webhook"
-            )
+        if not apply_achq_status_update(data):
+            frappe.local.response["http_status_code"] = 404
             return {"status": "error", "message": "Transaction not found"}
-
-        # Update transaction based on status
-        txn.achq_status = payment_status
-
-        if payment_status in ("cleared", "settled", "success"):
-            txn.mark_success(achq_status=payment_status)
-        elif payment_status in ("returned", "returned-nsf", "returned-other", "chargedback"):
-            txn.mark_failed(
-                failure_code=return_code,
-                failure_reason=return_description,
-                return_code=return_code
-            )
-        elif payment_status in ("failed", "declined", "rejected"):
-            txn.mark_failed(
-                failure_code=return_code or "FAILED",
-                failure_reason=return_description or "Payment failed"
-            )
-        elif payment_status == "cancelled":
-            if txn.status not in ("Cancelled", "Success"):
-                txn.status = "Cancelled"
-                txn.save()
 
         frappe.db.commit()
 
@@ -425,7 +378,50 @@ def achq_webhook():
             f"ACHQ Webhook error: {str(e)}",
             "ACHQ Webhook Error"
         )
+        frappe.db.rollback()
+        frappe.local.response["http_status_code"] = 500
         return {"status": "error", "message": "Internal error"}
+
+
+def apply_achq_status_update(data):
+    """Shared webhook/poll handler. Caller must authenticate the provider first."""
+    merchant_ref = data.get("Merchant_ReferenceID")
+    provider_ref = data.get("TransAct_ReferenceID") or data.get("Transact_ReferenceID")
+    legacy_ref = data.get("TransactionID")
+    name = merchant_ref if merchant_ref and frappe.db.exists("ACH Transaction", merchant_ref) else None
+    if not name and (provider_ref or legacy_ref):
+        name = frappe.db.get_value("ACH Transaction", {"achq_transaction_id": provider_ref or legacy_ref}, "name")
+    if not name:
+        return False
+    frappe.db.get_value("ACH Transaction", name, "name", for_update=True)
+    txn = frappe.get_doc("ACH Transaction", name)
+    txn.flags.ignore_permissions = True
+    if provider_ref and txn.achq_transaction_id and provider_ref != txn.achq_transaction_id:
+        if txn.achq_reference_kind == "TransAct Reference" or legacy_ref != txn.achq_transaction_id:
+            raise ValueError("Provider reference does not match this ACH transaction")
+    if data.get("Amount") is not None and round(float(data["Amount"]), 2) != round(float(txn.amount), 2):
+        raise ValueError("Provider amount does not match this ACH transaction")
+    if provider_ref:
+        txn.achq_transaction_id = provider_ref
+        txn.achq_reference_kind = "TransAct Reference"
+    status = str(data.get("PaymentStatus") or "")
+    normalized = "".join(c for c in status.lower() if c.isalnum())
+    txn.achq_status = status
+    if normalized in ("cleared", "settled", "success"):
+        txn.mark_success(achq_status=status)
+    elif normalized in ("returned", "returnednsf", "returnedother", "chargedback"):
+        txn.mark_failed(returned=True, return_code=data.get("ReturnCode"), failure_reason=data.get("ReturnDescription"))
+    elif normalized in ("failed", "declined", "rejected") and txn.status not in ("Success", "Accounting Pending", "Returned", "Reversal Pending", "Cancelled"):
+        txn.mark_failed(failure_code=data.get("ResponseCode"), failure_reason=data.get("Description") or "Payment rejected")
+    elif normalized == "cancelled" and txn.status not in ("Success", "Accounting Pending", "Returned", "Reversal Pending"):
+        txn.status = "Cancelled"
+        txn.next_retry_date = None
+    elif normalized in ("inprocess", "processing") and txn.status in ("Initiated", "Outcome Unknown", "Scheduled"):
+        txn.status = "Processing"
+    elif normalized == "scheduled" and txn.status == "Outcome Unknown":
+        txn.status = "Initiated"
+    txn.save()
+    return True
 
 
 def _check_rate_limit(key, limit, window_hours=24):
@@ -554,6 +550,7 @@ def setup_bank_account(customer, routing_number, account_number, account_type, i
     Returns:
         dict with success, bank_name, account_last4, bank_account_name
     """
+    require_staff("Customer", customer, "write")
     if not customer or not routing_number or not account_number:
         frappe.throw(_("Customer, routing number, and account number are required"))
 
@@ -628,6 +625,7 @@ def setup_bank_account(customer, routing_number, account_number, account_type, i
 @frappe.whitelist()
 def pause_bank_account(bank_account_name, reason=None):
     """Pause ACH on a bank account."""
+    require_staff("Bank Account", bank_account_name, "write")
     from dcr.api.bank_account_ach import pause
     pause(bank_account_name, reason)
     return {"success": True, "message": "Bank account paused"}
@@ -636,6 +634,7 @@ def pause_bank_account(bank_account_name, reason=None):
 @frappe.whitelist()
 def resume_bank_account(bank_account_name):
     """Resume ACH on a paused bank account."""
+    require_staff("Bank Account", bank_account_name, "write")
     from dcr.api.bank_account_ach import resume
     resume(bank_account_name)
     return {"success": True, "message": "Bank account resumed"}
@@ -644,9 +643,11 @@ def resume_bank_account(bank_account_name):
 @frappe.whitelist()
 def revoke_bank_account(bank_account_name, reason=None):
     """Revoke ACH on a bank account."""
+    require_staff("Bank Account", bank_account_name, "write")
     from dcr.api.bank_account_ach import revoke
-    revoke(bank_account_name, reason)
-    return {"success": True, "message": "Bank account revoked"}
+    result = revoke(bank_account_name, reason)
+    return {"success": True, "message": "Bank account revoked",
+            "unresolved_transactions": result.get("unresolved_transactions", [])}
 
 
 # =============================================================================
@@ -664,7 +665,9 @@ def get_customer_accounts(customer):
     Returns:
         dict with accounts list
     """
-    accounts = frappe.get_all(
+    require_staff("Customer", customer)
+    require_staff("Bank Account")
+    accounts = frappe.get_list(
         "Bank Account",
         filters={
             "party_type": "Customer",
@@ -700,6 +703,7 @@ def set_default_account(bank_account_name):
     Returns:
         dict with success
     """
+    require_staff("Bank Account", bank_account_name, "write")
     from dcr.api.bank_account_ach import set_as_default
     set_as_default(bank_account_name)
     return {"success": True, "message": "Account set as default"}
@@ -717,11 +721,13 @@ def set_loan_account(loan, bank_account_name):
     Returns:
         dict with success
     """
+    require_staff("Loan", loan, "write")
     loan_doc = frappe.get_doc("Loan", loan)
 
     if bank_account_name:
         ba = frappe.get_doc("Bank Account", bank_account_name)
-        if ba.party != loan_doc.applicant:
+        ba.check_permission("read")
+        if ba.party_type != loan_doc.applicant_type or ba.party != loan_doc.applicant:
             frappe.throw(_("This bank account does not belong to this customer"))
         if ba.get("custom_ach_status") != "Active":
             frappe.throw(_("This bank account is not active"))
@@ -747,6 +753,7 @@ def get_loan_account_info(loan):
     Returns:
         dict with account info and resolution source
     """
+    require_staff("Loan", loan)
     from dcr.api.bank_account_ach import get_loan_payment_account
 
     loan_doc = frappe.get_doc("Loan", loan)
@@ -796,6 +803,7 @@ def get_plaid_link_token(customer):
     Returns:
         dict with link_token
     """
+    require_staff("Customer", customer, "write")
     settings = frappe.get_single("ACH Settings")
 
     if not settings.has_plaid_credentials():
@@ -867,6 +875,7 @@ def process_plaid_callback(public_token, account_id, customer, is_default=True):
     Returns:
         dict with success, authorization_name, bank_name, account_last4
     """
+    require_staff("Customer", customer, "write")
     settings = frappe.get_single("ACH Settings")
 
     if not settings.has_plaid_credentials():

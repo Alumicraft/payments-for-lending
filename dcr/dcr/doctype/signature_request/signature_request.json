@@ -16,7 +16,10 @@
   "sent_date",
   "column_break_docusign",
   "signed_date",
-  "signed_attachment"
+  "signed_attachment",
+  "recipient_email",
+  "recipient_name",
+  "review_hash"
  ],
  "fields": [
   {
@@ -44,7 +47,8 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Not Sent\nSent\nSigned\nDeclined"
+   "options": "Not Sent\nSent\nSigned\nDeclined\nOutcome Unknown\nVoided",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_1",
@@ -72,7 +76,7 @@
    "fieldtype": "Data",
    "label": "Envelope ID",
    "read_only": 1,
-   "description": "DocuSign envelope ID — webhook matching key"
+   "description": "DocuSign envelope ID \u2014 webhook matching key"
   },
   {
    "fieldname": "sent_date",
@@ -94,6 +98,24 @@
    "fieldname": "signed_attachment",
    "fieldtype": "Attach",
    "label": "Signed Document",
+   "read_only": 1
+  },
+  {
+   "fieldname": "recipient_email",
+   "fieldtype": "Data",
+   "label": "Reviewed Recipient Email",
+   "read_only": 1
+  },
+  {
+   "fieldname": "recipient_name",
+   "fieldtype": "Data",
+   "label": "Reviewed Recipient Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "review_hash",
+   "fieldtype": "Data",
+   "label": "Reviewed Document Hash",
    "read_only": 1
   }
  ],

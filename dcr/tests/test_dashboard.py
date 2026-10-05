@@ -12,10 +12,17 @@ results are injected with patch.object(dashboard.frappe.db, "sql", ...).
 
 from __future__ import annotations
 
+import pytest
 import unittest
 from unittest.mock import patch
 
 import dcr.api.dashboard as dashboard
+
+
+@pytest.fixture(autouse=True)
+def chart_permission_scope():
+    with patch.object(dashboard, "visible_chart_records", return_value=["VISIBLE-1"]):
+        yield
 
 
 class FakeRow(dict):

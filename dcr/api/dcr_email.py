@@ -6,9 +6,11 @@ Each function passes template-specific data via extra_data override.
 """
 
 import json
+import base64
 from html import escape
 
 import frappe
+from dcr.api.access import require_staff
 from frappe import _
 
 
@@ -67,7 +69,7 @@ def _purchase_order_email_context(doc):
             "Customer", hbr_get("customer"), "customer_name"
         ) or hbr_get("customer")
 
-    customer_name = ""
+    customer_name = hbr_get("end_buyer_name") or ""
     if hbr_get("home_buyer"):
         customer_name = frappe.db.get_value(
             "Customer", hbr_get("home_buyer"), "customer_name"
@@ -114,6 +116,31 @@ def _append_purchase_order_preview_context(body, context):
         + rows
         + "</table>"
     )
+
+
+def _purchase_order_quote_files(po):
+    """Use only uploaded quotes attached to this PO's readable deal."""
+    hbr_name = po.get("custom_home_build_request")
+    if not hbr_name:
+        return []
+    hbr = frappe.get_doc("Home Build Request", hbr_name)
+    hbr.check_permission("read")
+    files = []
+    seen = set()
+    for row in hbr.get("doc_checklist") or []:
+        url = row.get("attachment")
+        if row.get("document_type") != "Factory Quote" or not url or url in seen:
+            continue
+        name = frappe.db.get_value("File", {"file_url": url,
+            "attached_to_doctype": "Home Build Request", "attached_to_name": hbr_name}, "name")
+        if not name:
+            frappe.throw(_("Factory Quote is not attached to this deal. Upload it again before sending."))
+        file = frappe.get_doc("File", name)
+        file.check_permission("read")
+        files.append(file)
+        seen.add(url)
+    return files
+
 
 
 @frappe.whitelist()
@@ -177,6 +204,7 @@ def preview_document_email(
     if custom_message:
         body = f"<p>{escape(str(custom_message))}</p>{body}"
 
+    quote_files = _purchase_order_quote_files(doc) if doctype == "Purchase Order" else []
     return {
         "success": True,
         "recipient": recipient,
@@ -187,7 +215,7 @@ def preview_document_email(
                 "filename": f"{frappe.scrub(doctype)}_{docname}.pdf",
                 "label": _("PDF attachment"),
             }
-        ],
+        ] + [{"filename": file.file_name, "label": _("Uploaded factory quote")} for file in quote_files],
     }
 
 
@@ -201,7 +229,7 @@ def send_purchase_order_email(
 ):
     """Send a Purchase Order through the Email app with DCR order context."""
     try:
-        from emails.email_service.generic_email import send_document_email
+        from emails.email_service.generic_email import send_document_email, generate_pdf_attachment
     except ImportError:
         return {
             "success": False,
@@ -211,6 +239,16 @@ def send_purchase_order_email(
     po = frappe.get_doc("Purchase Order", purchase_order)
     po.check_permission("read")
     po.check_permission("email")
+    po.check_permission("print")
+    quote_files = _purchase_order_quote_files(po)
+    attachments = generate_pdf_attachment("Purchase Order", purchase_order)
+    if not attachments:
+        frappe.throw(_("Could not generate the Purchase Order PDF. Nothing was sent."))
+    for file in quote_files:
+        content = file.get_content()
+        if isinstance(content, str):
+            content = content.encode()
+        attachments.append({"filename": file.file_name, "content": base64.b64encode(content).decode()})
     context = _purchase_order_email_context(po)
     dealer = context.get("dealer_name")
     context_message = "\n".join(
@@ -233,6 +271,7 @@ def send_purchase_order_email(
         doctype="Purchase Order",
         docname=purchase_order,
         to_email=to_email,
+        attachments=attachments,
         cc=cc,
         bcc=bcc,
         custom_message=custom_message,
@@ -480,7 +519,6 @@ def send_flooring_packet_signed(customer_name, loan_application, signed_date, to
 # 10. Loan Disbursed
 # ============================================================================
 
-@frappe.whitelist()
 def send_loan_disbursed(customer_name, factory_name, loan, home_build_request, amount, to_email, reference_name=None):
     """Send notification that loan advance has been disbursed to factory."""
     formatted_amount = _format_currency_amount(amount)
@@ -621,6 +659,7 @@ def send_autopay_connected(customer_name, bank_name, account_last4, to_email, re
 @frappe.whitelist()
 def send_autopay_update_email(customer):
     """Whitelisted method — send autopay update email to a dealer."""
+    require_staff("Customer", customer, "email")
     customer_doc = frappe.get_doc("Customer", customer)
     customer_doc.check_permission("read")
 

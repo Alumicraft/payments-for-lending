@@ -14,6 +14,7 @@ Usage (browser console):
 import re
 
 import frappe
+from dcr.api.access import require_staff
 from frappe import _
 from frappe.utils import today
 
@@ -140,6 +141,7 @@ def import_dealers_from_xlsx(dry_run=False, limit=0):
     Returns:
         dict with counts of created/skipped records and any errors.
     """
+    require_staff("Customer", permission="create")
     dry_run = frappe.utils.cint(dry_run)
     limit = frappe.utils.cint(limit)
 

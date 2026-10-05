@@ -17,6 +17,7 @@ Why custom methods (not built-in Count/Sum charts):
 """
 
 import frappe
+from dcr.api.access import visible_chart_records
 from frappe.utils import add_months, flt, get_first_day, getdate, nowdate
 
 
@@ -33,7 +34,8 @@ def inflows_vs_outflows(**kwargs):
     """
     labels, keys = _trailing_months()
 
-    outflows = frappe.db.sql(
+    outflows = _chart_query(
+        "Loan Disbursement",
         """
         SELECT DATE_FORMAT(posting_date, '%%Y-%%m-01') AS m,
                COALESCE(SUM(disbursed_amount), 0) AS total
@@ -44,7 +46,8 @@ def inflows_vs_outflows(**kwargs):
         (keys[0],),
         as_dict=True,
     )
-    inflows = frappe.db.sql(
+    inflows = _chart_query(
+        "Loan Repayment",
         """
         SELECT DATE_FORMAT(posting_date, '%%Y-%%m-01') AS m,
                COALESCE(SUM(amount_paid), 0) AS total
@@ -84,7 +87,8 @@ def past_due_aging(**kwargs):
     """
     buckets = ["1-30", "31-60", "61-90", "90+"]
 
-    rows = frappe.db.sql(
+    rows = _chart_query(
+        "Loan Demand",
         """
         SELECT
             CASE
@@ -121,7 +125,8 @@ def new_deals_by_type(**kwargs):
     """
     labels, keys = _trailing_months()
 
-    rows = frappe.db.sql(
+    rows = _chart_query(
+        "Home Build Request",
         """
         SELECT DATE_FORMAT(creation, '%%Y-%%m-01') AS m,
                financing_type,
@@ -152,7 +157,8 @@ def new_deals_by_type(**kwargs):
 def repayment_breakdown(**kwargs):
     """Monthly principal, interest, and penalty collected, last 12 months."""
     labels, keys = _trailing_months()
-    rows = frappe.db.sql(
+    rows = _chart_query(
+        "Loan Repayment",
         """
         SELECT DATE_FORMAT(posting_date, '%%Y-%%m-01') AS m,
                COALESCE(SUM(principal_amount_paid), 0) AS principal,
@@ -190,7 +196,8 @@ def repayment_breakdown(**kwargs):
 def deal_pipeline_by_factory(**kwargs):
     """Submitted HBR counts by factory and backend-derived order stage."""
     _, keys = _trailing_months()
-    rows = frappe.db.sql(
+    rows = _chart_query(
+        "Home Build Request",
         """
         SELECT
             COALESCE(NULLIF(hbr.factory, ''), 'Unassigned') AS factory,
@@ -209,7 +216,7 @@ def deal_pipeline_by_factory(**kwargs):
                   AND po.docstatus = 1
             ) AS has_po
         FROM `tabHome Build Request` hbr
-        WHERE hbr.docstatus = 1 AND hbr.creation >= %s
+        WHERE docstatus = 1 AND hbr.creation >= %s
         """,
         (keys[0],),
         as_dict=True,
@@ -247,7 +254,8 @@ def deal_pipeline_by_factory(**kwargs):
 @frappe.whitelist()
 def cash_collected_mtd(filters=None, **kwargs):
     """Return a currency-safe zero when no repayments exist this month."""
-    result = frappe.db.sql(
+    result = _chart_query(
+        "Loan Repayment",
         """
         SELECT COALESCE(SUM(amount_paid), 0) AS total
         FROM `tabLoan Repayment`
@@ -267,6 +275,23 @@ def cash_collected_mtd(filters=None, **kwargs):
 # --------------------------------------------------------------------------- #
 # Helpers
 # --------------------------------------------------------------------------- #
+
+def _chart_query(doctype, query, params, as_dict=True):
+    names = visible_chart_records(doctype)
+    if not names:
+        return []
+    marker = "WHERE docstatus"
+    if marker not in query:
+        raise ValueError("Chart query has no permission scope marker")
+    column = "hbr.name" if "`tabHome Build Request` hbr" in query else "name"
+    if isinstance(params, dict):
+        query = query.replace(marker, f"WHERE {column} IN %(visible_names)s AND docstatus", 1)
+        params = dict(params, visible_names=tuple(names))
+    else:
+        query = query.replace(marker, f"WHERE {column} IN %s AND docstatus", 1)
+        params = (tuple(names),) + tuple(params)
+    return frappe.db.sql(query, params, as_dict=as_dict)
+
 
 def _trailing_months(n=12):
     """Return (labels, keys) for the trailing n months, oldest first.

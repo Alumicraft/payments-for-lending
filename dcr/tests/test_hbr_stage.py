@@ -187,7 +187,7 @@ class TestHbrStageHookRegistration(unittest.TestCase):
 
         self.assertIn('doc.doctype == "Purchase Receipt" and method == "on_submit"', hbr_stage)
         self.assertIn("submitted_pr_override = True", hbr_stage)
-        self.assertIn("_sync_hbr_stages(hbr_name, submitted_pr_override)", hbr_stage)
+        self.assertIn("_sync_hbr_stages(hbr_name, submitted_pr_override, event_revision=", hbr_stage)
         self.assertIn("exclude_receipt=doc.name", hbr_stage)
 
 

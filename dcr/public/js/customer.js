@@ -118,29 +118,5 @@ function patch_dealer_document_uploads(frm) {
 
 
 function send_dealer_agreement(frm) {
-    if (!frm.doc.email_id) {
-        frappe.msgprint(__('Please set an email address for this customer before sending the agreement.'));
-        return;
-    }
-
-    frappe.confirm(
-        __('Send Dealer Agreement to {0}?', [frm.doc.email_id]),
-        function() {
-            frappe.call({
-                method: 'dcr.api.docusign.send_dealer_agreement',
-                args: { customer: frm.doc.name },
-                freeze: true,
-                freeze_message: __('Sending agreement...'),
-                callback: function(r) {
-                    if (r.message && r.message.success) {
-                        frappe.show_alert({
-                            message: __('Dealer Agreement sent for signature'),
-                            indicator: 'green'
-                        });
-                        frm.reload_doc();
-                    }
-                }
-            });
-        }
-    );
+    return dcr.preview_signature(frm, 'Dealer Agreement', 'dcr.api.docusign.send_dealer_agreement', 'customer');
 }

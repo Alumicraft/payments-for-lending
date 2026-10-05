@@ -100,16 +100,16 @@ class TestShouldRetry(unittest.TestCase):
         self.assertFalse(txn.should_retry("R01"))
 
     # ------------------------------------------------------------------
-    # Unknown codes — default to retry (conservative)
+    # Unknown codes — require review, never automatically retry
     # ------------------------------------------------------------------
 
-    def test_unknown_code_defaults_to_retry(self):
+    def test_unknown_code_does_not_retry(self):
         txn = make_txn()
-        self.assertTrue(txn.should_retry("R99"))
+        self.assertFalse(txn.should_retry("R99"))
 
-    def test_none_code_defaults_to_retry(self):
+    def test_none_code_does_not_retry(self):
         txn = make_txn()
-        self.assertTrue(txn.should_retry(None))
+        self.assertFalse(txn.should_retry(None))
 
     # ------------------------------------------------------------------
     # Boundary: first attempt vs last attempt

@@ -87,6 +87,11 @@ class HomeBuildRequest(Document):
     def on_submit(self):
         """Submission locks the deal record. Downstream docs created manually."""
         self.db_set("status", "Submitted")
+        from dcr.api.status_notices import record_transition
+        if self.meta.has_field("custom_portal_status"):
+            old_status = self.get("custom_portal_status")
+            self.db_set("custom_portal_status", "Accepted")
+            record_transition(self, "custom_portal_status", old_status, "Accepted")
         self.sync_checklist_files()
 
     def sync_checklist_files(self):

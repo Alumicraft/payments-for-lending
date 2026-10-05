@@ -21,7 +21,7 @@ class _Doc:
 class TestLoanApplicationGuards(unittest.TestCase):
 
     @patch("dcr.api.lending.validate_advance_date")
-    @patch("dcr.api.lending.get_dealer_outstanding_balance")
+    @patch("dcr.api.lending._get_dealer_outstanding_balance")
     @patch("dcr.api.lending.is_dealer_current")
     @patch("dcr.api.lending.frappe")
     def test_cash_hbr_cannot_back_a_loan_application(
@@ -57,7 +57,7 @@ class TestLoanApplicationGuards(unittest.TestCase):
             validate_loan_application(doc, "validate")
 
     @patch("dcr.api.lending.validate_advance_date")
-    @patch("dcr.api.lending.get_dealer_outstanding_balance")
+    @patch("dcr.api.lending._get_dealer_outstanding_balance")
     @patch("dcr.api.lending.is_dealer_current")
     @patch("dcr.api.lending.frappe")
     def test_loan_application_validate_backfills_hbr_values(
@@ -218,7 +218,7 @@ class TestLoanApplicationGuards(unittest.TestCase):
         self.assertEqual(defaults["address_line_1"], "41888 Arbor Glen")
 
     @patch("dcr.api.lending.validate_advance_date")
-    @patch("dcr.api.lending.get_dealer_outstanding_balance")
+    @patch("dcr.api.lending._get_dealer_outstanding_balance")
     @patch("dcr.api.lending.is_dealer_current")
     @patch("dcr.api.lending.frappe")
     def test_loan_application_contact_backfill_uses_linked_contact(

@@ -114,7 +114,9 @@ class TestEmailPermissions(unittest.TestCase):
             send_purchase_order_email("PO-001", "test@example.test")
         self.assertEqual(generic.send_document_email.call_args.kwargs["subject_override"],
                          "Purchase Order PO-001 — Dealer Name")
-        self.assertEqual(mock_frappe.get_doc.return_value.check_permission.call_count, 2)
+        mock_frappe.get_doc.return_value.check_permission.assert_any_call("read")
+        mock_frappe.get_doc.return_value.check_permission.assert_any_call("email")
+        mock_frappe.get_doc.return_value.check_permission.assert_any_call("print")
 
 
 class TestDcrEmailFormatting(unittest.TestCase):

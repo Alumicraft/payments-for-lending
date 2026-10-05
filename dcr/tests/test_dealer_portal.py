@@ -285,6 +285,7 @@ class TestDealerPortalHBRWorkflow(unittest.TestCase):
             docstatus=0,
             custom_portal_status="Draft",
             name="HBR-001",
+            reload=lambda: None,
         )
         mock_frappe.throw.side_effect = ValueError
 

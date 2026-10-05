@@ -118,10 +118,16 @@ def get_heatmap_data():
             0 AS has_cancelled_po
         """
 
+    loan_stage_select = "hbr.custom_loan_stage" if frappe.db.has_column("Home Build Request", "custom_loan_stage") else "NULL"
     rows = frappe.db.sql(
         f"""
         SELECT
             hbr.name,
+            hbr.home_serial_no,
+            hbr.quote_no,
+            hbr.end_buyer_name,
+            hbr.in_storage,
+            {loan_stage_select} AS loan_stage,
             hbr.community_name,
             hbr.delivery_address,
             hbr.city,
@@ -416,6 +422,11 @@ def _aggregate_locations(rows):
         groups[key]["homes"].append({
             "name": row.get("name"),
             "status": status,
+            "home_serial_no": row.get("home_serial_no") or "",
+            "quote_no": row.get("quote_no") or "",
+            "end_buyer_name": row.get("end_buyer_name") or "",
+            "in_storage": bool(row.get("in_storage")),
+            "loan_stage": row.get("loan_stage") or "Not Started",
             "customer": row.get("customer"),
             "customer_name": row.get("customer_name") or row.get("customer") or "",
             "factory": row.get("factory"),

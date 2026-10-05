@@ -443,34 +443,7 @@ function set_calculated_value(frm, fieldname, value) {
 
 
 function send_flooring_packet(frm) {
-    frappe.db.get_value('Customer', frm.doc.applicant, 'email_id', function(r) {
-        if (!r || !r.email_id) {
-            frappe.msgprint(__('Customer {0} does not have an email address.', [frm.doc.applicant]));
-            return;
-        }
-
-        frappe.confirm(
-            __('Send Flooring Packet (Info Sheet + Exhibit A + Auto-Pay Authorization) to {0} ({1}) for signature?',
-                [frm.doc.applicant, r.email_id]),
-            function() {
-                frappe.call({
-                    method: 'dcr.api.docusign.send_flooring_packet',
-                    args: { loan_application: frm.doc.name },
-                    freeze: true,
-                    freeze_message: __('Generating documents and sending via DocuSign...'),
-                    callback: function(r) {
-                        if (r.message && r.message.success) {
-                            frappe.show_alert({
-                                message: __('Flooring Packet sent for signature'),
-                                indicator: 'green'
-                            });
-                            frm.reload_doc();
-                        }
-                    }
-                });
-            }
-        );
-    });
+    return dcr.preview_signature(frm, 'Flooring Packet', 'dcr.api.docusign.send_flooring_packet', 'loan_application');
 }
 
 

@@ -1,0 +1,139 @@
+{
+ "doctype": "DocType",
+ "name": "DCR Status Notice",
+ "module": "DCR",
+ "engine": "InnoDB",
+ "field_order": [
+  "home_build_request",
+  "customer",
+  "event",
+  "recipient",
+  "audience",
+  "subject",
+  "message",
+  "status",
+  "email_queue",
+  "delivered_to",
+  "last_error",
+  "event_key"
+ ],
+ "fields": [
+  {
+   "fieldname": "home_build_request",
+   "fieldtype": "Link",
+   "options": "Home Build Request",
+   "label": "Home Build Request",
+   "read_only": 1
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "options": "Customer",
+   "label": "Dealer",
+   "read_only": 1
+  },
+  {
+   "fieldname": "event",
+   "fieldtype": "Data",
+   "label": "Event",
+   "read_only": 1
+  },
+  {
+   "fieldname": "recipient",
+   "fieldtype": "Data",
+   "options": "Email",
+   "label": "Intended Recipient",
+   "read_only": 1
+  },
+  {
+   "fieldname": "audience",
+   "fieldtype": "Select",
+   "options": "Dealer\nStaff",
+   "label": "Audience",
+   "read_only": 1
+  },
+  {
+   "fieldname": "subject",
+   "fieldtype": "Data",
+   "label": "Subject",
+   "read_only": 1
+  },
+  {
+   "fieldname": "message",
+   "fieldtype": "Text Editor",
+   "label": "Message",
+   "read_only": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "options": "Recorded\nQueued\nSent\nError",
+   "default": "Recorded",
+   "label": "Status",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "email_queue",
+   "fieldtype": "Link",
+   "options": "Email Queue",
+   "label": "Email Queue",
+   "read_only": 1
+  },
+  {
+   "fieldname": "delivered_to",
+   "fieldtype": "Data",
+   "options": "Email",
+   "label": "Queued Recipient",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_error",
+   "fieldtype": "Small Text",
+   "label": "Last Error",
+   "read_only": 1
+  },
+  {
+   "fieldname": "event_key",
+   "fieldtype": "Data",
+   "label": "Event Key",
+   "hidden": 1,
+   "read_only": 1,
+   "unique": 1,
+   "reqd": 1
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "report": 1
+  },
+  {
+   "role": "Accounts Manager",
+   "read": 1,
+   "write": 1,
+   "email": 1,
+   "export": 1,
+   "report": 1
+  }
+ ],
+ "track_changes": 1,
+ "autoname": "field:event_key",
+ "naming_rule": "By fieldname",
+ "creation": "2026-10-05 00:00:00.000000",
+ "modified": "2026-10-05 00:00:00.000000",
+ "modified_by": "Administrator",
+ "owner": "Administrator",
+ "actions": [],
+ "links": [],
+ "states": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "index_web_pages_for_search": 0
+}

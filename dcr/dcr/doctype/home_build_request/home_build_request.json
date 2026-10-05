@@ -14,6 +14,7 @@
   "home_type",
   "financing_type",
   "property_type",
+  "in_storage",
   "delivery_section",
   "community_name",
   "delivery_address",
@@ -42,10 +43,14 @@
   "home_invoice_plus_freight",
   "buyer_section",
   "home_buyer",
+  "end_buyer_name",
+  "end_buyer_email",
+  "end_buyer_phone",
   "financials_section",
   "end_buyer_lender",
   "column_break_financials",
   "selling_price",
+  "installed_value",
   "customer_deposit",
   "escrow_section",
   "escrow_company",
@@ -388,6 +393,38 @@
    "fieldtype": "Table",
    "label": "Document Checklist",
    "options": "Document Checklist"
+  },
+  {
+   "fieldname": "end_buyer_name",
+   "fieldtype": "Data",
+   "label": "End Buyer Name"
+  },
+  {
+   "fieldname": "end_buyer_email",
+   "fieldtype": "Data",
+   "label": "End Buyer Email",
+   "options": "Email"
+  },
+  {
+   "fieldname": "end_buyer_phone",
+   "fieldtype": "Data",
+   "label": "End Buyer Phone",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "installed_value",
+   "fieldtype": "Currency",
+   "label": "Installed Value",
+   "options": "USD",
+   "description": "Captured separately from Selling Price. Lending calculations continue to use the existing approved settings."
+  },
+  {
+   "fieldname": "in_storage",
+   "fieldtype": "Check",
+   "label": "In Storage",
+   "allow_on_submit": 1,
+   "in_standard_filter": 1,
+   "description": "Staff marker for the physical storage location; receipt and loan stages are tracked separately."
   }
  ],
  "index_web_pages_for_search": 1,
@@ -469,5 +506,6 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "track_changes": 1
+ "track_changes": 1,
+ "search_fields": "home_serial_no,quote_no,end_buyer_name"
 }

@@ -1,3 +1,4 @@
+from dcr.api.access import require_staff
 import frappe
 from frappe import _
 from frappe.utils.nestedset import rebuild_tree
@@ -342,6 +343,10 @@ def import_chart_of_accounts(company, dry_run=False, limit=0):
             callback: r => console.log(r.message)
         })
     """
+    frappe.only_for("System Manager")
+    require_staff("Company", company, "write")
+    require_staff("Account", permission="create")
+    require_staff("Account", permission="delete")
     dry_run = frappe.utils.cint(dry_run)
     limit = frappe.utils.cint(limit)
 

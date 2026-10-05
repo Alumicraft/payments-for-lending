@@ -4,14 +4,14 @@ app_publisher = "DCR"
 app_description = "Dealer Capital Resources — Home Builder Lending Platform"
 app_email = "hello@example.com"
 app_license = "MIT"
-required_apps = ["frappe", "erpnext", "lending"]
+required_apps = ["frappe", "erpnext", "lending", "emails"]
 
 boot_session = "dcr.api.boot.boot_session"
 
 # Frappe Cloud serves /assets files with a long immutable browser cache.
 # Keep these explicit URLs versioned so deployed client fixes are fetched
 # without requiring users to hard-refresh stale browser caches.
-DCR_ASSET_VERSION = "20260802-2"
+DCR_ASSET_VERSION = "20261005-2"
 
 
 def versioned_asset(path):
@@ -25,6 +25,7 @@ app_include_js = [
     # string there prevents the form script from loading at all. Load these
     # versioned assets globally instead so cache busting and form handlers
     # both work on Frappe Cloud.
+    versioned_asset("/assets/dcr/js/signature_preview.js"),
     versioned_asset("/assets/dcr/js/home_build_request.js"),
     versioned_asset("/assets/dcr/js/loan_application.js"),
     versioned_asset("/assets/dcr/js/hbr_dashboard_plus_patch_20260525_10.js"),
@@ -128,6 +129,10 @@ doctype_js = {
 
 # Document Events
 doc_events = {
+    "Home Build Request": {
+        "on_update": "dcr.api.status_notices.capture_hbr_changes",
+        "on_update_after_submit": "dcr.api.status_notices.capture_hbr_changes",
+    },
     "Loan Application": {
         "validate": "dcr.api.lending.validate_loan_application",
         "on_update": "dcr.api.hbr_stage.sync_from_doc",
@@ -196,7 +201,10 @@ scheduler_events = {
         "dcr.tasks.scheduled_debits.process_retry_transactions"
     ],
     "hourly": [
-        "dcr.tasks.scheduled_debits.check_pending_transactions"
+        "dcr.api.status_notices.queue_pilot_notices",
+        "dcr.api.status_notices.refresh_notice_delivery",
+        "dcr.tasks.scheduled_debits.check_pending_transactions",
+        "dcr.tasks.scheduled_debits.reconcile_settled_transactions"
     ],
 }
 

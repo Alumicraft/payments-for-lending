@@ -137,11 +137,12 @@ def revoke(bank_account_name, reason=None):
     ba.custom_revocation_reason = reason
     ba.save()
 
-    # Cancel pending transactions
-    _cancel_pending_transactions(ba.name)
+    # Persist revocation even if a provider refuses to cancel an existing debit.
+    frappe.db.commit()
+    unresolved = _cancel_pending_transactions(ba.name)
 
     ba.add_comment("Comment", f"ACH revoked: {reason or 'No reason provided'}")
-    return True
+    return {"revoked": True, "unresolved_transactions": unresolved}
 
 
 def _cancel_pending_transactions(bank_account_name):
@@ -150,7 +151,7 @@ def _cancel_pending_transactions(bank_account_name):
         "ACH Transaction",
         filters={
             "bank_account": bank_account_name,
-            "status": ["in", ["Scheduled", "Initiated"]]
+            "status": ["in", ["Scheduled", "Initiated", "Processing", "Outcome Unknown"]]
         },
         pluck="name",
         order_by="creation desc"
@@ -161,16 +162,29 @@ def _cancel_pending_transactions(bank_account_name):
         "ACH Transaction",
         filters={
             "ach_authorization": bank_account_name,
-            "status": ["in", ["Scheduled", "Initiated"]],
+            "status": ["in", ["Scheduled", "Initiated", "Processing", "Outcome Unknown"]],
             "bank_account": ["in", ["", None]]
         },
         pluck="name",
         order_by="creation desc"
     )
 
+    unresolved = []
     for txn_name in set(pending + pending_legacy):
         txn = frappe.get_doc("ACH Transaction", txn_name)
-        txn.cancel_transaction("Bank account ACH revoked")
+        if txn.status not in ("Scheduled", "Initiated"):
+            unresolved.append(txn_name)
+            continue
+        try:
+            txn.cancel_transaction("Bank account ACH revoked")
+            frappe.db.commit()
+        except Exception:
+            unresolved.append(txn_name)
+            frappe.log_error(frappe.get_traceback(), "ACH Revocation Cancellation")
+    if unresolved:
+        frappe.msgprint(_("ACH is revoked. These existing provider payments still need reconciliation: {0}").format(
+            ", ".join(unresolved)), indicator="orange")
+    return unresolved
 
 
 def validate_single_default(doc, method):

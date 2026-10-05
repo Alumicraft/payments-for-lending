@@ -56,7 +56,7 @@ class TestSetupCustomFields(unittest.TestCase):
             column.get.side_effect = lambda field, row=column: getattr(row, field)
 
         def get_board_field(field):
-            if field == "filters":
+            if field in ("filters", "fields", "show_labels"):
                 return None
             return columns
 
@@ -104,7 +104,7 @@ class TestSetupCustomFields(unittest.TestCase):
             {"column_name": "Ordered", "indicator": "Gray"},
             {"column_name": "Delivered", "indicator": "Gray"},
         ]
-        board.get.side_effect = lambda field: None if field == "filters" else columns
+        board.get.side_effect = lambda field: None if field in ("filters", "fields", "show_labels") else columns
         board.set.side_effect = lambda field, value: columns.clear()
         board.append.side_effect = lambda field, value: columns.append(value)
         mock_frappe.db.exists.return_value = True
@@ -623,7 +623,7 @@ class TestPackagingConfig(unittest.TestCase):
         self.assertIn('"dcr/dashboard_chart_source/*/*.js"', setup_py)
         self.assertIn("recursive-include dcr/public *.css *.js *.html *.png", manifest)
         self.assertIn("recursive-include dcr/dcr/dashboard_chart_source *.json *.js", manifest)
-        self.assertIn('DCR_ASSET_VERSION = "20260802-2"', hooks)
+        self.assertIn('DCR_ASSET_VERSION = "20261005-2"', hooks)
         self.assertIn('{"from_route": "/portal", "to_route": "dealer_portal"}', hooks)
         self.assertNotIn('"from_route": "/dealer-portal"', hooks)
         self.assertIn("ensure_dealer_portal_fields", setup)
