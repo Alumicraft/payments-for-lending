@@ -107,6 +107,49 @@ class TestDealerPortalHBRWorkflow(unittest.TestCase):
             "email_id": "dealer@example.com",
         }
 
+    @patch("dcr.api.dealer_portal._loan_summary", return_value=None)
+    @patch("dcr.api.dealer_portal._hbr_document_items", return_value=[])
+    @patch("dcr.api.dealer_portal._has_field", return_value=True)
+    def test_quote_number_is_serialized_for_readback_and_draft_editing(self, *mocks):
+        from dcr.api.dealer_portal import _serialize_hbr
+
+        result = _serialize_hbr({
+            "name": "HBR-001", "docstatus": 0,
+            "custom_portal_status": "Draft", "quote_no": "FACTORY-Q-123",
+        })
+        self.assertEqual(result["quote_no"], "FACTORY-Q-123")
+        self.assertEqual(result["editable"]["quote_no"], "FACTORY-Q-123")
+
+    @patch("dcr.api.dealer_portal._serialize_hbr", return_value={"quote_no": "FACTORY-Q-123"})
+    @patch("dcr.api.dealer_portal._has_field", return_value=True)
+    @patch("dcr.api.dealer_portal._require_active_factory")
+    @patch("dcr.api.dealer_portal.get_current_dealer_customer")
+    @patch("dcr.api.dealer_portal._get_owned_hbr")
+    @patch("dcr.api.dealer_portal.frappe")
+    def test_quote_number_can_be_saved_on_new_and_existing_owned_drafts(
+        self, mock_frappe, mock_owned, mock_customer, *mocks,
+    ):
+        from dcr.api.dealer_portal import save_hbr_draft
+
+        mock_customer.return_value = self._customer()
+        mock_frappe.throw.side_effect = ValueError
+        for name in [None, "HBR-001"]:
+            with self.subTest(name=name):
+                hbr = MagicMock()
+                hbr.docstatus = 0
+                hbr.get.side_effect = {"docstatus": 0, "custom_portal_status": "Draft", "factory": "FACTORY-001"}.get
+                mock_owned.return_value = hbr
+                mock_frappe.new_doc.return_value = hbr
+                result = save_hbr_draft(
+                    {"factory": "FACTORY-001", "quote_no": "FACTORY-Q-123"}, name=name,
+                )
+                hbr.set.assert_any_call("quote_no", "FACTORY-Q-123")
+                self.assertEqual(result["quote_no"], "FACTORY-Q-123")
+                if name:
+                    hbr.save.assert_called_once_with(ignore_permissions=True)
+                else:
+                    hbr.insert.assert_called_once_with(ignore_permissions=True)
+
     @patch("dcr.api.dealer_portal._serialize_hbr", return_value={"name": "HBR-001"})
     @patch("dcr.api.dealer_portal._has_field", return_value=True)
     @patch("dcr.api.dealer_portal._require_active_factory")

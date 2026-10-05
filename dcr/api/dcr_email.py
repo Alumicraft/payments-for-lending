@@ -57,13 +57,15 @@ def _purchase_order_email_context(doc):
     get_value = doc.get if hasattr(doc, "get") else lambda field: getattr(doc, field, None)
     hbr_name = get_value("custom_home_build_request")
     hbr = frappe.get_doc("Home Build Request", hbr_name) if hbr_name else None
+    if hbr:
+        hbr.check_permission("read")
     hbr_get = hbr.get if hbr and hasattr(hbr, "get") else lambda field: getattr(hbr, field, None) if hbr else None
 
-    dealer_name = get_value("supplier_name") or get_value("supplier") or ""
-    if get_value("supplier"):
+    dealer_name = ""
+    if hbr_get("customer"):
         dealer_name = frappe.db.get_value(
-            "Supplier", get_value("supplier"), "supplier_name"
-        ) or dealer_name
+            "Customer", hbr_get("customer"), "customer_name"
+        ) or hbr_get("customer")
 
     customer_name = ""
     if hbr_get("home_buyer"):
@@ -145,6 +147,7 @@ def preview_document_email(
         }
 
     doc = frappe.get_doc(doctype, docname)
+    doc.check_permission("read")
     if isinstance(extra_data, str):
         extra_data = json.loads(extra_data or "{}")
     extra_data = extra_data or {}
@@ -206,8 +209,10 @@ def send_purchase_order_email(
         }
 
     po = frappe.get_doc("Purchase Order", purchase_order)
+    po.check_permission("read")
+    po.check_permission("email")
     context = _purchase_order_email_context(po)
-    dealer = context.get("dealer_name") or po.get("supplier") or purchase_order
+    dealer = context.get("dealer_name")
     context_message = "\n".join(
         f"{label}: {context.get(key) or '—'}"
         for label, key in (
@@ -233,7 +238,10 @@ def send_purchase_order_email(
         custom_message=custom_message,
         extra_data=context,
         template_override="purchase-order",
-        subject_override=_("Purchase Order {0} — {1}").format(purchase_order, dealer),
+        subject_override=(
+            _("Purchase Order {0} — {1}").format(purchase_order, dealer)
+            if dealer else _("Purchase Order {0}").format(purchase_order)
+        ),
     )
 
 

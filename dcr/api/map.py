@@ -12,6 +12,31 @@ from frappe import _
 FACTORY_SUPPLIER_GROUP = "Factory"
 
 
+def _require_map_access():
+    """The workspace map is a staff surface, not a dealer portal API."""
+    user = frappe.session.user
+    if (
+        not user
+        or user == "Guest"
+        or frappe.db.get_value("User", user, "user_type") != "System User"
+        or not frappe.has_permission("Home Build Request", "read")
+    ):
+        frappe.throw(_("You do not have permission to access the DCR map."), frappe.PermissionError)
+
+
+def _visible_hbr_names(cutoff):
+    """Apply Frappe's role, user-permission, and sharing filters before SQL."""
+    return [
+        row["name"]
+        for row in frappe.get_list(
+            "Home Build Request",
+            filters={"creation": [">=", cutoff], "docstatus": ["!=", 2]},
+            fields=["name"],
+            limit_page_length=0,
+        )
+    ]
+
+
 @frappe.whitelist()
 def search_address(query):
     """Search for addresses using Mapbox Geocoding v6.
@@ -19,6 +44,7 @@ def search_address(query):
     Called from HBR form's address autofill dropdown.
     Returns a list of structured address suggestions.
     """
+    _require_map_access()
     if not query or len(query) < 3:
         return []
 
@@ -59,7 +85,12 @@ def get_heatmap_data():
     filtered server-side and never reach the map. Draft (docstatus=0) maps
     to status="Pending" — there is no separate Draft pin.
     """
+    _require_map_access()
     cutoff = (datetime.utcnow() - timedelta(days=365)).strftime("%Y-%m-%d %H:%M:%S")
+    names = _visible_hbr_names(cutoff)
+    if not names:
+        return []
+    placeholders = ", ".join(["%s"] * len(names))
     if _has_purchase_order_hbr_field():
         status_select = """
             EXISTS (
@@ -111,8 +142,9 @@ def get_heatmap_data():
         LEFT JOIN `tabSupplier` fact ON fact.name = hbr.factory
         WHERE hbr.creation >= %s
           AND hbr.docstatus != 2
+          AND hbr.name IN ({placeholders})
         """,
-        (cutoff,),
+        tuple([cutoff] + names),
         as_dict=True,
     )
     # Filter out rows whose only PO is cancelled (no active PO, no PR).
@@ -137,6 +169,7 @@ def get_map_settings():
 
     Returns the access token and default view settings.
     """
+    _require_map_access()
     settings = frappe.get_single("Map Settings")
     return {
         "access_token": settings.get_password("mapbox_access_token") or "",
@@ -157,11 +190,13 @@ def get_factory_locations():
     `Home Build Request.factory`. Cancelled HBRs are excluded — same
     rule as the home pins, so the totals match what the user sees.
     """
+    _require_map_access()
     cutoff = (datetime.utcnow() - timedelta(days=365)).strftime("%Y-%m-%d %H:%M:%S")
-    suppliers = frappe.get_all(
+    suppliers = frappe.get_list(
         "Supplier",
         filters={"supplier_group": FACTORY_SUPPLIER_GROUP, "disabled": 0},
         fields=["name", "supplier_name", "latitude", "longitude"],
+        limit_page_length=0,
     )
     suppliers = [_ensure_supplier_coords(s) for s in suppliers]
     suppliers = [
@@ -176,6 +211,8 @@ def get_factory_locations():
 
     names = [s["name"] for s in suppliers]
     placeholders = ", ".join(["%s"] * len(names))
+    hbr_names = _visible_hbr_names(cutoff)
+    hbr_placeholders = ", ".join(["%s"] * len(hbr_names))
     if _has_purchase_order_hbr_field():
         status_select = """
             EXISTS (SELECT 1 FROM `tabPurchase Receipt Item` pri
@@ -206,10 +243,11 @@ def get_factory_locations():
         WHERE hbr.creation >= %s
           AND hbr.docstatus != 2
           AND hbr.factory IN ({placeholders})
+          AND hbr.name IN ({hbr_placeholders})
         """,
-        tuple([cutoff] + names),
+        tuple([cutoff] + names + hbr_names),
         as_dict=True,
-    )
+    ) if hbr_names else []
 
     counts = {n: {"pending_count": 0, "ordered_count": 0, "delivered_count": 0, "total_12mo": 0} for n in names}
     for r in rows:

@@ -7,6 +7,107 @@ import unittest
 from unittest.mock import patch, MagicMock
 
 
+def configure_staff(mock_frappe):
+    mock_frappe.session.user = "staff@example.test"
+    mock_frappe.db.get_value.return_value = "System User"
+    mock_frappe.has_permission.return_value = True
+    mock_frappe.get_list.return_value = [{"name": "HBR-VISIBLE"}]
+
+
+class TestMapAccess(unittest.TestCase):
+    @patch("dcr.api.map.frappe")
+    def test_all_map_endpoints_deny_guests_and_website_users(self, mock_frappe):
+        from dcr.api.map import (
+            get_factory_locations, get_heatmap_data, get_map_settings, search_address,
+        )
+
+        mock_frappe.throw.side_effect = PermissionError
+        for user, user_type in [("Guest", "System User"), ("dealer@example.test", "Website User")]:
+            for endpoint, args in [
+                (get_heatmap_data, ()), (get_factory_locations, ()),
+                (get_map_settings, ()), (search_address, ("123 Main",)),
+            ]:
+                with self.subTest(user=user, endpoint=endpoint.__name__):
+                    mock_frappe.reset_mock()
+                    mock_frappe.session.user = user
+                    mock_frappe.db.get_value.return_value = user_type
+                    with self.assertRaises(PermissionError):
+                        endpoint(*args)
+                    mock_frappe.get_list.assert_not_called()
+                    mock_frappe.get_all.assert_not_called()
+                    mock_frappe.get_single.assert_not_called()
+                    mock_frappe.db.sql.assert_not_called()
+
+    @patch("dcr.api.map.frappe")
+    def test_staff_without_hbr_read_cannot_access_settings(self, mock_frappe):
+        from dcr.api.map import get_map_settings
+
+        configure_staff(mock_frappe)
+        mock_frappe.has_permission.return_value = False
+        mock_frappe.throw.side_effect = PermissionError
+        with self.assertRaises(PermissionError):
+            get_map_settings()
+        mock_frappe.get_single.assert_not_called()
+
+    @patch("dcr.api.map.frappe")
+    def test_heatmap_sql_only_receives_permission_filtered_hbr_names(self, mock_frappe):
+        from dcr.api.map import get_heatmap_data
+
+        configure_staff(mock_frappe)
+        mock_frappe.db.sql.return_value = []
+        get_heatmap_data()
+
+        mock_frappe.has_permission.assert_called_once_with("Home Build Request", "read")
+        query = mock_frappe.get_list.call_args
+        self.assertEqual(query.args, ("Home Build Request",))
+        self.assertNotIn("ignore_permissions", query.kwargs)
+        self.assertEqual(query.kwargs["limit_page_length"], 0)
+        self.assertIn("hbr.name IN (%s)", mock_frappe.db.sql.call_args.args[0])
+        self.assertEqual(mock_frappe.db.sql.call_args.args[1][1:], ("HBR-VISIBLE",))
+
+    @patch("dcr.api.map.frappe")
+    def test_empty_visible_hbr_set_does_not_fall_back_to_all_rows(self, mock_frappe):
+        from dcr.api.map import get_heatmap_data
+
+        configure_staff(mock_frappe)
+        mock_frappe.get_list.return_value = []
+        self.assertEqual(get_heatmap_data(), [])
+        mock_frappe.db.sql.assert_not_called()
+
+    @patch("dcr.api.map.frappe")
+    def test_factory_counts_are_scoped_to_visible_hbrs_and_suppliers(self, mock_frappe):
+        from dcr.api.map import get_factory_locations
+
+        configure_staff(mock_frappe)
+        mock_frappe.get_list.side_effect = [[{
+            "name": "FACTORY-VISIBLE", "supplier_name": "Factory",
+            "latitude": 33.0, "longitude": -112.0,
+        }], [{"name": "HBR-VISIBLE"}]]
+        mock_frappe.db.sql.return_value = []
+        result = get_factory_locations()
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(mock_frappe.get_list.call_args_list[0].args, ("Supplier",))
+        self.assertEqual(mock_frappe.db.sql.call_args_list[0].args[1][1:],
+                         ("FACTORY-VISIBLE", "HBR-VISIBLE"))
+
+    @patch("dcr.api.map.frappe")
+    def test_factory_counts_are_zero_when_no_hbrs_are_visible(self, mock_frappe):
+        from dcr.api.map import get_factory_locations
+
+        configure_staff(mock_frappe)
+        mock_frappe.get_list.side_effect = [[{
+            "name": "FACTORY-VISIBLE", "latitude": 33.0, "longitude": -112.0,
+        }], []]
+        mock_frappe.db.sql.return_value = []
+        result = get_factory_locations()
+
+        self.assertEqual(result[0]["total_12mo"], 0)
+        # The address lookup may use SQL; no HBR query may be made.
+        for call in mock_frappe.db.sql.call_args_list:
+            self.assertNotIn("tabHome Build Request", call.args[0])
+
+
 class TestParseMapboxResponse(unittest.TestCase):
     """Test the response parser that extracts structured address data."""
 
@@ -84,6 +185,7 @@ class TestParseMapboxResponse(unittest.TestCase):
     def test_search_address_uses_single_geocoding_v6_request(self, mock_frappe, mock_get):
         from dcr.api.map import search_address
 
+        configure_staff(mock_frappe)
         settings = MagicMock()
         settings.get_password.return_value = "test-token"
         mock_frappe.get_single.return_value = settings
@@ -259,6 +361,7 @@ class TestHeatmapQuery(unittest.TestCase):
     def test_missing_purchase_order_hbr_field_does_not_reference_column(self, mock_frappe):
         from dcr.api.map import get_heatmap_data
 
+        configure_staff(mock_frappe)
         mock_frappe.db.has_column.return_value = False
         mock_frappe.db.sql.return_value = []
 
@@ -271,6 +374,7 @@ class TestHeatmapQuery(unittest.TestCase):
     def test_purchase_order_hbr_field_is_used_when_present(self, mock_frappe):
         from dcr.api.map import get_heatmap_data
 
+        configure_staff(mock_frappe)
         mock_frappe.db.has_column.return_value = True
         mock_frappe.db.sql.return_value = []
 
@@ -283,13 +387,14 @@ class TestHeatmapQuery(unittest.TestCase):
     def test_factory_counts_avoid_missing_purchase_order_hbr_field(self, mock_frappe):
         from dcr.api.map import get_factory_locations
 
+        configure_staff(mock_frappe)
         mock_frappe.db.has_column.return_value = False
-        mock_frappe.get_all.return_value = [{
+        mock_frappe.get_list.side_effect = [[{
             "name": "SUPP-001",
             "supplier_name": "Factory",
             "latitude": 33.0,
             "longitude": -112.0,
-        }]
+        }], [{"name": "HBR-VISIBLE"}]]
         mock_frappe.db.sql.side_effect = [[], []]
 
         get_factory_locations()
@@ -301,13 +406,14 @@ class TestHeatmapQuery(unittest.TestCase):
     def test_factory_counts_use_purchase_order_hbr_field_when_present(self, mock_frappe):
         from dcr.api.map import get_factory_locations
 
+        configure_staff(mock_frappe)
         mock_frappe.db.has_column.return_value = True
-        mock_frappe.get_all.return_value = [{
+        mock_frappe.get_list.side_effect = [[{
             "name": "SUPP-001",
             "supplier_name": "Factory",
             "latitude": 33.0,
             "longitude": -112.0,
-        }]
+        }], [{"name": "HBR-VISIBLE"}]]
         mock_frappe.db.sql.side_effect = [[], []]
 
         get_factory_locations()
@@ -430,13 +536,14 @@ class TestFactoryCoordinates(unittest.TestCase):
 
         mock_address.return_value = "6420 W Allison Rd, Chandler, AZ 85226"
         mock_geocode.return_value = None
+        configure_staff(mock_frappe)
         mock_frappe.db.has_column.return_value = False
-        mock_frappe.get_all.return_value = [{
+        mock_frappe.get_list.side_effect = [[{
             "name": "Champion Home Builders",
             "supplier_name": "Champion Home Builders",
             "latitude": 0,
             "longitude": 0,
-        }]
+        }], [{"name": "HBR-VISIBLE"}]]
         mock_frappe.db.sql.side_effect = [[], []]
 
         result = get_factory_locations()
