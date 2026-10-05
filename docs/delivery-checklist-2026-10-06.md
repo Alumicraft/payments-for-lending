@@ -12,31 +12,27 @@ Scope agreed with Tristan: usable handoff and controlled pilot. DCR workspace ho
 | ACHQ request/report contract | Public sandbox found and verified fixes for required token billing fields and CSV status reports. Native client created, queried and cancelled a fabricated $1 payment. All three accepted test payments were cancelled. See [provider receipts and limits](achq-contract-verification-2026-10-05.md). |
 | Architecture and ASW inventory | [App structure review](app-structure-review-2026-10-05.md): eight repos, permissions/visibility, overlap, migration order, and handoff checks. Shared maintained base plus thin client apps is recommended over full independent forks. |
 
-Local verification: **360 passed, zero skipped** with mocked Frappe. Python/JSON/JavaScript and changed print-format Jinja syntax checks pass. These are source checks; no hosted provider/accounting/browser acceptance is inferred.
+Local verification: **362 passed, zero skipped** with mocked Frappe. Python/JSON/JavaScript and changed print-format Jinja syntax checks pass. These are source checks; no hosted provider/accounting/browser acceptance is inferred.
 
-## Live state last observed
+## Hosted delivery evidence — October 5
 
-Site **https://backdesk.dealercapital.net**, Frappe Cloud site `dealercapitalresources.v.frappe.cloud`, private bench **DCR / bench-37701**. Last dashboard snapshot showed:
+Own isolated Codex browser and temporary synthetic API identities were used with permission. The user's browser was not controlled. Database/file backup succeeded at 1:28 PM Pacific. DCR-only deployment of PR #15 succeeded at 1:56 PM; explicit dashboard migration succeeded at 2:03 PM with after_migrate hooks in the job log. Live Frappe is 16.36.1 (`97a5dd9`), ERPNext 16.37.0 (`af63cde`), Lending 16.6.0 (`97f692e`), and Emails `f50f47e`.
 
-| App | Installed version/revision |
-|---|---|
-| Frappe | 16.29.0 / `06613fc60b44d5736007ae3107cdab029b2ae045` |
-| ERPNext | 16.30.0 / `8378b6e203841c056925420cc44e6d631c915cf1` |
-| DCR | `e18c32addeac4725dad3ac710e1d84ae20779bd9` |
-| Emails | `f50f47eb91f50e1336258cbebb841537c1a32dfe` |
-| Lending | 16.3.0 / `9c1a9d424111ea2446ea0b10b6d1100f735777b6` |
+Hosted checks cover two-dealer ownership, unmapped/disabled/ambiguous mapping rejection, restricted staff denial, private-file access, Cash/Floored intake, review/changes/resubmission, checklist rejection and native Cash acceptance, submitted storage editing, unique unsent notices, exact agreement PDF preview and stale-review rejection, PO PDF/quote attachment preview, five custom chart totals and Daily Active Users reconciliation. All seven charts are visible on their own pages and grouped on Overview. Native outgoing email and registered scheduler jobs exist; actual provider/email delivery is not proved by those configuration checks.
 
-The user has prohibited further browser control. No deployment click or hosted-site acceptance test was performed by the agent. A GitHub merge may trigger hosting automation, but it does not establish a successful deployment; read back the current installed DCR SHA. No independent Frappe Cloud API connection is available in this task. No real external email, signature invitation, or payment was initiated. A later read-only HTTP check found `signature_preview.js` returns 404 and the live `dealer_portal.js` does not match merged source; the new front end is not yet verified as deployed. No browser was used for that check.
+Hosted testing exposed broad legacy Dealer permissions on Customer, Supplier and Home Build Request. PR #15 removes their native access while retaining the scoped portal; direct cross-dealer resource access is now denied after migration. PR #16 fixes the portal's session CSRF token and replaces disappearing load failures with persistent errors and retry. PR #16 deployed as `fb41a7b5b0b08c7f6fc3f625169ce12a6dc9d662` at 2:23 PM; its explicit migration succeeded at 2:24 PM. Browser render, draft save/reload, and responsive Overview/Documents/Account/edit pages passed. Persistent failure/retry recovery also passed. Temporary test users were disabled, API keys revoked, and the temporary Administrator mapping removed. Synthetic accepted/draft samples remain labeled test evidence.
+
+ACH autopay and status-notice delivery are paused. ACH scope is Controlled Pilot, with no pilot loan selected. No real dealer/factory email, signing invitation, debit, loan disbursement or financial posting was initiated. Private screenshots, API receipts, record IDs and setup readbacks stay in the local hosted-evidence folder rather than this public repository.
 
 ## Remaining work and ownership
 
 | Work | Who / what is needed |
 |---|---|
-| Deploy and verify the merged DCR revision | Dashboard operator: backup, DCR-only update on the private bench, automatic migration/build logs, installed-SHA receipt, and first UI readback. Agent can continue through a separate authorized API connection; browser control remains off. |
+| Deployment | DCR-only deployment, backup and explicit migration completed; portal patch `fb41a7b` is installed and migrated, with browser save/reload proof. |
 | ACHQ/Plaid wiring | Tristan/provider: merchant/gate credentials, correct persisted sandbox mode, Plaid processor permissions and credentials, callback secret/actual delivery contract, approved synthetic bank data. Source request/query/cancellation were verified with fabricated public sandbox data; hosted settlement and callback acceptance remain open. |
-| Email and signing setup | Account operator: branded service settings/domain/keys, native outgoing Email Account for queued notices, DocuSign sandbox/JWT consent/HMAC. All pilot contacts use controlled inboxes. |
-| Test identities and accounting master data | DCR/operator: two dealer Website Users, staff roles, active Factory Assignments, MIFAs/limits, Loan Product/GL/Company configuration, map token. Temporary Test Homes 3 portal mapping was removed after the earlier test; relink deliberately if reused. |
-| Hosted acceptance | Developer/operator together: two-dealer isolation, one Cash and one Floored deal, chart totals, signatures/attachments, native repayment/GL, provider callback/replay/failure/retry/cancellation scenarios. Agent can perform technical tests with independent access; DCR supplies financial expected results and business acceptance. |
+| Email and signing setup | Name a controlled test inbox. Native outgoing Email Account is configured, but delivery is untested. DocuSign sandbox credentials are present; Connect HMAC is missing and JWT consent/invitation/callback delivery need acceptance. Verify branded service sender/domain and settings. |
+| Test identities and accounting master data | Synthetic dealers, scoped Website Users and approved Factory Assignments exercised the technical paths. Real pilot access and MIFA/credit setup remain deliberate. Loan Product accounts exist; ACH clearing account and Mode of Payment are missing. |
+| Remaining hosted acceptance | Controlled email/invitation delivery, positive signed provider callbacks, complete Floored loan/disbursement/receipt workflow, repayment/GL, settlement/returns/unknown/retry/cancellation scenarios, and real pilot login/reset/logout. Technical intake/security/preview/chart checks are complete; DCR supplies financial expectations and business acceptance. |
 | Model/Inventory home type | DCR decision required: exact third-type label and checklist rules. Spec and Customer Sold remain the supported choices. No invented checklist requirements. |
 | Financial rules | DCR decision required: 360/365 day count, regular/default/late fees, partial period and dated payoff examples, rebates/insurance and rounding, installed value versus selling price as the LTV denominator. Installed value is captured but does not replace the current denominator. |
 | Final documents | DCR approves Dealer Agreement, MIFA, flooring packet, pre-approval, payoff, and factory PO wording/payment instructions. Quote attachments and dealer/quote/buyer context are implemented; final legal/business wording and any further PO layout simplification remain review work. |

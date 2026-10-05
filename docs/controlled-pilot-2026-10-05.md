@@ -22,7 +22,7 @@ Delivery target: October 6 morning, usable handoff and controlled pilot. This do
 
 ## Verification
 
-Full local suite after the provider-contract follow-up: **360 passed, zero skipped**, using mocked Frappe, also verified on Python 3.12. Nine existing `datetime.utcnow` deprecation warnings remain. Python/JSON/JavaScript/Jinja syntax and whitespace checks accompany the batch. The installed Lending and Frappe source revisions were inspected to establish schedule, repayment, queue, dialog, and Kanban contracts.
+Full local suite after the provider-contract follow-up: **362 passed, zero skipped**, using mocked Frappe, also verified on Python 3.12. Nine existing `datetime.utcnow` deprecation warnings remain. Python/JSON/JavaScript/Jinja syntax and whitespace checks accompany the batch. The installed Lending and Frappe source revisions were inspected to establish schedule, repayment, queue, dialog, and Kanban contracts.
 
 The ignored `.claude/agents/preflight.md` and `v16-linter.md` files are available in the primary checkout and were read for the final review. Their checks were performed directly against the isolated checkout; no separate agent run is claimed.
 
@@ -33,8 +33,7 @@ Public sandbox verification found additional required payload fields and the CSV
 1. Take a current database and file backup through Frappe Cloud. Record the current deployment and installed-app SHAs.
 2. On private bench group **DCR / bench-37701**, deploy the tested `dcr` main revision. Keep the recorded framework/Lending/Emails versions unless a separate upgrade has been reviewed. Do not select an unrelated framework update just to deploy DCR.
 3. Watch the dashboard build and automatic migration. The existing `after_migrate` setup hook repairs configuration, workspaces, and some existing record state; review its errors even if the build succeeds.
-4. Read back the installed DCR SHA. The last dashboard snapshot observed during this task was `e18c32addeac4725dad3ac710e1d84ae20779bd9`; GitHub merge alone is not a deployed-SHA receipt. Dashboard deployment state cannot be verified while browser control is prohibited and no independent Cloud API connection is available.
-   A later direct HTTP read found the new signature-preview asset missing (404) and a portal script differing from merged source. This is front-end evidence only, not an installed app SHA or migration receipt.
+4. Read back the installed DCR SHA. PR #15 deployed as `b47a3b6` and its explicit migration succeeded October 5 at 2:03 PM Pacific. PR #16 deployed as `fb41a7b5b0b08c7f6fc3f625169ce12a6dc9d662` at 2:23 PM; migration succeeded at 2:24 PM. Browser rendering, draft save/reload and responsive pages passed; detailed receipts stay local. A group build alone did not run all migration hooks in this rollout; the explicit dashboard migration log and permission-row readback established that they ran.
 5. Confirm new `DCR Pilot Settings` and `DCR Status Notice` DocTypes, ACH/signature status options, pilot scope/loan fields, and HBR buyer/storage/value fields. Confirm storage can be changed on a submitted HBR.
 6. Check Deals, Accounting, Contacts, Access, and Overview. Overview should group the seven charts by section. Check the map and Kanban without changing operational stages manually.
 7. Check `ACH Settings`: scope **Controlled Pilot**, selected synthetic pilot loan, correct environment, real-debit activation disabled until setup and acceptance below. Check `DCR Pilot Settings`: notifications disabled until its controlled mailbox is configured.
@@ -48,6 +47,10 @@ Public sandbox verification found additional required payload fields and the CSV
 - **Transactional notices:** configure a default outgoing native **Email Account** as well. Status/ACH notices deliberately use Email Queue, not the immediate branded override. Set `DCR Pilot Settings.pilot_notification_recipient` and the intended staff mailbox before enabling status delivery. Synthetic dealer contacts must also point to controlled mailboxes for other pilot emails.
 - **Users/master data:** authorized staff roles; two Website Users each linked to one enabled Dealer Customer; submitted active Factory Assignments; onboarding documents, MIFA/credit limit, Loan Product, factory contacts, and Map Settings token. Keep synthetic records clearly labeled.
 - **Scheduler/workers:** verify daily upcoming/initiating/retry jobs, hourly ACH polling/accounting reconciliation, and notice queue/delivery-status jobs in the hosted scheduler logs. Upcoming scheduling currently selects a payment exactly the configured advance-notice interval away; it does not automatically sweep missed notice dates or overdue history. Existing ACH attempts must be reconciled explicitly.
+
+## Hosted checks completed
+
+Two synthetic Dealer Website Users exercised intake, draft edit, review and resubmission, ownership checks, private documents and restricted APIs. Native staff accepted the complete Cash checklist and changed submitted storage state. Agreement and PO previews were rendered without sending; stale signature review was refused. All seven workspace charts render, custom chart metrics and Daily Active Users were independently reconciled. Legacy Dealer native permissions and portal session CSRF failures were found and fixed in PRs #15/#16. Outbound delivery, full Floored funding, hosted settlement/GL and positive signed callbacks remain open. All temporary test users are disabled, API keys revoked and the temporary Administrator portal mapping removed. Labeled synthetic samples remain as evidence; detailed cleanup is recorded locally.
 
 ## Required hosted evidence
 
@@ -76,4 +79,4 @@ Unknown ACH receipts require provider reconciliation by merchant/remote referenc
 
 - [ACHQ transaction IDs](https://developers.achq.com/docs/transaction-identification), [void/cancel](https://developers.achq.com/docs/cancel-a-payment), [status events](https://developers.achq.com/docs/event-monitoring), [sandbox modes](https://developers.achq.com/docs/sandbox-and-testing).
 - [DocuSign JSON SIM model](https://developers.docusign.com/platform/webhooks/connect/json-sim-event-model/), [official payload example](https://www.docusign.com/blog/developers/connect-20), [transaction-ID recovery](https://www.docusign.com/blog/developers/common-api-tasks-use-transactionid-to-find-the-envelope-you-created).
-- [Installed Lending source](https://github.com/frappe/lending/tree/9c1a9d424111ea2446ea0b10b6d1100f735777b6), [installed Frappe source](https://github.com/frappe/frappe/tree/06613fc60b44d5736007ae3107cdab029b2ae045).
+- [Current installed Lending source](https://github.com/frappe/lending/tree/97f692e908e92b3ce6737ab08c3ff9cb3cdcca44), [current installed Frappe source](https://github.com/frappe/frappe/tree/97a5dd93ca5883bcc9c4ef9834120c5cba397b67).
