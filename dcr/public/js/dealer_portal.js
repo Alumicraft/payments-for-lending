@@ -7,6 +7,8 @@
     var app = document.getElementById("dcr-portal-app");
     var loading = document.getElementById("dcr-portal-loading");
     var alertBox = document.getElementById("dcr-portal-alert");
+    var retry = document.getElementById("dcr-portal-retry");
+    var alertTimer = null;
     var state = { data: null, currentDeal: null, view: "dashboard" };
 
     function escape_html(value) {
@@ -44,10 +46,12 @@
         return "";
     }
 
-    function show_alert(message) {
+    function show_alert(message, persistent) {
+        if (alertTimer) window.clearTimeout(alertTimer);
         alertBox.textContent = message || "Something went wrong. Please try again.";
         alertBox.hidden = false;
-        window.setTimeout(function () {
+        if (persistent) return;
+        alertTimer = window.setTimeout(function () {
             alertBox.hidden = true;
         }, 6000);
     }
@@ -233,6 +237,9 @@
     }
 
     async function reload() {
+        loading.hidden = false;
+        alertBox.hidden = true;
+        retry.hidden = true;
         try {
             state.data = await api("get_portal_context");
             render();
@@ -241,7 +248,8 @@
             show_view(state.view);
         } catch (error) {
             loading.hidden = true;
-            show_alert(error.message);
+            show_alert(error.message, true);
+            retry.hidden = false;
         }
     }
 
@@ -303,6 +311,7 @@
         var action = event.target.closest("[data-action]");
         if (!action) return;
         var action_name = action.getAttribute("data-action");
+        if (action_name === "reload-workspace") { await reload(); return; }
         if (action_name === "new-request") { show_new_request(); return; }
         if (action_name === "edit-request") {
             if (state.currentDeal) show_edit_request(state.currentDeal);
