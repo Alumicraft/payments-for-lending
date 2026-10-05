@@ -18,7 +18,7 @@ Delivery target: October 6 morning, usable handoff and controlled pilot. This do
 - Factory PO email includes the generated PO PDF and original uploaded Factory Quotes attached to the linked, readable HBR. Preview lists the attachments; the helper checks file ownership and read permission before sending.
 - **DCR Status Notice** stores review, order, loan, and storage transitions. Portal submission explicitly records its staff alert; native staff submission changes portal state to Accepted. **DCR Pilot Settings** defaults delivery off and requires a pilot recipient before enabling it. Every delivered status notice goes to that override, with its intended recipient retained for review.
 - Status notices and ACH event notices use the native Frappe Email Queue directly, bypassing the shared Emails app's immediate Vercel override. Upcoming/success/failure ACH notice flags are independent. A queued record is not called Sent until the native queue reports Sent.
-- DCR now declares the already-installed `emails` app as a required dependency. No app/DocType ownership migration or repository rename is included.
+- DCR now declares the already-installed `emails` app as a required dependency. No app/DocType ownership migration or repository rename is included. Source Admin for the eight-repo transfer was verified through the already-connected Alumicraft account; destination Frappe Cloud installation and source-account destination creation rights remain to be set up/verified.
 
 ## Verification
 
