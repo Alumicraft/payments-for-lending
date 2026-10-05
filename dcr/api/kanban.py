@@ -2,13 +2,15 @@
 
 import frappe
 from frappe import _
+from dcr.api.access import require_staff
 
 
 def _is_hbr_board(board_name):
-    return (
-        frappe.db.get_value("Kanban Board", board_name, "reference_doctype")
-        == "Home Build Request"
-    )
+    require_staff("Kanban Board", board_name)
+    is_hbr = frappe.db.get_value("Kanban Board", board_name, "reference_doctype") == "Home Build Request"
+    if is_hbr:
+        require_staff("Home Build Request")
+    return is_hbr
 
 
 def _derived_stage_error():

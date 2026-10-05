@@ -49,3 +49,18 @@ def test_pipeline_scope_applies_to_outer_hbr_not_inner_receipt():
         query = f.db.sql.call_args.args[0]
         assert 'WHERE po.docstatus = 1' in query
         assert 'WHERE hbr.name IN %s AND docstatus' in query
+
+
+def test_kanban_board_metadata_is_not_exposed_when_staff_guard_denies():
+    from dcr.api.kanban import update_order
+    with patch('dcr.api.kanban.require_staff',side_effect=PermissionError), patch('dcr.api.kanban.frappe') as f:
+        with pytest.raises(PermissionError): update_order('HBR-BOARD','[]')
+        f.db.get_value.assert_not_called()
+        f.get_doc.assert_not_called()
+
+
+def test_runtime_cache_mutation_denies_dealer_before_controller_imports():
+    from dcr.api.lending import refresh_lending_runtime_hooks
+    with patch('dcr.api.lending.require_staff',side_effect=PermissionError), patch('dcr.api.lending.frappe') as f:
+        with pytest.raises(PermissionError): refresh_lending_runtime_hooks()
+        f.client_cache.delete_value.assert_not_called()

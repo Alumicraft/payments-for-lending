@@ -22,7 +22,7 @@ Delivery target: October 6 morning, usable handoff and controlled pilot. This do
 
 ## Verification
 
-Full local suite: **328 passed, zero skipped**, using mocked Frappe, also verified on Python 3.12. Nine existing `datetime.utcnow` deprecation warnings remain. Python/JSON/JavaScript/Jinja syntax and whitespace checks accompany the batch. The installed Lending and Frappe source revisions were inspected to establish schedule, repayment, queue, dialog, and Kanban contracts.
+Full local suite: **330 passed, zero skipped**, using mocked Frappe, also verified on Python 3.12. Nine existing `datetime.utcnow` deprecation warnings remain. Python/JSON/JavaScript/Jinja syntax and whitespace checks accompany the batch. The installed Lending and Frappe source revisions were inspected to establish schedule, repayment, queue, dialog, and Kanban contracts.
 
 The repository refers to `.claude/agents/preflight` and `v16-linter`, but those files/tools are absent in this checkout. Equivalent source checks were performed directly; no claim is made that those agents ran.
 

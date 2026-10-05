@@ -244,6 +244,8 @@ def create_loan_demand_with_context(
 @frappe.whitelist()
 def refresh_lending_runtime_hooks():
     """Clear cached controllers/hooks and report the active Lending classes."""
+    require_staff()
+    frappe.only_for("System Manager")
     from frappe.cache_manager import clear_controller_cache
     from frappe.model.base_document import get_controller
 

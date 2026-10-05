@@ -8,10 +8,10 @@ Scope agreed with Tristan: usable handoff and controlled pilot. DCR workspace ho
 |---|---|
 | Factory quote intake/readback; PO dealer context; map and document-email permissions | [Merged PR #10](https://github.com/Alumicraft/payments-for-lending/pull/10), main merge `f1a2e23`. |
 | DCR home pages and Overview charts | [Merged PR #11](https://github.com/Alumicraft/payments-for-lending/pull/11), main merge `a9a636f`. Deals: New Deals by Type, Deal Pipeline by Factory; Accounting: Inflows vs Outflows, Past-Due Aging, Repayment Breakdown; Contacts: New Dealers by Month; Access: Active Users Per Day. Overview groups all seven, preserving other widgets and valid site-configured charts. |
-| Controlled-pilot completion batch | Branch `codex/dcr-pilot-completion`: staff/action/row authorization, native v16 repayment source and allocation, durable unknown payment/signature admission, restricted ACH scope/retries/cancellation, exact PDF review, buyer/value intake, storage/map detail, uploaded factory-quote attachments, and durable pilot status notices. Publication/merge receipt is recorded in the delivery update. See [source and operating notes](controlled-pilot-2026-10-05.md). |
+| Controlled-pilot completion batch | [PR #12](https://github.com/Alumicraft/payments-for-lending/pull/12), branch `codex/dcr-pilot-completion`: staff/action/row authorization, native v16 repayment source and allocation, durable unknown payment/signature admission, restricted ACH scope/retries/cancellation, exact PDF review, buyer/value intake, storage/map detail, uploaded factory-quote attachments, and durable pilot status notices. Publication/merge receipt is recorded in the delivery update. See [source and operating notes](controlled-pilot-2026-10-05.md). |
 | Architecture and ASW inventory | [App structure review](app-structure-review-2026-10-05.md): eight repos, permissions/visibility, overlap, migration order, and handoff checks. Shared maintained base plus thin client apps is recommended over full independent forks. |
 
-Local verification: **328 passed, zero skipped** with mocked Frappe. Python/JSON/JavaScript and changed print-format Jinja syntax checks pass. These are source checks; no hosted provider/accounting/browser acceptance is inferred.
+Local verification: **330 passed, zero skipped** with mocked Frappe. Python/JSON/JavaScript and changed print-format Jinja syntax checks pass. These are source checks; no hosted provider/accounting/browser acceptance is inferred.
 
 ## Live state last observed
 
