@@ -10,6 +10,12 @@ class ACHSettings(Document):
         if self.enable_ach_autopay:
             self._validate_required_fields()
             self._validate_scheduling_settings()
+        if self.achq_environment == "Public Sandbox":
+            if (str(self.achq_merchant_id), self.achq_merchant_gate_id,
+                self.get_password("achq_merchant_gate_key")) != ("2001", "test", "test"):
+                frappe.throw("Public Sandbox requires the published 2001/test/test credentials")
+            if self.ach_scope != "Controlled Pilot":
+                frappe.throw("Public Sandbox requires Controlled Pilot scope and fabricated data")
 
     def _validate_required_fields(self):
         """Ensure required ACHQ credentials are provided when enabled."""

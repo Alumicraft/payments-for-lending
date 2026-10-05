@@ -59,8 +59,9 @@
    "fieldname": "achq_environment",
    "fieldtype": "Select",
    "label": "ACHQ Environment",
-   "options": "Sandbox\nProduction",
-   "depends_on": "enable_ach_autopay"
+   "options": "Sandbox\nPublic Sandbox\nProduction",
+   "depends_on": "enable_ach_autopay",
+   "description": "Sandbox uses TestMode=On (response tests only). Public Sandbox stores events using 2001/test/test; use fabricated data and Controlled Pilot only. Production uses live merchant credentials."
   },
   {
    "fieldname": "achq_merchant_id",

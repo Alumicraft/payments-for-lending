@@ -22,9 +22,11 @@ Delivery target: October 6 morning, usable handoff and controlled pilot. This do
 
 ## Verification
 
-Full local suite: **330 passed, zero skipped**, using mocked Frappe, also verified on Python 3.12. Nine existing `datetime.utcnow` deprecation warnings remain. Python/JSON/JavaScript/Jinja syntax and whitespace checks accompany the batch. The installed Lending and Frappe source revisions were inspected to establish schedule, repayment, queue, dialog, and Kanban contracts.
+Full local suite after the provider-contract follow-up: **360 passed, zero skipped**, using mocked Frappe, also verified on Python 3.12. Nine existing `datetime.utcnow` deprecation warnings remain. Python/JSON/JavaScript/Jinja syntax and whitespace checks accompany the batch. The installed Lending and Frappe source revisions were inspected to establish schedule, repayment, queue, dialog, and Kanban contracts.
 
-The repository refers to `.claude/agents/preflight` and `v16-linter`, but those files/tools are absent in this checkout. Equivalent source checks were performed directly; no claim is made that those agents ran.
+The ignored `.claude/agents/preflight.md` and `v16-linter.md` files are available in the primary checkout and were read for the final review. Their checks were performed directly against the isolated checkout; no separate agent run is claimed.
+
+Public sandbox verification found additional required payload fields and the CSV report format. The native client then created, queried and cancelled a fabricated $1 payment; all three accepted tests were cancelled. See [provider-contract receipts](achq-contract-verification-2026-10-05.md). This does not establish hosted settlement/GL or callback acceptance.
 
 ## Deploy and first readback
 
@@ -39,7 +41,7 @@ The repository refers to `.claude/agents/preflight` and `v16-linter`, but those 
 
 ## Controlled setup
 
-- **ACHQ/Plaid:** approved Merchant ID, Gate ID, Gate Key; matched environments and authorized synthetic accounts; Plaid Client ID/Secret and enabled ACHQ processor integration. Confirm the actual persisted-sandbox mode: production credentials with `TestMode=On` are development response testing, not settlement/status-query evidence. Verify the provider's real callback signature/header/body contract against the site's HMAC verifier; that contract has not been proven live.
+- **ACHQ/Plaid:** approved Merchant ID, Gate ID, Gate Key; matched environments and authorized synthetic accounts; Plaid Client ID/Secret and enabled ACHQ processor integration. Confirm the actual persisted-sandbox mode: production credentials with `TestMode=On` are development response testing, not settlement/status-query evidence. For public persisted tests use the explicit Public Sandbox mode with 2001/test/test, Controlled Pilot and fabricated data. Complete and review the Customer billing address/contact; WEB requires its captured authorization IP. Verify the provider's real callback signature/header/body contract against the site's HMAC verifier; that contract has not been proven live.
 - **Accounting:** Loan Product and Company GL mappings; required ACH Clearing Account, Mode of Payment, and clearing-to-bank reconciliation. Confirm the native submitted repayment allocates principal/interest/demands as approved.
 - **DocuSign:** sandbox account, Account ID, Integration Key, User ID, RSA key, JWT consent, Connect HMAC. Callback `/api/method/dcr.api.docusign.docusign_webhook`. Use approved test recipients and inspect signature/date anchors in the exact rendered PDFs.
 - **Branded email:** shared Emails app and Email Service Settings, sender/domain, service URL, service secret, Resend key, and DCR branding. PO and signature messages use this pipeline.

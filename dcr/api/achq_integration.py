@@ -8,8 +8,10 @@ Provides client for ACHQ API operations and webhook handling.
 Based on ACHQ API documentation at developers.achq.com
 """
 
+import csv
 import hashlib
 import hmac
+import io
 import json
 
 import frappe
@@ -57,13 +59,18 @@ class ACHQClient:
             "Merchant_GateKey": self.settings.get_password("achq_merchant_gate_key"),
         }
 
+        if self.settings.achq_environment == "Public Sandbox" and params != {
+            "MerchantID": "2001", "Merchant_GateID": "test", "Merchant_GateKey": "test"
+        }:
+            frappe.throw(_("Public Sandbox requires the published 2001/test/test credentials"))
+
         # Add TestMode for sandbox
         if self.settings.achq_environment == "Sandbox":
             params["TestMode"] = "On"
 
         return params
 
-    def _make_request(self, command, params):
+    def _make_request(self, command, params, response_parser=None):
         """Make a request to ACHQ API."""
         data = self._get_auth_params()
         data["Command"] = command
@@ -74,7 +81,7 @@ class ACHQClient:
         try:
             response = requests.post(self.BASE_URL, data=data, timeout=30)
             response.raise_for_status()
-            return self._parse_response(response.text)
+            return (response_parser or self._parse_response)(response.text)
         except requests.RequestException as e:
             frappe.log_error(
                 f"ACHQ API request failed: {str(e)}",
@@ -85,7 +92,8 @@ class ACHQClient:
     # Expected top-level keys in valid ACHQ responses
     _VALID_RESPONSE_KEYS = {
         "CommandStatus", "ResponseCode", "Description", "ErrorInformation",
-        "TransactionID", "TransAct_ReferenceID", "ACHQToken", "BankName",
+        "TransactionID", "TransAct_ReferenceID", "Transact_ReferenceID", "Provider_TransactionID",
+        "ResponseData", "ACHQToken", "BankName",
         "ExpressVerify", "PaymentStatus", "Transactions",
     }
 
@@ -189,52 +197,90 @@ class ACHQClient:
 
         return result
 
-    def create_payment(self, amount, token, customer_name, description, txn_id, customer_ip=None, token_source=None):
-        """
-        Create a payment using a tokenized account.
-
-        Args:
-            amount: Payment amount
-            token: ACHQ token or Plaid processor_token
-            customer_name: Customer's name
-            description: Payment description
-            txn_id: Internal transaction ID for tracking
-            customer_ip: Customer's IP address (optional)
-            token_source: 'Manual' or 'Plaid' - determines how token is processed
-
-        Returns:
-            dict with success, transaction_id, status
-        """
-        params = {
-            "Amount": f"{float(amount):.2f}",
-            "AccountToken": token,
-            "PaymentDirection": "FromCustomer",
-            "SECCode": self.settings.default_sec_code,
-            "Billing_CustomerName": customer_name,
+    def payment_parameters(self, amount, token, customer_name, description, txn_id,
+                           customer_ip=None, token_source=None, billing=None):
+        """Validate every required token-payment field before durable admission."""
+        billing = billing or {}
+        if self.settings.achq_environment == "Public Sandbox" and self.settings.ach_scope != "Controlled Pilot":
+            frappe.throw(_("Public Sandbox payments require Controlled Pilot scope and fabricated data"))
+        required = ("Billing_Address1", "Billing_City", "Billing_State", "Billing_Zip",
+                    "Billing_Phone", "Billing_Email")
+        missing = [field for field in required if not billing.get(field)]
+        if not customer_name:
+            missing.append("Billing_CustomerName")
+        if missing:
+            frappe.throw(_("Complete the dealer's ACH billing profile before initiating: {0}").format(
+                ", ".join(missing)))
+        if self.settings.default_sec_code == "WEB" and not customer_ip:
+            frappe.throw(_("WEB payments require the captured customer authorization IP"))
+        if token_source not in (None, "", "Manual", "ACHQ", "Plaid"):
+            frappe.throw(_("Unsupported bank token source"))
+        params = {key: value for key, value in billing.items() if key.startswith("Billing_")}
+        params.update({
+            "Amount": f"{float(amount):.2f}", "AccountToken": token,
+            "PaymentDirection": "FromCustomer", "SECCode": self.settings.default_sec_code,
+            "Billing_CustomerName": customer_name, "Billing_Company": customer_name,
             "Description": description[:50] if description else "",
-            "Merchant_ReferenceID": txn_id,
-        }
-
-        # For Plaid tokens, tell ACHQ the token source
-        if token_source == "Plaid":
-            params["TokenSource"] = "Plaid"
-
+            "Merchant_ReferenceID": txn_id, "Provider_TransactionID": txn_id,
+            "TokenSource": "Plaid" if token_source == "Plaid" else "ACHQ",
+            "SendEmailToCustomer": "No",
+            "Run_ExpressVerify": "Yes" if self.settings.use_express_verify else "No",
+        })
         if customer_ip:
             params["Customer_IPAddress"] = customer_ip
+        return params
 
+    def create_payment(self, amount, token, customer_name, description, txn_id,
+                       customer_ip=None, token_source=None, billing=None):
+        params = self.payment_parameters(amount, token, customer_name, description, txn_id,
+            customer_ip=customer_ip, token_source=token_source, billing=billing)
         result = self._make_request("ECheck.ProcessPayment", params)
-
-        if result.get("success") and not result.get("TransAct_ReferenceID"):
-            return {"success": False, "outcome_unknown": True, "error_message": "ACHQ accepted payment without a usable reference; reconcile by merchant reference"}
+        reference = result.get("TransAct_ReferenceID") or result.get("Transact_ReferenceID")
+        if result.get("success") and not reference:
+            return {"success": False, "outcome_unknown": True,
+                "error_message": "ACHQ accepted payment without a usable reference; reconcile by merchant reference"}
         if result.get("success"):
-            return {
-                "success": True,
-                "transaction_id": result.get("TransAct_ReferenceID"),
-                "status": result.get("PaymentStatus", "Scheduled"),
-                "transact_reference_id": result.get("TransAct_ReferenceID"),
-            }
-
+            return {"success": True, "transaction_id": reference,
+                "status": result.get("PaymentStatus", "Scheduled"), "transact_reference_id": reference}
         return result
+
+    def _parse_status_response(self, response_text):
+        """Reports are CSV: direct merchant has 10 columns, platform mode 11."""
+        if response_text.lstrip().startswith("{"):
+            result = self._parse_response(response_text)
+            if result.get("success"):
+                result["transactions"] = result.get("Transactions") or []
+            return result
+        if not response_text.strip():
+            return {"success": False, "error_message": "Empty status report; no successful acknowledgement"}
+        rows = []
+        unidentifiable_rows = 0
+        try:
+            for row in csv.reader(io.StringIO(response_text), strict=True):
+                if not row or not any(row):
+                    continue
+                if len(row) not in (10, 11):
+                    raise ValueError("Unexpected status report format")
+                if not row[0]:
+                    unidentifiable_rows += 1
+                    continue
+                if not row[0].isdigit():
+                    raise ValueError("Unexpected provider reference in status report")
+                platform = len(row) == 11
+                if platform and row[2] != str(self.settings.achq_merchant_id):
+                    continue
+                offset = 1 if platform else 0
+                if not row[4 + offset]:
+                    raise ValueError("Status report row has no resulting status")
+                rows.append({"TransAct_ReferenceID": row[0], "Merchant_ReferenceID": row[1],
+                    "PaymentStatus": row[4 + offset], "ReturnCode": row[5 + offset] or None,
+                    "ReturnDescription": row[6 + offset] or None,
+                    "Event": row[2 + offset], "EventDate": row[3 + offset]})
+        except (ValueError, csv.Error) as error:
+            return {"success": False, "error_message": str(error)}
+        if unidentifiable_rows:
+            frappe.logger().warning(f"ACHQ status report: skipped {unidentifiable_rows} rows without a provider reference")
+        return {"success": True, "transactions": rows, "unidentifiable_rows": unidentifiable_rows}
 
     def get_status_by_date(self, tracking_date):
         """
@@ -259,11 +305,11 @@ class ACHQClient:
             "TrackingDate": date_str,
         }
 
-        result = self._make_request("ECheckReports.StatusTrackingQuery", params)
+        result = self._make_request("ECheckReports.StatusTrackingQuery", params, response_parser=self._parse_status_response)
 
         if result.get("success"):
             # Parse transactions from response
-            transactions = result.get("Transactions", [])
+            transactions = result.get("transactions", result.get("Transactions", []))
             if not isinstance(transactions, list):
                 transactions = [transactions] if transactions else []
 
@@ -271,6 +317,7 @@ class ACHQClient:
                 "success": True,
                 "transactions": transactions,
                 "tracking_date": tracking_date,
+                "unidentifiable_rows": result.get("unidentifiable_rows", 0),
             }
 
         return result
@@ -291,6 +338,17 @@ class ACHQClient:
 
         result = self._make_request("ECheck.Void", params)
         return result
+
+
+def get_customer_billing_details(customer):
+    """Use the dealer's primary address/contact; never invent missing billing data."""
+    from dcr.api.lending import _get_customer_address_details, _get_customer_contact_details
+    address = _get_customer_address_details(customer)
+    contact = _get_customer_contact_details(customer)
+    return {"Billing_Address1": address.get("address_line_1"),
+        "Billing_Address2": address.get("address_line_2"), "Billing_City": address.get("city"),
+        "Billing_State": address.get("state"), "Billing_Zip": address.get("zip_code"),
+        "Billing_Phone": contact.get("phone"), "Billing_Email": contact.get("email")}
 
 
 def _verify_achq_webhook():
