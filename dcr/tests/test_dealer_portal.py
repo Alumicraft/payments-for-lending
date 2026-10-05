@@ -209,6 +209,7 @@ class TestDealerPortalHBRWorkflow(unittest.TestCase):
             custom_portal_status="Draft",
             factory="FACTORY-001",
             name="HBR-001",
+            reload=MagicMock(),
         )
         mock_factory.side_effect = ValueError
 

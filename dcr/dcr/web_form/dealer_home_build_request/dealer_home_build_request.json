@@ -1,0 +1,274 @@
+{
+ "doctype": "Web Form",
+ "name": "dealer-home-build-request",
+ "title": "Home Build Request",
+ "module": "DCR",
+ "doc_type": "Home Build Request",
+ "route": "dealer-home-request",
+ "is_standard": 1,
+ "published": 1,
+ "login_required": 1,
+ "allow_multiple": 1,
+ "allow_edit": 1,
+ "allow_delete": 0,
+ "allow_comments": 0,
+ "allow_print": 0,
+ "show_list": 0,
+ "show_attachments": 0,
+ "apply_document_permissions": 0,
+ "anonymous": 0,
+ "key_required": 0,
+ "hide_navbar": 1,
+ "hide_footer": 1,
+ "button_label": "Save draft",
+ "introduction_text": "<p>Save your home request as a draft. You can then upload its required documents and submit it to DCR for review from your dashboard.</p>",
+ "success_title": "Draft saved",
+ "success_message": "Return to your dashboard to add documents and submit your request for review.",
+ "web_form_fields": [
+  {
+   "fieldname": "home_type",
+   "fieldtype": "Select",
+   "label": "Home Type",
+   "options": "\nSpec\nCustomer Sold\nInventory",
+   "reqd": 1
+  },
+  {
+   "fieldname": "financing_type",
+   "fieldtype": "Select",
+   "label": "Deal type",
+   "options": "\nCash\nFloored",
+   "reqd": 1
+  },
+  {
+   "fieldname": "property_type",
+   "fieldtype": "Select",
+   "label": "Property Type",
+   "options": "\nPark\nPrivate Property",
+   "reqd": 1
+  },
+  {
+   "fieldname": "delivery_section",
+   "fieldtype": "Section Break",
+   "label": "Delivery Location"
+  },
+  {
+   "fieldname": "community_name",
+   "fieldtype": "Data",
+   "label": "Community Name",
+   "depends_on": "eval:doc.property_type=='Park'"
+  },
+  {
+   "fieldname": "delivery_address",
+   "fieldtype": "Data",
+   "label": "Delivery Address"
+  },
+  {
+   "fieldname": "address_line_2",
+   "fieldtype": "Data",
+   "label": "Address Line 2"
+  },
+  {
+   "fieldname": "column_break_delivery",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "city",
+   "fieldtype": "Data",
+   "label": "City"
+  },
+  {
+   "fieldname": "state",
+   "fieldtype": "Data",
+   "label": "State"
+  },
+  {
+   "fieldname": "zip",
+   "fieldtype": "Data",
+   "label": "ZIP",
+   "placeholder": "12345"
+  },
+  {
+   "fieldname": "space_number",
+   "fieldtype": "Data",
+   "label": "Space No",
+   "depends_on": "eval:doc.property_type=='Park'"
+  },
+  {
+   "fieldname": "community_details_section",
+   "fieldtype": "Section Break",
+   "label": "Community Details",
+   "depends_on": "eval:doc.property_type=='Park'"
+  },
+  {
+   "fieldname": "contact_name",
+   "fieldtype": "Data",
+   "label": "Contact Name"
+  },
+  {
+   "fieldname": "contact_phone",
+   "fieldtype": "Data",
+   "label": "Contact Phone",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "column_break_community",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "gated",
+   "fieldtype": "Check",
+   "label": "Gated"
+  },
+  {
+   "fieldname": "access_code",
+   "fieldtype": "Data",
+   "label": "Access Code",
+   "depends_on": "eval:doc.gated"
+  },
+  {
+   "fieldname": "space_rent",
+   "fieldtype": "Currency",
+   "label": "Monthly Space Rent",
+   "options": "USD",
+   "placeholder": "0.00"
+  },
+  {
+   "fieldname": "home_section",
+   "fieldtype": "Section Break",
+   "label": "Deal Reference"
+  },
+  {
+   "fieldname": "floor_plan",
+   "fieldtype": "Data",
+   "label": "Floorplan"
+  },
+  {
+   "fieldname": "factory",
+   "fieldtype": "Select",
+   "label": "Factory",
+   "options": "\n",
+   "reqd": 1,
+   "description": "Choose a factory assigned to your dealer account."
+  },
+  {
+   "fieldname": "column_break_home",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "home_serial_no",
+   "fieldtype": "Data",
+   "label": "Serial No"
+  },
+  {
+   "fieldname": "quote_no",
+   "fieldtype": "Data",
+   "label": "Factory Quote No"
+  },
+  {
+   "fieldname": "home_invoice_plus_freight",
+   "fieldtype": "Currency",
+   "label": "Quoted Amount",
+   "options": "USD",
+   "placeholder": "0.00"
+  },
+  {
+   "fieldname": "buyer_section",
+   "fieldtype": "Section Break",
+   "label": "Buyer",
+   "depends_on": "eval:doc.home_type=='Customer Sold'"
+  },
+  {
+   "fieldname": "end_buyer_name",
+   "fieldtype": "Data",
+   "label": "End Buyer Name"
+  },
+  {
+   "fieldname": "end_buyer_email",
+   "fieldtype": "Data",
+   "label": "End Buyer Email",
+   "options": "Email"
+  },
+  {
+   "fieldname": "end_buyer_phone",
+   "fieldtype": "Data",
+   "label": "End Buyer Phone",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "financials_section",
+   "fieldtype": "Section Break",
+   "label": "Financials",
+   "depends_on": "eval:doc.home_type=='Customer Sold'"
+  },
+  {
+   "fieldname": "end_buyer_lender",
+   "fieldtype": "Data",
+   "label": "Financing Source",
+   "description": "Buyer's financing source (e.g. Cash, FHA, Wells Fargo)"
+  },
+  {
+   "fieldname": "column_break_financials",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "selling_price",
+   "fieldtype": "Currency",
+   "label": "Selling Price",
+   "options": "USD",
+   "placeholder": "0.00"
+  },
+  {
+   "fieldname": "installed_value",
+   "fieldtype": "Currency",
+   "label": "Installed Value",
+   "options": "USD",
+   "description": "Captured separately from Selling Price. Lending calculations continue to use the existing approved settings."
+  },
+  {
+   "fieldname": "customer_deposit",
+   "fieldtype": "Currency",
+   "label": "Deposit In Escrow",
+   "options": "USD",
+   "placeholder": "0.00"
+  },
+  {
+   "fieldname": "escrow_section",
+   "fieldtype": "Section Break",
+   "label": "Escrow",
+   "depends_on": "eval:doc.home_type=='Customer Sold'"
+  },
+  {
+   "fieldname": "escrow_contact",
+   "fieldtype": "Data",
+   "label": "Escrow Contact"
+  },
+  {
+   "fieldname": "escrow_phone",
+   "fieldtype": "Data",
+   "label": "Escrow Phone",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "escrow_number",
+   "fieldtype": "Data",
+   "label": "Escrow Number"
+  },
+  {
+   "fieldname": "broker_section",
+   "fieldtype": "Section Break",
+   "label": "Broker",
+   "depends_on": "eval:doc.home_type=='Customer Sold'"
+  },
+  {
+   "fieldname": "broker_contact",
+   "fieldtype": "Data",
+   "label": "Broker Contact"
+  },
+  {
+   "fieldname": "broker_phone",
+   "fieldtype": "Data",
+   "label": "Broker Phone",
+   "options": "Phone"
+  }
+ ]
+}

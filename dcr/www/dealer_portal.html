@@ -7,7 +7,7 @@
 {% block footer %}{% endblock %}
 
 {% block head_include %}
-<link rel="stylesheet" href="/assets/dcr/css/dealer_portal.css?v=20260801-6">
+<link rel="stylesheet" href="/assets/dcr/css/dealer_portal.css?v=20261005-4">
 {% endblock %}
 
 {% block page_content %}
@@ -38,10 +38,10 @@
                 <div class="dcr-hero-row">
                     <div>
                         <p class="dcr-eyebrow">Dealer workspace</p>
-                        <h1>Good morning, <span data-customer-label>there</span>.</h1>
+                        <h1>Welcome, <span data-customer-label>there</span>.</h1>
                         <p class="dcr-muted">Keep each request moving from first documents to delivery.</p>
                     </div>
-                    <button class="dcr-primary-button" data-action="new-request">Start a home request</button>
+                    <a class="dcr-primary-button" href="/dealer-home-request/new">New Home Build Request</a>
                 </div>
 
                 <div class="dcr-stat-grid" data-stats></div>
@@ -98,53 +98,8 @@
                 </div>
             </section>
 
-            <section id="dcr-view-request" data-view-panel="request" hidden>
-                <button class="dcr-back-button" data-action="back-dashboard">← Back to overview</button>
-                <div class="dcr-form-card">
-                    <div class="dcr-section-heading dcr-section-heading-first">
-                        <div><p class="dcr-eyebrow">New request</p><h1 data-request-title>Start a home request</h1><p class="dcr-muted" data-request-description>Save a draft as you gather details. Submit it to DCR for review when you are ready.</p></div>
-                    </div>
-                    <form id="dcr-hbr-form">
-                        <div class="dcr-form-grid">
-                            <label>Home type<select name="home_type" required><option value="">Choose one</option><option>Spec</option><option>Customer Sold</option><option>Inventory</option></select></label>
-                            <label>Financing<select name="financing_type" required><option value="">Choose one</option><option>Cash</option><option>Floored</option></select></label>
-                            <label>Property type<select name="property_type" required><option value="">Choose one</option><option>Park</option><option>Private Property</option></select></label>
-                            <label>Assigned factory<select name="factory" data-factory-options required><option value="">Loading factories…</option></select></label>
-                            <label>Floorplan<input name="floor_plan" maxlength="140"></label>
-                            <label>Factory quote number<input name="quote_no" maxlength="140"></label>
-                            <label>Home serial number<input name="home_serial_no" maxlength="140"></label>
-                            <label>Quoted amount<input name="home_invoice_plus_freight" type="number" min="0" step="0.01"></label>
-                            <label>Delivery address<input name="delivery_address" maxlength="140"></label>
-                            <label>Address line 2<input name="address_line_2" maxlength="140"></label>
-                            <label>City<input name="city" maxlength="80"></label>
-                            <label>State<input name="state" maxlength="40"></label>
-                            <label>ZIP<input name="zip" maxlength="20"></label>
-                            <label>Community name<input name="community_name" maxlength="140"></label>
-                            <label>Space number<input name="space_number" maxlength="40"></label>
-                            <label class="dcr-checkbox-field"><input name="gated" type="checkbox"> Gated community</label>
-                            <label>Access code<input name="access_code" maxlength="80"></label>
-                            <label>Dealer contact<input name="contact_name" maxlength="140"></label>
-                            <label>Contact phone<input name="contact_phone" maxlength="40"></label>
-                            <label>Monthly space rent<input name="space_rent" type="number" min="0" step="0.01"></label>
-                            <label>End-buyer name<input name="end_buyer_name" maxlength="140"></label>
-                            <label>End-buyer email<input name="end_buyer_email" type="email" maxlength="140"></label>
-                            <label>End-buyer phone<input name="end_buyer_phone" maxlength="40"></label>
-                            <label>End-buyer lender<input name="end_buyer_lender" maxlength="140"></label>
-                            <label>Customer deposit<input name="customer_deposit" type="number" min="0" step="0.01"></label>
-                            <label>Installed value<input name="installed_value" type="number" min="0" step="0.01"></label>
-                            <label>Selling price<input name="selling_price" type="number" min="0" step="0.01"></label>
-                            <label>Escrow contact<input name="escrow_contact" maxlength="140"></label>
-                            <label>Escrow phone<input name="escrow_phone" maxlength="40"></label>
-                            <label>Escrow number<input name="escrow_number" maxlength="80"></label>
-                            <label>Broker contact<input name="broker_contact" maxlength="140"></label>
-                            <label>Broker phone<input name="broker_phone" maxlength="40"></label>
-                        </div>
-                        <div class="dcr-form-actions"><button type="button" class="dcr-secondary-button" data-action="back-dashboard">Cancel</button><button type="submit" class="dcr-primary-button">Save draft</button></div>
-                    </form>
-                </div>
-            </section>
         </main>
     </div>
 </div>
-<script src="/assets/dcr/js/dealer_portal.js?v=20261005-3"></script>
+<script src="/assets/dcr/js/dealer_portal.js?v=20261005-4"></script>
 {% endblock %}

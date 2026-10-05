@@ -1,0 +1,19 @@
+{% extends "website/doctype/web_form/templates/web_form.html" %}
+
+{% block head_include %}
+{{ super() }}
+<link rel="stylesheet" href="/assets/dcr/css/dealer_portal.css?v=20261005-4">
+{% endblock %}
+
+{% block page_content %}
+<header class="dcr-portal-header">
+    <a class="dcr-wordmark" href="/portal" aria-label="Dealer dashboard">
+        <span class="dcr-brand-mark dcr-brand-mark-small">DCR</span>
+        <span>Dealer Capital Resources</span>
+    </a>
+    <a class="dcr-back-button" href="/portal">← Back to dashboard</a>
+</header>
+<main class="dcr-native-hbr">
+    {{ super() }}
+</main>
+{% endblock %}

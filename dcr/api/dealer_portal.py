@@ -581,13 +581,17 @@ def _parse_payload(payload):
 
 
 @frappe.whitelist()
-def save_hbr_draft(payload=None, name=None):
+def save_hbr_draft(payload=None, name=None, expected_modified=None):
     """Create or update a dealer-owned HBR draft."""
     customer = get_current_dealer_customer()
     payload = _parse_payload(payload or {})
     if name:
+        frappe.db.get_value("Home Build Request", name, "name", for_update=True)
         hbr = _get_owned_hbr(name, customer)
+        hbr.reload()
         _require_editable_hbr(hbr)
+        if expected_modified and str(_value(hbr, "modified")).replace("T", " ") != str(expected_modified).replace("T", " "):
+            _deny("This request changed since you opened it. Reload the form before saving.")
         assigned_factory = (
             payload["factory"]
             if "factory" in payload

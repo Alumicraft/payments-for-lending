@@ -187,7 +187,7 @@
         var loan = deal.loan || {};
         var can_submit = deal.portal_status === "Draft" || deal.portal_status === "Changes Requested";
         var request_actions = can_submit ? '<div class="dcr-form-actions dcr-detail-actions">' +
-            (deal.editable ? '<button class="dcr-secondary-button" data-action="edit-request" data-hbr="' + escape_html(deal.name) + '">Edit request</button>' : '') +
+            (deal.editable ? '<a class="dcr-secondary-button" href="/dealer-home-request/' + encodeURIComponent(deal.name) + '/edit">Edit request</a>' : '') +
             '<button class="dcr-primary-button" data-action="submit-review" data-hbr="' + escape_html(deal.name) + '">Submit to DCR for review</button></div>' : '';
         var document_items = ((deal.documents && deal.documents.items) || []).map(function (item) {
             return document_card({ label: item.document_type, document_type: item.document_type, uploaded: item.uploaded, complete: item.complete }, "hbr", deal.name);
@@ -228,14 +228,6 @@
         render_deal_detail();
     }
 
-    function populate_factories() {
-        var select = document.querySelector("[data-factory-options]");
-        if (!select) return;
-        select.innerHTML = '<option value="">Choose an assigned factory</option>' + (state.data.factories || []).map(function (factory) {
-            return '<option value="' + escape_html(factory.name) + '">' + escape_html(factory.label) + '</option>';
-        }).join("");
-    }
-
     async function reload() {
         loading.hidden = false;
         alertBox.hidden = true;
@@ -251,32 +243,6 @@
             show_alert(error.message, true);
             retry.hidden = false;
         }
-    }
-
-    function show_new_request() {
-        var form = document.getElementById("dcr-hbr-form");
-        form.reset();
-        form.setAttribute("data-hbr-name", "");
-        document.querySelector("[data-request-title]").textContent = "Start a home request";
-        document.querySelector("[data-request-description]").textContent = "Save a draft as you gather details. Submit it to DCR for review when you are ready.";
-        populate_factories();
-        show_view("request");
-    }
-
-    function show_edit_request(deal) {
-        var form = document.getElementById("dcr-hbr-form");
-        var values = deal && deal.editable || {};
-        form.reset();
-        form.setAttribute("data-hbr-name", deal.name);
-        document.querySelector("[data-request-title]").textContent = "Edit home request";
-        document.querySelector("[data-request-description]").textContent = "Update this draft, save your changes, and submit it to DCR when the details are ready.";
-        populate_factories();
-        Array.prototype.forEach.call(form.elements, function (field) {
-            if (!field.name || !Object.prototype.hasOwnProperty.call(values, field.name)) return;
-            if (field.type === "checkbox") field.checked = Boolean(values[field.name]);
-            else field.value = values[field.name] === null || values[field.name] === undefined ? "" : values[field.name];
-        });
-        show_view("request");
     }
 
     function download_document(button) {
@@ -312,11 +278,6 @@
         if (!action) return;
         var action_name = action.getAttribute("data-action");
         if (action_name === "reload-workspace") { await reload(); return; }
-        if (action_name === "new-request") { show_new_request(); return; }
-        if (action_name === "edit-request") {
-            if (state.currentDeal) show_edit_request(state.currentDeal);
-            return;
-        }
         if (action_name === "back-dashboard") { show_view("dashboard"); return; }
         if (action_name === "connect-ach") {
             try {
@@ -361,31 +322,23 @@
         }
     });
 
-    document.getElementById("dcr-hbr-form").addEventListener("submit", async function (event) {
-        event.preventDefault();
-        var form = event.target;
-        var payload = {};
-        var editing = Boolean(form.getAttribute("data-hbr-name"));
-        Array.prototype.forEach.call(form.elements, function (field) {
-            if (!field.name) return;
-            if (field.type === "checkbox") payload[field.name] = field.checked ? 1 : 0;
-            else if (editing || field.value !== "") payload[field.name] = field.value;
-        });
-        var submit = form.querySelector("button[type=submit]");
-        submit.disabled = true;
-        try {
-            await api("save_hbr_draft", {
-                payload: JSON.stringify(payload),
-                name: form.getAttribute("data-hbr-name") || "",
-            });
-            show_alert("Draft saved. Add documents from the Documents tab, then submit it for review.");
-            state.view = "dashboard";
-            await reload();
-        } catch (error) {
-            show_alert(error.message);
-            submit.disabled = false;
+    root.addEventListener("keydown", function (event) {
+        if ((event.key === "Enter" || event.key === " ") && event.target.matches("[data-deal]")) {
+            event.preventDefault();
+            event.target.click();
         }
     });
 
-    reload();
+    async function start() {
+        await reload();
+        var requested = new URLSearchParams(window.location.search).get("request");
+        if (requested && state.data) {
+            try {
+                state.currentDeal = await api("get_deal", { name: requested });
+                render_deal_detail();
+                show_view("deal");
+            } catch (error) { show_alert(error.message, true); }
+        }
+    }
+    start();
 })();
