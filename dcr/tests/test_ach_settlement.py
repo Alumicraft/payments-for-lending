@@ -5,10 +5,14 @@ import requests
 from dcr.api.achq_integration import ACHQClient, apply_achq_status_update
 from dcr.dcr.doctype.ach_transaction.ach_transaction import ACHTransaction
 
+BILLING = {"Billing_Address1": "123 Test Street", "Billing_City": "Test Town",
+    "Billing_State": "CA", "Billing_Zip": "90001", "Billing_Phone": "5550100100",
+    "Billing_Email": "synthetic@example.test"}
 
 @pytest.fixture(autouse=True)
 def isolate_provider_logging():
-    with patch("dcr.api.achq_integration.frappe"), patch("dcr.dcr.doctype.ach_settings.ach_settings.loan_is_in_ach_scope", return_value=True):
+    with patch("dcr.api.achq_integration.frappe") as f, patch("dcr.dcr.doctype.ach_settings.ach_settings.loan_is_in_ach_scope", return_value=True), patch("dcr.api.achq_integration.get_customer_billing_details", return_value=BILLING):
+        f.throw.side_effect = ValueError
         yield
 
 
@@ -21,6 +25,7 @@ def transaction(status="Initiated"):
         original_transaction=None, return_code=None, accounting_error=None).items():
         setattr(txn, key, value)
     txn.flags = MagicMock()
+    txn._get_payment_account.return_value = ({"custom_authorization_ip": "192.0.2.1"}, "bank_account")
     for method in ("save", "reload", "add_comment", "get", "set"):
         setattr(txn, method, MagicMock())
     for method in ("mark_success", "mark_failed", "cancel_transaction", "should_retry", "create_retry_transaction", "initiate"):
@@ -49,7 +54,7 @@ def test_timeout_is_unknown_not_a_refusal():
 def test_payment_stores_remote_reference_used_for_void():
     c = client(); c.settings = MagicMock(default_sec_code="CCD")
     c._make_request = MagicMock(return_value={"success": True, "TransAct_ReferenceID": "REF-1", "TransactionID": "INTERNAL-2"})
-    result = c.create_payment(100, "TOKEN", "Dealer", "Payment", "ACH-1")
+    result = c.create_payment(100, "TOKEN", "Dealer", "Payment", "ACH-1", billing=BILLING)
     assert result["transaction_id"] == "REF-1"
     c.cancel_payment("REF-1")
     c._make_request.assert_called_with("ECheck.Void", {"Transact_ReferenceID": "REF-1"})
@@ -58,7 +63,7 @@ def test_payment_stores_remote_reference_used_for_void():
 def test_approved_without_reference_requires_reconciliation():
     c = client(); c.settings = MagicMock(default_sec_code="CCD")
     c._make_request = MagicMock(return_value={"success": True})
-    assert c.create_payment(100, "TOKEN", "Dealer", "Payment", "ACH-1")["outcome_unknown"]
+    assert c.create_payment(100, "TOKEN", "Dealer", "Payment", "ACH-1", billing=BILLING)["outcome_unknown"]
 
 
 def test_failed_cancellation_keeps_initiated_state():

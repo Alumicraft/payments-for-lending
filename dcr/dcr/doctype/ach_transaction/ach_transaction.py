@@ -115,7 +115,15 @@ class ACHTransaction(Document):
         if not token:
             frappe.throw(_("No payment token found on the payment account"))
 
-        from dcr.api.achq_integration import ACHQClient
+        from dcr.api.achq_integration import ACHQClient, get_customer_billing_details
+        client = ACHQClient()
+        customer_name = frappe.db.get_value("Customer", self.customer, "customer_name")
+        billing = get_customer_billing_details(self.customer)
+        account, _ = self._get_payment_account()
+        customer_ip = account.get("custom_authorization_ip" if self.bank_account else "authorization_ip") if account else None
+        # Missing local data must remain Scheduled, not an uncertain remote debit.
+        client.payment_parameters(self.amount, token, customer_name, f"Loan payment for {self.loan}",
+            self.name, customer_ip=customer_ip, token_source=token_source, billing=billing)
 
         # Persist admission before the provider call. A crash or lost response must
         # never leave the debit eligible for another submission.
@@ -129,16 +137,15 @@ class ACHTransaction(Document):
         self.save()
         frappe.db.commit()
 
-        customer_name = frappe.db.get_value("Customer", self.customer, "customer_name")
-
-        client = ACHQClient()
         result = client.create_payment(
             amount=self.amount,
             token=token,
             customer_name=customer_name,
             description=f"Loan payment for {self.loan}",
             txn_id=self.name,
-            token_source=token_source
+            token_source=token_source,
+            customer_ip=customer_ip,
+            billing=billing
         )
 
         frappe.db.get_value("ACH Transaction", self.name, "name", for_update=True)
