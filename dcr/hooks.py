@@ -106,6 +106,7 @@ fixtures = [
                 "New Deals by Type",
                 "Repayment Breakdown",
                 "Deal Pipeline by Factory",
+                "New Dealers by Month",
             ]]
         ]
     },

@@ -1,5 +1,7 @@
+import hashlib
 import json
 import os
+import re
 
 import frappe
 
@@ -95,11 +97,8 @@ def after_install():
             "y_axis": [{"y_field": "active_users", "parentfield": "y_axis"}],
         }).insert(ignore_permissions=True)
 
-    # NOTE: Number Card and Dashboard Chart are created above but NOT
-    # added to the workspace programmatically.  Calling .save() on a
-    # Workspace rebuilds its child tables from the `content` JSON field,
-    # which wipes any cards/charts placed via the Workspace Builder.
-    # Add them manually: Workspace Builder → Access → drag in the card/chart.
+    # Home-page setup below keeps both visual chart blocks and Workspace
+    # Chart child rows in sync, including the Access activity chart.
 
     # Frappe's `sync_fixtures` re-imports ERPNext Workspace JSON on every
     # migrate, restoring chart/card references to docs we've since deleted.
@@ -320,8 +319,133 @@ def ensure_dcr_dashboard_configuration():
             frappe.db.set_value("Number Card", card_name, updates)
             frappe.clear_document_cache("Number Card", card_name)
 
-    _ensure_workspace_chart("Accounting", "Repayment Breakdown", 6)
-    _ensure_workspace_chart("Deals", "Deal Pipeline by Factory", 12)
+    ensure_dcr_home_page_charts()
+
+
+DCR_HOME_PAGE_CHARTS = {
+    "Deals": (("New Deals by Type", 6), ("Deal Pipeline by Factory", 12)),
+    "Accounting": (
+        ("Inflows vs Outflows", 6),
+        ("Past-Due Aging", 6),
+        ("Repayment Breakdown", 6),
+    ),
+    "Contacts": (("New Dealers by Month", 12),),
+    "Access": (("Active Users Per Day", 12),),
+}
+
+
+def _workspace_chart_inventory(workspace):
+    """Return valid charts from both saved blocks and configured child rows."""
+    content = json.loads(workspace.content or "[]")
+    if not isinstance(content, list):
+        raise ValueError(f"Workspace {workspace.name} content must be a list")
+    rows = workspace.get("charts") or []
+    labels = {row.get("label"): row.get("chart_name") for row in rows}
+    charts = {}
+    for block in content:
+        if block.get("type") != "chart":
+            continue
+        data = block.get("data") or {}
+        ref = data.get("chart_name") or data.get("name")
+        name = labels.get(ref) or ref
+        if name and frappe.db.exists("Dashboard Chart", name):
+            charts[name] = data.get("col") or 6
+    for row in rows:
+        name = row.get("chart_name")
+        if name and name not in charts and frappe.db.exists("Dashboard Chart", name):
+            charts[name] = 6
+    return charts
+
+
+def _group_overview_charts(content, sections, labels=None):
+    """Group known charts while preserving unrelated cards, links, and blocks."""
+    labels = labels or {}
+    chart_names = {name for charts in sections.values() for name in charts}
+    kept = []
+    existing = {}
+    for block in content:
+        data = block.get("data") or {}
+        ref = data.get("chart_name") or data.get("name")
+        name = labels.get(ref) or ref
+        if block.get("type") == "chart" and name in chart_names:
+            existing.setdefault(name, block)
+        else:
+            kept.append(block)
+
+    for section, charts in sections.items():
+        if not charts:
+            continue
+        header_index = next((
+            i for i, block in enumerate(kept)
+            if block.get("type") == "header"
+            and re.sub(r"<[^>]+>", "", (block.get("data") or {}).get("text") or "").strip() == section
+        ), None)
+        if header_index is None:
+            kept.append({
+                "id": f"dcr-overview-{section.lower()}",
+                "type": "header",
+                "data": {"text": section, "level": 4, "col": 12},
+            })
+            header_index = len(kept) - 1
+        insert_at = next((
+            i for i in range(header_index + 1, len(kept))
+            if kept[i].get("type") == "header"
+        ), len(kept))
+        blocks = []
+        for name, col in charts.items():
+            previous = existing.get(name) or {}
+            blocks.append({
+                **previous,
+                "id": previous.get("id") or "dcr-chart-" + hashlib.sha1(name.encode()).hexdigest()[:12],
+                "type": "chart",
+                "data": {**(previous.get("data") or {}), "chart_name": name, "col": col},
+            })
+        kept[insert_at:insert_at] = blocks
+    return kept
+
+
+def ensure_dcr_home_page_charts():
+    """Populate each home page and mirror all its charts under Overview sections."""
+    sections = {}
+    assigned = set()
+    for workspace_name, defaults in DCR_HOME_PAGE_CHARTS.items():
+        for chart_name, col in defaults:
+            _ensure_workspace_chart(workspace_name, chart_name, col)
+        if not frappe.db.exists("Workspace", workspace_name):
+            continue
+        workspace = frappe.get_doc("Workspace", workspace_name)
+        charts = _workspace_chart_inventory(workspace)
+        # Repair site-configured chart rows without visual blocks, too.
+        for chart_name, col in charts.items():
+            _ensure_workspace_chart(workspace_name, chart_name, col)
+        sections[workspace_name] = {
+            name: col for name, col in charts.items() if name not in assigned
+        }
+        assigned.update(charts)
+
+    if not frappe.db.exists("Workspace", "Overview"):
+        return
+    overview = frappe.get_doc("Workspace", "Overview")
+    raw = overview.content or "[]"
+    content = json.loads(raw)
+    if not isinstance(content, list):
+        raise ValueError("Overview workspace content must be a list")
+    labels = {row.get("label"): row.get("chart_name") for row in overview.get("charts") or []}
+    grouped = _group_overview_charts(content, sections, labels)
+    changed = grouped != content
+    for charts in sections.values():
+        for chart_name in charts:
+            row = next((row for row in overview.get("charts") or [] if row.get("chart_name") == chart_name), None)
+            if row is None:
+                overview.append("charts", {"chart_name": chart_name, "label": chart_name})
+                changed = True
+            elif row.get("label") != chart_name:
+                row.label = chart_name
+                changed = True
+    if changed:
+        overview.content = json.dumps(grouped)
+        overview.save(ignore_permissions=True)
+        frappe.clear_document_cache("Workspace", "Overview")
 
 
 def _ensure_workspace_chart(workspace_name, chart_name, col):
@@ -336,17 +460,28 @@ def _ensure_workspace_chart(workspace_name, chart_name, col):
     try:
         content = json.loads(raw_content)
     except (TypeError, ValueError):
-        return
+        raise ValueError(f"Workspace {workspace_name} has invalid content")
+    if not isinstance(content, list):
+        raise ValueError(f"Workspace {workspace_name} content must be a list")
 
-    has_block = any(
-        block.get("type") == "chart"
-        and block.get("data", {}).get("chart_name") == chart_name
-        for block in content
-    )
+    chart_row = next((
+        row for row in workspace.get("charts") or []
+        if row.get("chart_name") == chart_name
+    ), None)
+    label = chart_row.get("label") if chart_row else chart_name
+    label = label or chart_name
+
+    chart_block = next((
+        block for block in content
+        if block.get("type") == "chart"
+        and (block.get("data", {}).get("chart_name") or block.get("data", {}).get("name")) in {chart_name, label}
+    ), None)
+    has_block = chart_block is not None
+    changed = not has_block
     if not has_block:
         content.append({
             "type": "chart",
-            "data": {"chart_name": chart_name, "col": col},
+            "data": {"chart_name": label, "col": col},
         })
 
     has_chart_row = any(
@@ -358,6 +493,17 @@ def _ensure_workspace_chart(workspace_name, chart_name, col):
             "chart_name": chart_name,
             "label": chart_name,
         })
+        changed = True
+    elif not chart_row.get("label"):
+        chart_row.label = chart_name
+        changed = True
+
+    if chart_block is not None and chart_block["data"].get("chart_name") != label:
+        chart_block["data"]["chart_name"] = label
+        changed = True
+
+    if not changed:
+        return
 
     # Frappe requires both the visual content block and a Workspace Chart
     # child row. Updating only content leaves a valid-looking block that the

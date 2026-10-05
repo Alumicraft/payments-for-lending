@@ -1,5 +1,20 @@
 [
  {
+  "based_on": "creation",
+  "chart_name": "New Dealers by Month",
+  "chart_type": "Count",
+  "doctype": "Dashboard Chart",
+  "document_type": "Customer",
+  "filters_json": "[[\"Customer\",\"customer_group\",\"=\",\"Dealer\"],[\"Customer\",\"disabled\",\"=\",0]]",
+  "is_public": 1,
+  "module": "DCR",
+  "name": "New Dealers by Month",
+  "time_interval": "Monthly",
+  "timeseries": 1,
+  "timespan": "Last Year",
+  "type": "Bar"
+ },
+ {
   "chart_name": "Inflows vs Outflows",
   "chart_type": "Custom",
   "custom_options": "{\"colors\":[\"#0289f7\",\"#59ba8b\"]}",
