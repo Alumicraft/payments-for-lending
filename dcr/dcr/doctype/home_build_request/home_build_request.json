@@ -122,7 +122,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Home Type",
-   "options": "\nSpec\nCustomer Sold",
+   "options": "\nSpec\nCustomer Sold\nInventory",
    "reqd": 1
   },
   {

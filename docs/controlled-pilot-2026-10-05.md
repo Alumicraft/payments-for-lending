@@ -20,6 +20,10 @@ Delivery target: October 6 morning, usable handoff and controlled pilot. This do
 - Status notices and ACH event notices use the native Frappe Email Queue directly, bypassing the shared Emails app's immediate Vercel override. Upcoming/success/failure ACH notice flags are independent. A queued record is not called Sent until the native queue reports Sent.
 - DCR now declares the already-installed `emails` app as a required dependency. No app/DocType ownership migration or repository rename is included. Source Admin for the eight-repo transfer was verified through the already-connected Alumicraft account; destination Frappe Cloud installation and source-account destination creation rights remain to be set up/verified.
 
+## Inventory intake
+
+Inventory is the third home type in Desk and the dealer portal. It uses Spec Info Sheet, Factory Quote, Plot Plan and 50% Deposit Proof—the existing Spec/Floored/private-property checklist—under every financing/property selection. Server validation populates these requirements and blocks native acceptance without an attachment or deliberate staff waiver. Existing Spec/Customer Sold rules are unchanged. Inventory has its own info-sheet and flooring-request titles; this change does not approve financial terms or legal wording.
+
 ## Verification
 
 Full local suite after the provider-contract follow-up: **362 passed, zero skipped**, using mocked Frappe, also verified on Python 3.12. Nine existing `datetime.utcnow` deprecation warnings remain. Python/JSON/JavaScript/Jinja syntax and whitespace checks accompany the batch. The installed Lending and Frappe source revisions were inspected to establish schedule, repayment, queue, dialog, and Kanban contracts.
@@ -73,7 +77,7 @@ Unknown ACH receipts require provider reconciliation by merchant/remote referenc
 
 ## Decisions still needed from DCR
 
-360/365 day count, regular/default/late fees and dated payoff examples; selling price versus installed value as the LTV denominator; the third Model/Inventory home type's label and required documents; final agreement/packet/PO wording. None were guessed in this batch. Final business acceptance and expanded real-debit activation remain separate from tomorrow's pilot.
+360/365 day count, regular/default/late fees and dated payoff examples; selling price versus installed value as the LTV denominator; final agreement/packet/PO wording. None were guessed in this batch. Final business acceptance and expanded real-debit activation remain separate from tomorrow's pilot.
 
 ## Provider/source references
 

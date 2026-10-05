@@ -39,6 +39,16 @@ DOC_REQUIREMENTS = {
     ],
 }
 
+# Inventory uses the Spec/Floored/private-property checklist regardless of
+# financing/property selection, as specified for the October 6 pilot.
+DOC_REQUIREMENTS.update({
+    ("Inventory", financing_type, property_type): list(
+        DOC_REQUIREMENTS[("Spec", "Floored", "Private Property")]
+    )
+    for financing_type in ("Cash", "Floored")
+    for property_type in ("Park", "Private Property")
+})
+
 
 class HomeBuildRequest(Document):
     def validate(self):
