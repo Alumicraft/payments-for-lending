@@ -170,20 +170,25 @@ class TestDealerPortalHBRWorkflow(unittest.TestCase):
         from dcr.api.dealer_portal import save_hbr_draft
 
         mock_customer.return_value = self._customer()
-        hbr = MagicMock()
-        hbr.name = "HBR-001"
-        mock_frappe.new_doc.return_value = hbr
+        mock_frappe.throw.side_effect = ValueError
+        for home_type in ("Spec", "Customer Sold", "Inventory"):
+            with self.subTest(home_type=home_type):
+                mock_factory.reset_mock()
+                hbr = MagicMock()
+                hbr.name = "HBR-001"
+                mock_frappe.new_doc.return_value = hbr
 
-        result = save_hbr_draft(
-            payload='{"home_type":"Spec","financing_type":"Cash","property_type":"Park","factory":"FACTORY-001"}'
-        )
+                result = save_hbr_draft(payload={
+                    "home_type": home_type, "financing_type": "Floored",
+                    "property_type": "Private Property", "factory": "FACTORY-001",
+                })
 
-        self.assertEqual(result, {"name": "HBR-001"})
-        self.assertEqual(hbr.customer, "DEALER-001")
-        hbr.set.assert_any_call("home_type", "Spec")
-        hbr.set.assert_any_call("factory", "FACTORY-001")
-        hbr.insert.assert_called_once_with(ignore_permissions=True)
-        mock_factory.assert_called_once_with("DEALER-001", "FACTORY-001")
+                self.assertEqual(result, {"name": "HBR-001"})
+                self.assertEqual(hbr.customer, "DEALER-001")
+                hbr.set.assert_any_call("home_type", home_type)
+                hbr.set.assert_any_call("factory", "FACTORY-001")
+                hbr.insert.assert_called_once_with(ignore_permissions=True)
+                mock_factory.assert_called_once_with("DEALER-001", "FACTORY-001")
 
     @patch("dcr.api.dealer_portal._serialize_hbr", return_value={"name": "HBR-001"})
     @patch("dcr.api.dealer_portal._require_active_factory")

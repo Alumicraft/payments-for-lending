@@ -72,7 +72,7 @@ HBR_INPUT_FIELDS = {
 }
 
 HBR_SELECT_OPTIONS = {
-    "home_type": {"Spec", "Customer Sold"},
+    "home_type": {"Spec", "Customer Sold", "Inventory"},
     "financing_type": {"Cash", "Floored"},
     "property_type": {"Park", "Private Property"},
 }

@@ -110,7 +110,7 @@ class TestGetRequiredDocs(unittest.TestCase):
 
     def test_all_combinations_covered(self):
         """Every valid combo of home_type x financing_type x property_type has docs."""
-        home_types = ["Spec", "Customer Sold"]
+        home_types = ["Spec", "Customer Sold", "Inventory"]
         financing_types = ["Cash", "Floored"]
         property_types = ["Park", "Private Property"]
 
@@ -127,6 +127,16 @@ class TestGetRequiredDocs(unittest.TestCase):
         """Factory Quote should appear in every valid combination."""
         for key, docs in DOC_REQUIREMENTS.items():
             self.assertIn("Factory Quote", docs, f"Missing Factory Quote for {key}")
+
+    def test_inventory_uses_spec_floored_private_checklist_for_all_selections(self):
+        expected = ["Spec Info Sheet", "Factory Quote", "Plot Plan", "50% Deposit Proof"]
+        for financing_type in ("Cash", "Floored"):
+            for property_type in ("Park", "Private Property"):
+                with self.subTest(financing_type=financing_type, property_type=property_type):
+                    self.assertEqual(
+                        get_required_docs("Inventory", financing_type, property_type),
+                        expected,
+                    )
 
 
 class _ChecklistDoc:
@@ -153,6 +163,20 @@ class _ChecklistDoc:
 
 
 class TestRequiredChecklistServerGuard(unittest.TestCase):
+    @patch("dcr.dcr.doctype.home_build_request.home_build_request.frappe")
+    def test_inventory_cannot_submit_with_empty_client_checklist(self, mock_frappe):
+        from dcr.dcr.doctype.home_build_request.home_build_request import HomeBuildRequest
+
+        mock_frappe.throw.side_effect = ValueError
+        doc = _ChecklistDoc()
+        doc.home_type = "Inventory"
+        HomeBuildRequest.ensure_required_checklist(doc)
+        with self.assertRaises(ValueError):
+            HomeBuildRequest.validate_checklist_complete(doc)
+        message = mock_frappe.throw.call_args.args[0]
+        for name in ("Spec Info Sheet", "Factory Quote", "Plot Plan", "50% Deposit Proof"):
+            self.assertIn(name, message)
+
     def test_empty_checklist_is_populated_before_submit_validation(self):
         from dcr.dcr.doctype.home_build_request.home_build_request import HomeBuildRequest
 
