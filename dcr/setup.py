@@ -28,6 +28,10 @@ def _html_block_js_field():
 
 def after_install():
     """Ensure DCR module definition and required groups exist."""
+    # The portal derives dealer ownership itself. Legacy broad DocPerms would
+    # bypass those checks through Frappe's resource and client APIs. Fail the
+    # migration if this security repair cannot be applied.
+    ensure_dealer_portal_permissions()
     # Map block first — isolated so any later setup failure cannot block it.
     try:
         ensure_map_block()
@@ -146,6 +150,28 @@ def after_install():
             frappe.log_error(frappe.get_traceback(), f"{fn.__name__} failed")
 
     frappe.db.commit()
+
+
+def ensure_dealer_portal_permissions():
+    """Retire unrestricted native API access granted by the old Dealer role.
+
+    Keep the permission rows so the change is reversible and preserve all
+    staff roles. The dealer portal uses ownership-checked custom APIs rather
+    than generic Customer/Supplier/HBR permissions.
+    """
+    from frappe.permissions import get_rights
+
+    for doctype in ("Customer", "Supplier", "Home Build Request"):
+        rows = frappe.get_all(
+            "Custom DocPerm", filters={"parent": doctype, "role": "Dealer"},
+            fields=["name"],
+        )
+        if not rows:
+            continue
+        rights = {right: 0 for right in get_rights(doctype)}
+        for row in rows:
+            frappe.db.set_value("Custom DocPerm", row.name, rights)
+        frappe.clear_cache(doctype=doctype)
 
 
 FACTORY_ADDRESSES = {
