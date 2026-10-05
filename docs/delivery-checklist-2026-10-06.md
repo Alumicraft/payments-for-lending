@@ -25,7 +25,7 @@ Site **https://backdesk.dealercapital.net**, Frappe Cloud site `dealercapitalres
 | Emails | `f50f47eb91f50e1336258cbebb841537c1a32dfe` |
 | Lending | 16.3.0 / `9c1a9d424111ea2446ea0b10b6d1100f735777b6` |
 
-The user has prohibited further browser control. No deployment click or live test was performed by the agent. A GitHub merge may trigger hosting automation, but it does not establish a successful deployment; read back the current installed DCR SHA. No independent Frappe Cloud API connection is available in this task. No real external email, signature invitation, or payment was initiated.
+The user has prohibited further browser control. No deployment click or live test was performed by the agent. A GitHub merge may trigger hosting automation, but it does not establish a successful deployment; read back the current installed DCR SHA. No independent Frappe Cloud API connection is available in this task. No real external email, signature invitation, or payment was initiated. A later read-only HTTP check found `signature_preview.js` returns 404 and the live `dealer_portal.js` does not match merged source; the new front end is not yet verified as deployed. No browser was used for that check.
 
 ## Remaining work and ownership
 
