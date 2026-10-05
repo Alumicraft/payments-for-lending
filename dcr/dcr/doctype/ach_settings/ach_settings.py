@@ -31,8 +31,8 @@ class ACHSettings(Document):
                 "Advance notification days must be greater than or equal to "
                 "days before due to initiate"
             )
-        if self.max_retry_attempts < 0:
-            frappe.throw("Max retry attempts cannot be negative")
+        if not 0 <= self.max_retry_attempts <= 2:
+            frappe.throw("Max retry attempts must be between 0 and 2")
         if self.retry_delay_days < 1:
             frappe.throw("Retry delay days must be at least 1")
 
@@ -64,3 +64,8 @@ def is_plaid_enabled():
     """Check if Plaid integration is configured."""
     settings = get_ach_settings()
     return settings.enable_ach_autopay and settings.has_plaid_credentials()
+
+
+def loan_is_in_ach_scope(loan):
+    settings = get_ach_settings()
+    return settings.get("ach_scope") == "All Eligible Loans" or bool(settings.get("pilot_loan") and loan == settings.get("pilot_loan"))

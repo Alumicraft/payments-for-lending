@@ -880,6 +880,11 @@
             ['Factory',  home.factory_name
                 ? escHtml(home.factory_name) + ' · <a class="link" href="/app/supplier/' + encodeURIComponent(home.factory || '') + '" target="_top">View</a>'
                 : '<span class="text-secondary">—</span>'],
+            ['Serial', escHtml(home.home_serial_no || '—')],
+            ['Quote', escHtml(home.quote_no || '—')],
+            ['End buyer', escHtml(home.end_buyer_name || '—')],
+            ['Storage', home.in_storage ? 'In Storage' : '—'],
+            ['Loan stage', escHtml(home.loan_stage || 'Not Started')],
             ['HBR',      '<span class="hbr-id">' + escHtml(home.name) + '</span>'],
             ['Created',  '<span class="text-secondary">' + escHtml(relativeDays(home.creation_iso)) + '</span>'],
         ];

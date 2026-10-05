@@ -10,6 +10,7 @@ from unittest.mock import MagicMock
 
 # Create a mock frappe module hierarchy
 frappe_mock = MagicMock()
+frappe_mock.get_cached_value.return_value = "System User"
 frappe_mock._ = lambda x: x  # Translation passthrough
 frappe_mock.throw = MagicMock(side_effect=Exception)
 frappe_mock.whitelist = lambda **kw: (lambda fn: fn)  # No-op decorator

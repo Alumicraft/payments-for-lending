@@ -1,5 +1,7 @@
 """Synchronize HBR order and loan stages from source documents."""
 
+from dcr.api.access import require_staff
+
 try:
     import frappe
 except ModuleNotFoundError:
@@ -75,16 +77,17 @@ def sync_from_doc(doc, method=None):
             exclude_receipt=doc.name,
         )
 
-    _sync_hbr_stages(hbr_name, submitted_pr_override)
+    _sync_hbr_stages(hbr_name, submitted_pr_override, event_revision=f"{doc.doctype}:{doc.name}:{doc.get('modified')}:{doc.get('docstatus')}")
 
 
 @frappe.whitelist()
 def sync_hbr_stages(hbr_name):
     """Update HBR custom stage fields if they exist on the site."""
+    require_staff("Home Build Request", hbr_name, "write")
     return _sync_hbr_stages(hbr_name)
 
 
-def _sync_hbr_stages(hbr_name, submitted_pr_override=None):
+def _sync_hbr_stages(hbr_name, submitted_pr_override=None, event_revision=None):
     if not hbr_name:
         return
 
@@ -93,7 +96,9 @@ def _sync_hbr_stages(hbr_name, submitted_pr_override=None):
     if not has_order_stage and not has_loan_stage:
         return
 
-    fields = ["financing_type", "docstatus"]
+    fields = ["name", "customer", "modified", "financing_type", "docstatus"]
+    if has_loan_stage:
+        fields.append(LOAN_STAGE_FIELD)
     if has_order_stage:
         fields.append(ORDER_STAGE_FIELD)
 
@@ -131,6 +136,9 @@ def _sync_hbr_stages(hbr_name, submitted_pr_override=None):
         updates[LOAN_STAGE_FIELD] = loan_stage
 
     if updates:
+        from dcr.api.status_notices import record_transition
+        for field, value in updates.items():
+            record_transition(hbr, field, hbr.get(field), value, revision=event_revision)
         frappe.db.set_value(
             "Home Build Request",
             hbr_name,

@@ -49,11 +49,14 @@ def process_upcoming_payments():
 
     frappe.logger().info(f"Processing upcoming payments for due date: {target_date}")
 
+    filters = {"status": ["in", ["Disbursed", "Partially Disbursed", "Active"]]}
+    if settings.get("ach_scope") != "All Eligible Loans":
+        if not settings.get("pilot_loan"):
+            return
+        filters["name"] = settings.get("pilot_loan")
     active_loans = frappe.get_all(
         "Loan",
-        filters={
-            "status": ["in", ["Disbursed", "Partially Disbursed", "Active"]]
-        },
+        filters=filters,
         fields=["name", "applicant"]
     )
 
@@ -87,6 +90,8 @@ def process_loan_payment(loan_data, account, target_date, initiation_days):
         target_date: The due date we're looking for
         initiation_days: Days before due to schedule initiation
     """
+    # Serialize schedule admission for this loan before checking prior attempts.
+    frappe.db.get_value("Loan", loan_data.name, "name", for_update=True)
     loan = frappe.get_doc("Loan", loan_data.name)
 
     next_payment_date, next_payment_amount = get_next_unpaid_repayment(loan)
@@ -100,13 +105,18 @@ def process_loan_payment(loan_data, account, target_date, initiation_days):
     if not next_payment_amount or next_payment_amount <= 0:
         return
 
-    # Check if transaction already exists for this payment
+    # All prior attempts, including returns and unknown outcomes, block a new
+    # automatic debit. Only the constrained retry path can create a reattempt.
+    existing = frappe.db.exists("ACH Transaction", {"loan": loan.name, "payment_due_date": target_date})
+    if existing:
+        return
+    # Protect transactions created before payment_due_date was introduced.
     existing = frappe.db.exists(
         "ACH Transaction",
         {
             "loan": loan.name,
-            "scheduled_date": [">=", add_days(target_date, -initiation_days)],
-            "status": ["not in", ["Cancelled", "Failed", "Returned"]]
+            "scheduled_date": ["between", [add_days(target_date, -initiation_days), target_date]],
+            "payment_due_date": ["is", "not set"],
         }
     )
     if existing:
@@ -121,6 +131,7 @@ def process_loan_payment(loan_data, account, target_date, initiation_days):
     txn.amount = next_payment_amount
     txn.status = "Scheduled"
     txn.scheduled_date = scheduled_date
+    txn.payment_due_date = target_date
     txn.insert()
 
     frappe.logger().info(
@@ -132,24 +143,39 @@ def process_loan_payment(loan_data, account, target_date, initiation_days):
 
 
 def get_next_unpaid_repayment(loan):
-    """Get next unpaid repayment from loan schedule.
+    """Read the active v16 schedules and demand balances, not Loan child rows.
 
-    Frappe Lending v15 doesn't have an is_paid field on repayment schedule rows.
-    Instead, we query submitted Loan Repayment records to determine which
-    schedule rows have been paid.
+    A repayment's posting date is not proof that a whole installment is paid.
+    Generated demands supply unpaid amounts; future undemanded rows supply the
+    scheduled amount. Existing ACH attempts prevent a second debit for that due date.
     """
-    if not hasattr(loan, 'repayment_schedule') or not loan.repayment_schedule:
+    schedules = frappe.get_all("Loan Repayment Schedule", filters={
+        "loan": loan.name, "docstatus": 1, "status": "Active"
+    }, pluck="name", limit_page_length=0)
+    if not schedules:
         return None, None
-
-    paid_dates = frappe.get_all("Loan Repayment",
-        filters={"against_loan": loan.name, "docstatus": 1},
-        pluck="posting_date")
-    paid_dates = set(getdate(d) for d in paid_dates)
-
-    for row in loan.repayment_schedule:
-        row_date = getdate(row.payment_date)
-        if row_date >= getdate(today()) and row_date not in paid_dates:
-            return row_date, row.total_payment
+    rows = frappe.get_all("Repayment Schedule", filters={
+        "parent": ["in", schedules], "parenttype": "Loan Repayment Schedule",
+        "payment_date": [">=", today()],
+    }, fields=["name", "payment_date", "total_payment", "demand_generated"],
+        order_by="payment_date asc", limit_page_length=0)
+    demands = frappe.get_all("Loan Demand", filters={
+        "loan": loan.name, "docstatus": 1, "repayment_schedule_detail": ["in", [row.name for row in rows]]
+    }, fields=["repayment_schedule_detail", "outstanding_amount"], limit_page_length=0) if rows else []
+    demand_amounts = {}
+    for demand in demands:
+        key = demand.repayment_schedule_detail
+        demand_amounts[key] = demand_amounts.get(key, 0) + max(float(demand.outstanding_amount or 0), 0)
+    by_date = {}
+    for row in rows:
+        due = getdate(row.payment_date)
+        if row.demand_generated and row.name not in demand_amounts:
+            raise ValueError(f"Generated schedule row {row.name} has no submitted demands; reconcile before debiting")
+        amount = demand_amounts[row.name] if row.name in demand_amounts else float(row.total_payment or 0)
+        by_date[due] = by_date.get(due, 0) + amount
+    for due, amount in sorted(by_date.items()):
+        if amount > 0:
+            return due, amount
     return None, None
 
 
@@ -230,7 +256,7 @@ def process_retry_transactions():
     transactions = frappe.get_all(
         "ACH Transaction",
         filters=[
-            ["status", "in", ["Failed", "Returned"]],
+            ["status", "=", "Returned"],
             ["next_retry_date", "<=", today()],
             ["next_retry_date", "is", "set"]
         ],
@@ -260,6 +286,9 @@ def process_retry_transactions():
                 continue
 
             txn = frappe.get_doc("ACH Transaction", txn_data.name)
+            from dcr.dcr.doctype.ach_settings.ach_settings import loan_is_in_ach_scope
+            if not loan_is_in_ach_scope(txn.loan):
+                continue
             retry_txn = txn.create_retry_transaction()
 
             frappe.logger().info(
@@ -284,13 +313,14 @@ def check_pending_transactions():
     2. Matches transactions by reference ID
     3. Updates transactions if status has changed
     """
-    if not is_ach_enabled():
+    settings = frappe.get_single("ACH Settings")
+    if not settings.get("achq_merchant_id") or not settings.get("achq_merchant_gate_id") or not settings.get("achq_merchant_gate_key"):
         return
 
     from dcr.api.achq_integration import ACHQClient
 
     try:
-        client = ACHQClient()
+        client = ACHQClient(allow_disabled=True)
     except Exception as e:
         frappe.log_error(
             f"Failed to initialize ACHQ client: {str(e)}",
@@ -332,70 +362,17 @@ def process_achq_status_update(achq_txn):
     Args:
         achq_txn: Transaction dict from ACHQ status query
     """
-    from dcr.api.achq_integration import ACHQ_STATUS_MAP
+    from dcr.api.achq_integration import apply_achq_status_update
+    # Let failures escape to the scheduler's error handler; do not acknowledge
+    # a partially applied settlement or return as completed.
+    return apply_achq_status_update(achq_txn)
 
-    achq_transaction_id = achq_txn.get("TransactionID")
-    merchant_ref_id = achq_txn.get("Merchant_ReferenceID")
 
-    txn_name = None
-
-    if merchant_ref_id and frappe.db.exists("ACH Transaction", merchant_ref_id):
-        txn_name = merchant_ref_id
-    elif achq_transaction_id:
-        txn_name = frappe.db.get_value(
-            "ACH Transaction",
-            {"achq_transaction_id": achq_transaction_id},
-            "name"
-        )
-
-    if not txn_name:
-        return
-
-    txn = frappe.get_doc("ACH Transaction", txn_name)
-
-    if txn.status in ("Success", "Cancelled"):
-        return
-
-    achq_status = achq_txn.get("PaymentStatus", "")
-    mapped_status = ACHQ_STATUS_MAP.get(achq_status)
-
-    if not mapped_status:
-        if txn.achq_status != achq_status:
-            txn.achq_status = achq_status
-            txn.save()
-        return
-
-    try:
-        if mapped_status == "Success" and txn.status != "Success":
-            txn.mark_success(achq_status=achq_status)
-            frappe.logger().info(f"Transaction {txn_name} marked as success")
-
-        elif mapped_status == "Returned" and txn.status not in ("Returned", "Failed"):
-            txn.mark_failed(
-                return_code=achq_txn.get("ReturnCode"),
-                failure_reason=achq_txn.get("ReturnDescription"),
-            )
-            frappe.logger().info(f"Transaction {txn_name} marked as returned")
-
-        elif mapped_status == "Processing" and txn.status == "Initiated":
-            txn.status = "Processing"
-            txn.achq_status = achq_status
-            txn.save()
-
-        elif mapped_status == "Cancelled" and txn.status not in ("Cancelled", "Success"):
-            txn.status = "Cancelled"
-            txn.achq_status = achq_status
-            txn.save()
-
-        elif mapped_status == "Failed" and txn.status not in ("Failed", "Returned", "Success"):
-            txn.mark_failed(
-                failure_code=achq_txn.get("ResponseCode"),
-                failure_reason=achq_txn.get("Description", "Payment failed"),
-            )
-            frappe.logger().info(f"Transaction {txn_name} marked as failed")
-
-    except Exception as e:
-        frappe.log_error(
-            f"Error updating transaction {txn_name}: {str(e)}",
-            "ACH Status Update"
-        )
+def reconcile_settled_transactions():
+    """Retry accounting only, using existing settlement evidence; never debit."""
+    for name in frappe.get_all("ACH Transaction", filters={"status": "Accounting Pending"}, pluck="name", limit_page_length=100):
+        frappe.db.get_value("ACH Transaction", name, "name", for_update=True)
+        txn = frappe.get_doc("ACH Transaction", name)
+        txn.flags.ignore_permissions = True
+        if txn.status == "Accounting Pending":
+            txn.mark_success()

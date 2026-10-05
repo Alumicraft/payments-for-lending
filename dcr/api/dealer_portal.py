@@ -58,6 +58,10 @@ HBR_INPUT_FIELDS = {
     "access_code",
     "space_rent",
     "selling_price",
+    "installed_value",
+    "end_buyer_name",
+    "end_buyer_email",
+    "end_buyer_phone",
     "customer_deposit",
     "end_buyer_lender",
     "escrow_contact",
@@ -352,6 +356,11 @@ def _serialize_hbr(hbr, customer=None):
         "floor_plan": _value(hbr, "floor_plan"),
         "quote_no": _value(hbr, "quote_no"),
         "home_serial_no": _value(hbr, "home_serial_no"),
+        "end_buyer_name": _value(hbr, "end_buyer_name"),
+        "end_buyer_email": _value(hbr, "end_buyer_email"),
+        "end_buyer_phone": _value(hbr, "end_buyer_phone"),
+        "installed_value": _json_value(_value(hbr, "installed_value")),
+        "in_storage": bool(_value(hbr, "in_storage")),
         "quoted_amount": _json_value(_value(hbr, "home_invoice_plus_freight")),
         "order_stage": _value(hbr, "custom_order_stage") or ("Draft" if _value(hbr, "docstatus") == 0 else "Pending"),
         "loan_stage": _value(hbr, "custom_loan_stage") or "Not Started",
@@ -610,6 +619,8 @@ def submit_hbr_for_review(name):
     """Move a dealer-owned draft into DCR's review queue without submitting it."""
     customer = get_current_dealer_customer()
     hbr = _get_owned_hbr(name, customer)
+    frappe.db.get_value("Home Build Request", name, "name", for_update=True)
+    hbr.reload()
     _require_editable_hbr(hbr)
     current_status = _portal_status(hbr)
     if current_status not in {"Draft", "Changes Requested"}:
@@ -627,6 +638,8 @@ def submit_hbr_for_review(name):
         updates[PORTAL_SUBMITTED_BY_FIELD] = _session_user()
     frappe.db.set_value("Home Build Request", name, updates, update_modified=True)
     hbr.reload()
+    from dcr.api.status_notices import record_transition
+    record_transition(hbr, PORTAL_STATUS_FIELD, current_status, "Submitted for Review")
     return _serialize_hbr(hbr, customer)
 
 

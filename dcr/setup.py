@@ -546,6 +546,17 @@ def ensure_hbr_kanban_columns():
     for board_name in board_names:
         board = frappe.get_doc("Kanban Board", board_name)
         changed = False
+        # v16 fetches card data only for fields configured on the board.
+        fields = json.loads(board.get("fields") or "[]")
+        if not isinstance(fields, list):
+            frappe.throw(f"Kanban Board {board_name}: fields must be a JSON list")
+        if "in_storage" not in fields:
+            fields.append("in_storage")
+            board.fields = json.dumps(fields)
+            changed = True
+        if not board.get("show_labels"):
+            board.show_labels = 1
+            changed = True
         active_filter = json.dumps([
             ["Home Build Request", "docstatus", "in", [0, 1]],
         ])

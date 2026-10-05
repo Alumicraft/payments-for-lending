@@ -6,6 +6,8 @@
  "engine": "InnoDB",
  "field_order": [
   "enable_ach_autopay",
+  "pilot_loan",
+  "ach_scope",
   "achq_credentials_section",
   "achq_environment",
   "achq_merchant_id",
@@ -264,6 +266,22 @@
    "label": "Mode of Payment",
    "description": "Mode of payment for ACH transactions (e.g., 'ACH Transfer')",
    "depends_on": "enable_ach_autopay"
+  },
+  {
+   "fieldname": "ach_scope",
+   "fieldtype": "Select",
+   "label": "ACH Processing Scope",
+   "options": "Controlled Pilot\nAll Eligible Loans",
+   "default": "Controlled Pilot",
+   "description": "Controlled Pilot admits only the selected loan. All Eligible Loans expands automated debits and requires separate production acceptance."
+  },
+  {
+   "fieldname": "pilot_loan",
+   "fieldtype": "Link",
+   "label": "Pilot Loan",
+   "options": "Loan",
+   "depends_on": "eval:doc.ach_scope!='All Eligible Loans'",
+   "description": "Controlled Pilot admits only the selected loan. All Eligible Loans expands automated debits and requires separate production acceptance."
   }
  ],
  "index_web_pages_for_search": 1,

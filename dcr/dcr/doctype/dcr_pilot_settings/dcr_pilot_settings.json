@@ -1,0 +1,57 @@
+{
+ "doctype": "DocType",
+ "name": "DCR Pilot Settings",
+ "module": "DCR",
+ "engine": "InnoDB",
+ "field_order": [
+  "enable_status_notifications",
+  "pilot_notification_recipient",
+  "staff_notification_recipient"
+ ],
+ "fields": [
+  {
+   "fieldname": "enable_status_notifications",
+   "fieldtype": "Check",
+   "label": "Enable Pilot Status Notifications",
+   "default": "0"
+  },
+  {
+   "fieldname": "pilot_notification_recipient",
+   "fieldtype": "Data",
+   "options": "Email",
+   "label": "Pilot Recipient Override",
+   "description": "Required when enabled. All pilot notices go to this controlled test mailbox, including staff notices."
+  },
+  {
+   "fieldname": "staff_notification_recipient",
+   "fieldtype": "Data",
+   "options": "Email",
+   "label": "DCR Staff Recipient",
+   "description": "Capture the intended staff recipient for review; pilot delivery still uses the override."
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "report": 1
+  }
+ ],
+ "track_changes": 1,
+ "issingle": 1,
+ "creation": "2026-10-05 00:00:00.000000",
+ "modified": "2026-10-05 00:00:00.000000",
+ "modified_by": "Administrator",
+ "owner": "Administrator",
+ "actions": [],
+ "links": [],
+ "states": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "index_web_pages_for_search": 0
+}

@@ -1,3 +1,4 @@
+from dcr.api.access import require_staff
 import frappe
 from frappe import _
 from frappe.utils import getdate, add_days, today
@@ -118,8 +119,7 @@ def _apply_loan_calculation_values(doc):
     return values
 
 
-@frappe.whitelist()
-def get_dealer_outstanding_balance(customer):
+def _get_dealer_outstanding_balance(customer):
     """Get total outstanding loan balance for a dealer.
 
     Frappe Lending doesn't store an `outstanding_amount` column on Loan;
@@ -129,7 +129,8 @@ def get_dealer_outstanding_balance(customer):
         """
         SELECT COALESCE(SUM(loan_amount - COALESCE(total_principal_paid, 0)), 0) AS total
         FROM `tabLoan`
-        WHERE applicant = %s AND status IN ('Disbursed', 'Active')
+        WHERE applicant = %s AND applicant_type = 'Customer'
+        AND status IN ('Disbursed', 'Partially Disbursed', 'Active')
         """,
         (customer,),
         as_dict=True,
@@ -137,20 +138,32 @@ def get_dealer_outstanding_balance(customer):
     return result[0].total if result else 0
 
 
+def _require_complete_dealer_loan_access(customer):
+    require_staff("Customer", customer)
+    require_staff("Loan")
+    filters = {"applicant": customer, "applicant_type": "Customer", "status": ["in", ["Disbursed", "Partially Disbursed", "Active"]]}
+    all_names = set(frappe.get_all("Loan", filters=filters, pluck="name", limit_page_length=0))
+    visible_names = set(frappe.get_list("Loan", filters=filters, pluck="name", limit_page_length=0))
+    if all_names != visible_names:
+        frappe.throw(_("Access to this dealer's complete lending records is required to calculate its balance"), frappe.PermissionError)
+
+
+@frappe.whitelist()
+def get_dealer_outstanding_balance(customer):
+    _require_complete_dealer_loan_access(customer)
+    return _get_dealer_outstanding_balance(customer)
+
+
 def is_dealer_current(customer):
-    """Check if a dealer has any overdue (unpaid + past due) loan repayment entries.
-
-    Returns "Yes" if no overdue payments, "No" if any exist.
-    """
+    """Submitted overdue demands, including partially paid installments, are unpaid."""
     overdue = frappe.db.sql("""
-        SELECT COUNT(*) FROM `tabRepayment Schedule` rs
-        INNER JOIN `tabLoan` l ON rs.parent = l.name
-        WHERE l.applicant = %s
-        AND l.status IN ('Disbursed', 'Active')
-        AND rs.payment_date < %s
-        AND rs.demand_generated = 0
+        SELECT COUNT(*) FROM `tabLoan Demand` demand
+        INNER JOIN `tabLoan` loan ON demand.loan = loan.name
+        WHERE loan.applicant = %s AND loan.applicant_type = 'Customer'
+        AND loan.status IN ('Disbursed', 'Partially Disbursed', 'Active')
+        AND demand.docstatus = 1 AND demand.demand_date < %s
+        AND demand.outstanding_amount > 0
     """, (customer, today()))[0][0]
-
     return "Yes" if overdue == 0 else "No"
 
 
@@ -260,13 +273,18 @@ def get_available_credit(customer):
 
     available_credit = MIFA.credit_limit - outstanding_balance
     """
-    mifa = frappe.db.get_value("MIFA", {"customer": customer, "docstatus": 1},
-        "credit_limit", order_by="mifa_date desc")
+    _require_complete_dealer_loan_access(customer)
+    require_staff("MIFA")
+    mifa_record = frappe.db.get_value("MIFA", {"customer": customer, "docstatus": 1},
+        ["name", "credit_limit"], as_dict=True, order_by="mifa_date desc")
+    if mifa_record:
+        require_staff("MIFA", mifa_record.name)
+    mifa = mifa_record.credit_limit if mifa_record else None
 
     if not mifa:
         return {"credit_limit": 0, "outstanding": 0, "available": 0}
 
-    outstanding = get_dealer_outstanding_balance(customer)
+    outstanding = _get_dealer_outstanding_balance(customer)
     available = mifa - outstanding
 
     return {
@@ -280,6 +298,7 @@ def get_available_credit(customer):
 @frappe.whitelist()
 def get_loan_application_defaults(home_build_request):
     """Return HBR-derived defaults needed before client-side mandatory validation."""
+    require_staff("Home Build Request", home_build_request)
     if not home_build_request:
         return {}
 
@@ -360,7 +379,7 @@ def validate_loan_application(doc, method):
 
     customer = doc.applicant
     doc.custom_current_yn = is_dealer_current(customer)
-    outstanding = get_dealer_outstanding_balance(customer)
+    outstanding = _get_dealer_outstanding_balance(customer)
     doc.outstanding_loan_balance = outstanding
 
     mifa_limit = frappe.db.get_value("MIFA", {"customer": customer, "docstatus": 1},
@@ -702,12 +721,14 @@ def get_loan_deal_reference(loan_application, applicant=None):
     reference fields the moment it opens (before first save). Mirrors the
     logic run server-side in _populate_deal_reference.
     """
+    require_staff("Loan Application", loan_application)
     return _compute_deal_reference(loan_application, applicant)
 
 
 @frappe.whitelist()
 def get_loan_defaults_from_application(loan_application):
     """Return defaults for a Loan created from a submitted Loan Application."""
+    require_staff("Loan Application", loan_application)
     if not loan_application:
         return {}
 

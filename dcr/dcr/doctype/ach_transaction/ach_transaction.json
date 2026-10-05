@@ -14,8 +14,10 @@
   "amount",
   "status",
   "scheduled_date",
+  "payment_due_date",
   "achq_section",
   "achq_transaction_id",
+  "achq_reference_kind",
   "achq_status",
   "column_break_achq",
   "initiated_date",
@@ -33,7 +35,12 @@
   "return_code",
   "erpnext_section",
   "payment_entry",
-  "notification_sent"
+  "notification_sent",
+  "loan_repayment",
+  "accounting_error",
+  "upcoming_notification_sent",
+  "success_notification_sent",
+  "failure_notification_sent"
  ],
  "fields": [
   {
@@ -89,7 +96,8 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Scheduled\nInitiated\nProcessing\nSuccess\nFailed\nReturned\nCancelled"
+   "options": "Scheduled\nInitiated\nProcessing\nSuccess\nFailed\nReturned\nCancelled\nOutcome Unknown\nAccounting Pending\nReversal Pending",
+   "read_only": 1
   },
   {
    "fieldname": "scheduled_date",
@@ -211,6 +219,49 @@
    "fieldname": "notification_sent",
    "fieldtype": "Check",
    "label": "Notification Sent"
+  },
+  {
+   "fieldname": "loan_repayment",
+   "fieldtype": "Link",
+   "label": "Loan Repayment",
+   "read_only": 1,
+   "options": "Loan Repayment"
+  },
+  {
+   "fieldname": "accounting_error",
+   "fieldtype": "Small Text",
+   "label": "Accounting Error",
+   "read_only": 1
+  },
+  {
+   "fieldname": "upcoming_notification_sent",
+   "fieldtype": "Check",
+   "label": "Upcoming Notification Queued",
+   "read_only": 1
+  },
+  {
+   "fieldname": "success_notification_sent",
+   "fieldtype": "Check",
+   "label": "Success Notification Queued",
+   "read_only": 1
+  },
+  {
+   "fieldname": "failure_notification_sent",
+   "fieldtype": "Check",
+   "label": "Failure Notification Queued",
+   "read_only": 1
+  },
+  {
+   "fieldname": "payment_due_date",
+   "fieldtype": "Date",
+   "label": "Payment Due Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "achq_reference_kind",
+   "fieldtype": "Data",
+   "label": "ACHQ Reference Kind",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
