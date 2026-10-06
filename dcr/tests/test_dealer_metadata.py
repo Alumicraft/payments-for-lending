@@ -18,6 +18,8 @@ def test_hbr_metadata_is_queried_once_with_all_private_attachment_constraints():
         assert items[0]["file_name"] == "demo-spec.pdf"
         assert items[0]["uploaded_on"] == "2026-10-06T05:30:00"
         assert "file_url" not in items[0] and "attachment" not in items[0]
+        assert items[0]["can_download"] is True
+        assert items[1]["can_download"] is False
         assert "file_name" not in items[1], "unmatched file metadata stays unavailable"
         assert items[2] == {"document_type": "Plot Plan", "uploaded": False, "complete": True}
         frappe.get_all.assert_called_once()
@@ -38,6 +40,7 @@ def test_customer_metadata_must_match_the_specific_onboarding_field():
         w9 = next(item for item in result if item["fieldname"] == "w9_copy")
         assert w9["uploaded"]
         assert "file_name" not in w9
+        assert w9["can_download"] is False
         assert frappe.get_all.call_args.kwargs["filters"]["attached_to_name"] == "DEALER-A"
 
 
@@ -53,7 +56,7 @@ def test_shared_storage_url_with_multiple_upload_rows_does_not_invent_identity()
             {"file_url": "/private/files/a.pdf", "attached_to_field": "doc_checklist", "file_name": name}
             for name in ["original.pdf", "replacement.pdf"]
         ]
-        assert portal._attached_file_metadata("Home Build Request", "HBR-A", ["doc_checklist"], ["/private/files/a.pdf"]) == {}
+        assert portal._attached_file_metadata("Home Build Request", "HBR-A", ["doc_checklist"], ["/private/files/a.pdf"]) == {("doc_checklist", "/private/files/a.pdf"): {}}
 
 
 def test_support_lookup_failure_does_not_break_portal():

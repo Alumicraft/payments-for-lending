@@ -161,9 +161,9 @@ frappe.ready(function () {
             for (const type of docs) {
                 const row = document.createElement("tr");
                 const saved = existing.get(type);
-                row.innerHTML = '<th scope="row">' + escape(type) + '</th><td class="dcr-selected-file">' + escape(pending.get(type)?.name || (saved?.uploaded ? saved.file_name || "Uploaded" : saved?.complete ? "Not required" : "Needed")) + '</td><td></td>';
+                row.innerHTML = '<th scope="row">' + escape(type) + '</th><td class="dcr-selected-file">' + escape(pending.get(type)?.name || (saved?.uploaded ? saved.can_download === false ? "File unavailable" : saved.file_name || "Uploaded" : saved?.complete ? "Not required" : "Needed")) + '</td><td></td>';
                 const cell = row.lastElementChild;
-                if (saved?.uploaded && form.doc.name) {
+                if (saved?.uploaded && saved.can_download !== false && form.doc.name) {
                     const view = document.createElement("a");
                     const params = new URLSearchParams({target_type:"hbr", target_name:form.doc.name, document_type:type});
                     view.href = "/api/method/dcr.api.dealer_portal.download_document?" + params;

@@ -100,3 +100,14 @@ assert.equal(M.isNumber("100.25"), true);
 const unusual = M.paymentGroups([deal({name:"__proto__", ...accepted, loan:loan({payments_summary:{upcoming:[{date:"2026-10-01",total:20,due_status:"Past due"}]}})})]);
 assert.equal(unusual.pastDueByDeal[0].deal, "__proto__");
 assert.equal(unusual.pastDueByDeal[0].amount,20);
+assert.equal(M.canDownload({uploaded:true,can_download:false}),false,'a recorded URL without an owned private File must not produce a view link');
+assert.equal(M.canDownload({uploaded:true,can_download:true}),true);
+assert.equal(M.canDownload({uploaded:false,can_download:true}),false);
+assert.equal(M.canDownload({uploaded:true}),true,'older API responses remain compatible during rollout');
+
+const unavailableFileDeal = deal({documents:{items:[{document_type:'Spec Info Sheet',uploaded:true,complete:true,can_download:false}]}});
+assert.equal(M.needs(unavailableFileDeal, []), 'Replace 1 unavailable file');
+assert.equal(M.checklist(unavailableFileDeal).label, 'Complete', 'recorded completion is distinct from file availability');
+assert.equal(M.progressSteps(unavailableFileDeal, []).filter(x=>x.replace).length, 1);
+assert.equal(M.needs(Object.assign({}, unavailableFileDeal, {docstatus:1,portal_status:'Accepted'}), []), '', 'locked accepted requests must not ask for replacement');
+assert.equal(M.needs(deal({documents:{items:[{document_type:'Spec Info Sheet',uploaded:true,complete:true,can_download:false},{document_type:'Factory Quote',uploaded:false,complete:false}]}}), []), 'Replace 1 unavailable file · upload 1 document');

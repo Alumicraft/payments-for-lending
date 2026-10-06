@@ -33,6 +33,7 @@ var dcrPortalModel = (function () {
     function summary(deal) { return hasLoan(deal) && deal.loan.payments_summary ? deal.loan.payments_summary : null; }
     function documents(deal) { return (deal.documents && deal.documents.items) || []; }
     function missingDocuments(deal) { return documents(deal).filter(function (item) { return !item.complete && !item.uploaded; }); }
+    function unavailableDocuments(deal) { return documents(deal).filter(function (item) { return item.uploaded && item.can_download === false; }); }
 
     // Checklist progress is not a count of files: an item can be complete
     // because DCR does not require it, with nothing uploaded.
@@ -133,7 +134,9 @@ var dcrPortalModel = (function () {
         var waiting = dealSignatures(deal, signatures).filter(function (item) { return item.actionable; });
         if (waiting.length) return "Sign the " + waiting[0].document_type;
         if (isOpen(deal)) {
+            var unavailable = unavailableDocuments(deal).length;
             var count = missingDocuments(deal).length;
+            if (unavailable) return "Replace " + unavailable + (unavailable === 1 ? " unavailable file" : " unavailable files") + (count ? " · upload " + count + (count === 1 ? " document" : " documents") : "");
             if (count) return "Upload " + count + (count === 1 ? " document" : " documents");
         }
         return "";
@@ -230,6 +233,7 @@ var dcrPortalModel = (function () {
         var steps = [{ label: "Saved", kind: "done", note: deal.created_on || "", noteIsDate: true }];
         var open = isOpen(deal);
         if (open) missingDocuments(deal).forEach(function (item) { steps.push({ label: "Upload " + item.document_type, kind: "action", upload: item }); });
+        if (open) unavailableDocuments(deal).forEach(function (item) { steps.push({ label: "Replace " + item.document_type, kind: "action", upload: item, replace: true }); });
         if (isCancelled(deal)) {
             steps.push({ label: "Cancelled", kind: "cancelled" });
             return steps;
@@ -266,6 +270,7 @@ var dcrPortalModel = (function () {
     }
 
     return {
+        canDownload: function (item) { return !!item.uploaded && item.can_download !== false; },
         isNumber: isNumber, isCancelled: isCancelled, isAccepted: isAccepted, isOpen: isOpen, canEdit: canEdit,
         hasLoan: hasLoan, summary: summary, documents: documents, missingDocuments: missingDocuments, checklist: checklist,
         lifecycle: lifecycle, lifecycleGroups: lifecycleGroups, loanStage: loanStage, homeStatus: homeStatus, identity: identity,
@@ -427,9 +432,9 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
     // no-access and load-error states can still offer a way to reach DCR.
     function support_url() { return safe_url(state.data && state.data.support_url) || safe_url(root.getAttribute("data-support-url")); }
 
-    function support_link(label, cls) {
+    function support_link(label, cls, accessible_label) {
         var url = support_url();
-        return url ? '<a class="' + (cls || "dcr-link") + '" href="' + esc(url) + '">' + esc(label || "Contact DCR") + "</a>" : "";
+        return url ? '<a class="' + (cls || "dcr-link") + '" href="' + esc(url) + '"' + (accessible_label ? ' aria-label="' + esc(accessible_label) + '"' : '') + '>' + esc(label || "Contact DCR") + "</a>" : "";
     }
 
     function toast(message, is_error) {
@@ -539,9 +544,12 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
         var rows = items.map(function (item) {
             var type = item.fieldname || item.document_type;
             var title = item.label || item.document_type;
-            var file = item.uploaded ? '<span class="dcr-muted">' + esc(item.file_name || "Uploaded") + "</span>"
+            var unavailable = item.uploaded && !M.canDownload(item);
+            var file = item.uploaded ? '<span class="dcr-muted">' + esc(unavailable ? "File unavailable" : item.file_name || "Uploaded") + "</span>"
                 : (item.complete ? '<span class="dcr-muted">Not required</span>' : (can_upload ? '<span class="dcr-needed">Needed</span>' : '<span class="dcr-muted">Not provided</span>'));
-            var actions = (item.uploaded ? document_links(target, name, type, title) : "") + (!item.uploaded && !item.complete && can_upload ? upload_control("dcr-btn-row", target, name, type, "Upload", title) : "");
+            var actions = (M.canDownload(item) ? document_links(target, name, type, title) : "") +
+                (unavailable ? (support_link("Contact DCR", "dcr-btn-text", "Contact DCR about " + title) || '<span class="dcr-muted">Contact DCR for help.</span>') : "") +
+                (can_upload && (unavailable || (!item.uploaded && !item.complete)) ? upload_control("dcr-btn-row", target, name, type, unavailable ? "Replace file" : "Upload", title) : "");
             var row = [file_icon(item), '<span class="dcr-strong">' + esc(title) + "</span>", file];
             if (dated) row.push(esc(fmt_date(item.uploaded_on)));
             row.push('<span class="dcr-actions">' + actions + "</span>");
@@ -599,7 +607,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
             rows.push([status("action", "To do"), '<span class="dcr-strong">' + esc("Sign " + item.document_type) + "</span>", '<span class="dcr-muted">' + esc(item.sent_date ? "Sent " + fmt_date(item.sent_date) : "Waiting for your signature") + "</span>",
                 '<a class="dcr-btn-row" href="#/settings" aria-label="' + esc("Review " + item.document_type + " in Settings") + '">Review</a>']);
         });
-        var needed = ((state.data && state.data.onboarding_documents) || []).filter(function (item) { return !item.uploaded; });
+        var needed = ((state.data && state.data.onboarding_documents) || []).filter(function (item) { return !item.uploaded || item.can_download === false; });
         if (needed.length) {
             rows.push([status("action", "To do"), '<span class="dcr-strong">Upload dealer documents</span>', '<span class="dcr-muted">' + esc(needed.map(function (item) { return item.label; }).join(", ")) + "</span>",
                 '<a class="dcr-btn-row" href="#/settings" aria-label="Upload dealer documents in Settings">Upload</a>']);
@@ -701,7 +709,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
         return '<ol class="dcr-steps">' + M.progressSteps(deal, signatures()).map(function (step) {
             var note = step.noteIsDate ? fmt_date(step.note) : step.note;
             var aside = note ? '<span class="dcr-small">' + esc(note) + "</span>" : "";
-            if (step.upload) aside = upload_control("dcr-btn-mini", "hbr", deal.name, step.upload.document_type, "Upload", step.upload.document_type);
+            if (step.upload) aside = upload_control("dcr-btn-mini", "hbr", deal.name, step.upload.document_type, step.replace ? "Replace file" : "Upload", step.upload.document_type);
             if (step.signature) aside = '<button type="button" class="dcr-btn-mini" data-action="sign" data-signature="' + esc(step.signature.name) + '" aria-label="' + esc("Sign " + step.signature.document_type) + '">Sign</button>';
             var said = { done: "Done", current: "In progress", action: "Needs you", upcoming: "Later", cancelled: "Cancelled" }[step.kind] || "";
             return '<li class="is-' + step.kind + '"><span class="dcr-step-mark">' + mark(step.kind) + '</span><span class="dcr-step-body"><span><span class="dcr-sr">' + said + ": </span>" + esc(step.label) + "</span>" + aside + "</span></li>";
@@ -789,7 +797,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
         }
         if (accepted) body += section("Home status", tracker(deal), esc(M.homeStatus(deal)));
         var items = M.documents(deal);
-        body += section("Documents", items.length ? documents_table("Documents for " + deal.name, items, "hbr", deal.name, open) : '<p class="dcr-note">No documents are required for this request.</p>', open && M.missingDocuments(deal).length ? esc(UPLOAD_NOTE) : "");
+        body += section("Documents", items.length ? documents_table("Documents for " + deal.name, items, "hbr", deal.name, open) : '<p class="dcr-note">No documents are required for this request.</p>', open && (M.missingDocuments(deal).length || items.some(function (item) { return item.uploaded && item.can_download === false; })) ? esc(UPLOAD_NOTE) : "");
         var signed = M.dealSignatures(deal, signatures());
         if (signed.length) {
             body += section("Signatures", table("Signatures for " + deal.name, [{ label: "File type", cls: "dcr-c-icon", hidden: true }, { label: "Document" }, { label: "Status" }, { label: "Date", cls: "dcr-nowrap dcr-muted" }, { label: "Actions", cls: "dcr-c-act", hidden: true }],
@@ -936,7 +944,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
             })) + (parts.history.length > PREVIEW_ROWS ? toggle_button("signatures", parts.history.length, "record") : "")
             : '<p class="dcr-note">' + (parts.waiting.length ? "No earlier records." : "No agreements have been sent yet.") + "</p>", parts.history.length ? esc(plural(parts.history.length, "record")) : "");
 
-        body += section("Dealer documents", documents_table("Dealer documents", onboarding, "customer", customer.name, true), onboarding.some(function (item) { return !item.uploaded; }) ? esc(UPLOAD_NOTE) : "");
+        body += section("Dealer documents", documents_table("Dealer documents", onboarding, "customer", customer.name, true), onboarding.some(function (item) { return !item.uploaded || item.can_download === false; }) ? esc(UPLOAD_NOTE) : "");
         return '<div class="dcr-page">' + page_head("Settings") + body + "</div>";
     }
 

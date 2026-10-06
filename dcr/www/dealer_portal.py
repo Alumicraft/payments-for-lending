@@ -13,6 +13,8 @@ def get_context(context):
 
     context.title = "Dealer Portal"
     context.portal_user = frappe.session.user
+    # Use the native login page's resolver, including its configured fallbacks.
+    context.dealer_logo = frappe.get_attr("frappe.core.doctype.navbar_settings.navbar_settings.get_app_logo")()
     from dcr.api.dealer_portal import _support_url
     context.support_url = _support_url()
     # Frappe stores this under session.data and materializes it on demand.

@@ -7,14 +7,14 @@
 {% block footer %}{% endblock %}
 
 {% block head_include %}
-<link rel="stylesheet" href="/assets/dcr/css/dealer_portal.css?v=20261006-4">
+<link rel="stylesheet" href="/assets/dcr/css/dealer_portal.css?v=20261006-5">
 {% endblock %}
 
 {% block page_content %}
 <div id="dcr-dealer-portal" class="dcr-portal-shell" data-csrf-token="{{ csrf_token }}" data-support-url="{{ support_url or '' }}">
     <aside class="dcr-sidebar">
         <a class="dcr-sidebar-brand" href="#/home" aria-label="Dealer portal home">
-            <span class="dcr-brand-mark">DCR</span>
+            <img class="dcr-site-logo" src="{{ dealer_logo | e }}" alt="Dealer Capital Resources">
             <span class="dcr-clip" data-customer-label>Dealer portal</span>
         </a>
         <nav class="dcr-sidebar-nav" aria-label="Dealer portal navigation">
@@ -37,7 +37,7 @@
     </div>
 
     <div class="dcr-mobile-notice">
-        <span class="dcr-brand-mark">DCR</span>
+        <img class="dcr-site-logo" src="{{ dealer_logo | e }}" alt="Dealer Capital Resources">
         <h1>Use a computer</h1>
         <p>The dealer portal works on a desktop or laptop.</p>
         <a class="dcr-btn" href="/logout">Sign out</a>
@@ -45,5 +45,5 @@
 
     <div id="dcr-portal-toast" class="dcr-toast" role="status" aria-live="polite" hidden></div>
 </div>
-<script src="/assets/dcr/js/dealer_portal.js?v=20261006-4"></script>
+<script src="/assets/dcr/js/dealer_portal.js?v=20261006-5"></script>
 {% endblock %}

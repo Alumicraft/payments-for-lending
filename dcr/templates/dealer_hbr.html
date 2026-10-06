@@ -2,13 +2,13 @@
 
 {% block head_include %}
 {{ super() }}
-<link rel="stylesheet" href="/assets/dcr/css/dealer_portal.css?v=20261006-4">
+<link rel="stylesheet" href="/assets/dcr/css/dealer_portal.css?v=20261006-5">
 {% endblock %}
 
 {% block page_content %}
 <header class="dcr-portal-header">
     <a class="dcr-wordmark" href="/portal" aria-label="Dealer dashboard">
-        <span class="dcr-brand-mark dcr-brand-mark-small">DCR</span>
+        <img class="dcr-site-logo" src="{{ dealer_logo | e }}" alt="Dealer Capital Resources">
         <span>{{ dealer_label or "Dealer Capital Resources" }}</span>
     </a>
     <a class="dcr-back-button" href="/portal">← Back to Home</a>
