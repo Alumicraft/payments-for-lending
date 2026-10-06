@@ -3,6 +3,7 @@ frappe.ready(function () {
     const pending = new Map();
     const existing = new Map();
     let uploading = false;
+    let needsRefresh = false;
     let generation = 0;
     const section = document.createElement("section");
     section.className = "dcr-form-documents";
@@ -17,6 +18,17 @@ frappe.ready(function () {
     const nativeValidate = form.validate;
     form.validate = function () {
         if (uploading) return false;
+        if (needsRefresh) {
+            uploading = true;
+            refreshSaved(form.doc.name).then(async () => {
+                needsRefresh = false;
+                await renderDocuments();
+                message.textContent = "Saved request refreshed. Save again to retry selected files.";
+            }).catch(() => {
+                message.textContent = "The saved request could not refresh. Try Save again, or open the saved request below.";
+            }).finally(() => { uploading = false; });
+            return false;
+        }
         return nativeValidate ? nativeValidate.call(form) : undefined;
     };
     async function renderDocuments() {
@@ -91,6 +103,9 @@ frappe.ready(function () {
         form.doc.name = saved.name;
         form.is_new = false;
         form.in_edit_mode = true;
+        // Reloads after partial upload failure must reopen this saved record,
+        // rather than showing a blank /new form that creates a duplicate.
+        window.history.replaceState(null, "", "/dealer-home-request/" + encodeURIComponent(saved.name) + "/edit");
         uploading = true;
         const controls = Array.from(document.querySelectorAll(".web-form input, .web-form select, .web-form textarea"));
         const wasDisabled = controls.map(control => control.disabled);
@@ -119,7 +134,7 @@ frappe.ready(function () {
         controls.forEach((control, index) => { control.disabled = wasDisabled[index]; });
         buttons.forEach(button => { button.disabled = false; });
         if (failed) {
-            try { await refreshSaved(saved.name); } catch (_) {}
+            try { await refreshSaved(saved.name); needsRefresh = false; } catch (_) { needsRefresh = true; }
             await renderDocuments();
             message.textContent = "Request saved. " + failed + " file(s) could not upload. Save again to retry, or open the request from Home.";
             const open = document.createElement("a");

@@ -44,6 +44,7 @@ app_include_css = [
 ]
 
 override_whitelisted_methods = {
+    "frappe.www.login.login_via_key": "dcr.api.dealer_auth.login_via_key",
     "frappe.website.doctype.web_form.web_form.accept": "dcr.api.dealer_web_form.accept",
     "frappe.website.doctype.web_form.web_form.get_form_data": "dcr.api.dealer_web_form.get_form_data",
     "frappe.desk.doctype.desktop_layout.desktop_layout.get_layout": "dcr.api.boot.get_layout_with_icons",
