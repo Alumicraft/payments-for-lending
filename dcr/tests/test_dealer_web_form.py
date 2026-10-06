@@ -152,6 +152,44 @@ class TestNativeRendererGuard(unittest.TestCase):
         self.form = self.module.DealerWebForm()
         self.form.__dict__.update(vars(config()))
 
+    @patch.object(form_api, "configure_fields")
+    @patch.object(portal, "_require_editable_hbr", side_effect=ValueError)
+    @patch.object(portal, "_get_owned_hbr", return_value={"name": "HBR A"})
+    @patch.object(portal, "get_current_dealer_customer", return_value={"name": "DEALER-A"})
+    @patch.object(form_api, "require_form")
+    def test_locked_owned_edit_link_returns_to_read_only_portal(self, require, identity, owned, editable, fields):
+        class Redirect(Exception):
+            pass
+        context = SimpleNamespace()
+        with patch.object(self.module, "frappe") as frappe:
+            frappe.ValidationError = ValueError
+            frappe.Redirect = Redirect
+            frappe.session.user = "dealer@example.test"
+            frappe.form_dict.get.side_effect = lambda key: {"name": "HBR A", "is_edit": True}.get(key)
+            frappe.form_dict.name = "HBR A"
+            with self.assertRaises(Redirect):
+                self.form.get_context(context)
+            self.assertEqual(frappe.local.flags.redirect_location, "/portal#/request/HBR%20A")
+        owned.assert_called_once_with("HBR A", {"name": "DEALER-A"})
+        fields.assert_not_called()
+        self.assertFalse(getattr(context, "native_called", False))
+
+    @patch.object(portal, "_require_editable_hbr")
+    @patch.object(portal, "_get_owned_hbr", side_effect=ValueError)
+    @patch.object(portal, "get_current_dealer_customer", return_value={"name": "DEALER-A"})
+    @patch.object(form_api, "require_form")
+    def test_foreign_edit_link_never_reaches_locked_record_redirect(self, require, identity, owned, editable):
+        with patch.object(self.module, "frappe") as frappe:
+            frappe.ValidationError = ValueError
+            frappe.local.flags = SimpleNamespace(redirect_location=None)
+            frappe.session.user = "dealer@example.test"
+            frappe.form_dict.get.side_effect = lambda key: {"name": "OTHER-HBR", "is_edit": True}.get(key)
+            frappe.form_dict.name = "OTHER-HBR"
+            with self.assertRaises(ValueError):
+                self.form.get_context(SimpleNamespace())
+            self.assertIsNone(frappe.local.flags.redirect_location)
+        editable.assert_not_called()
+
     @patch.object(portal, "_require_editable_hbr", side_effect=ValueError)
     @patch.object(portal, "_get_owned_hbr")
     def test_owned_record_cannot_bypass_review_lock_via_native_write_permission(self, owned, editable):

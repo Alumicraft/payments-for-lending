@@ -1,5 +1,7 @@
 """Native Web Form rendering, narrowed only for DCR's dealer HBR form."""
 
+from urllib.parse import quote
+
 import frappe
 from frappe.website.doctype.web_form.web_form import WebForm
 
@@ -25,7 +27,15 @@ class DealerWebForm(WebForm):
         if frappe.form_dict.get("name"):
             hbr = portal._get_owned_hbr(frappe.form_dict.name, customer)
             if frappe.form_dict.get("is_edit"):
-                portal._require_editable_hbr(hbr)
+                try:
+                    portal._require_editable_hbr(hbr)
+                except frappe.ValidationError:
+                    # Old edit links should open the owned, read-only record.
+                    # Keep native write/upload permissions locked below.
+                    frappe.local.flags.redirect_location = (
+                        "/portal#/request/" + quote(frappe.form_dict.name, safe="")
+                    )
+                    raise frappe.Redirect
         dealer_form.configure_fields(self, customer)
         return super().get_context(context)
 
