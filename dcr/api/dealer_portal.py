@@ -10,6 +10,7 @@ not accepted as authorization inputs.
 from __future__ import annotations
 
 import json
+import mimetypes
 import os
 import re
 from urllib.parse import quote
@@ -871,8 +872,14 @@ def download_document(target_type, target_name=None, document_type=None):
     response = frappe.local.response
     response["type"] = "download"
     response["filename"] = file_doc.file_name
-    response["filecontent"] = file_doc.get_content()
-    response["content-type"] = getattr(file_doc, "content_type", None) or "application/octet-stream"
+    # Frappe tries text encodings by default, which can corrupt binary PDFs.
+    response["filecontent"] = file_doc.get_content(encodings=[])
+    content_type = mimetypes.guess_type(file_doc.file_name)[0] or "application/octet-stream"
+    response["content_type"] = content_type
+    response["display_content_as"] = (
+        "inline" if content_type in {"application/pdf", "image/png", "image/jpeg", "image/webp"}
+        else "attachment"
+    )
 
 
 @frappe.whitelist()
