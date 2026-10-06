@@ -7,24 +7,24 @@
 {% block footer %}{% endblock %}
 
 {% block head_include %}
-<link rel="stylesheet" href="/assets/dcr/css/dealer_portal.css?v=20261006-2">
+<link rel="stylesheet" href="/assets/dcr/css/dealer_portal.css?v=20261006-4">
 {% endblock %}
 
 {% block page_content %}
-<div id="dcr-dealer-portal" class="dcr-portal-shell" data-csrf-token="{{ csrf_token }}">
+<div id="dcr-dealer-portal" class="dcr-portal-shell" data-csrf-token="{{ csrf_token }}" data-support-url="{{ support_url or '' }}">
     <aside class="dcr-sidebar">
         <a class="dcr-sidebar-brand" href="#/home" aria-label="Dealer portal home">
             <span class="dcr-brand-mark">DCR</span>
             <span class="dcr-clip" data-customer-label>Dealer portal</span>
         </a>
         <nav class="dcr-sidebar-nav" aria-label="Dealer portal navigation">
-            <a class="dcr-nav-link" href="#/home" data-nav="home"><span data-icon="home"></span>Home</a>
-            <a class="dcr-nav-link" href="#/lending" data-nav="lending"><span data-icon="paper"></span>Lending</a>
-            <a class="dcr-nav-link" href="#/payments" data-nav="payments"><span data-icon="money"></span>Payments</a>
+            <a class="dcr-nav-link" href="#/home" data-nav="home" title="Home"><span data-icon="home"></span><span class="dcr-nav-text">Home</span></a>
+            <a class="dcr-nav-link" href="#/lending" data-nav="lending" title="Lending"><span data-icon="paper"></span><span class="dcr-nav-text">Lending</span></a>
+            <a class="dcr-nav-link" href="#/payments" data-nav="payments" title="Payments"><span data-icon="money"></span><span class="dcr-nav-text">Payments</span></a>
         </nav>
         <div class="dcr-sidebar-foot">
-            <a class="dcr-nav-link" href="#/settings" data-nav="settings"><span data-icon="setting"></span>Settings</a>
-            <a class="dcr-nav-link dcr-signout" href="/logout"><span data-icon="logout"></span>Sign out</a>
+            <a class="dcr-nav-link" href="#/settings" data-nav="settings" title="Settings"><span data-icon="setting"></span><span class="dcr-nav-text">Settings</span></a>
+            <a class="dcr-nav-link dcr-signout" href="/logout" title="Sign out"><span data-icon="logout"></span><span class="dcr-nav-text">Sign out</span></a>
         </div>
     </aside>
 
@@ -45,5 +45,5 @@
 
     <div id="dcr-portal-toast" class="dcr-toast" role="status" aria-live="polite" hidden></div>
 </div>
-<script src="/assets/dcr/js/dealer_portal.js?v=20261006-3"></script>
+<script src="/assets/dcr/js/dealer_portal.js?v=20261006-4"></script>
 {% endblock %}
