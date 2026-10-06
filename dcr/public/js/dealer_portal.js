@@ -22,7 +22,7 @@ var dcrPortalModel = (function () {
     var DEALER_AGREEMENTS = ["Dealer Agreement", "MIFA"];
 
     function isNumber(value) {
-        return value !== null && value !== undefined && value !== "" && !Number.isNaN(Number(value));
+        return (typeof value === "number" || typeof value === "string") && String(value).trim() !== "" && Number.isFinite(Number(value));
     }
 
     function isCancelled(deal) { return deal.docstatus === 2 || deal.portal_status === "Cancelled"; }
@@ -151,7 +151,7 @@ var dcrPortalModel = (function () {
 
     function groupByDeal(rows, key) {
         var order = [];
-        var groups = {};
+        var groups = Object.create(null);
         rows.forEach(function (row) {
             if (!groups[row.deal]) { groups[row.deal] = []; order.push(row.deal); }
             groups[row.deal].push(row);
@@ -187,6 +187,11 @@ var dcrPortalModel = (function () {
         out.pastDueTotal = sumAmounts(out.pastDue, "total");
         out.upcomingTotal = sumAmounts(out.upcoming, "total");
         out.paidTotal = sumAmounts(out.paid, "amount");
+        if (out.unavailable.length) {
+            out.pastDueTotal.complete = false;
+            out.upcomingTotal.complete = false;
+            out.paidTotal.complete = false;
+        }
         out.pastDueByDeal = groupByDeal(out.pastDue, "total");
         return out;
     }
@@ -653,10 +658,10 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
         else if (!pay.reported) note = pay.unavailable.length ? "Payment details could not load" : "No payments before funding";
         else {
             var next = pay.upcoming[0];
-            metric = pay.pastDue.length ? money(pay.pastDueTotal.amount) : (next ? fmt_date(next.date) : "—");
-            note = pay.pastDue.length ? "Past due across " + plural(pay.pastDue.length, "payment") + (pay.pastDueTotal.complete ? "" : ", some amounts unavailable") : (next ? "Next payment · " + money(next.total) : "Nothing scheduled");
-            if (pay.pastDue.length) lines += '<div class="dcr-due">' + mark("action") + '<span class="dcr-grow">Past due</span><span class="dcr-num">' + esc(money(pay.pastDueTotal.amount)) + "</span></div>";
-            lines += '<div class="dcr-due">' + mark("progress") + '<span class="dcr-grow">' + (next ? "Next · " + esc(fmt_date(next.date)) : "Nothing scheduled") + '</span><span class="dcr-num">' + esc(next ? money(next.total) : "") + "</span></div>";
+            metric = !pay.pastDueTotal.complete ? "—" : pay.pastDue.length ? money(pay.pastDueTotal.amount) : (next ? fmt_date(next.date) : "—");
+            note = !pay.pastDueTotal.complete ? "Payment total unavailable; some amounts are missing" : pay.pastDue.length ? "Past due across " + plural(pay.pastDue.length, "payment") : (next ? "Next payment · " + money(next.total) : "Nothing scheduled");
+            if (pay.pastDue.length) lines += '<div class="dcr-due">' + mark("action") + '<span class="dcr-grow">Past due</span><span class="dcr-num">' + esc(money(pay.pastDueTotal.amount) + (pay.pastDueTotal.complete ? "" : " known")) + "</span></div>";
+            lines += '<div class="dcr-due">' + mark("progress") + '<span class="dcr-grow">' + (next ? (pay.unavailable.length ? "Next recorded · " : "Next · ") + esc(fmt_date(next.date)) : pay.unavailable.length ? "Upcoming details unavailable" : "Nothing scheduled") + '</span><span class="dcr-num">' + esc(next ? money(next.total) : "") + "</span></div>";
             if (pay.unavailable.length) lines += '<div class="dcr-due dcr-muted">' + mark("neutral") + '<span class="dcr-grow">' + esc(plural(pay.unavailable.length, "loan") + " could not load") + "</span></div>";
         }
         return '<div class="dcr-card"><span class="dcr-small">' + (pay.pastDue.length ? "Past due" : "Payments") + '</span><span class="dcr-metric">' + esc(metric) + '</span><span class="dcr-small">' + esc(note) + "</span>" +
@@ -823,7 +828,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
                 var need = M.needs(deal, signatures());
                 var text;
                 if (need) text = '<span class="dcr-strong">' + esc(need) + "</span>";
-                else if (late.length) text = '<span class="dcr-status dcr-wrap dcr-strong">' + mark("action") + esc("Past due " + money(M.sumAmounts(late, "total").amount) + " · " + plural(late.length, "payment")) + "</span>";
+                else if (late.length) text = '<span class="dcr-status dcr-wrap dcr-strong">' + mark("action") + esc("Past due " + money(M.sumAmounts(late, "total").amount) + (M.sumAmounts(late, "total").complete ? "" : " known; total unavailable") + " · " + plural(late.length, "payment")) + "</span>";
                 else if (next) text = '<span class="dcr-muted">' + esc("Payment " + fmt_date(next.date) + " · " + money(next.total)) + "</span>";
                 else if (deal.loan.payments_unavailable) text = '<span class="dcr-muted">Payment details could not load</span>';
                 else if (!data || data.funded === false) text = '<span class="dcr-muted">Not funded yet</span>';
@@ -863,12 +868,12 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
         } else if (!pay.reported) {
             body += section("Payments", '<p class="dcr-note">' + (pay.unavailable.length ? "Payment details could not load. Refresh to try again." : "No payments yet. The schedule starts when a loan is funded.") + "</p>");
         } else {
-            var total = function (sum) { return money(sum.amount) + (sum.complete ? "" : " (some amounts unavailable)"); };
+            var total = function (sum) { return money(sum.amount) + (sum.complete ? "" : " known; total unavailable"); };
             var next = pay.upcoming[0];
             body += '<section class="dcr-section" aria-label="Payment summary">' + cells(3, [
-                ["Past due", pay.pastDue.length ? total(pay.pastDueTotal) + " · " + plural(pay.pastDue.length, "payment") : "Nothing past due"],
-                ["Next payment", next ? fmt_date(next.date) + " · " + money(next.total) : "Nothing scheduled"],
-                ["Paid", pay.paid.length ? plural(pay.paid.length, "payment") + (pay.truncated ? ", most recent shown" : "") : "None yet"]]) +
+                ["Past due", pay.pastDue.length ? total(pay.pastDueTotal) + " · " + plural(pay.pastDue.length, "payment") : pay.pastDueTotal.complete ? "Nothing past due" : "Total unavailable"],
+                [pay.unavailable.length ? "Next recorded payment" : "Next payment", next ? fmt_date(next.date) + " · " + money(next.total) : pay.unavailable.length ? "Details unavailable" : "Nothing scheduled"],
+                ["Paid", pay.paid.length ? plural(pay.paid.length, "payment") + (pay.truncated ? ", most recent shown" : "") : pay.unavailable.length ? "History unavailable" : "None yet"]]) +
                 '<p class="dcr-help">' + esc(pay.asOf ? "As of " + fmt_date(pay.asOf) + ". " : "") + "Figures come from DCR's loan records." +
                 (pay.unavailable.length ? " " + esc(plural(pay.unavailable.length, "loan")) + " could not load and " + (pay.unavailable.length === 1 ? "is" : "are") + " not included: " + esc(pay.unavailable.join(", ")) + "." : "") + "</p></section>";
 
@@ -879,7 +884,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
                     var open = !!state.expanded[key];
                     groups.push({ cls: "dcr-group", header: 1, cells: [mark("action"), deal_cell(group.deal), request_number(group.deal),
                         '<span class="dcr-muted">' + esc(plural(group.rows.length, "payment") + " · oldest " + fmt_date(group.oldest)) + "</span>",
-                        '<span class="dcr-strong">' + esc(money(group.amount)) + "</span>",
+                        '<span class="dcr-strong">' + esc(money(group.amount) + (group.complete ? "" : " known; total unavailable")) + "</span>",
                         '<button type="button" class="dcr-btn-text" data-action="toggle" data-key="' + esc(key) + '" data-focus-key="toggle|' + esc(key) + '" aria-expanded="' + (open ? "true" : "false") + '" aria-label="' + esc((open ? "Hide" : "Show") + " past-due payments for " + group.deal) + '">' + (open ? "Hide" : "Show") + "</button>"] });
                     if (open) group.rows.forEach(function (row) {
                         groups.push({ cls: "dcr-sub", cells: ["", '<span class="dcr-muted">Due ' + esc(fmt_date(row.date)) + "</span>", "", '<span class="dcr-muted">' + esc(payment_components(row)) + "</span>", esc(money(row.total)), ""] });
@@ -895,9 +900,9 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
                     return { cells: [mark(kind === "Paid" ? "done" : "progress"), esc(fmt_date(row.date)), deal_cell(row.deal), request_number(row.deal), '<span class="dcr-muted">' + esc(detail(row)) + "</span>", esc(money(amount(row)))] };
                 })) + (rows.length > PREVIEW_ROWS ? toggle_button(key, rows.length, "payment") : "");
             };
-            body += section("Upcoming", pay.upcoming.length ? simple("Upcoming payments", pay.upcoming, "upcoming", "Scheduled", "Due", payment_components, function (row) { return row.total; }) : '<p class="dcr-note">Nothing is scheduled right now.</p>',
+            body += section("Upcoming", pay.upcoming.length ? simple("Upcoming payments", pay.upcoming, "upcoming", "Scheduled", "Due", payment_components, function (row) { return row.total; }) : '<p class="dcr-note">' + (pay.unavailable.length ? "Some payment details could not load. Upcoming totals are unavailable." : "Nothing is scheduled right now.") + '</p>',
                 pay.upcoming.length ? esc(plural(pay.upcoming.length, "payment")) : "");
-            body += section("Paid", pay.paid.length ? simple("Paid payments", pay.paid, "paid", "Paid", "Paid", function (row) { return row.type || "Payment"; }, function (row) { return row.amount; }) : '<p class="dcr-note">No payments have been made yet.</p>',
+            body += section("Paid", pay.paid.length ? simple("Paid payments", pay.paid, "paid", "Paid", "Paid", function (row) { return row.type || "Payment"; }, function (row) { return row.amount; }) : '<p class="dcr-note">' + (pay.unavailable.length ? "Some payment details could not load. Payment history is unavailable." : "No payments have been made yet.") + '</p>',
                 pay.paid.length ? esc(plural(pay.paid.length, "payment") + (pay.truncated ? ", most recent shown" : "")) : "");
         }
         return '<div class="dcr-page">' + page_head("Payments") + body + "</div>";

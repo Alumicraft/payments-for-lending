@@ -60,6 +60,8 @@ assert.deepEqual(pay.unavailable, ["C"]);
 assert.deepEqual(pay.pastDue.map((r) => r.date), ["2025-12-20", "2026-04-12", "2026-05-01"]);
 assert.deepEqual(pay.pastDueTotal, { amount: 150, complete: false, count: 3 }); // a missing amount is flagged, not hidden
 assert.equal(pay.upcoming.length, 1);
+assert.equal(pay.upcomingTotal.complete, false, "unavailable loan cannot produce a complete aggregate");
+assert.equal(pay.paidTotal.complete, false);
 assert.equal(pay.pastDueByDeal.find((g) => g.deal === "A").oldest, "2025-12-20");
 assert.equal(pay.truncated, true);
 assert.equal(M.paymentGroups([deal({})]).reported, false);
@@ -90,3 +92,11 @@ assert.ok(labels(deal({ ...accepted, loan_stage: "Approved", loan: loan({}) }), 
 assert.deepEqual(labels(deal({ docstatus: 2 })), ["done:Saved", "cancelled:Cancelled"]);
 
 console.log("Dealer portal model: loan stage, lifecycle, identity, checklist, signatures, payments, outlook and progress rules passed");
+
+assert.equal(M.isNumber(Infinity), false);
+assert.equal(M.isNumber(" "), false);
+assert.equal(M.isNumber(true), false);
+assert.equal(M.isNumber("100.25"), true);
+const unusual = M.paymentGroups([deal({name:"__proto__", ...accepted, loan:loan({payments_summary:{upcoming:[{date:"2026-10-01",total:20,due_status:"Past due"}]}})})]);
+assert.equal(unusual.pastDueByDeal[0].deal, "__proto__");
+assert.equal(unusual.pastDueByDeal[0].amount,20);
