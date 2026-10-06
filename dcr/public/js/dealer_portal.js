@@ -466,7 +466,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = { dcrSched
             var waiting = packets.filter(function (item) { return item.actionable; })[0];
             var signed = !!(deal.loan && deal.loan.signed) || packets.some(function (item) { return item.status === "Signed"; });
             chain.push({ label: "Loan approved", done: loan >= 3 });
-            chain.push({ label: signed ? "Flooring Packet signed" : waiting ? "Sign Flooring Packet" : "Flooring Packet with DCR", done: signed, signature: waiting });
+            if (signed || waiting || loan < 4) chain.push({ label: signed ? "Flooring Packet signed" : waiting ? "Sign Flooring Packet" : "Flooring Packet with DCR", done: signed, signature: waiting });
             chain.push({ label: "Loan funded", done: loan >= 4 });
         }
         chain.push({ label: "Home ordered", done: order >= 2 });
@@ -508,11 +508,12 @@ if (typeof module !== "undefined" && module.exports) module.exports = { dcrSched
         var upcoming = data.upcoming || [];
         var history = data.history || [];
         if (!upcoming.length && !history.length) return section("Payments", '<p class="dcr-note">No payments yet. The schedule starts when the loan is funded.</p>');
-        var head = '<div class="dcr-thead">' + cell("dcr-c-icon", "") + cell("dcr-c-date", "Date") + cell("dcr-c-grow", "Status") + cell("dcr-c-money", "Principal") + cell("dcr-c-money", "Interest") + cell("dcr-c-money", "Charges") + cell("dcr-c-money", "Amount") + "</div>";
+        var head = '<div class="dcr-thead">' + cell("dcr-c-icon", "") + cell("dcr-c-date", "Date") + cell("dcr-c-grow", "Status") + cell("dcr-c-money", "Principal") + cell("dcr-c-money", "Interest / charges") + cell("dcr-c-money", "Amount") + "</div>";
         var rows = upcoming.map(function (row) {
-            return '<div class="dcr-row">' + cell("dcr-c-icon", mark("progress")) + cell("dcr-c-date", esc(fmt_date(row.date))) + cell("dcr-c-grow dcr-muted", esc(row.due_status || "Scheduled")) + cell("dcr-c-money", esc(money(row.principal))) + cell("dcr-c-money", esc(money(row.interest))) + cell("dcr-c-money", esc(money(row.charges || 0))) + cell("dcr-c-money", esc(money(row.total))) + "</div>";
+            var interest = esc(money(row.interest)) + (row.charges ? '<span class="dcr-small" style="display:block">+ ' + esc(money(row.charges)) + ' charges</span>' : "");
+            return '<div class="dcr-row">' + cell("dcr-c-icon", mark(row.due_status === "Past due" ? "action" : "progress")) + cell("dcr-c-date", esc(fmt_date(row.date))) + cell("dcr-c-grow dcr-muted", esc(row.due_status || "Scheduled")) + cell("dcr-c-money", esc(money(row.principal))) + cell("dcr-c-money", interest) + cell("dcr-c-money", esc(money(row.total))) + "</div>";
         }).concat(history.map(function (row) {
-            return '<div class="dcr-row">' + cell("dcr-c-icon", mark("done")) + cell("dcr-c-date", esc(fmt_date(row.date))) + cell("dcr-c-grow dcr-muted", esc(row.type || "Paid")) + cell("dcr-c-money", "") + cell("dcr-c-money", "") + cell("dcr-c-money", "") + cell("dcr-c-money", esc(money(row.amount))) + "</div>";
+            return '<div class="dcr-row">' + cell("dcr-c-icon", mark("done")) + cell("dcr-c-date", esc(fmt_date(row.date))) + cell("dcr-c-grow dcr-muted", esc(row.type || "Paid")) + cell("dcr-c-money", "") + cell("dcr-c-money", "") + cell("dcr-c-money", esc(money(row.amount))) + "</div>";
         })).join("");
         var aside = [data.as_of ? "As of " + fmt_date(data.as_of) : "", data.history_truncated ? "most recent payments shown" : ""].filter(Boolean).join(" · ");
         return section("Payments", '<div class="dcr-table">' + head + rows + "</div>", aside);
@@ -619,7 +620,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = { dcrSched
             if (loans.some(function (deal) { return deal.loan.payments_unavailable; })) body += '<p class="dcr-note">Some payment details could not load. Refresh to try again.</p>';
             body += section("Due and scheduled", upcoming.length ? '<div class="dcr-table">' + head("Due") + upcoming.map(function (row) {
                 var parts = [row.due_status === "Past due" ? "Past due" : "Scheduled", is_number(row.principal) ? "Principal " + money(row.principal) : "", is_number(row.interest) ? "Interest " + money(row.interest) : "", row.charges ? "Charges " + money(row.charges) : ""].filter(Boolean).join(" · ");
-                return '<a class="dcr-row" href="#/request/' + encodeURIComponent(row.deal) + '">' + cell("dcr-c-icon", mark("progress")) + cell("dcr-c-date", esc(fmt_date(row.date))) + cell("dcr-c-id", esc(row.deal)) + cell("dcr-c-grow dcr-muted", esc(parts)) + cell("dcr-c-money", esc(money(row.total))) + "</a>";
+                return '<a class="dcr-row" href="#/request/' + encodeURIComponent(row.deal) + '">' + cell("dcr-c-icon", mark(row.due_status === "Past due" ? "action" : "progress")) + cell("dcr-c-date", esc(fmt_date(row.date))) + cell("dcr-c-id", esc(row.deal)) + cell("dcr-c-grow dcr-muted", esc(parts)) + cell("dcr-c-money", esc(money(row.total))) + "</a>";
             }).join("") + "</div>" : '<p class="dcr-note">Nothing is scheduled right now.</p>');
             body += section("Paid", history.length ? '<div class="dcr-table">' + head("Paid") + history.map(function (row) {
                 return '<a class="dcr-row" href="#/request/' + encodeURIComponent(row.deal) + '">' + cell("dcr-c-icon", mark("done")) + cell("dcr-c-date", esc(fmt_date(row.date))) + cell("dcr-c-id", esc(row.deal)) + cell("dcr-c-grow dcr-muted", esc(row.type || "Payment")) + cell("dcr-c-money", esc(money(row.amount))) + "</a>";

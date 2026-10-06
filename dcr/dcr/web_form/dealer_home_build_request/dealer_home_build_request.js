@@ -16,18 +16,24 @@ frappe.ready(function () {
     const message = document.createElement("p");
     message.setAttribute("role", "status");
     const nativeValidate = form.validate;
+    async function recoverSaved() {
+        if (uploading) return;
+        uploading = true;
+        try {
+            await refreshSaved(form.doc.name);
+            needsRefresh = false;
+            await renderDocuments();
+            document.querySelectorAll(".web-form-footer button").forEach(button => { button.disabled = false; });
+            message.textContent = "Saved request refreshed. Save again to retry selected files.";
+        } catch (_) {
+            message.textContent = "The saved request could not refresh. Try Refresh saved request again, or open the saved request below.";
+        } finally { uploading = false; }
+    }
     form.validate = function () {
         if (uploading) return false;
         if (needsRefresh) {
-            uploading = true;
-            refreshSaved(form.doc.name).then(async () => {
-                needsRefresh = false;
-                await renderDocuments();
-                message.textContent = "Saved request refreshed. Save again to retry selected files.";
-            }).catch(() => {
-                message.textContent = "The saved request could not refresh. Try Save again, or open the saved request below.";
-            }).finally(() => { uploading = false; });
-            return false;
+            recoverSaved();
+            frappe.throw("Your request is saved. Its latest version needs to refresh before another save. Please wait, then Save again to retry your files.");
         }
         return nativeValidate ? nativeValidate.call(form) : undefined;
     };
@@ -141,6 +147,16 @@ frappe.ready(function () {
             open.href = requestUrl(saved.name);
             open.textContent = "Open saved request";
             section.append(open);
+            if (needsRefresh) {
+                buttons.forEach(button => { button.disabled = true; });
+                message.textContent = "Request saved. Some files could not upload, and its latest version could not refresh. Refresh the saved request before retrying.";
+                const retry = document.createElement("button");
+                retry.type = "button";
+                retry.className = "dcr-btn";
+                retry.textContent = "Refresh saved request";
+                retry.addEventListener("click", recoverSaved);
+                section.append(retry);
+            }
             form.make_form_dirty();
             return;
         }

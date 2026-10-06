@@ -33,7 +33,7 @@ const document = {
 class FormData { constructor() { this.values = {}; } append(k,v) { this.values[k]=v; } }
 const context = {document, FormData, URLSearchParams,
     window:{history:{replaceState:(_s,_t,url)=>{savedUrl=url;}},location:{assign:url=>{chosenUrl=url;}}},
-    frappe:{web_form:form, csrf_token:'TEST-CSRF', ready:fn=>fn(),
+    frappe:{web_form:form, csrf_token:'TEST-CSRF', ready:fn=>fn(), throw:message=>{throw Error(message);},
         call:async ({method})=>{
             if (method.endsWith('get_required_docs')) return {message:['Factory Quote','Plot Plan']};
             if (refreshCount++ === 0) throw Error('readback temporarily unavailable');
@@ -62,7 +62,8 @@ const settle = async()=>{await new Promise(resolve=>setImmediate(resolve));};
     assert.equal(form.is_new,false);
     assert.equal(savedUrl,'/dealer-home-request/HBR-SAVED/edit','reload retains saved identity');
     assert.equal(chosenUrl,undefined,'partial failure does not silently navigate away');
-    assert.equal(form.validate(),false,'stale save is blocked until readback succeeds');
+    assert.equal(saveButton.disabled,true,'stale save uses an explicit refresh action');
+    assert.throws(()=>form.validate(),/latest version needs to refresh/,'stale save stays blocked with a truthful message');
     await settle();
     assert.equal(form.doc.modified,'LATEST-MODIFIED');
     assert.equal(form.validate(),true);
