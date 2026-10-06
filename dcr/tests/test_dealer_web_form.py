@@ -72,8 +72,9 @@ class TestDealerWebForm(unittest.TestCase):
                                        [{"name": "FACTORY-A", "label": "Factory A"}])
         actual = {field["fieldname"]: field for field in fields}
         self.assertIn("Future Type", actual["home_type"]["options"])
-        self.assertEqual(actual["factory"]["options"], "\nFACTORY-A")
-        self.assertEqual(actual["factory"]["fieldtype"], "Select")
+        self.assertEqual(json.loads(actual["factory"]["options"]), [{"value": "FACTORY-A", "label": "Factory A"}])
+        self.assertEqual(actual["factory"]["default"], "FACTORY-A")
+        self.assertEqual(actual["factory"]["fieldtype"], "Autocomplete")
         self.assertEqual(actual["community_details_section"]["depends_on"], "eval:doc.property_type=='Park'")
         for forbidden in ("customer", "owner", "in_storage", "home_buyer", "escrow_company", "broker", "doc_checklist"):
             self.assertNotIn(forbidden, actual)

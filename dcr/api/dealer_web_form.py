@@ -33,7 +33,7 @@ def build_fields(meta, factories=None):
     """Use current DocType metadata, exposing only the dealer input allowlist.
 
     Empty staff-only sections/columns are discarded. Factory is a bounded
-    Select rather than a general Supplier lookup. Native dependencies and
+    Autocomplete rather than a general Supplier lookup. Native dependencies and
     validation controls remain intact for the other fields.
     """
     sections = []
@@ -70,9 +70,14 @@ def build_fields(meta, factories=None):
             elif field["fieldtype"] != "Section Break":
                 column_has_input = True
                 if field["fieldname"] == "factory":
-                    field.update(fieldtype="Select", options="\n" + "\n".join(
-                        item["name"] for item in factories or []))
-                    field["description"] = "Choose a factory assigned to your dealer account."
+                    choices = factories or []
+                    field.update(fieldtype="Autocomplete", options=json.dumps([
+                        {"value": item["name"], "label": item.get("label") or item["name"]}
+                        for item in choices
+                    ]), default=choices[0]["name"] if len(choices) == 1 else "")
+                    field["description"] = "Choose one of your assigned factories." if choices else "No factories are assigned to your dealer account yet."
+                    if not choices:
+                        field["read_only"] = 1
             section_fields.append(field)
         while section_fields and section_fields[-1]["fieldtype"] == "Column Break":
             section_fields.pop()
