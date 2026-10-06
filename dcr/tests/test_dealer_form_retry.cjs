@@ -6,6 +6,7 @@ const nodes = [];
 class Element {
     constructor(tag) { this.tag = tag; this.children = []; this.listeners = {}; this.disabled = false; nodes.push(this); }
     setAttribute(name, value) { this[name] = value; }
+    getAttribute(name) { return this[name] || null; }
     append(...items) { this.children.push(...items); }
     before(item) { this.beforeNode = item; }
     addEventListener(name, fn) { this.listeners[name] = fn; }
@@ -28,11 +29,12 @@ const sentTypes = [];
 const document = {
     createElement:tag=>new Element(tag), createTextNode:text=>({text}),
     querySelector:()=>footer,
-    querySelectorAll:selector=>selector.includes('footer') ? [saveButton] : nodes.filter(n=>n.tag === 'input')
+    addEventListener:()=>{},
+    querySelectorAll:selector=>selector.includes('footer') ? [saveButton] : selector.includes('data-fieldname') || selector.includes('frappe-control') ? [] : nodes.filter(n=>n.tag === 'input')
 };
 class FormData { constructor() { this.values = {}; } append(k,v) { this.values[k]=v; } }
-const context = {document, FormData, URLSearchParams,
-    window:{history:{replaceState:(_s,_t,url)=>{savedUrl=url;}},location:{assign:url=>{chosenUrl=url;}}},
+const context = {document, FormData, URLSearchParams, setTimeout, MutationObserver:class {observe() {}},
+    window:{addEventListener:()=>{},history:{replaceState:(_s,_t,url)=>{savedUrl=url;}},location:{assign:url=>{chosenUrl=url;}}},
     frappe:{web_form:form, csrf_token:'TEST-CSRF', ready:fn=>fn(), throw:message=>{throw Error(message);},
         call:async ({method})=>{
             if (method.endsWith('get_required_docs')) {

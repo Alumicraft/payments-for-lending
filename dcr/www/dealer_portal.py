@@ -13,6 +13,8 @@ def get_context(context):
 
     context.title = "Dealer Portal"
     context.portal_user = frappe.session.user
+    from dcr.api.dealer_portal import _support_url
+    context.support_url = _support_url()
     # Frappe stores this under session.data and materializes it on demand.
     # Reading a nonexistent top-level attribute leaves browser POSTs invalid.
     context.csrf_token = frappe.sessions.get_csrf_token()

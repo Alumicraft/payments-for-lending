@@ -16,6 +16,95 @@ frappe.ready(function () {
     const requestUrl = name => "/portal?request=" + encodeURIComponent(name);
     const message = document.createElement("p");
     message.setAttribute("role", "status");
+    let allowLeave = false;
+    let leaveDialogOpen = false;
+    const fieldSnapshot = () => JSON.stringify(Array.from(document.querySelectorAll(
+        ".web-form input[data-fieldname], .web-form select[data-fieldname], .web-form textarea[data-fieldname]"
+    )).map(input => [input.getAttribute("data-fieldname"), input.type === "checkbox" ? input.checked : input.value]));
+    let cleanSnapshot = fieldSnapshot();
+    // Native make() applies initial values in promise callbacks. Capture the
+    // settled inputs, without swallowing an edit made before that callback.
+    let editedBeforeBaseline = false;
+    document.addEventListener("input", event => {
+        if (event.target.closest(".web-form")) editedBeforeBaseline = true;
+    }, true);
+    setTimeout(() => { if (!editedBeforeBaseline) cleanSnapshot = fieldSnapshot(); }, 0);
+    const hasUnsavedWork = () => uploading || !!window.saving || needsRefresh || pending.size > 0 || fieldSnapshot() !== cleanSnapshot;
+    const leave = url => { allowLeave = true; frappe.form_dirty = false; window.location.assign(url); };
+    function confirmLeave(url) {
+        if (uploading || window.saving) {
+            frappe.msgprint("Please wait for the request and selected files to finish saving.");
+            return;
+        }
+        if (allowLeave || !hasUnsavedWork()) { leave(url); return; }
+        if (leaveDialogOpen) return;
+        leaveDialogOpen = true;
+        // Use Frappe's own warning dialog for both header links and Discard.
+        // The confirmed navigation bypasses beforeunload, avoiding two prompts.
+        const dialog = frappe.warn("Discard changes?", "Your unsaved changes and selected files will be lost.",
+            () => { leaveDialogOpen = false; leave(url); }, "Discard");
+        // Closing/cancelling the native dialog must permit the next attempt.
+        if (dialog) {
+            const onHide = dialog.onhide;
+            dialog.onhide = function () { leaveDialogOpen = false; if (onHide) onHide.call(this); };
+        }
+    }
+    window.addEventListener("beforeunload", event => {
+        if (allowLeave || !hasUnsavedWork()) return;
+        event.preventDefault();
+        event.returnValue = "";
+    });
+    document.addEventListener("click", event => {
+        const link = event.target.closest(".dcr-portal-header a");
+        if (!link || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        confirmLeave(link.href);
+    });
+    form.discard_form = function () { confirmLeave(form.get_discard_url()); return false; };
+
+    function nameNativeControls() {
+        document.querySelectorAll(".web-form .frappe-control").forEach(wrapper => {
+            const label = wrapper.querySelector(".control-label") || wrapper.querySelector("label");
+            const help = wrapper.querySelector(".help-box");
+            wrapper.querySelectorAll("input:not([type=hidden]), select, textarea").forEach((input, index) => {
+                const fieldname = input.getAttribute("data-fieldname");
+                if (!fieldname) return;
+                const id = "dcr-field-" + fieldname + "-" + index;
+                if (!input.id) input.id = id;
+                if (label) {
+                    if (!label.id) label.id = "dcr-label-" + fieldname;
+                    label.setAttribute("for", input.id);
+                    input.setAttribute("aria-labelledby", label.id);
+                    input.setAttribute("aria-required", String(label.classList.contains("reqd") || !!form.fields_dict?.[fieldname]?.df?.reqd));
+                } else if (form.fields_dict?.[fieldname]?.df?.label) {
+                    input.setAttribute("aria-label", form.fields_dict[fieldname].df.label);
+                }
+                if (help && help.textContent.trim()) {
+                    if (!help.id) help.id = "dcr-help-" + fieldname;
+                    const descriptions = new Set((input.getAttribute("aria-describedby") || "").split(/\s+/).filter(Boolean));
+                    descriptions.add(help.id);
+                    input.setAttribute("aria-describedby", Array.from(descriptions).join(" "));
+                }
+                input.setAttribute("aria-invalid", String(wrapper.classList.contains("has-error") || !!form.fields_dict?.[fieldname]?.df?.invalid));
+            });
+        });
+    }
+    nameNativeControls();
+    const heading = document.querySelector(".web-form-title h1");
+    if (heading) {
+        heading.textContent = form.doc.name ? "Edit home request" : "New home request";
+        document.title = heading.textContent + " · Dealer Portal";
+        if (form.doc.name) {
+            const identity = document.createElement("p");
+            identity.className = "dcr-native-request-id";
+            identity.textContent = form.doc.name;
+            heading.after(identity);
+        }
+    }
+    const accessibleForm = document.querySelector(".web-form");
+    if (accessibleForm) new MutationObserver(nameNativeControls).observe(accessibleForm, {
+        subtree: true, childList: true, attributes: true, attributeFilter: ["class"]
+    });
     const nativeValidate = form.validate;
     async function recoverSaved() {
         if (uploading) return;
@@ -63,20 +152,27 @@ frappe.ready(function () {
                 return;
             }
             const table = document.createElement("table");
-            table.innerHTML = '<thead><tr><th>Document</th><th>File</th><th>Action</th></tr></thead><tbody></tbody>';
+            table.innerHTML = '<thead><tr><th scope="col">Document</th><th scope="col">File</th><th scope="col">Action</th></tr></thead><tbody></tbody>';
             for (const type of docs) {
                 const row = document.createElement("tr");
                 const saved = existing.get(type);
-                row.innerHTML = '<td>' + escape(type) + '</td><td class="dcr-selected-file">' + escape(pending.get(type)?.name || (saved?.uploaded ? "Uploaded" : saved?.complete ? "Complete" : "Needed")) + '</td><td></td>';
+                row.innerHTML = '<th scope="row">' + escape(type) + '</th><td class="dcr-selected-file">' + escape(pending.get(type)?.name || (saved?.uploaded ? saved.file_name || "Uploaded" : saved?.complete ? "Not required" : "Needed")) + '</td><td></td>';
                 const cell = row.lastElementChild;
                 if (saved?.uploaded && form.doc.name) {
                     const view = document.createElement("a");
                     const params = new URLSearchParams({target_type:"hbr", target_name:form.doc.name, document_type:type});
                     view.href = "/api/method/dcr.api.dealer_portal.download_document?" + params;
                     view.textContent = "View";
+                    view.setAttribute("aria-label", "View " + type);
                     view.target = "_blank";
                     view.rel = "noopener";
                     cell.append(view);
+                    const download = document.createElement("a");
+                    download.href = view.href;
+                    download.textContent = "Download";
+                    download.setAttribute("download", "");
+                    download.setAttribute("aria-label", "Download " + type);
+                    cell.append(download);
                 }
                 if (form.is_new || form.in_edit_mode) {
                     const label = document.createElement("label");
@@ -108,6 +204,12 @@ frappe.ready(function () {
         } catch (_) {
             section.textContent = "The document checklist could not load. Check your connection and try again.";
             section.append(message);
+            const retry = document.createElement("button");
+            retry.type = "button";
+            retry.className = "btn btn-default btn-sm";
+            retry.textContent = "Retry checklist";
+            retry.addEventListener("click", renderDocuments);
+            section.append(retry);
         }
     }
     async function refreshSaved(name) {
@@ -134,6 +236,7 @@ frappe.ready(function () {
         form.is_new = false;
         form.in_edit_mode = true;
         savedValues = Object.assign({}, form.doc);
+        cleanSnapshot = fieldSnapshot();
         // Reloads after partial upload failure must reopen this saved record,
         // rather than showing a blank /new form that creates a duplicate.
         window.history.replaceState(null, "", "/dealer-home-request/" + encodeURIComponent(saved.name) + "/edit");
@@ -185,7 +288,7 @@ frappe.ready(function () {
             form.make_form_dirty();
             return;
         }
-        window.location.assign(requestUrl(saved.name));
+        leave(requestUrl(saved.name));
     };
     form.get_discard_url = function () { return "/portal"; };
     for (const field of ["home_type", "financing_type", "property_type"]) form.on(field, renderDocuments);

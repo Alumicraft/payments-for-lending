@@ -34,6 +34,10 @@ def test_owned_binary_file_preserves_bytes(filename, content_type, disposition):
         frappe.get_doc.return_value = file_doc
         frappe.local.response = {}
         download_document("hbr", "DEMO-HBR", "Spec Info Sheet")
+        assert frappe.get_doc.call_args.args == ("File", {
+            "file_url": "/private/files/spec.pdf", "attached_to_doctype": "Home Build Request",
+            "attached_to_name": "DEMO-HBR", "attached_to_field": "doc_checklist", "is_private": 1,
+        }), "shared storage URLs must resolve only within this owned attachment"
         assert frappe.local.response["filecontent"] == original
         assert frappe.local.response["content_type"] == content_type
         assert frappe.local.response["display_content_as"] == disposition
