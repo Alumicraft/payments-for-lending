@@ -3,6 +3,8 @@ frappe.ready(function () {
     const pending = new Map();
     const existing = new Map();
     let uploading = false;
+    let needsRefresh = false;
+    let savedValues = null;
     let generation = 0;
     const section = document.createElement("section");
     section.className = "dcr-form-documents";
@@ -15,10 +17,36 @@ frappe.ready(function () {
     const message = document.createElement("p");
     message.setAttribute("role", "status");
     const nativeValidate = form.validate;
+    async function recoverSaved() {
+        if (uploading) return;
+        uploading = true;
+        try {
+            await refreshSaved(form.doc.name);
+            needsRefresh = false;
+            await renderDocuments();
+            document.querySelectorAll(".web-form-footer button").forEach(button => { button.disabled = false; });
+            message.textContent = "Saved request refreshed. Save again to retry selected files.";
+        } catch (error) {
+            message.textContent = error.requestChanged ? error.message : "The saved request could not refresh. Try Refresh saved request again, or open the saved request below.";
+        } finally { uploading = false; }
+    }
     form.validate = function () {
         if (uploading) return false;
+        if (needsRefresh) {
+            recoverSaved();
+            frappe.throw("Your request is saved. Its latest version needs to refresh before another save. Please wait, then Save again to retry your files.");
+        }
         return nativeValidate ? nativeValidate.call(form) : undefined;
     };
+    const nativeForm = document.querySelector(".web-form");
+    if (nativeForm) nativeForm.addEventListener("submit", event => {
+        if (!uploading && !needsRefresh) return;
+        // Block implicit Enter submissions too; a thrown validation hook must
+        // never fall through to a browser reload and discard selected files.
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (needsRefresh && !uploading) recoverSaved();
+    }, true);
     async function renderDocuments() {
         const revision = ++generation;
         try {
@@ -78,11 +106,25 @@ frappe.ready(function () {
             }
             section.append(table, message);
         } catch (_) {
-            section.textContent = "The document checklist could not load. Save the request, then open it from Home to add documents.";
+            section.textContent = "The document checklist could not load. Check your connection and try again.";
+            section.append(message);
         }
     }
     async function refreshSaved(name) {
         const result = await frappe.call({method:"dcr.api.dealer_portal.get_deal", args:{name}});
+        if (savedValues) {
+            const record = result.message;
+            const comparable = (key, value) => {
+                const type = form.fields_dict?.[key]?.df?.fieldtype;
+                if (["Currency", "Float", "Int", "Percent", "Check"].includes(type) || typeof value === "number" || typeof savedValues[key] === "number") return Number(value || 0);
+                return String(value || "");
+            };
+            if (!record.editable || Object.keys(record.editable).some(key => key in savedValues && comparable(key, record.editable[key]) !== comparable(key, savedValues[key]))) {
+                const error = new Error("The saved request changed or is now locked. Open the saved request again before saving more changes.");
+                error.requestChanged = true;
+                throw error;
+            }
+        }
         form.doc.modified = result.message.modified;
         existing.clear();
         for (const item of result.message.documents.items) existing.set(item.document_type, item);
@@ -91,6 +133,10 @@ frappe.ready(function () {
         form.doc.name = saved.name;
         form.is_new = false;
         form.in_edit_mode = true;
+        savedValues = Object.assign({}, form.doc);
+        // Reloads after partial upload failure must reopen this saved record,
+        // rather than showing a blank /new form that creates a duplicate.
+        window.history.replaceState(null, "", "/dealer-home-request/" + encodeURIComponent(saved.name) + "/edit");
         uploading = true;
         const controls = Array.from(document.querySelectorAll(".web-form input, .web-form select, .web-form textarea"));
         const wasDisabled = controls.map(control => control.disabled);
@@ -119,13 +165,23 @@ frappe.ready(function () {
         controls.forEach((control, index) => { control.disabled = wasDisabled[index]; });
         buttons.forEach(button => { button.disabled = false; });
         if (failed) {
-            try { await refreshSaved(saved.name); } catch (_) {}
+            try { await refreshSaved(saved.name); needsRefresh = false; } catch (_) { needsRefresh = true; }
             await renderDocuments();
             message.textContent = "Request saved. " + failed + " file(s) could not upload. Save again to retry, or open the request from Home.";
             const open = document.createElement("a");
             open.href = requestUrl(saved.name);
             open.textContent = "Open saved request";
             section.append(open);
+            if (needsRefresh) {
+                buttons.forEach(button => { button.disabled = true; });
+                message.textContent = "Request saved. Some files could not upload, and its latest version could not refresh. Refresh the saved request before retrying.";
+                const retry = document.createElement("button");
+                retry.type = "button";
+                retry.className = "dcr-btn";
+                retry.textContent = "Refresh saved request";
+                retry.addEventListener("click", recoverSaved);
+                section.append(retry);
+            }
             form.make_form_dirty();
             return;
         }

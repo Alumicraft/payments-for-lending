@@ -38,14 +38,51 @@ def test_paid_demands_override_old_unchecked_flags_and_remaining_amount_is_not_f
         "total_principal_paid": 5000, "written_off_amount": 1000}, "DEALER-A")
     assert result["outstanding_principal"] == 214000
     assert result["upcoming"] == [
-        {"date": "2026-09-30", "principal": 0.0, "interest": 700.0, "total": 700.0, "outstanding": 700.0},
-        {"date": "2026-11-30", "principal": 0.0, "interest": 2200.0, "total": 2200.0, "outstanding": 2200.0}]
+        {"date": "2026-09-30", "principal": 0.0, "interest": 700.0, "charges": 0.0, "total": 700.0, "outstanding": 700.0, "due_status": "Past due"},
+        {"date": "2026-11-30", "principal": 0.0, "interest": 2200.0, "charges": 0.0, "total": 2200.0, "outstanding": 2200.0, "due_status": "Scheduled"}]
     assert result["history"][0]["amount"] == 1500
     assert result["currency"] == "USD"
     calls = {call.args[0]: call.kwargs for call in frappe.get_all.call_args_list}
     assert calls["Loan Demand"]["filters"] == {"loan": "LOAN-A", "docstatus": 1}
     assert calls["Loan Repayment"]["filters"] == {"against_loan": "LOAN-A", "docstatus": 1}
     assert calls["Repayment Schedule"]["filters"]["parent"] == ["in", ["RS-A"]]
+
+
+@patch.object(payments, "frappe")
+def test_approved_unfunded_loan_has_no_posted_balance_or_payment_schedule(frappe):
+    frappe.db.exists.return_value = True
+    result = payments.payment_summary({"name": "LOAN-A", "disbursed_amount": 0,
+        "total_principal_paid": 0, "written_off_amount": 0}, "DEALER-A")
+    assert result["funded"] is False
+    assert result["outstanding_principal"] is None
+    assert result["upcoming"] == []
+    frappe.get_all.assert_not_called()
+
+
+@patch.object(portal, "_available_fields", side_effect=lambda doctype, fields: fields)
+@patch.object(payments, "frappe")
+def test_charge_demands_are_included_in_displayed_breakdown(frappe, fields):
+    frappe.db.exists.return_value = True
+    frappe.utils.today.return_value = "2026-10-06"
+    frappe.get_all.side_effect = lambda doctype, **kwargs: [{"demand_date": "2026-10-01",
+        "outstanding_amount": 75, "demand_subtype": "Penalty"}] if doctype == "Loan Demand" else []
+    result = payments.payment_summary({"name": "LOAN-A", "disbursed_amount": 1000,
+        "total_principal_paid": 0, "written_off_amount": 0}, "DEALER-A")
+    row = result["upcoming"][0]
+    assert row["principal"] + row["interest"] + row["charges"] == row["total"] == 75
+    assert row["due_status"] == "Past due"
+
+
+@patch.object(portal, "_latest_related", side_effect=[None, {"name": "LOAN-A", "loan_amount": 1000}])
+@patch.object(payments, "payment_summary", side_effect=ValueError("one schedule query failed"))
+@patch.object(portal, "frappe")
+def test_unavailable_payments_do_not_hide_owned_request_or_invent_zero(frappe, readback, related):
+    result = portal._loan_summary("HBR-A", "DEALER-A")
+    assert result["name"] == "LOAN-A"
+    assert result["principal"] == 1000
+    assert result["payments_summary"] is None
+    assert result["payments_unavailable"] is True
+    frappe.log_error.assert_called_once()
 
 
 @patch.object(portal, "frappe")

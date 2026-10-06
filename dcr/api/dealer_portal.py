@@ -327,6 +327,15 @@ def _loan_summary(hbr_name, customer_name=None):
     )
     total_payable = _value(source, "total_payable_amount") or _value(source, "total_payment")
     from dcr.api.dealer_payments import payment_summary
+    payments = None
+    payments_unavailable = False
+    if loan and customer_name:
+        try:
+            payments = payment_summary(loan, customer_name)
+        except Exception:
+            # One unavailable schedule must not hide the dealer's requests.
+            payments_unavailable = True
+            frappe.log_error(title="Dealer payment readback failed", message=frappe.get_traceback())
     return {
         "source": "Loan" if loan else "Loan Application",
         "name": _value(source, "name"),
@@ -337,7 +346,8 @@ def _loan_summary(hbr_name, customer_name=None):
         "total_interest": _json_value(total_interest),
         "total_payable": _json_value(total_payable),
         "signed": bool(_value(application, "signed_packet")),
-        "payments_summary": payment_summary(loan, customer_name) if loan and customer_name else None,
+        "payments_summary": payments,
+        "payments_unavailable": payments_unavailable,
         "payoff": {"can_request": bool(loan and _value(loan, "docstatus") == 1
             and _value(loan, "status") in {"Disbursed", "Partially Disbursed", "Active", "Loan Closure Requested"})},
     }
