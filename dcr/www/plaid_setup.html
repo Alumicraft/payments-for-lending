@@ -1,9 +1,14 @@
 {% extends "templates/web.html" %}
 
-{% block title %}Auto-Pay Setup{% endblock %}
+{% block title %}Connect Bank Account{% endblock %}
 
 {% block page_content %}
 <div class="container" style="max-width: 600px; margin: 40px auto; padding: 0 20px;">
+    {% if plaid_environment == "Sandbox" %}
+    <p style="color: #666; text-align: center;">
+        Sandbox test. Use Plaid's test bank and test sign-in, not real bank details. Any account saved here is test data.
+    </p>
+    {% endif %}
 
     {% if error %}
     <div style="text-align: center; padding: 60px 20px;">
@@ -14,16 +19,17 @@
     {% elif already_connected %}
     <div style="text-align: center; padding: 60px 20px;">
         <div style="font-size: 48px; margin-bottom: 16px;">&#10003;</div>
-        <h2>Bank Account Already Connected</h2>
+        <h2>Bank Account Already on File</h2>
         <p style="color: #666; margin-top: 16px;">
-            {{ customer_name }}, your bank account is already set up for auto-pay.
+            {{ customer_name }}, a bank account is already on file for your dealer account.
             No further action is needed.
+            {% if not autopay_enabled %}This step does not turn on automatic payments.{% endif %}
         </p>
     </div>
 
     {% elif show_plaid %}
     <div id="plaid-container" style="text-align: center; padding: 60px 20px;">
-        <h2>Set Up Auto-Pay</h2>
+        <h2>Connect Your Bank Account</h2>
         <p style="color: #666; margin: 16px 0 32px;">
             Connecting your bank account securely&hellip;
         </p>
@@ -35,10 +41,11 @@
 
     <div id="success-container" style="text-align: center; padding: 60px 20px; display: none;">
         <div style="font-size: 48px; margin-bottom: 16px;">&#10003;</div>
-        <h2>Bank Account Connected!</h2>
+        <h2>Bank Account Connected</h2>
         <p style="color: #666; margin-top: 16px;">
             Your <strong id="bank-name"></strong> account ending in <strong id="account-last4"></strong>
-            has been set up for automatic payments. You can close this page.
+            is now on file. You can close this page.
+            {% if not autopay_enabled %}This step does not turn on automatic payments.{% endif %}
         </p>
     </div>
 
@@ -73,7 +80,7 @@
                 token: data.message.link_token,
                 onSuccess: function(public_token, metadata) {
                     document.getElementById("plaid-container").innerHTML =
-                        '<h2>Set Up Auto-Pay</h2>' +
+                        '<h2>Connect Your Bank Account</h2>' +
                         '<p style="color: #666; margin: 16px 0 32px;">Saving your bank account&hellip;</p>' +
                         '<div class="spinner-border" role="status" style="color: #999;"></div>';
 
