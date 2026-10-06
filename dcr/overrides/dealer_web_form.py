@@ -15,7 +15,13 @@ class DealerWebForm(WebForm):
         if frappe.session.user in (None, "Guest", "guest"):
             frappe.local.flags.redirect_location = "/login?redirect-to=/dealer-home-request/new"
             raise frappe.Redirect
-        customer = portal.get_current_dealer_customer()
+        try:
+            customer = portal.get_current_dealer_customer()
+        except frappe.ValidationError:
+            # The portal has the friendly access-help state. Keep native
+            # rendering from exposing a page-building traceback to dealers.
+            frappe.local.flags.redirect_location = "/portal"
+            raise frappe.Redirect
         if frappe.form_dict.get("name"):
             hbr = portal._get_owned_hbr(frappe.form_dict.name, customer)
             if frappe.form_dict.get("is_edit"):

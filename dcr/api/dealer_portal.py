@@ -112,6 +112,11 @@ LOAN_FIELDS = (
     "total_payable_interest",
     "total_payable_amount",
     "total_payment",
+    "disbursed_amount",
+    "total_principal_paid",
+    "written_off_amount",
+    "company",
+    "docstatus",
     "modified",
 )
 
@@ -201,6 +206,10 @@ def _available_fields(doctype, fields):
 
 
 def _portal_status(doc):
+    if _value(doc, "docstatus") == 2:
+        return "Cancelled"
+    if _value(doc, "docstatus") == 1:
+        return "Accepted"
     status = _value(doc, PORTAL_STATUS_FIELD)
     if status in PORTAL_STATUSES:
         return status
@@ -222,7 +231,7 @@ def _get_owned_hbr(name, customer=None):
 def _require_editable_hbr(hbr):
     if _value(hbr, "docstatus") != 0:
         _deny("This home request is locked after DCR submission.")
-    if _portal_status(hbr) not in {"Draft", "Changes Requested"}:
+    if _portal_status(hbr) == "Accepted":
         _deny("This home request is not accepting dealer changes.")
 
 
@@ -287,11 +296,12 @@ def _latest_related(doctype, filters, fields):
     return rows[0] if rows else {}
 
 
-def _loan_summary(hbr_name):
+def _loan_summary(hbr_name, customer_name=None):
+    ownership = {"applicant": customer_name} if customer_name else {}
     application = (
         _latest_related(
             "Loan Application",
-            {"home_build_request": hbr_name, "docstatus": ["!=", 2]},
+            {"home_build_request": hbr_name, "docstatus": ["!=", 2], **ownership},
             LOAN_APPLICATION_FIELDS,
         )
         if _has_field("Loan Application", "home_build_request")
@@ -300,7 +310,7 @@ def _loan_summary(hbr_name):
     loan = (
         _latest_related(
             "Loan",
-            {"home_build_request": hbr_name, "docstatus": ["!=", 2]},
+            {"home_build_request": hbr_name, "docstatus": ["!=", 2], **ownership},
             LOAN_FIELDS,
         )
         if _has_field("Loan", "home_build_request")
@@ -316,15 +326,20 @@ def _loan_summary(hbr_name):
         or _value(source, "total_payable_interest")
     )
     total_payable = _value(source, "total_payable_amount") or _value(source, "total_payment")
+    from dcr.api.dealer_payments import payment_summary
     return {
         "source": "Loan" if loan else "Loan Application",
         "name": _value(source, "name"),
+        "application_name": _value(application, "name"),
         "status": _value(source, "status") or "Applied",
         "principal": _json_value(amount),
         "interest_rate": _json_value(_value(source, "rate_of_interest")),
         "total_interest": _json_value(total_interest),
         "total_payable": _json_value(total_payable),
         "signed": bool(_value(application, "signed_packet")),
+        "payments_summary": payment_summary(loan, customer_name) if loan and customer_name else None,
+        "payoff": {"can_request": bool(loan and _value(loan, "docstatus") == 1
+            and _value(loan, "status") in {"Disbursed", "Partially Disbursed", "Active", "Loan Closure Requested"})},
     }
 
 
@@ -337,7 +352,7 @@ def _serialize_hbr(hbr, customer=None):
         factory_label = frappe.db.get_value("Supplier", factory, "supplier_name") or factory
     portal_status = _portal_status(hbr)
     editable_fields = None
-    if portal_status in {"Draft", "Changes Requested"}:
+    if _value(hbr, "docstatus") == 0 and portal_status != "Accepted":
         editable_fields = {
             fieldname: _json_value(_value(hbr, fieldname))
             for fieldname in HBR_INPUT_FIELDS
@@ -345,10 +360,12 @@ def _serialize_hbr(hbr, customer=None):
         }
 
     return {
+        **{fieldname: _json_value(_value(hbr, fieldname)) for fieldname in HBR_INPUT_FIELDS},
         "name": _value(hbr, "name"),
-        "portal_status": portal_status,
+        "portal_status": "In review" if portal_status in {"Draft", "Submitted for Review", "Changes Requested"} else portal_status,
         "docstatus": _value(hbr, "docstatus"),
         "modified": _json_value(_value(hbr, "modified")),
+        "created_on": _json_value(_value(hbr, "creation")),
         "home_type": _value(hbr, "home_type"),
         "financing_type": _value(hbr, "financing_type"),
         "property_type": _value(hbr, "property_type"),
@@ -372,7 +389,7 @@ def _serialize_hbr(hbr, customer=None):
             "complete": len(documents) - len(missing),
             "missing": missing,
         },
-        "loan": _loan_summary(_value(hbr, "name")),
+        "loan": _loan_summary(_value(hbr, "name"), _value(customer, "name")),
     }
 
 
@@ -429,6 +446,7 @@ def _get_signatures(customer):
         "reference_name",
         "sent_date",
         "signed_date",
+        "envelope_id",
     ]
     rows = frappe.get_all(
         "Signature Request",
@@ -443,9 +461,11 @@ def _get_signatures(customer):
             "name": _value(row, "name"),
             "document_type": _value(row, "document_type"),
             "status": _value(row, "status"),
+            "reference_doctype": _value(row, "reference_doctype"),
+            "reference_name": _value(row, "reference_name"),
             "sent_date": _json_value(_value(row, "sent_date")),
             "signed_date": _json_value(_value(row, "signed_date")),
-            "actionable": _value(row, "status") == "Sent",
+            "actionable": _value(row, "status") == "Sent" and bool(_value(row, "envelope_id")),
         }
         for row in rows or []
     ]
@@ -520,7 +540,7 @@ def get_portal_context():
     )
     hbrs = frappe.get_all(
         "Home Build Request",
-        filters={"customer": _value(customer, "name"), "docstatus": ["<", 2]},
+        filters={"customer": _value(customer, "name")},
         fields=hbr_fields,
         order_by="modified desc",
         limit_page_length=100,
@@ -563,6 +583,40 @@ def get_deal(name):
     return _serialize_hbr(_get_owned_hbr(name, customer), customer)
 
 
+@frappe.whitelist(methods=["POST"])
+def request_payoff_letter(name):
+    """Record a scoped request for staff to review the payoff, once per day.
+
+    This does not quote an amount, post a payment, or send an unreviewed
+    financial letter. Existing staff payoff formats remain staff-owned.
+    """
+    import hashlib
+    from html import escape
+
+    customer = get_current_dealer_customer()
+    hbr = _get_owned_hbr(name, customer)
+    loan = _latest_related("Loan", {"home_build_request": _value(hbr, "name"),
+        "applicant": _value(customer, "name"), "docstatus": 1}, ["name", "status"])
+    if not loan or _value(loan, "status") not in {"Disbursed", "Partially Disbursed", "Active", "Loan Closure Requested"}:
+        _deny("A payoff letter can be requested for a funded or active loan.")
+    loan_name = _value(loan, "name")
+    key = "DCR-NOTICE-" + hashlib.sha256(f"payoff|{loan_name}|{frappe.utils.today()}".encode()).hexdigest()
+    if frappe.db.exists("DCR Status Notice", key):
+        return {"recorded": True, "request": key, "already_recorded": True}
+    settings = frappe.get_single("DCR Pilot Settings")
+    frappe.db.savepoint("dcr_payoff_request")
+    try:
+        frappe.get_doc({"doctype": "DCR Status Notice", "name": key, "event_key": key,
+            "home_build_request": name, "customer": _value(customer, "name"),
+            "event": "Dealer requested payoff letter", "audience": "Staff",
+            "recipient": settings.staff_notification_recipient, "status": "Recorded",
+            "subject": f"Payoff letter requested: {loan_name}",
+            "message": f"<p>The dealer requested a reviewed payoff letter for {escape(loan_name)} / {escape(name)}.</p><p>Prepare and review the payoff before sending a financial quote.</p>"}).insert(ignore_permissions=True)
+    except frappe.DuplicateEntryError:
+        frappe.db.rollback(save_point="dcr_payoff_request")
+    return {"recorded": True, "request": key}
+
+
 def _parse_payload(payload):
     if isinstance(payload, str):
         try:
@@ -603,6 +657,8 @@ def save_hbr_draft(payload=None, name=None, expected_modified=None):
         _validate_portal_serial(payload.get("home_serial_no"), name)
         for fieldname, value in payload.items():
             hbr.set(fieldname, value)
+        if _has_field("Home Build Request", PORTAL_STATUS_FIELD):
+            hbr.set(PORTAL_STATUS_FIELD, "Submitted for Review")
         hbr.save(ignore_permissions=True)
     else:
         _require_active_factory(_value(customer, "name"), payload.get("factory"))
@@ -612,8 +668,10 @@ def save_hbr_draft(payload=None, name=None, expected_modified=None):
         for fieldname, value in payload.items():
             hbr.set(fieldname, value)
         if _has_field("Home Build Request", PORTAL_STATUS_FIELD):
-            hbr.set(PORTAL_STATUS_FIELD, "Draft")
+            hbr.set(PORTAL_STATUS_FIELD, "Submitted for Review")
         hbr.insert(ignore_permissions=True)
+        from dcr.api.status_notices import record_transition
+        record_transition(hbr, PORTAL_STATUS_FIELD, "Draft", "Submitted for Review")
 
     return _serialize_hbr(hbr, customer)
 
@@ -836,7 +894,9 @@ def start_signature(signature_request):
         _deny("That document is not currently waiting for your signature.")
     if not _value(sig_req, "envelope_id"):
         _deny("That signature request is missing its DocuSign envelope.")
-    if not _value(customer, "email_id"):
+    recipient_email = _value(sig_req, "recipient_email") or _value(customer, "email_id")
+    recipient_name = _value(sig_req, "recipient_name") or _value(customer, "customer_name") or name
+    if not recipient_email:
         _deny("Your dealer account needs an email address before signing.")
     from dcr.api.docusign import DocuSignClient
 
@@ -847,8 +907,8 @@ def start_signature(signature_request):
     )
     url = client.get_signing_url(
         envelope_id=_value(sig_req, "envelope_id"),
-        email=_value(customer, "email_id"),
-        name=_value(customer, "customer_name") or name,
+        email=recipient_email,
+        name=recipient_name,
         client_user_id=f"{name}-{_value(sig_req, 'document_type')}",
         return_url=return_url,
     )
@@ -863,6 +923,7 @@ def signature_complete(signature_request):
     if not frappe.db.exists("Signature Request", {"name": signature_request, "customer": name}):
         _deny("That signature request is not available in your dealer account.")
     sig_req = frappe.get_doc("Signature Request", signature_request, check_permission=False)
+    signed = _value(sig_req, "status") == "Signed"
     if _value(sig_req, "status") != "Signed":
         if not _value(sig_req, "envelope_id"):
             _deny("That signature request is missing its DocuSign envelope.")
@@ -872,5 +933,6 @@ def signature_complete(signature_request):
         if client.get_envelope_status(_value(sig_req, "envelope_id")) == "completed":
             _handle_envelope_completed(_value(sig_req, "envelope_id"), {"status": "completed"})
             frappe.db.commit()
+            signed = True
     frappe.local.response["type"] = "redirect"
-    frappe.local.response["location"] = frappe.utils.get_url("/portal?signature=complete")
+    frappe.local.response["location"] = frappe.utils.get_url("/portal?signature=" + ("complete" if signed else "pending"))
