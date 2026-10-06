@@ -38,7 +38,7 @@ function harness(hydrate = false) {
     vm.runInNewContext(source,{document,window,frappe,URLSearchParams,setTimeout,MutationObserver:class{observe(){}},FormData:class{append(){}},fetch:async()=>({ok:true,json:async()=>({message:{uploaded:true}})})});
     const clickHeader=()=>{let prevented=false;documentEvents.click({target:{closest:()=>({href:'/portal'})},button:0,preventDefault:()=>prevented=true});assert(prevented);};
     const unload=()=>{let prevented=false;const event={preventDefault:()=>prevented=true};windowEvents.beforeunload(event);return{prevented,returnValue:event.returnValue};};
-    return{nodes,form,field,label,help,window,frappe,warnings,navigations,notices,clickHeader,unload};
+    return{nodes,form,field,label,help,heading,window,frappe,warnings,navigations,notices,clickHeader,unload};
 }
 (async()=>{
     let initial=harness(true);await new Promise(resolve=>setTimeout(resolve,5));
@@ -65,6 +65,8 @@ function harness(hydrate = false) {
     h.form.discard_form();assert.equal(h.warnings.length,1,'native Discard shares the guard');
     assert.equal(h.navigations.length,0);
     await h.form.handle_success({name:'HBR-A'});
+    assert.equal(h.heading.textContent,'Edit home request');
+    assert.equal(h.heading.afterNode.textContent,'HBR-A','saved identity becomes visible before upload recovery');
     assert.deepEqual(h.navigations,['/portal?request=HBR-A']);assert.equal(h.unload().prevented,false,'successful save/uploads leave cleanly');
 
     h=harness();await settle();h.window.saving=true;h.clickHeader();

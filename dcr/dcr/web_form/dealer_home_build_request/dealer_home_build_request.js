@@ -91,16 +91,21 @@ frappe.ready(function () {
     }
     nameNativeControls();
     const heading = document.querySelector(".web-form-title h1");
-    if (heading) {
+    let requestIdentity;
+    function showRequestIdentity() {
+        if (!heading) return;
         heading.textContent = form.doc.name ? "Edit home request" : "New home request";
         document.title = heading.textContent + " · Dealer Portal";
         if (form.doc.name) {
-            const identity = document.createElement("p");
-            identity.className = "dcr-native-request-id";
-            identity.textContent = form.doc.name;
-            heading.after(identity);
+            if (!requestIdentity) {
+                requestIdentity = document.createElement("p");
+                requestIdentity.className = "dcr-native-request-id";
+                heading.after(requestIdentity);
+            }
+            requestIdentity.textContent = form.doc.name;
         }
     }
+    showRequestIdentity();
     const accessibleForm = document.querySelector(".web-form");
     if (accessibleForm) new MutationObserver(nameNativeControls).observe(accessibleForm, {
         subtree: true, childList: true, attributes: true, attributeFilter: ["class"]
@@ -233,6 +238,9 @@ frappe.ready(function () {
     }
     form.handle_success = async function (saved) {
         form.doc.name = saved.name;
+        // A partially failed upload is already an existing request. Make its
+        // identity visible immediately, without requiring a reload.
+        showRequestIdentity();
         form.is_new = false;
         form.in_edit_mode = true;
         savedValues = Object.assign({}, form.doc);
