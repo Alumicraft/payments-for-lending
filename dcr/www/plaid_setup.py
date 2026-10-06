@@ -37,6 +37,9 @@ def get_context(context):
         return
 
     customer_name = frappe.db.get_value("Customer", customer, "customer_name")
+    settings = frappe.get_single("ACH Settings")
+    context.autopay_enabled = bool(settings.enable_ach_autopay)
+    context.plaid_environment = settings.plaid_environment
 
     # Check if already connected
     existing = frappe.db.exists("Bank Account", {"party_type": "Customer", "party": customer, "disabled": 0})

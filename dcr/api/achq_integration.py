@@ -529,6 +529,11 @@ def _validate_account_number(account_number):
 
 def _send_connected_email(customer, bank_name, account_last4):
     """Send confirmation email to dealer that bank account is connected."""
+    # The existing external template promises automatic debits. Until that
+    # template supports a bank-only confirmation, do not send it with ACH off.
+    from dcr.dcr.doctype.ach_settings.ach_settings import is_ach_enabled
+    if not is_ach_enabled():
+        return
     try:
         customer_email = frappe.db.get_value("Customer", customer, "email_id")
         if not customer_email:

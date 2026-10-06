@@ -67,9 +67,11 @@ def is_ach_enabled():
 
 @frappe.whitelist()
 def is_plaid_enabled():
-    """Check if Plaid integration is configured."""
+    """Bank linking is available independently of automatic debit execution."""
     settings = get_ach_settings()
-    return settings.enable_ach_autopay and settings.has_plaid_credentials()
+    # Connecting an account must not require enabling ACHQ debits. The ACHQ
+    # client and scheduled payment jobs retain their separate autopay guard.
+    return settings.has_plaid_credentials()
 
 
 def loan_is_in_ach_scope(loan):
