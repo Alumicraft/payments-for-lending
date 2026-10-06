@@ -37,6 +37,15 @@ frappe.ready(function () {
         }
         return nativeValidate ? nativeValidate.call(form) : undefined;
     };
+    const nativeForm = document.querySelector(".web-form");
+    if (nativeForm) nativeForm.addEventListener("submit", event => {
+        if (!uploading && !needsRefresh) return;
+        // Block implicit Enter submissions too; a thrown validation hook must
+        // never fall through to a browser reload and discard selected files.
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (needsRefresh && !uploading) recoverSaved();
+    }, true);
     async function renderDocuments() {
         const revision = ++generation;
         try {
@@ -96,7 +105,8 @@ frappe.ready(function () {
             }
             section.append(table, message);
         } catch (_) {
-            section.textContent = "The document checklist could not load. Save the request, then open it from Home to add documents.";
+            section.textContent = "The document checklist could not load. Check your connection and try again.";
+            section.append(message);
         }
     }
     async function refreshSaved(name) {
