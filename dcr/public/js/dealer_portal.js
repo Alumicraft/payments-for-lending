@@ -135,8 +135,8 @@ var dcrPortalModel = (function () {
         if (waiting.length) return "Sign the " + waiting[0].document_type;
         if (isOpen(deal)) {
             var unavailable = unavailableDocuments(deal).length;
-            if (unavailable) return "Replace " + unavailable + (unavailable === 1 ? " unavailable file" : " unavailable files");
             var count = missingDocuments(deal).length;
+            if (unavailable) return "Replace " + unavailable + (unavailable === 1 ? " unavailable file" : " unavailable files") + (count ? " · upload " + count + (count === 1 ? " document" : " documents") : "");
             if (count) return "Upload " + count + (count === 1 ? " document" : " documents");
         }
         return "";
@@ -944,7 +944,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
             })) + (parts.history.length > PREVIEW_ROWS ? toggle_button("signatures", parts.history.length, "record") : "")
             : '<p class="dcr-note">' + (parts.waiting.length ? "No earlier records." : "No agreements have been sent yet.") + "</p>", parts.history.length ? esc(plural(parts.history.length, "record")) : "");
 
-        body += section("Dealer documents", documents_table("Dealer documents", onboarding, "customer", customer.name, true), onboarding.some(function (item) { return !item.uploaded; }) ? esc(UPLOAD_NOTE) : "");
+        body += section("Dealer documents", documents_table("Dealer documents", onboarding, "customer", customer.name, true), onboarding.some(function (item) { return !item.uploaded || item.can_download === false; }) ? esc(UPLOAD_NOTE) : "");
         return '<div class="dcr-page">' + page_head("Settings") + body + "</div>";
     }
 
