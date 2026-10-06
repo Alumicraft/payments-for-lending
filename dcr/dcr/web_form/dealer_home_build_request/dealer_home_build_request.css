@@ -8,7 +8,7 @@
     line-height: 20px;
 }
 .dcr-native-hbr .web-form-container { margin: 0; }
-.dcr-native-hbr .web-form-head { padding: 24px; }
+.dcr-native-hbr .web-form-head { padding: 24px 0 20px; }
 .dcr-native-hbr .web-form-title { white-space: normal; }
 .dcr-native-hbr .web-form-title h1 {
     color: var(--dcr-ink, #171717);
@@ -21,17 +21,19 @@
 }
 .dcr-native-request-id { color: var(--dcr-muted, #6f6f6f); font-size: 12px; overflow-wrap: anywhere; margin: 0; }
 .dcr-native-hbr .web-form-introduction { color: var(--dcr-muted, #6f6f6f); font-size: 13px; line-height: 20px; }
-.dcr-native-hbr .web-form { border: 1px solid var(--dcr-line, #ededed); border-radius: 12px; background: var(--dcr-ground, #fff); }
+.dcr-native-hbr .web-form { border: 1px solid var(--dcr-line, #ededed); border-radius: 0 0 8px 8px !important; background: var(--dcr-ground, #fff); }
 /* Native Web Form rules have a long doctype/container selector. Override only
    this scoped typography rather than depending on that framework hierarchy. */
 .dcr-native-hbr .form-section .section-head { font-size: 14px !important; font-weight: 500 !important; line-height: 20px; }
 .dcr-native-hbr .control-label { font-size: 12px; font-weight: 400; color: var(--dcr-muted, #6f6f6f); }
-.dcr-native-hbr .form-control { font-size: 13px; color: var(--dcr-ink, #171717); background: var(--dcr-fill, #f3f3f3); }
+.dcr-native-hbr .form-control { font-size: 13px; }
 .dcr-native-hbr .btn-primary { background: var(--dcr-ink, #171717); border-color: var(--dcr-ink, #171717); }
 .dcr-native-hbr .btn-primary:hover { background: #333; border-color: #333; }
-.dcr-native-hbr :focus-visible { outline: 2px solid var(--dcr-brand, #971c1d); outline-offset: 2px; }
-.dcr-form-documents { padding: 24px; border-top: 1px solid var(--dcr-line, #ededed); }
-.dcr-form-documents h2 { font-size: 14px; font-weight: 500; line-height: 20px; margin-bottom: 8px; }
+.dcr-native-hbr .web-form-footer button:focus-visible,
+.dcr-form-documents a:focus-visible,
+.dcr-portal-header a:focus-visible { outline: 2px solid var(--dcr-brand, #971c1d); outline-offset: 2px; }
+.dcr-form-documents { padding: 24px 0; border-top: 1px solid var(--dcr-line, #ededed); }
+.dcr-form-documents h2 { font-size: 14px; font-weight: 500; line-height: 20px; margin: 0 0 8px; }
 .dcr-form-documents p { color: var(--dcr-muted, #6f6f6f); }
 .dcr-form-documents table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .dcr-form-documents th, .dcr-form-documents td { padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--dcr-line, #ededed); overflow-wrap: anywhere; }
@@ -47,16 +49,19 @@
 @media (max-width: 600px) {
     .dcr-native-hbr { padding: 0 16px 32px; }
     .dcr-native-hbr .web-form { padding: 16px; }
-    .dcr-native-hbr .web-form-head { padding: 16px; }
+    .dcr-native-hbr .web-form-head { padding: 16px 0; }
     .dcr-native-hbr .web-form-title { min-width: 0; }
+    .dcr-native-hbr .form-control { min-height: 40px; font-size: 16px; }
     .dcr-native-hbr .web-form-footer button,
     .dcr-file-select,
     .dcr-form-documents a,
     .dcr-portal-header .dcr-wordmark,
     .dcr-portal-header .dcr-back-button { min-height: 40px; }
     .dcr-portal-header { padding: 8px 16px; gap: 12px; }
-    .dcr-form-documents { padding: 16px; }
+    .dcr-form-documents { padding: 16px 0; }
     .dcr-form-documents thead { display: none; }
     .dcr-form-documents tr { display: grid; grid-template-columns: 1fr; border-bottom: 1px solid var(--dcr-line, #ededed); padding: 8px 0; }
     .dcr-form-documents th, .dcr-form-documents td { display: block; border: 0; padding: 4px 0; }
 }
+
+.dcr-form-documents th:first-child, .dcr-form-documents td:first-child { padding-left: 0; }

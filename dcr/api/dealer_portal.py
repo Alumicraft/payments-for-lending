@@ -1002,13 +1002,27 @@ def start_signature(signature_request):
         "/api/method/dcr.api.dealer_portal.signature_complete"
         f"?signature_request={quote(signature_request)}"
     )
-    url = client.get_signing_url(
-        envelope_id=_value(sig_req, "envelope_id"),
-        email=recipient_email,
-        name=recipient_name,
-        client_user_id=f"{name}-{_value(sig_req, 'document_type')}",
-        return_url=return_url,
-    )
+    from requests.exceptions import HTTPError, RequestException
+
+    try:
+        url = client.get_signing_url(
+            envelope_id=_value(sig_req, "envelope_id"),
+            email=recipient_email,
+            name=recipient_name,
+            client_user_id=f"{name}-{_value(sig_req, 'document_type')}",
+            return_url=return_url,
+        )
+    except HTTPError as error:
+        response = error.response
+        if response is not None and response.status_code == 404:
+            return {
+                "url": None,
+                "unavailable": True,
+                "message": _("This {0} cannot be opened because its DocuSign envelope is unavailable. DCR needs to prepare a new signing packet.").format(_value(sig_req, "document_type") or "document"),
+            }
+        frappe.throw(_("DocuSign could not open this signing session. Please try again later."))
+    except RequestException:
+        frappe.throw(_("DocuSign could not be reached. Please try again later."))
     return {"url": url}
 
 
