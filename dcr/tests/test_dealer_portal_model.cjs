@@ -104,3 +104,9 @@ assert.equal(M.canDownload({uploaded:true,can_download:false}),false,'a recorded
 assert.equal(M.canDownload({uploaded:true,can_download:true}),true);
 assert.equal(M.canDownload({uploaded:false,can_download:true}),false);
 assert.equal(M.canDownload({uploaded:true}),true,'older API responses remain compatible during rollout');
+
+const unavailableFileDeal = deal({documents:{items:[{document_type:'Spec Info Sheet',uploaded:true,complete:true,can_download:false}]}});
+assert.equal(M.needs(unavailableFileDeal, []), 'Replace 1 unavailable file');
+assert.equal(M.checklist(unavailableFileDeal).label, 'Complete', 'recorded completion is distinct from file availability');
+assert.equal(M.progressSteps(unavailableFileDeal, []).filter(x=>x.replace).length, 1);
+assert.equal(M.needs(Object.assign({}, unavailableFileDeal, {docstatus:1,portal_status:'Accepted'}), []), '', 'locked accepted requests must not ask for replacement');

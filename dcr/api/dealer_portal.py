@@ -910,32 +910,56 @@ def download_document(target_type, target_name=None, document_type=None):
     )
     if not file_url:
         _deny("That document has not been uploaded yet.")
+    # A missing get_doc-by-filters logs the entire filters dict in Frappe,
+    # including its private storage URL. Preflight without a throwing lookup.
+    file_name = frappe.db.get_value("File", {
+        "file_url": file_url, "attached_to_doctype": doctype,
+        "attached_to_name": name, "attached_to_field": fieldname, "is_private": 1,
+    }, "name")
+    if not file_name:
+        return _document_unavailable()
     try:
-        file_doc = frappe.get_doc("File", {
-            "file_url": file_url, "attached_to_doctype": doctype,
-            "attached_to_name": name, "attached_to_field": fieldname, "is_private": 1,
-        }, check_permission=False)
+        file_doc = frappe.get_doc("File", file_name, check_permission=False)
     except frappe.DoesNotExistError:
-        _deny("That document's file is unavailable. Contact DCR for help.")
+        return _document_unavailable()
     if (
         _value(file_doc, "attached_to_doctype") != doctype
         or _value(file_doc, "attached_to_name") != name
         or _value(file_doc, "attached_to_field") != fieldname
+        or _value(file_doc, "file_url") != file_url
         or not _value(file_doc, "is_private")
     ):
         _deny("That document is not attached to the requested record.")
 
+    try:
+        # Frappe tries text encodings by default, which can corrupt binary PDFs.
+        content = file_doc.get_content(encodings=[])
+    except FileNotFoundError:
+        return _document_unavailable()
     response = frappe.local.response
     response["type"] = "download"
     response["filename"] = file_doc.file_name
-    # Frappe tries text encodings by default, which can corrupt binary PDFs.
-    response["filecontent"] = file_doc.get_content(encodings=[])
+    response["filecontent"] = content
     content_type = mimetypes.guess_type(file_doc.file_name)[0] or "application/octet-stream"
     response["content_type"] = content_type
     response["display_content_as"] = (
         "inline" if content_type in {"application/pdf", "image/png", "image/jpeg", "image/webp"}
         else "attachment"
     )
+
+
+def _document_unavailable():
+    message = "That document's file is unavailable. Contact DCR for help."
+    # Old browser tabs/bookmarks need a usable native message page. A plain
+    # validation throw produces Frappe's generic Server Error for HTML requests.
+    accept = frappe.get_request_header("Accept") or ""
+    if accept.startswith("text/html") and not getattr(frappe.local, "is_ajax", False):
+        frappe.respond_as_web_page(
+            _("File unavailable"), _(message), http_status_code=404,
+            primary_action="/portal#/home", primary_label=_("Back to portal"),
+        )
+        return
+    _deny(message)
 
 
 @frappe.whitelist()
