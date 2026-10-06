@@ -28,7 +28,7 @@ let chosenUrl, savedUrl;
 const sentTypes = [];
 const document = {
     createElement:tag=>new Element(tag), createTextNode:text=>({text}),
-    querySelector:()=>footer,
+    querySelector:selector=>selector==='.web-form-title h1'?null:footer,
     addEventListener:()=>{},
     querySelectorAll:selector=>selector.includes('footer') ? [saveButton] : selector.includes('data-fieldname') || selector.includes('frappe-control') ? [] : nodes.filter(n=>n.tag === 'input')
 };
