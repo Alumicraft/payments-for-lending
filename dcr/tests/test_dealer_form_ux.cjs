@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const source = fs.readFileSync(require.resolve('../dcr/web_form/dealer_home_build_request/dealer_home_build_request.js'), 'utf8');
 const settle = () => new Promise(resolve => setImmediate(resolve));
-function harness() {
+function harness(hydrate = false) {
     const nodes = [], windowEvents = {}, documentEvents = {}, warnings = [], navigations = [], notices = [];
     class Element {
         constructor(tag) { this.tag=tag; this.children=[]; this.attributes={}; this.listeners={}; this.value=''; this.textContent=''; this.classList={contains:()=>false}; nodes.push(this); }
@@ -34,12 +34,16 @@ function harness() {
         msgprint:text=>notices.push(text),throw:text=>{throw Error(text);},form_dirty:false,csrf_token:'TEST',
         call:async({method})=>method.endsWith('get_required_docs')?{message:['Factory Quote']}:{message:{modified:'NEW',editable:{home_type:'Spec'},documents:{items:[]}}}};
     const window={addEventListener:(name,fn)=>windowEvents[name]=fn,location:{assign:url=>navigations.push(url)},history:{replaceState:()=>{}},saving:false};
-    vm.runInNewContext(source,{document,window,frappe,URLSearchParams,MutationObserver:class{observe(){}},FormData:class{append(){}},fetch:async()=>({ok:true,json:async()=>({message:{uploaded:true}})})});
+    if(hydrate) {field.value='';Promise.resolve().then(()=>{field.value='Spec';});}
+    vm.runInNewContext(source,{document,window,frappe,URLSearchParams,setTimeout,MutationObserver:class{observe(){}},FormData:class{append(){}},fetch:async()=>({ok:true,json:async()=>({message:{uploaded:true}})})});
     const clickHeader=()=>{let prevented=false;documentEvents.click({target:{closest:()=>({href:'/portal'})},button:0,preventDefault:()=>prevented=true});assert(prevented);};
     const unload=()=>{let prevented=false;const event={preventDefault:()=>prevented=true};windowEvents.beforeunload(event);return{prevented,returnValue:event.returnValue};};
     return{nodes,form,field,label,help,window,frappe,warnings,navigations,notices,clickHeader,unload};
 }
 (async()=>{
+    let initial=harness(true);await new Promise(resolve=>setTimeout(resolve,5));
+    assert.equal(initial.unload().prevented,false,'async native hydration remains clean');
+    initial.clickHeader();assert.equal(initial.warnings.length,0);
     let h=harness(); await settle();
     assert.equal(h.field.id,'dcr-field-home_type-0');
     assert.equal(h.label.getAttribute('for'),h.field.id);

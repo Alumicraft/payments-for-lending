@@ -61,7 +61,7 @@ def build_fields(meta, factories=None):
                 # Scoped presentation labels; the DocType's metadata and native
                 # field/dependency/validation identities remain unchanged.
                 label = field["label"]
-                field["label"] = {"Serial No": "Serial number", "Factory Quote No": "Factory quote number"}.get(
+                field["label"] = {"Serial No": "Serial number", "Factory Quote No": "Factory quote number", "Space No": "Space number"}.get(
                     label, label if label.isupper() else label[:1] + label[1:].lower())
             if field["fieldtype"] == "Column Break":
                 if not column_has_input:

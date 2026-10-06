@@ -47,6 +47,21 @@ def test_no_attachment_does_not_read_files():
         frappe.get_all.assert_not_called()
 
 
+def test_shared_storage_url_with_multiple_upload_rows_does_not_invent_identity():
+    with patch.object(portal, "frappe") as frappe:
+        frappe.get_all.return_value = [
+            {"file_url": "/private/files/a.pdf", "attached_to_field": "doc_checklist", "file_name": name}
+            for name in ["original.pdf", "replacement.pdf"]
+        ]
+        assert portal._attached_file_metadata("Home Build Request", "HBR-A", ["doc_checklist"], ["/private/files/a.pdf"]) == {}
+
+
+def test_support_lookup_failure_does_not_break_portal():
+    with patch.object(portal, "frappe") as frappe:
+        frappe.db.get_single_value.side_effect = RuntimeError("unavailable settings")
+        assert portal._support_url() == ""
+
+
 @pytest.mark.parametrize("disabled,expected", [(0, "/contact"), (1, "")])
 def test_native_contact_route_respects_existing_site_disabled_setting(disabled, expected):
     with patch.object(portal, "frappe") as frappe:

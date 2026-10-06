@@ -302,17 +302,27 @@ def _attached_file_metadata(doctype, name, fieldnames, urls):
         "is_private": 1,
     }, fields=["file_url", "attached_to_field", "file_name", "creation"],
         ignore_permissions=True, limit_page_length=0)
-    return {(_value(file, "attached_to_field"), _value(file, "file_url")): {
-        "file_name": _safe_file_name(_value(file, "file_name")),
-        "uploaded_on": _json_value(_value(file, "creation")),
-    } for file in files or []}
+    metadata, ambiguous = {}, set()
+    for file in files or []:
+        key = (_value(file, "attached_to_field"), _value(file, "file_url"))
+        if key in metadata:
+            ambiguous.add(key)
+        metadata[key] = {
+            "file_name": _safe_file_name(_value(file, "file_name")),
+            "uploaded_on": _json_value(_value(file, "creation")),
+        }
+    # Deduplicated storage URLs do not identify a particular upload row.
+    return {key: value for key, value in metadata.items() if key not in ambiguous}
 
 
 def _support_url():
     # This is Frappe's native contact page, verified on the hosted site. The
     # page stores a Communication even when email forwarding is unavailable.
     # Respect the site's existing disabled setting; never invent a recipient.
-    return "" if frappe.db.get_single_value("Contact Us Settings", "is_disabled") else "/contact"
+    try:
+        return "" if frappe.db.get_single_value("Contact Us Settings", "is_disabled") else "/contact"
+    except Exception:
+        return ""
 
 
 def _latest_related(doctype, filters, fields):
@@ -897,7 +907,10 @@ def download_document(target_type, target_name=None, document_type=None):
     )
     if not file_url:
         _deny("That document has not been uploaded yet.")
-    file_doc = frappe.get_doc("File", {"file_url": file_url}, check_permission=False)
+    file_doc = frappe.get_doc("File", {
+        "file_url": file_url, "attached_to_doctype": doctype,
+        "attached_to_name": name, "attached_to_field": fieldname, "is_private": 1,
+    }, check_permission=False)
     if (
         _value(file_doc, "attached_to_doctype") != doctype
         or _value(file_doc, "attached_to_name") != name

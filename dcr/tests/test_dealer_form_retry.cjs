@@ -33,7 +33,7 @@ const document = {
     querySelectorAll:selector=>selector.includes('footer') ? [saveButton] : selector.includes('data-fieldname') || selector.includes('frappe-control') ? [] : nodes.filter(n=>n.tag === 'input')
 };
 class FormData { constructor() { this.values = {}; } append(k,v) { this.values[k]=v; } }
-const context = {document, FormData, URLSearchParams, MutationObserver:class {observe() {}},
+const context = {document, FormData, URLSearchParams, setTimeout, MutationObserver:class {observe() {}},
     window:{addEventListener:()=>{},history:{replaceState:(_s,_t,url)=>{savedUrl=url;}},location:{assign:url=>{chosenUrl=url;}}},
     frappe:{web_form:form, csrf_token:'TEST-CSRF', ready:fn=>fn(), throw:message=>{throw Error(message);},
         call:async ({method})=>{

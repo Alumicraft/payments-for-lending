@@ -22,6 +22,13 @@ frappe.ready(function () {
         ".web-form input[data-fieldname], .web-form select[data-fieldname], .web-form textarea[data-fieldname]"
     )).map(input => [input.getAttribute("data-fieldname"), input.type === "checkbox" ? input.checked : input.value]));
     let cleanSnapshot = fieldSnapshot();
+    // Native make() applies initial values in promise callbacks. Capture the
+    // settled inputs, without swallowing an edit made before that callback.
+    let editedBeforeBaseline = false;
+    document.addEventListener("input", event => {
+        if (event.target.closest(".web-form")) editedBeforeBaseline = true;
+    }, true);
+    setTimeout(() => { if (!editedBeforeBaseline) cleanSnapshot = fieldSnapshot(); }, 0);
     const hasUnsavedWork = () => uploading || !!window.saving || needsRefresh || pending.size > 0 || fieldSnapshot() !== cleanSnapshot;
     const leave = url => { allowLeave = true; frappe.form_dirty = false; window.location.assign(url); };
     function confirmLeave(url) {
