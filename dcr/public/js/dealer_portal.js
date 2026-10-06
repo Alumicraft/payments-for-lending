@@ -279,7 +279,10 @@ if (typeof module !== "undefined" && module.exports) module.exports = { dcrSched
     }
 
     function view_button(target, name, document_type) {
-        return '<button type="button" class="dcr-btn-text" data-action="download" data-target-type="' + esc(target) + '" data-target-name="' + esc(name || "") + '" data-document-type="' + esc(document_type) + '">View</button>';
+        var params = new URLSearchParams({ target_type: target, target_name: name || "", document_type: document_type });
+        var href = "/api/method/dcr.api.dealer_portal.download_document?" + params.toString();
+        return '<a class="dcr-btn-text" href="' + esc(href) + '" target="_blank" rel="noopener">View</a>' +
+            '<a class="dcr-btn-text" href="' + esc(href) + '" download>Download</a>';
     }
 
     function file_icon(item) {
