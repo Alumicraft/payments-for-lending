@@ -12,9 +12,9 @@
 .dcr-native-hbr .web-form-title { white-space: normal; }
 .dcr-native-hbr .web-form-title h1 {
     color: var(--dcr-ink, #171717);
-    font-size: 24px;
+    font-size: 24px !important;
     font-weight: 500;
-    line-height: 32px;
+    line-height: 32px !important;
     letter-spacing: -.015em;
     white-space: normal;
     margin-bottom: 4px;
