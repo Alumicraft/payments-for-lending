@@ -7,99 +7,43 @@
 {% block footer %}{% endblock %}
 
 {% block head_include %}
-<link rel="stylesheet" href="/assets/dcr/css/dealer_portal.css?v=20261005-4">
+<link rel="stylesheet" href="/assets/dcr/css/dealer_portal.css?v=20261006-1">
 {% endblock %}
 
 {% block page_content %}
 <div id="dcr-dealer-portal" class="dcr-portal-shell" data-csrf-token="{{ csrf_token }}">
-    <header class="dcr-portal-header">
-            <a class="dcr-wordmark" href="/portal" aria-label="Dealer portal home">
-            <span class="dcr-brand-mark dcr-brand-mark-small">DCR</span>
-            <span>Dealer Capital Resources</span>
+    <aside class="dcr-sidebar">
+        <a class="dcr-sidebar-brand" href="#/home" aria-label="Dealer portal home">
+            <span class="dcr-brand-mark">DCR</span>
+            <span class="dcr-clip" data-customer-label>Dealer portal</span>
         </a>
-        <nav class="dcr-portal-nav" aria-label="Dealer portal navigation">
-            <button class="dcr-nav-button is-active" data-view="dashboard">Overview</button>
-            <button class="dcr-nav-button" data-view="documents">Documents</button>
-            <button class="dcr-nav-button" data-view="account">Account</button>
+        <nav class="dcr-sidebar-nav" aria-label="Dealer portal navigation">
+            <a class="dcr-nav-link" href="#/home" data-nav="home"><span data-icon="home"></span>Home</a>
+            <a class="dcr-nav-link" href="#/lending" data-nav="lending"><span data-icon="paper"></span>Lending</a>
+            <a class="dcr-nav-link" href="#/payments" data-nav="payments"><span data-icon="money"></span>Payments</a>
         </nav>
-        <a class="dcr-signout" href="/logout">Sign out</a>
-    </header>
-
-    <div class="dcr-portal-content">
-        <div id="dcr-portal-alert" class="dcr-alert" role="alert" hidden></div>
-        <div id="dcr-portal-loading" class="dcr-loading" aria-live="polite">
-            <span class="dcr-spinner" aria-hidden="true"></span>
-            Loading your dealer workspace…
+        <div class="dcr-sidebar-foot">
+            <a class="dcr-nav-link" href="#/settings" data-nav="settings"><span data-icon="setting"></span>Settings</a>
+            <a class="dcr-nav-link dcr-signout" href="/logout"><span data-icon="logout"></span>Sign out</a>
         </div>
-        <button id="dcr-portal-retry" class="dcr-secondary-button" type="button" data-action="reload-workspace" hidden>Try again</button>
+    </aside>
 
-        <main id="dcr-portal-app" hidden>
-            <section id="dcr-view-dashboard" data-view-panel="dashboard">
-                <div class="dcr-hero-row">
-                    <div>
-                        <p class="dcr-eyebrow">Dealer workspace</p>
-                        <h1>Welcome, <span data-customer-label>there</span>.</h1>
-                        <p class="dcr-muted">Keep each request moving from first documents to delivery.</p>
-                    </div>
-                    <a class="dcr-primary-button" href="/dealer-home-request/new">New Home Build Request</a>
-                </div>
-
-                <div class="dcr-stat-grid" data-stats></div>
-                <div class="dcr-section-heading">
-                    <div>
-                        <p class="dcr-eyebrow">Your pipeline</p>
-                        <h2>Active home requests</h2>
-                    </div>
-                    <span class="dcr-muted dcr-small" data-deal-count></span>
-                </div>
-                <div id="dcr-deal-grid" class="dcr-deal-grid"></div>
-            </section>
-
-            <section id="dcr-view-deal" data-view-panel="deal" hidden>
-                <button class="dcr-back-button" data-action="back-dashboard">← Back to overview</button>
-                <div id="dcr-deal-detail"></div>
-            </section>
-
-            <section id="dcr-view-documents" data-view-panel="documents" hidden>
-                <div class="dcr-section-heading dcr-section-heading-first">
-                    <div>
-                        <p class="dcr-eyebrow">Keep your file current</p>
-                        <h1>Documents</h1>
-                        <p class="dcr-muted">Upload clear PDFs or images. DCR will review them and let you know if anything needs attention.</p>
-                    </div>
-                </div>
-                <div class="dcr-subsection">
-                    <div class="dcr-section-heading"><h2>Dealer onboarding</h2></div>
-                    <div id="dcr-onboarding-documents" class="dcr-document-grid"></div>
-                </div>
-                <div class="dcr-subsection">
-                    <div class="dcr-section-heading"><h2>Deal checklists</h2></div>
-                    <div id="dcr-checklist-documents"></div>
-                </div>
-            </section>
-
-            <section id="dcr-view-account" data-view-panel="account" hidden>
-                <div class="dcr-section-heading dcr-section-heading-first">
-                    <div>
-                        <p class="dcr-eyebrow">Account and actions</p>
-                        <h1>Account</h1>
-                        <p class="dcr-muted">Manage secure payment setup and documents waiting for your signature.</p>
-                    </div>
-                </div>
-                <div class="dcr-account-grid">
-                    <article class="dcr-panel">
-                        <div class="dcr-panel-heading"><div><p class="dcr-eyebrow">Auto-pay</p><h2>Bank connection</h2></div><span class="dcr-icon-badge">$</span></div>
-                        <div id="dcr-ach-status"></div>
-                    </article>
-                    <article class="dcr-panel">
-                        <div class="dcr-panel-heading"><div><p class="dcr-eyebrow">Signatures</p><h2>Documents to sign</h2></div><span class="dcr-icon-badge">✓</span></div>
-                        <div id="dcr-signatures"></div>
-                    </article>
-                </div>
-            </section>
-
-        </main>
+    <div class="dcr-portal-main" id="dcr-portal-main" tabindex="-1">
+        <div id="dcr-portal-view">
+            <div class="dcr-page" role="status" aria-live="polite">
+                <p class="dcr-muted"><span class="dcr-spinner" aria-hidden="true"></span> Loading…</p>
+            </div>
+        </div>
     </div>
+
+    <div class="dcr-mobile-notice">
+        <span class="dcr-brand-mark">DCR</span>
+        <h1>Use a computer</h1>
+        <p>The dealer portal works on a desktop or laptop.</p>
+        <a class="dcr-btn" href="/logout">Sign out</a>
+    </div>
+
+    <div id="dcr-portal-toast" class="dcr-toast" role="status" aria-live="polite" hidden></div>
 </div>
-<script src="/assets/dcr/js/dealer_portal.js?v=20261005-5"></script>
+<script src="/assets/dcr/js/dealer_portal.js?v=20261006-1"></script>
 {% endblock %}

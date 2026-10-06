@@ -20,10 +20,10 @@
  "key_required": 0,
  "hide_navbar": 1,
  "hide_footer": 1,
- "button_label": "Save draft",
- "introduction_text": "<p>Save your home request as a draft. You can then upload its required documents and submit it to DCR for review from your dashboard.</p>",
- "success_title": "Draft saved",
- "success_message": "Return to your dashboard to add documents and submit your request for review.",
+ "button_label": "Save request",
+ "introduction_text": "<p>Save your home request for DCR to review. You can keep editing and adding documents until DCR accepts it.</p>",
+ "success_title": "Request saved",
+ "success_message": "Your request is available to DCR. Open it from Home to see its progress.",
  "web_form_fields": [
   {
    "fieldname": "home_type",

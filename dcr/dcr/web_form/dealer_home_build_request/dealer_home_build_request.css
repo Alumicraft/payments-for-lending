@@ -1,4 +1,10 @@
 .dcr-native-hbr {
+    --dcr-ink: #171717;
+    --dcr-muted: #737373;
+    --dcr-line: #e5e5e5;
+    --dcr-card: #fff;
+    --dcr-green: #171717;
+    --dcr-green-dark: #333;
     margin: 0 auto;
     max-width: 1100px;
     padding: 0 24px 48px;
@@ -17,8 +23,19 @@
     border-color: var(--dcr-green);
 }
 .dcr-native-hbr .btn-primary:hover { background: var(--dcr-green-dark); }
+.dcr-form-documents { padding: 24px; border-top: 1px solid var(--dcr-line); }
+.dcr-form-documents h2 { font-size: 18px; margin-bottom: 8px; }
+.dcr-form-documents p { color: var(--dcr-muted); }
+.dcr-form-documents table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dcr-form-documents th, .dcr-form-documents td { padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--dcr-line); overflow-wrap: anywhere; }
+.dcr-form-documents th { color: var(--dcr-muted); font-weight: 500; }
+.dcr-file-select { position: relative; display: inline-flex; align-items: center; min-height: 36px; padding: 4px 10px; margin: 4px; border: 1px solid var(--dcr-line); border-radius: 6px; cursor: pointer; }
+.dcr-file-select input { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; }
+.dcr-file-select:focus-within { outline: 2px solid #1d4ed8; outline-offset: 2px; }
+.dcr-form-documents a { display: inline-block; padding: 8px; }
 @media (max-width: 600px) {
     .dcr-native-hbr { padding: 0 16px 32px; }
     .dcr-native-hbr .web-form { padding: 16px; }
     .dcr-native-hbr .web-form-title { min-width: 0; }
+    .dcr-form-documents { padding: 16px; }
 }
