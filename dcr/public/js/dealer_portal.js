@@ -677,7 +677,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
     }
 
     function requests_table(list) {
-        var columns = [{ label: "Status", cls: "dcr-nowrap" }, { label: "Home" }, { label: "Request", cls: "dcr-nowrap" }, { label: "Checklist", cls: "dcr-nowrap dcr-muted" }, { label: "Needs from you", cls: "dcr-nowrap" }, { label: "Open", cls: "dcr-c-chev", hidden: true }];
+        var columns = [{ label: "Status", cls: "dcr-nowrap" }, { label: "Home" }, { label: "Request", cls: "dcr-nowrap" }, { label: "Checklist", cls: "dcr-nowrap dcr-muted" }, { label: "Needs from you" }, { label: "Open", cls: "dcr-c-chev", hidden: true }];
         return table("Home build requests", columns, list.map(function (deal) {
             var current = M.lifecycle(deal);
             var need = M.needs(deal, signatures());
