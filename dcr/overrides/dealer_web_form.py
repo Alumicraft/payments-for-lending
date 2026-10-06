@@ -37,6 +37,7 @@ class DealerWebForm(WebForm):
                     )
                     raise frappe.Redirect
         dealer_form.configure_fields(self, customer)
+        context.dealer_label = portal._value(customer, "customer_name") or portal._value(customer, "name")
         return super().get_context(context)
 
     def has_web_form_permission(self, doctype, name, ptype="read"):

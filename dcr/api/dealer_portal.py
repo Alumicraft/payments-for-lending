@@ -265,8 +265,11 @@ def _validate_portal_serial(serial, current_name=None):
 
 
 def _hbr_document_items(hbr):
+    checklist = _value(hbr, "doc_checklist", []) or []
+    metadata = _attached_file_metadata("Home Build Request", _value(hbr, "name"),
+        ["doc_checklist"], [_value(row, "attachment") for row in checklist])
     rows = []
-    for row in _value(hbr, "doc_checklist", []) or []:
+    for row in checklist:
         document_type = _value(row, "document_type")
         if not document_type:
             continue
@@ -277,9 +280,39 @@ def _hbr_document_items(hbr):
                 # A waiver is an internal decision. Expose only whether the
                 # checklist item is complete, not why it is complete.
                 "complete": bool(_value(row, "attachment") or _value(row, "waived")),
+                **metadata.get(("doc_checklist", _value(row, "attachment")), {}),
             }
         )
     return rows
+
+
+def _attached_file_metadata(doctype, name, fieldnames, urls):
+    """Metadata only for private files attached to an already scoped parent.
+
+    Never expose storage URLs or metadata from a foreign/public file merely
+    because an attachment field contains its URL. One query per parent keeps
+    checklist size from multiplying database work.
+    """
+    urls = list({url for url in urls if url})
+    if not name or not urls:
+        return {}
+    files = frappe.get_all("File", filters={
+        "file_url": ["in", urls], "attached_to_doctype": doctype,
+        "attached_to_name": name, "attached_to_field": ["in", fieldnames],
+        "is_private": 1,
+    }, fields=["file_url", "attached_to_field", "file_name", "creation"],
+        ignore_permissions=True, limit_page_length=0)
+    return {(_value(file, "attached_to_field"), _value(file, "file_url")): {
+        "file_name": _safe_file_name(_value(file, "file_name")),
+        "uploaded_on": _json_value(_value(file, "creation")),
+    } for file in files or []}
+
+
+def _support_url():
+    # This is Frappe's native contact page, verified on the hosted site. The
+    # page stores a Communication even when email forwarding is unavailable.
+    # Respect the site's existing disabled setting; never invent a recipient.
+    return "" if frappe.db.get_single_value("Contact Us Settings", "is_disabled") else "/contact"
 
 
 def _latest_related(doctype, filters, fields):
@@ -411,11 +444,14 @@ def _get_onboarding_documents(customer):
         if fields
         else {}
     )
+    metadata = _attached_file_metadata("Customer", _value(customer, "name"),
+        fields, [_value(values, fieldname) for fieldname in fields])
     return [
         {
             "fieldname": fieldname,
             "label": label,
             "uploaded": bool(_value(values, fieldname)),
+            **metadata.get((fieldname, _value(values, fieldname)), {}),
         }
         for fieldname, label in DEALER_DOCUMENT_FIELDS.items()
     ]
@@ -580,6 +616,7 @@ def get_portal_context():
         "deals": deals,
         "onboarding_documents": onboarding,
         "signatures": signatures,
+        "support_url": _support_url(),
         "ach": {
             "accounts": _get_ach_accounts(customer),
             "available": _plaid_is_available(),
