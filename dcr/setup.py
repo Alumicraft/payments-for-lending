@@ -135,6 +135,7 @@ def after_install():
         ensure_purchase_order_email_fields,
         ensure_payment_entry_calculated_fields,
         ensure_loan_application_field_repairs,
+        ensure_inventory_loan_application_fields,
         ensure_lending_calculation_values,
         ensure_hbr_stage_field_options,
         sync_existing_hbr_stage_fields,
@@ -1239,6 +1240,36 @@ def ensure_purchase_order_email_fields():
     elif frappe.db.get_value("Custom Field", existing, "options") != options:
         frappe.db.set_value("Custom Field", existing, "options", options)
         frappe.clear_cache(doctype="Purchase Order")
+
+
+def ensure_inventory_loan_application_fields():
+    """Keep Inventory valid through the native HBR-to-application workflow."""
+    changed = False
+    home_type = frappe.db.exists(
+        "Custom Field", {"dt": "Loan Application", "fieldname": "home_type"}
+    )
+    sources = [("Custom Field", home_type, "options")] if home_type else []
+    override = frappe.db.exists("Property Setter", {
+        "doc_type": "Loan Application", "field_name": "home_type", "property": "options"
+    })
+    if override:
+        sources.append(("Property Setter", override, "value"))
+    for doctype, name, field in sources:
+        options = frappe.db.get_value(doctype, name, field) or ""
+        if "Inventory" not in options.splitlines():
+            options = options + ("\n" if options and not options.endswith("\n") else "") + "Inventory"
+            frappe.db.set_value(doctype, name, field, options)
+            changed = True
+
+    section = frappe.db.exists("Custom Field", {
+        "dt": "Loan Application", "fieldname": "advance_preapproval_section"
+    })
+    dependency = "eval:doc.home_type=='Spec' || doc.home_type=='Inventory'"
+    if section and frappe.db.get_value("Custom Field", section, "depends_on") != dependency:
+        frappe.db.set_value("Custom Field", section, "depends_on", dependency)
+        changed = True
+    if changed:
+        frappe.clear_cache(doctype="Loan Application")
 
 
 def ensure_loan_application_field_repairs():

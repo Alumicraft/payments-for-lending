@@ -451,6 +451,7 @@ def _get_loan_application_hbr_defaults(hbr):
         "home_build_request": hbr.get("name") or getattr(hbr, "name", None),
         "applicant_type": "Customer",
         "applicant": hbr.get("customer"),
+        "home_type": hbr.get("home_type"),
         "loan_amount": hbr.get("home_invoice_plus_freight"),
         "requested_advance_amount": hbr.get("home_invoice_plus_freight"),
         "custom_quote_amount": hbr.get("home_invoice_plus_freight"),
