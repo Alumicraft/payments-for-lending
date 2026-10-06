@@ -20,7 +20,7 @@ class Element {
 }
 const footer = new Element('footer');
 const saveButton = new Element('button');
-const form = {doc:{}, is_new:true, in_edit_mode:true, validate:()=>true,
+const form = {doc:{home_type:'Spec'}, is_new:true, in_edit_mode:true, validate:()=>true,
     get_value:()=> 'Spec', on:()=>{}, make_form_dirty:()=>{}};
 let refreshCount = 0;
 let chosenUrl, savedUrl;
@@ -35,9 +35,12 @@ const context = {document, FormData, URLSearchParams,
     window:{history:{replaceState:(_s,_t,url)=>{savedUrl=url;}},location:{assign:url=>{chosenUrl=url;}}},
     frappe:{web_form:form, csrf_token:'TEST-CSRF', ready:fn=>fn(), throw:message=>{throw Error(message);},
         call:async ({method})=>{
-            if (method.endsWith('get_required_docs')) return {message:['Factory Quote','Plot Plan']};
+            if (method.endsWith('get_required_docs')) {
+                if (refreshCount === 1) throw Error('offline checklist');
+                return {message:['Factory Quote','Plot Plan']};
+            }
             if (refreshCount++ === 0) throw Error('readback temporarily unavailable');
-            return {message:{modified:'LATEST-MODIFIED',documents:{items:[{document_type:'Factory Quote',uploaded:true}]}}};
+            return {message:{modified:'LATEST-MODIFIED',editable:{home_type:process.argv.includes('--concurrent-edit')?'Inventory':'Spec'},documents:{items:[{document_type:'Factory Quote',uploaded:true}]}}};
         }},
     fetch:async (_url,{body})=>{
         sentTypes.push(body.values.document_type);
@@ -65,9 +68,17 @@ const settle = async()=>{await new Promise(resolve=>setImmediate(resolve));};
     assert.equal(form.is_new,false);
     assert.equal(savedUrl,'/dealer-home-request/HBR-SAVED/edit','reload retains saved identity');
     assert.equal(chosenUrl,undefined,'partial failure does not silently navigate away');
+    assert(footer.beforeNode.children.some(n=>n.role==='status' && /Refresh the saved request/.test(n.textContent)),'offline checklist retains the recovery message');
     assert.equal(saveButton.disabled,true,'stale save uses an explicit refresh action');
     assert.throws(()=>form.validate(),/latest version needs to refresh/,'stale save stays blocked with a truthful message');
     await settle();
+    if (process.argv.includes('--concurrent-edit')) {
+        assert.equal(form.doc.modified,undefined,'concurrent field edit cannot silently advance modification stamp');
+        assert.equal(saveButton.disabled,true);
+        assert(footer.beforeNode.children.some(n=>n.role==='status' && /changed or is now locked/.test(n.textContent)));
+        console.log('Concurrent saved-field change stays blocked without overwriting (mocked client)');
+        return;
+    }
     assert.equal(form.doc.modified,'LATEST-MODIFIED');
     assert.equal(form.validate(),true);
     await form.handle_success({name:'HBR-SAVED'});

@@ -4,6 +4,7 @@ frappe.ready(function () {
     const existing = new Map();
     let uploading = false;
     let needsRefresh = false;
+    let savedValues = null;
     let generation = 0;
     const section = document.createElement("section");
     section.className = "dcr-form-documents";
@@ -25,8 +26,8 @@ frappe.ready(function () {
             await renderDocuments();
             document.querySelectorAll(".web-form-footer button").forEach(button => { button.disabled = false; });
             message.textContent = "Saved request refreshed. Save again to retry selected files.";
-        } catch (_) {
-            message.textContent = "The saved request could not refresh. Try Refresh saved request again, or open the saved request below.";
+        } catch (error) {
+            message.textContent = error.requestChanged ? error.message : "The saved request could not refresh. Try Refresh saved request again, or open the saved request below.";
         } finally { uploading = false; }
     }
     form.validate = function () {
@@ -111,6 +112,19 @@ frappe.ready(function () {
     }
     async function refreshSaved(name) {
         const result = await frappe.call({method:"dcr.api.dealer_portal.get_deal", args:{name}});
+        if (savedValues) {
+            const record = result.message;
+            const comparable = (key, value) => {
+                const type = form.fields_dict?.[key]?.df?.fieldtype;
+                if (["Currency", "Float", "Int", "Percent", "Check"].includes(type) || typeof value === "number" || typeof savedValues[key] === "number") return Number(value || 0);
+                return String(value || "");
+            };
+            if (!record.editable || Object.keys(record.editable).some(key => key in savedValues && comparable(key, record.editable[key]) !== comparable(key, savedValues[key]))) {
+                const error = new Error("The saved request changed or is now locked. Open the saved request again before saving more changes.");
+                error.requestChanged = true;
+                throw error;
+            }
+        }
         form.doc.modified = result.message.modified;
         existing.clear();
         for (const item of result.message.documents.items) existing.set(item.document_type, item);
@@ -119,6 +133,7 @@ frappe.ready(function () {
         form.doc.name = saved.name;
         form.is_new = false;
         form.in_edit_mode = true;
+        savedValues = Object.assign({}, form.doc);
         // Reloads after partial upload failure must reopen this saved record,
         // rather than showing a blank /new form that creates a duplicate.
         window.history.replaceState(null, "", "/dealer-home-request/" + encodeURIComponent(saved.name) + "/edit");
