@@ -22,7 +22,9 @@
 .dcr-native-request-id { color: var(--dcr-muted, #6f6f6f); font-size: 12px; overflow-wrap: anywhere; margin: 0; }
 .dcr-native-hbr .web-form-introduction { color: var(--dcr-muted, #6f6f6f); font-size: 13px; line-height: 20px; }
 .dcr-native-hbr .web-form { border: 1px solid var(--dcr-line, #ededed); border-radius: 12px; background: var(--dcr-ground, #fff); }
-.dcr-native-hbr .form-section .section-head { font-size: 14px; font-weight: 500; line-height: 20px; }
+/* Native Web Form rules have a long doctype/container selector. Override only
+   this scoped typography rather than depending on that framework hierarchy. */
+.dcr-native-hbr .form-section .section-head { font-size: 14px !important; font-weight: 500 !important; line-height: 20px; }
 .dcr-native-hbr .control-label { font-size: 12px; font-weight: 400; color: var(--dcr-muted, #6f6f6f); }
 .dcr-native-hbr .form-control { font-size: 13px; color: var(--dcr-ink, #171717); background: var(--dcr-fill, #f3f3f3); }
 .dcr-native-hbr .btn-primary { background: var(--dcr-ink, #171717); border-color: var(--dcr-ink, #171717); }
@@ -50,6 +52,7 @@
     .dcr-native-hbr .web-form-footer button,
     .dcr-file-select,
     .dcr-form-documents a,
+    .dcr-portal-header .dcr-wordmark,
     .dcr-portal-header .dcr-back-button { min-height: 40px; }
     .dcr-portal-header { padding: 8px 16px; gap: 12px; }
     .dcr-form-documents { padding: 16px; }
