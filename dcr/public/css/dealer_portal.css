@@ -91,6 +91,7 @@
     justify-content: center;
     width: 26px;
 }
+.dcr-site-logo { display: block; flex-shrink: 0; height: 26px; object-fit: contain; width: 40px; }
 .dcr-sidebar-nav { display: flex; flex: 1 1 auto; flex-direction: column; gap: 2px; padding: 12px 8px; }
 .dcr-sidebar-foot { border-top: 1px solid var(--dcr-line); display: flex; flex-direction: column; gap: 2px; padding: 8px; }
 .dcr-nav-link {
