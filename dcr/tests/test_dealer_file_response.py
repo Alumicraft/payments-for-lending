@@ -61,3 +61,16 @@ def test_mismatched_or_public_file_refused_before_read(field, value):
         with pytest.raises(ValueError):
             download_document("hbr", "DEMO-HBR", "Spec Info Sheet")
         file_doc.get_content.assert_not_called()
+
+
+def test_recorded_attachment_without_scoped_file_has_safe_unavailable_message():
+    from dcr.api.dealer_portal import download_document
+    with patch("dcr.api.dealer_portal.frappe") as frappe, \
+         patch("dcr.api.dealer_portal.get_current_dealer_customer", return_value={"name": "DEMO"}), \
+         patch("dcr.api.dealer_portal._document_url", return_value=("Customer", "DEMO", "w9_copy", "/private/files/recorded.pdf")):
+        frappe.DoesNotExistError = LookupError
+        frappe.get_doc.side_effect = LookupError
+        frappe.throw.side_effect = ValueError
+        with pytest.raises(ValueError):
+            download_document("customer", "DEMO", "w9_copy")
+        assert frappe.throw.call_args.args[0] == "That document's file is unavailable. Contact DCR for help."

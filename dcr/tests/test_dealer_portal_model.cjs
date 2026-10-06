@@ -100,3 +100,7 @@ assert.equal(M.isNumber("100.25"), true);
 const unusual = M.paymentGroups([deal({name:"__proto__", ...accepted, loan:loan({payments_summary:{upcoming:[{date:"2026-10-01",total:20,due_status:"Past due"}]}})})]);
 assert.equal(unusual.pastDueByDeal[0].deal, "__proto__");
 assert.equal(unusual.pastDueByDeal[0].amount,20);
+assert.equal(M.canDownload({uploaded:true,can_download:false}),false,'a recorded URL without an owned private File must not produce a view link');
+assert.equal(M.canDownload({uploaded:true,can_download:true}),true);
+assert.equal(M.canDownload({uploaded:false,can_download:true}),false);
+assert.equal(M.canDownload({uploaded:true}),true,'older API responses remain compatible during rollout');

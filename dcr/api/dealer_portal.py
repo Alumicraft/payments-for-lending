@@ -280,6 +280,8 @@ def _hbr_document_items(hbr):
                 # A waiver is an internal decision. Expose only whether the
                 # checklist item is complete, not why it is complete.
                 "complete": bool(_value(row, "attachment") or _value(row, "waived")),
+                **({"can_download": ("doc_checklist", _value(row, "attachment")) in metadata}
+                   if _value(row, "attachment") else {}),
                 **metadata.get(("doc_checklist", _value(row, "attachment")), {}),
             }
         )
@@ -312,7 +314,7 @@ def _attached_file_metadata(doctype, name, fieldnames, urls):
             "uploaded_on": _json_value(_value(file, "creation")),
         }
     # Deduplicated storage URLs do not identify a particular upload row.
-    return {key: value for key, value in metadata.items() if key not in ambiguous}
+    return {key: {} if key in ambiguous else value for key, value in metadata.items()}
 
 
 def _support_url():
@@ -461,6 +463,7 @@ def _get_onboarding_documents(customer):
             "fieldname": fieldname,
             "label": label,
             "uploaded": bool(_value(values, fieldname)),
+            "can_download": (fieldname, _value(values, fieldname)) in metadata,
             **metadata.get((fieldname, _value(values, fieldname)), {}),
         }
         for fieldname, label in DEALER_DOCUMENT_FIELDS.items()
@@ -907,10 +910,13 @@ def download_document(target_type, target_name=None, document_type=None):
     )
     if not file_url:
         _deny("That document has not been uploaded yet.")
-    file_doc = frappe.get_doc("File", {
-        "file_url": file_url, "attached_to_doctype": doctype,
-        "attached_to_name": name, "attached_to_field": fieldname, "is_private": 1,
-    }, check_permission=False)
+    try:
+        file_doc = frappe.get_doc("File", {
+            "file_url": file_url, "attached_to_doctype": doctype,
+            "attached_to_name": name, "attached_to_field": fieldname, "is_private": 1,
+        }, check_permission=False)
+    except frappe.DoesNotExistError:
+        _deny("That document's file is unavailable. Contact DCR for help.")
     if (
         _value(file_doc, "attached_to_doctype") != doctype
         or _value(file_doc, "attached_to_name") != name

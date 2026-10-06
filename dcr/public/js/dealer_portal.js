@@ -266,6 +266,7 @@ var dcrPortalModel = (function () {
     }
 
     return {
+        canDownload: function (item) { return !!item.uploaded && item.can_download !== false; },
         isNumber: isNumber, isCancelled: isCancelled, isAccepted: isAccepted, isOpen: isOpen, canEdit: canEdit,
         hasLoan: hasLoan, summary: summary, documents: documents, missingDocuments: missingDocuments, checklist: checklist,
         lifecycle: lifecycle, lifecycleGroups: lifecycleGroups, loanStage: loanStage, homeStatus: homeStatus, identity: identity,
@@ -427,9 +428,9 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
     // no-access and load-error states can still offer a way to reach DCR.
     function support_url() { return safe_url(state.data && state.data.support_url) || safe_url(root.getAttribute("data-support-url")); }
 
-    function support_link(label, cls) {
+    function support_link(label, cls, accessible_label) {
         var url = support_url();
-        return url ? '<a class="' + (cls || "dcr-link") + '" href="' + esc(url) + '">' + esc(label || "Contact DCR") + "</a>" : "";
+        return url ? '<a class="' + (cls || "dcr-link") + '" href="' + esc(url) + '"' + (accessible_label ? ' aria-label="' + esc(accessible_label) + '"' : '') + '>' + esc(label || "Contact DCR") + "</a>" : "";
     }
 
     function toast(message, is_error) {
@@ -539,9 +540,12 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
         var rows = items.map(function (item) {
             var type = item.fieldname || item.document_type;
             var title = item.label || item.document_type;
-            var file = item.uploaded ? '<span class="dcr-muted">' + esc(item.file_name || "Uploaded") + "</span>"
+            var unavailable = item.uploaded && !M.canDownload(item);
+            var file = item.uploaded ? '<span class="dcr-muted">' + esc(unavailable ? "File unavailable" : item.file_name || "Uploaded") + "</span>"
                 : (item.complete ? '<span class="dcr-muted">Not required</span>' : (can_upload ? '<span class="dcr-needed">Needed</span>' : '<span class="dcr-muted">Not provided</span>'));
-            var actions = (item.uploaded ? document_links(target, name, type, title) : "") + (!item.uploaded && !item.complete && can_upload ? upload_control("dcr-btn-row", target, name, type, "Upload", title) : "");
+            var actions = (M.canDownload(item) ? document_links(target, name, type, title) : "") +
+                (unavailable ? support_link("Contact DCR", "dcr-btn-text", "Contact DCR about " + title) : "") +
+                (can_upload && (unavailable || (!item.uploaded && !item.complete)) ? upload_control("dcr-btn-row", target, name, type, unavailable ? "Replace file" : "Upload", title) : "");
             var row = [file_icon(item), '<span class="dcr-strong">' + esc(title) + "</span>", file];
             if (dated) row.push(esc(fmt_date(item.uploaded_on)));
             row.push('<span class="dcr-actions">' + actions + "</span>");
