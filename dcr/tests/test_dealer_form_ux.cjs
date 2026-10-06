@@ -30,7 +30,7 @@ function harness() {
         querySelector:s=>s==='.web-form-footer'?footer:s==='.web-form-title h1'?heading:s==='.web-form'?native:null,
         querySelectorAll:s=>s.includes('footer')?[save]:s.includes('frappe-control')?[wrapper]:s.includes('data-fieldname')?[field]:[field,...nodes.filter(n=>n.tag==='input'&&n.type==='file')]
     };
-    const frappe={web_form:form,ready:fn=>fn(),warn:(title,message,fn)=>{warnings.push({title,message,confirm:fn});frappe.cur_dialog={};},
+    const frappe={web_form:form,ready:fn=>fn(),warn:(title,message,fn)=>{const dialog={};warnings.push({title,message,confirm:fn,dialog});return dialog;},
         msgprint:text=>notices.push(text),throw:text=>{throw Error(text);},form_dirty:false,csrf_token:'TEST',
         call:async({method})=>method.endsWith('get_required_docs')?{message:['Factory Quote']}:{message:{modified:'NEW',editable:{home_type:'Spec'},documents:{items:[]}}}};
     const window={addEventListener:(name,fn)=>windowEvents[name]=fn,location:{assign:url=>navigations.push(url)},history:{replaceState:()=>{}},saving:false};
@@ -51,7 +51,7 @@ function harness() {
     h=harness();await settle();h.field.value='Inventory';
     assert.equal(h.unload().prevented,true,'changed native field protects reload/back');
     h.clickHeader();assert.equal(h.warnings.length,1);assert.equal(h.navigations.length,0);
-    h.frappe.cur_dialog.onhide();assert.equal(h.field.value,'Inventory','cancel retains unsaved input');
+    h.warnings[0].dialog.onhide();assert.equal(h.field.value,'Inventory','cancel retains unsaved input');
     h.clickHeader();assert.equal(h.warnings.length,2);h.warnings[1].confirm();
     assert.deepEqual(h.navigations,['/portal']);assert.equal(h.unload().prevented,false,'confirmed discard avoids a second browser warning');
 

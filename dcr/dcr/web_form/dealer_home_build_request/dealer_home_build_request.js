@@ -34,10 +34,9 @@ frappe.ready(function () {
         leaveDialogOpen = true;
         // Use Frappe's own warning dialog for both header links and Discard.
         // The confirmed navigation bypasses beforeunload, avoiding two prompts.
-        frappe.warn("Discard changes?", "Your unsaved changes and selected files will be lost.",
+        const dialog = frappe.warn("Discard changes?", "Your unsaved changes and selected files will be lost.",
             () => { leaveDialogOpen = false; leave(url); }, "Discard");
         // Closing/cancelling the native dialog must permit the next attempt.
-        const dialog = frappe.cur_dialog;
         if (dialog) {
             const onHide = dialog.onhide;
             dialog.onhide = function () { leaveDialogOpen = false; if (onHide) onHide.call(this); };
