@@ -491,12 +491,29 @@ class TestSetupCustomFields(unittest.TestCase):
             loan_product_updates["interest_receivable_account"],
             "10202 - Loans Receivable - DCR",
         )
-        self.assertEqual(
-            loan_product_updates["interest_accrued_account"],
-            "40110 - Service/Fee Income - DCR",
-        )
+        self.assertNotIn("interest_accrued_account", loan_product_updates)
+        self.assertNotIn("penalty_accrued_account", loan_product_updates)
         self.assertEqual(loan_product_updates["write_off_account"], "50282 - Bad Debt - DCR")
         mock_frappe.clear_cache.assert_any_call(doctype="Loan Product")
+
+    @patch("dcr.setup.frappe")
+    def test_accounting_defaults_do_not_choose_or_replace_accrual_accounts(self, mock_frappe):
+        from dcr.setup import ensure_lending_accounting_defaults
+
+        mock_frappe.db.exists.return_value = True
+        mock_frappe.db.has_column.side_effect = lambda doctype, field: field in {
+            "interest_accrued_account", "penalty_accrued_account"
+        }
+        mock_frappe.get_all.return_value = [{"name": "Standard"}]
+        for mapping in (None, "Owner Accrued Interest Asset", "10202 - Loans Receivable - DCR",
+                        "40110 - Service/Fee Income - DCR"):
+            with self.subTest(mapping=mapping):
+                mock_frappe.db.set_value.reset_mock()
+                mock_frappe.db.get_value.side_effect = lambda doctype, name, field: (
+                    "Receivable" if doctype == "Account" else mapping
+                )
+                ensure_lending_accounting_defaults()
+                mock_frappe.db.set_value.assert_not_called()
 
     def test_lending_accounting_repair_runs_as_patch(self):
         patches = (ROOT / "dcr/patches.txt").read_text()
