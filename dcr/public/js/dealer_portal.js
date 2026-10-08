@@ -57,7 +57,7 @@ var dcrPortalModel = (function () {
     //   Active               loan stage Active (repaying)
     //   Delivered / Ordered  home stage
     //   Funded / Approved / Loan applied   loan stage
-    //   Accepted             accepted, nothing further recorded
+    //   Submitted            staff reviewed the request; no loan approval implied
     // Groups for the Home chart: In review, In progress, Active, Closed.
     // Who must act next is separate: see needs().
     function lifecycle(deal) {
@@ -68,9 +68,9 @@ var dcrPortalModel = (function () {
         if (deal.order_stage === "Delivered") return { label: "Delivered", kind: "done", group: "In progress" };
         if (deal.order_stage === "Ordered") return { label: "Ordered", kind: "progress", group: "In progress" };
         if (deal.loan_stage === "Funded") return { label: "Funded", kind: "progress", group: "In progress" };
-        if (deal.loan_stage === "Approved") return { label: "Approved", kind: "progress", group: "In progress" };
+        if (deal.loan_stage === "Approved") return { label: "Loan approved", kind: "progress", group: "In progress" };
         if (deal.loan_stage === "Applied") return { label: "Loan applied", kind: "progress", group: "In progress" };
-        return { label: "Accepted", kind: "done", group: "In progress" };
+        return { label: "Submitted", kind: "done", group: "In progress" };
     }
 
     function lifecycleGroups(deals) {
@@ -94,11 +94,28 @@ var dcrPortalModel = (function () {
         return deal.order_stage || "Pending";
     }
 
-    // What a dealer calls the home: floorplan first, then serial. No buyer name.
+    function serialNumber(deal) {
+        var serial = String(deal.home_serial_no || "").trim();
+        return serial.replace(/\./g, "").toUpperCase() === "TBD" ? "" : serial;
+    }
+
+    function paymentDisplay(deal) {
+        var data = summary(deal);
+        if (data && data.funded !== false) {
+            var upcoming = (data.upcoming || []).filter(function (row) { return row.due_status !== "Past due"; });
+            upcoming.sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); });
+            return { label: "Next payment", amount: upcoming.length && isNumber(upcoming[0].total) ? upcoming[0].total : null };
+        }
+        if (deal.loan && deal.loan.payments_unavailable) return { label: "Next payment", amount: null };
+        return { label: "Monthly payment", amount: deal.loan && deal.loan.monthly_payment };
+    }
+
+    // What a dealer calls the home: floorplan first, then assigned serial.
     function identity(deal) {
-        var primary = deal.floor_plan || deal.home_serial_no || deal.name;
+        var serial = serialNumber(deal);
+        var primary = deal.floor_plan || serial || deal.name;
         var parts = [];
-        if (deal.floor_plan && deal.home_serial_no) parts.push(deal.home_serial_no);
+        if (deal.floor_plan && serial) parts.push(serial);
         if (deal.home_type) parts.push(deal.home_type);
         if (deal.financing_type === "Cash") parts.push("Cash");
         return { primary: String(primary), secondary: parts.join(" · ") };
@@ -239,7 +256,7 @@ var dcrPortalModel = (function () {
             return steps;
         }
         steps.push(open ? { label: "Review", kind: "current", note: "With DCR" } : { label: "Reviewed", kind: "done" });
-        steps.push(open ? { label: "Acceptance", kind: "upcoming" } : { label: "Accepted", kind: "done" });
+        steps.push(open ? { label: "DCR submission", kind: "upcoming" } : { label: "Submitted", kind: "done" });
         if (open) return steps;
 
         var chain = [];
@@ -273,7 +290,7 @@ var dcrPortalModel = (function () {
         canDownload: function (item) { return !!item.uploaded && item.can_download !== false; },
         isNumber: isNumber, isCancelled: isCancelled, isAccepted: isAccepted, isOpen: isOpen, canEdit: canEdit,
         hasLoan: hasLoan, summary: summary, documents: documents, missingDocuments: missingDocuments, checklist: checklist,
-        lifecycle: lifecycle, lifecycleGroups: lifecycleGroups, loanStage: loanStage, homeStatus: homeStatus, identity: identity,
+        lifecycle: lifecycle, lifecycleGroups: lifecycleGroups, loanStage: loanStage, homeStatus: homeStatus, identity: identity, serialNumber: serialNumber, paymentDisplay: paymentDisplay,
         signatureDeal: signatureDeal, dealSignatures: dealSignatures, isDealerAgreement: isDealerAgreement, partitionSignatures: partitionSignatures,
         needs: needs, sumAmounts: sumAmounts, paymentGroups: paymentGroups, principalOutlook: principalOutlook, progressSteps: progressSteps
     };
@@ -294,6 +311,10 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
     var toastBox = document.getElementById("dcr-portal-toast");
     var toastTimer = null;
     var state = { data: null, error: null, loading: true, lastRoute: "", filter: "all", expanded: {}, focusKey: "", signFailed: {} };
+    var refreshTimer = null;
+    var loadGeneration = 0;
+    var pendingLoads = 0;
+    var pendingActions = 0;
 
     var WEB_FORM = "/dealer-home-request";
     var MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
@@ -466,32 +487,45 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
     }
 
     async function api(method, payload) {
-        var response = await fetch("/api/method/dcr.api.dealer_portal." + method, {
-            method: "POST",
-            headers: Object.assign({ "Content-Type": "application/json" }, csrf_headers()),
-            credentials: "same-origin",
-            body: JSON.stringify(payload || {}),
-        });
-        var data = await response.json().catch(function () { return {}; });
-        if (!response.ok || data.exc) throw new Error(error_message(data));
-        return data.message;
+        var action = method !== "get_portal_context";
+        if (action) pendingActions += 1;
+        try {
+            var response = await fetch("/api/method/dcr.api.dealer_portal." + method, {
+                method: "POST",
+                headers: Object.assign({ "Content-Type": "application/json" }, csrf_headers()),
+                credentials: "same-origin",
+                body: JSON.stringify(payload || {}),
+            });
+            var data = await response.json().catch(function () { return {}; });
+            if (!response.ok || data.exc) {
+                var error = new Error(error_message(data));
+                error.status = response.status;
+                if (data.exc_type === "AuthenticationError") error.status = 401;
+                if (data.exc_type === "PermissionError") error.status = 403;
+                throw error;
+            }
+            return data.message;
+        } finally { if (action) pendingActions -= 1; }
     }
 
     async function upload_file(input) {
-        var form = new FormData();
-        form.append("file", input.files[0]);
-        form.append("target_type", input.getAttribute("data-upload-target"));
-        form.append("target_name", input.getAttribute("data-target-name") || "");
-        form.append("document_type", input.getAttribute("data-document-type"));
-        var response = await fetch("/api/method/dcr.api.dealer_portal.upload_document", {
-            method: "POST",
-            headers: csrf_headers(),
-            credentials: "same-origin",
-            body: form,
-        });
-        var data = await response.json().catch(function () { return {}; });
-        if (!response.ok || data.exc) throw new Error(error_message(data));
-        return data.message;
+        pendingActions += 1;
+        try {
+            var form = new FormData();
+            form.append("file", input.files[0]);
+            form.append("target_type", input.getAttribute("data-upload-target"));
+            form.append("target_name", input.getAttribute("data-target-name") || "");
+            form.append("document_type", input.getAttribute("data-document-type"));
+            var response = await fetch("/api/method/dcr.api.dealer_portal.upload_document", {
+                method: "POST",
+                headers: csrf_headers(),
+                credentials: "same-origin",
+                body: form,
+            });
+            var data = await response.json().catch(function () { return {}; });
+            if (!response.ok || data.exc) throw new Error(error_message(data));
+            return data.message;
+        } finally { pendingActions -= 1; }
     }
 
     // ------------------------------------------------------------ shared pieces
@@ -665,7 +699,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
     function requests_card() {
         var list = deals();
         var colors = { "In review": "#0070cc", "In progress": "#8fc0e8", "Active": "#30a66d", "Closed": "#c7c7c7" };
-        var meaning = { "In review": "Saved and with DCR for review", "In progress": "Accepted: approved, funded, ordered or delivered", "Active": "Delivered and repaying the loan", "Closed": "Closed or cancelled" };
+        var meaning = { "In review": "Saved and with DCR for review", "In progress": "Submitted: loan approved, funded, ordered or delivered", "Active": "Delivered and repaying the loan", "Closed": "Closed or cancelled" };
         var groups = M.lifecycleGroups(list);
         var need = list.filter(function (deal) { return M.needs(deal, signatures()); }).length;
         return '<div class="dcr-card"><span class="dcr-small">Home build requests</span><span class="dcr-metric">' + list.length + '</span><span class="dcr-small">' + (need ? esc(need + (need === 1 ? " needs" : " need") + " something from you") : "Nothing needed from you") + "</span>" +
@@ -795,8 +829,9 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
         if (loan.payoff && loan.payoff.can_request) actions += '<button type="button" class="dcr-btn" data-action="payoff" data-hbr="' + esc(deal.name) + '">' + small_icon(ICONS.send, 14) + "Request payoff letter</button>";
 
         var address = [field(deal, "delivery_address"), field(deal, "address_line_2"), field(deal, "city"), [field(deal, "state"), field(deal, "zip")].filter(Boolean).join(" ")].filter(Boolean).join(", ");
-        var details = [["Factory", deal.factory && deal.factory.label || ""], ["Floorplan", deal.floor_plan || ""], ["Serial number", deal.home_serial_no || ""], ["Factory quote", deal.quote_no || ""], ["Quoted amount", money(deal.quoted_amount)]];
+        var details = [["Factory", deal.factory && deal.factory.label || ""], ["Floorplan", deal.floor_plan || ""], ["Serial number", M.serialNumber(deal) || "TBD"], ["Factory quote", deal.quote_no || ""], ["Quoted amount", money(deal.quoted_amount)]];
         if (address) details.push(["Delivery address", address]);
+        if (deal.offline_date) details.push(["Offline date", fmt_date(deal.offline_date)]);
         if (deal.property_type === "Park") {
             var community = [field(deal, "community_name"), field(deal, "space_number") ? "Space " + field(deal, "space_number") : ""].filter(Boolean).join(" · ");
             if (community) details.push(["Community", community]);
@@ -811,8 +846,9 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
         if (accepted && M.hasLoan(deal)) {
             var known = data && M.isNumber(data.outstanding_principal);
             var stage = M.loanStage(deal);
-            body += section("Loan details", cells(4, [[known ? "Outstanding principal" : "Principal", money(known ? data.outstanding_principal : loan.principal)],
-                ["Interest rate", M.isNumber(loan.interest_rate) ? Number(loan.interest_rate) + "%" : "—"], ["Total interest", money(loan.total_interest)], ["Total payable", money(loan.total_payable)]]), status(stage.kind, stage.label));
+            var payment = M.paymentDisplay(deal);
+            body += section("Loan details", cells(3, [[known ? "Outstanding principal" : "Principal", money(known ? data.outstanding_principal : loan.principal)],
+                ["Interest rate", M.isNumber(loan.interest_rate) ? Number(loan.interest_rate) + "%" : "—"], [payment.label, money(payment.amount)]]), status(stage.kind, stage.label));
         }
         if (accepted) body += section("Home status", tracker(deal), esc(M.homeStatus(deal)));
         var items = M.documents(deal);
@@ -1009,6 +1045,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
     // reason "route": the dealer navigated, so focus moves to the new page heading.
     // reason "refresh": data or a control changed; focus returns to where it was.
     function render(reason) {
+        var scrollTop = main.scrollTop;
         var route = current_route();
         var active = route.name === "request" ? "home" : route.name;
         var keep = reason === "refresh" ? (state.focusKey || (document.activeElement && view.contains(document.activeElement) && document.activeElement.getAttribute("data-focus-key")) || "") : "";
@@ -1035,6 +1072,8 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
         if (key !== state.lastRoute) {
             state.lastRoute = key;
             main.scrollTop = 0;
+        } else if (reason === "refresh") {
+            main.scrollTop = scrollTop;
         }
         var deal = route.name === "request" ? deal_by_name(route.arg) : null;
         document.title = (deal ? M.identity(deal).primary : (route.name === "request" && route.arg ? route.arg : active.charAt(0).toUpperCase() + active.slice(1))) + " · Dealer Portal";
@@ -1050,21 +1089,46 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
         } else if (keep) {
             var target = Array.prototype.filter.call(view.querySelectorAll("[data-focus-key]"), function (node) { return node.getAttribute("data-focus-key") === keep; })[0];
             if (target) target.focus({ preventScroll: true });
+            else {
+                var refreshedHeading = view.querySelector("h1");
+                if (refreshedHeading) refreshedHeading.focus({ preventScroll: true });
+            }
         }
     }
 
-    async function reload() {
+    function choosing_file() {
+        var active = document.activeElement;
+        return active && active.closest && !!active.closest(".dcr-upload");
+    }
+
+    async function reload(background) {
+        if (background && (!state.data || document.hidden || pendingLoads || pendingActions || choosing_file())) return;
+        var generation = ++loadGeneration;
+        pendingLoads += 1;
+        var changed = false;
         state.loading = true;
         state.error = null;
         if (!state.data) render();
         try {
-            state.data = await api("get_portal_context");
+            var data = await api("get_portal_context");
+            if (generation !== loadGeneration || (background && (pendingActions || choosing_file()))) return;
+            if (!data || !data.customer || !Array.isArray(data.deals)) throw new Error("Your dashboard could not refresh. Please try again.");
+            changed = JSON.stringify(state.data) !== JSON.stringify(data);
+            state.data = data;
         } catch (error) {
+            if (generation !== loadGeneration) return;
             state.error = error.message;
-            if (state.data) toast(error.message, true);
+            if (error.status === 401 || error.status === 403) { state.data = null; changed = true; }
+            else if (state.data && !background) toast(error.message, true);
+        } finally {
+            pendingLoads -= 1;
+            state.loading = pendingLoads > 0;
         }
-        state.loading = false;
-        render("refresh");
+        if (generation === loadGeneration && (!background || changed)) render("refresh");
+    }
+
+    function start_refresh() {
+        if (refreshTimer === null) refreshTimer = setInterval(function () { reload(true); }, 10000);
     }
 
     // ------------------------------------------------------------ events
@@ -1158,6 +1222,9 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
     });
 
     window.addEventListener("hashchange", function () { render("route"); });
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) reload(true); });
+    window.addEventListener("pagehide", function () { clearInterval(refreshTimer); refreshTimer = null; });
+    window.addEventListener("pageshow", function () { start_refresh(); reload(true); });
 
     async function start() {
         var query = new URLSearchParams(window.location.search);
@@ -1169,6 +1236,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
             window.history.replaceState(null, "", window.location.pathname + window.location.hash);
         }
         await reload();
+        start_refresh();
         if (signed && state.data) toast("Signature received. Thank you.");
         if (pendingSignature && state.data) toast("Your signature is not complete yet. Your request is unchanged.");
     }

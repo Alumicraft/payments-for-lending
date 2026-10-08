@@ -11,7 +11,7 @@ boot_session = "dcr.api.boot.boot_session"
 # Frappe Cloud serves /assets files with a long immutable browser cache.
 # Keep these explicit URLs versioned so deployed client fixes are fetched
 # without requiring users to hard-refresh stale browser caches.
-DCR_ASSET_VERSION = "20261005-2"
+DCR_ASSET_VERSION = "20261008-2"
 
 
 def versioned_asset(path):
@@ -28,6 +28,8 @@ app_include_js = [
     versioned_asset("/assets/dcr/js/signature_preview.js"),
     versioned_asset("/assets/dcr/js/home_build_request.js"),
     versioned_asset("/assets/dcr/js/loan_application.js"),
+    versioned_asset("/assets/dcr/js/factory_assignment.js"),
+    versioned_asset("/assets/dcr/js/purchase_order_ux.js"),
     versioned_asset("/assets/dcr/js/hbr_dashboard_plus_patch_20260525_10.js"),
     versioned_asset("/assets/dcr/js/loan_list_context_patch_20260525_14.js"),
     versioned_asset("/assets/dcr/js/email_preview.js"),
@@ -68,6 +70,10 @@ fixtures = [
             ["name", "in", [
                 "Customer-first_name-hidden",
                 "Customer-last_name-hidden",
+                "Purchase Order-address_and_contact_tab-label",
+                "Purchase Order-terms_tab-label",
+                "Purchase Order-more_info_tab-label",
+                "Purchase Order-connections_tab-label",
                 "Loan Application-applicant_type-hidden",
                 "Loan Application-applicant_type-default",
                 "Loan Application-is_term_loan-hidden",
@@ -121,7 +127,6 @@ doctype_js = {
     "Loan": "public/js/loan.js",
     "Customer": "public/js/customer.js",
     "MIFA": "public/js/mifa.js",
-    "Factory Assignment": "public/js/factory_assignment.js",
     "Loan Disbursement": "public/js/loan_disbursement.js",
     "Purchase Order": "public/js/hbr_connection_defaults.js",
     "Purchase Invoice": "public/js/hbr_connection_defaults.js",
@@ -160,6 +165,7 @@ doc_events = {
         "before_submit": "dcr.api.lending.populate_loan_demand_from_loan",
     },
     "Purchase Order": {
+        "before_validate": "dcr.api.pilot_fields.populate_purchase_order_dealer",
         "on_submit": "dcr.api.hbr_stage.sync_from_doc",
         "on_cancel": "dcr.api.hbr_stage.sync_from_doc",
     },
