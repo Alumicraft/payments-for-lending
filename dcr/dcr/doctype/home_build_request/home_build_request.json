@@ -271,7 +271,7 @@
   {
    "fieldname": "offline_date",
    "fieldtype": "Date",
-   "label": "Offline Date",
+   "label": "Off Line Date",
    "allow_on_submit": 1,
    "no_copy": 1,
    "description": "Expected factory offline date; update this same field when the date is confirmed. Changes appear in the document history."

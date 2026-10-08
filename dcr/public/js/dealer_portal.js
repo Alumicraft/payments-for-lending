@@ -831,7 +831,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
         var address = [field(deal, "delivery_address"), field(deal, "address_line_2"), field(deal, "city"), [field(deal, "state"), field(deal, "zip")].filter(Boolean).join(" ")].filter(Boolean).join(", ");
         var details = [["Factory", deal.factory && deal.factory.label || ""], ["Floorplan", deal.floor_plan || ""], ["Serial number", M.serialNumber(deal) || "TBD"], ["Factory quote", deal.quote_no || ""], ["Quoted amount", money(deal.quoted_amount)]];
         if (address) details.push(["Delivery address", address]);
-        if (deal.offline_date) details.push(["Offline date", fmt_date(deal.offline_date)]);
+        if (deal.offline_date) details.push(["Off Line Date", fmt_date(deal.offline_date)]);
         if (deal.property_type === "Park") {
             var community = [field(deal, "community_name"), field(deal, "space_number") ? "Space " + field(deal, "space_number") : ""].filter(Boolean).join(" · ");
             if (community) details.push(["Community", community]);
