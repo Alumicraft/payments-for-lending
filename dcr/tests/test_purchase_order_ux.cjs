@@ -2,11 +2,13 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
-let handlers;
+const registered = {};
 vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../public/js/purchase_order_ux.js"), "utf8"), {
-    frappe: { ui: { form: { on: (name, callbacks) => { assert.equal(name, "Purchase Order"); handlers = callbacks; } } } },
+    frappe: { ui: { form: { on: (name, callbacks) => { registered[name] = callbacks; } } } },
     __: value => value
 });
+const handlers = registered["Purchase Order"];
+const childHandlers = registered["Purchase Order Item Supplied"];
 function form(doc, extra = []) {
     const fields = [
         { fieldname: "supplier_section", fieldtype: "Section Break", label: "Supplier" },
@@ -16,7 +18,7 @@ function form(doc, extra = []) {
         ...extra,
         { fieldname: "items_section", fieldtype: "Section Break", label: "Items" }
     ];
-    return { doc, meta: { fields }, fields_dict: Object.fromEntries(fields.map(df => [df.fieldname, { df }])),
+    return { doc: { doctype: "Purchase Order", ...doc }, meta: { fields }, fields_dict: Object.fromEntries(fields.map(df => [df.fieldname, { df }])),
         set_df_property(name, property, value) { this.fields_dict[name].df[property] = value; },
         set_value() { throw new Error("Opening a saved order must not write data"); },
         dirty() { throw new Error("Opening a saved order must not dirty it"); }
@@ -25,19 +27,25 @@ function form(doc, extra = []) {
 for (const docstatus of [0, 1, 2]) {
     const doc = { docstatus, custom_home_build_request: "HBR-A", supplied_items: [] };
     const frm = form(doc);
-    const before = JSON.stringify(doc);
+    const before = JSON.stringify(frm.doc);
     handlers.refresh(frm);
     assert.equal(frm.fields_dict.supplier.df.label, "Factory");
     assert.equal(frm.fields_dict.raw_material_details.df.hidden, 1);
     assert.equal(frm.fields_dict.supplied_items.df.hidden, 1);
     handlers.refresh(frm);
-    assert.equal(JSON.stringify(doc), before);
+    assert.equal(JSON.stringify(frm.doc), before);
     frm.doc.is_subcontracted = 1;
     handlers.is_subcontracted(frm);
     assert.equal(frm.fields_dict.raw_material_details.df.hidden, 0);
     frm.doc.is_subcontracted = 0;
     frm.doc.supplied_items = [{ item_code: "Existing material" }];
-    handlers.supplied_items_add(frm);
+    childHandlers.supplied_items_add(frm);
+    assert.equal(frm.fields_dict.supplied_items.df.hidden, 0);
+    frm.doc.supplied_items = [];
+    childHandlers.supplied_items_remove(frm);
+    assert.equal(frm.fields_dict.supplied_items.df.hidden, 1);
+    frm.doc.supplied_items = [{ item_code: "Existing material" }];
+    handlers.supplied_items(frm);
     assert.equal(frm.fields_dict.supplied_items.df.hidden, 0);
     frm.doc.custom_home_build_request = null;
     handlers.custom_home_build_request(frm);
@@ -63,4 +71,5 @@ for (const property of ["reqd", "mandatory_depends_on"]) {
 const legacy = form({ custom_home_build_request: "HBR-A", is_old_subcontracting_flow: 1 });
 handlers.refresh(legacy);
 assert.equal(legacy.fields_dict.raw_material_details.df.hidden, 0);
+childHandlers.supplied_items_add({ doc: { doctype: "Another Parent" } });
 console.log("Purchase Order UX: home scope, draft/submitted/cancelled, required/custom fields, materials, restoration and no document writes passed");

@@ -66,7 +66,14 @@
         custom_home_build_request: apply_layout,
         is_subcontracted: apply_layout,
         is_old_subcontracting_flow: apply_layout,
-        supplied_items_add: apply_layout,
-        supplied_items_remove: apply_layout
+        supplied_items: apply_layout
+    });
+    // Frappe dispatches grid add/remove events to the child DocType.
+    function materials_changed(frm) {
+        if (frm.doc.doctype === "Purchase Order") apply_layout(frm);
+    }
+    frappe.ui.form.on("Purchase Order Item Supplied", {
+        supplied_items_add: materials_changed,
+        supplied_items_remove: materials_changed
     });
 })();

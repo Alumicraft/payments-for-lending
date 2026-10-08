@@ -30,6 +30,13 @@ node dcr/tests/browser/test_dealer_portal_refresh.cjs
 
 Set `DCR_PLAYWRIGHT_MODULE` to the Playwright package directory when using an existing installation outside this repository. The browser fixture does not verify deployed Frappe queries, real DocuSign envelopes, email delivery, or accounting behavior.
 
+### Hosted browser evidence, October 8
+
+- The production `/desk` route opens DCR Sign In with `/desk` retained as the return destination.
+- The production `/portal` route opens DCR Sign In with `/portal` retained as the return destination.
+- The browser remains signed out. These checks verify anonymous entry routing; they do not verify authenticated forms, permissions, signing, or loan transitions.
+- Review against the [Frappe v16 grid source](https://github.com/frappe/frappe/blob/version-16/frappe/public/js/frappe/form/grid.js) caught a child-table event registration error in the first PO pass. Add/remove handlers now register on Purchase Order Item Supplied, and the regression test invokes that child registration plus parent table replacement. Material controls return when materials appear and hide again when the last row is removed.
+
 ## Remaining decisions and work
 
 - Curtailment starts with payment 13 and reduces principal by 1% of the original invoice each month, as Tristan clarified. Confirm the source of the original invoice amount when loan fees differ, then test payments 12–14 and early payoff. This batch does not change schedule calculations.
