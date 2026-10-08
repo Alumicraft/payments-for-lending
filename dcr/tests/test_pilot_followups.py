@@ -150,6 +150,47 @@ def test_po_layout_updates_saved_field_order_without_reordering_site_fields(frap
     setter.save.assert_called_once_with(ignore_permissions=True)
 
 
+@patch.object(pilot_fields, "frappe")
+def test_insurance_moves_out_of_projections_without_changing_rules_or_site_order(frappe):
+    values = {"insert_after": "custom_projected_ltv", "reqd": 1,
+              "read_only": 0, "allow_on_submit": 0, "description": "Staff instruction"}
+    field = MagicMock()
+    field.get.side_effect = values.get
+    field.set.side_effect = values.__setitem__
+    original = ["projections", "custom_projected_ltv", "monthly_insurance_amount",
+                "site_note", "loan_calculations", "repayment_amount", "total_payable_amount", "connections"]
+    setter = MagicMock(value=json.dumps(original))
+    frappe.db.exists.return_value = "Loan Application-monthly_insurance_amount"
+    frappe.get_meta.return_value.has_field.return_value = True
+    frappe.get_all.return_value = [SimpleNamespace(name="Loan Application-main-field_order")]
+    frappe.get_doc.side_effect = lambda dt, name: field if dt == "Custom Field" else setter
+
+    pilot_fields.ensure_loan_application_insurance_layout()
+    pilot_fields.ensure_loan_application_insurance_layout()
+
+    assert values == {"insert_after": "repayment_amount", "reqd": 1,
+                      "read_only": 0, "allow_on_submit": 0, "description": "Staff instruction"}
+    revised = json.loads(setter.value)
+    assert revised[revised.index("repayment_amount") + 1] == "monthly_insurance_amount"
+    assert [value for value in revised if value != "monthly_insurance_amount"] == [
+        value for value in original if value != "monthly_insurance_amount"]
+    field.save.assert_called_once_with(ignore_permissions=True)
+    setter.save.assert_called_once_with(ignore_permissions=True)
+    frappe.clear_cache.assert_called_once_with(doctype="Loan Application")
+    frappe.db.set_value.assert_not_called()
+
+
+@patch.object(pilot_fields, "frappe")
+def test_insurance_layout_waits_for_field_and_payment_anchor(frappe):
+    frappe.db.exists.return_value = None
+    pilot_fields.ensure_loan_application_insurance_layout()
+    frappe.db.exists.return_value = "Loan Application-monthly_insurance_amount"
+    frappe.get_meta.return_value.has_field.return_value = False
+    pilot_fields.ensure_loan_application_insurance_layout()
+    frappe.get_doc.assert_not_called()
+    frappe.clear_cache.assert_not_called()
+
+
 def test_offline_date_is_audited_editable_after_submission_and_staff_owned():
     from dcr.api.dealer_portal import HBR_INPUT_FIELDS
     data = json.loads((ROOT / "dcr/doctype/home_build_request/home_build_request.json").read_text())
