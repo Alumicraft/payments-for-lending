@@ -70,6 +70,10 @@ fixtures = [
             ["name", "in", [
                 "Customer-first_name-hidden",
                 "Customer-last_name-hidden",
+                "Purchase Order-address_and_contact_tab-label",
+                "Purchase Order-terms_tab-label",
+                "Purchase Order-more_info_tab-label",
+                "Purchase Order-connections_tab-label",
                 "Loan Application-applicant_type-hidden",
                 "Loan Application-applicant_type-default",
                 "Loan Application-is_term_loan-hidden",

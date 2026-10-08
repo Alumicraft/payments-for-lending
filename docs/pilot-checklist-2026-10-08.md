@@ -8,13 +8,13 @@ Updated October 8, 2026. This is the ongoing status tracker for the full pilot r
 
 This file is the main project-management list. Keep the item table below as the complete scope; update each status only with source, deployment, or hosted evidence. Record the next action and any dependency here so work can resume without reconstructing the conversation.
 
-| Workstream | Current state | Next action | Dependency |
-| --- | --- | --- | --- |
-| Purchase Order UX | In progress; signed-in submitted-order baseline captured | Context placement and barcode cleanup prepared and tested; finish section/tab simplification, deploy, then compare draft and submitted forms | Source changes, deployment, and browser readback |
-| Hosted staff and dealer flows | Access restored; baseline inspection underway | Check native filters, history, request variants, portal states, and required-document behavior against the item table | Candidate deployment; approved trial records for actions |
-| Release | PR #34 open; live DCR is 815de47a5104d2c6c06997eaedd883f4e5a137e0 | Review the completed candidate, run required checks, deploy, then retain exact installed-commit evidence | Completed source and deployment checks |
-| Lending rules | Worked cases prepared; business decisions open | Confirm invoice basis, dated-interest convention/start date, horizon/end behavior, final-invoice/signature handling, and trial/cutover | DCR decisions; pending questions cover the first three |
-| Plant and packet setup | Current plant assignments and packet contacts unverified | Inspect existing configuration, identify missing names/contacts/documents, and reconcile with DCR | Confirmed business data; deliberate sends only |
+| Workstream | Owner | Current state | Next action | Dependency |
+| --- | --- | --- | --- | --- |
+| Purchase Order UX | Codex | In progress; signed-in submitted-order baseline captured | Context placement and barcode cleanup prepared and tested; Review the completed first-section, tab-label, barcode/material and totals candidate, deploy, then compare draft and submitted forms | Source changes, deployment, and browser readback |
+| Hosted staff and dealer flows | Codex / DCR | Access restored; baseline inspection underway | Check native filters, history, request variants, portal states, and required-document behavior against the item table | Candidate deployment; approved trial records for actions |
+| Release | Codex | PR #34 open; live DCR is 815de47a5104d2c6c06997eaedd883f4e5a137e0 | Review the candidate, complete deployment checks, deploy, and retain exact installed-commit evidence | Completed source and deployment checks |
+| Lending rules | DCR | Worked cases prepared; business decisions open | Confirm invoice basis, dated-interest convention/start date, horizon/end behavior, final-invoice/signature handling, and trial/cutover | DCR decisions; pending questions cover the first three |
+| Plant and packet setup | DCR / Codex | Current plant assignments and packet contacts unverified | Inspect existing configuration, identify missing names/contacts/documents, and reconcile with DCR | Confirmed business data; deliberate sends only |
 
 ### Latest hosted evidence
 
@@ -22,6 +22,9 @@ This file is the main project-management list. Keep the item table below as the 
 - Cloud Apps shows DCR `815de47`, Frappe `97a5dd9` (16.36.1), ERPNext `af63cde` (16.37.0), and Lending `97f692e` (16.6.0). PR #34 is not installed.
 - Purchase Order List opens with five existing orders, Supplier, Company, status and Home Build Request filters, and date columns. The candidate Dealer filter is not installed yet.
 - The inspected submitted home PO opens as To Bill. Its linked home request and Payment Type are on **Connections**, away from the main order details. The Details tab shows an empty Raw Materials Supplied table and barcode/warehouse controls. A starting-layout screenshot is retained locally in `docs/pilot-evidence/po-before.jpg`, excluded from the public repository.
+
+- A new unsaved Purchase Order was inspected without saving it. Its required Company, Currency, and Exchange Rate defaults populate as Dealer Capital Resources, USD, and 1. Home Build Request and Payment Type also sit on Connections in this draft.
+- The linked submitted Home Build Request was inspected: customer context comes first, home details and delivery follow, and its source-document connections remain available. No existing record was edited.
 
 ## Full checklist
 

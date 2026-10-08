@@ -5,6 +5,7 @@ const vm = require("node:vm");
 const registered = {};
 vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../public/js/purchase_order_ux.js"), "utf8"), {
     frappe: { ui: { form: { on: (name, callbacks) => { registered[name] = callbacks; } } } },
+    erpnext: { get_currency: () => "USD" },
     __: value => value
 });
 const handlers = registered["Purchase Order"];
@@ -14,6 +15,8 @@ function form(doc, extra = []) {
         { fieldname: "supplier_section", fieldtype: "Section Break", label: "Supplier" },
         { fieldname: "supplier", fieldtype: "Link", label: "Supplier", reqd: 1 },
         { fieldname: "scan_barcode", fieldtype: "Data", hidden: 0 },
+        { fieldname: "base_total_taxes_and_charges", fieldtype: "Currency", read_only: 1, hidden: 0 },
+        { fieldname: "in_words", fieldtype: "Data", read_only: 1, hidden: 0 },
         { fieldname: "raw_material_details", fieldtype: "Section Break", hidden: 0 },
         { fieldname: "supplied_items", fieldtype: "Table", hidden: 0 },
         ...extra,
@@ -77,5 +80,20 @@ assert.equal(legacy.fields_dict.raw_material_details.df.hidden, 0);
 const scanned = form({ custom_home_build_request: "HBR-A", scan_barcode: "Existing scan" });
 handlers.refresh(scanned);
 assert.equal(scanned.fields_dict.scan_barcode.df.hidden, 0);
+const domestic = form({ custom_home_build_request: "HBR-A", docstatus: 1, company: "DCR", currency: "USD", base_total_taxes_and_charges: 7440, total_taxes_and_charges: 7440 });
+handlers.refresh(domestic);
+assert.equal(domestic.fields_dict.base_total_taxes_and_charges.df.hidden, 1);
+assert.equal(domestic.fields_dict.in_words.df.hidden, 1);
+domestic.doc.currency = "EUR";
+handlers.refresh(domestic);
+assert.equal(domestic.fields_dict.base_total_taxes_and_charges.df.hidden, 0, "Keep company-currency totals when currencies differ");
+domestic.doc.currency = "USD";
+domestic.doc.base_total_taxes_and_charges = 7441;
+handlers.refresh(domestic);
+assert.equal(domestic.fields_dict.base_total_taxes_and_charges.df.hidden, 0, "Never hide a discrepant total");
+domestic.doc.base_total_taxes_and_charges = 7440;
+domestic.doc.docstatus = 0;
+handlers.refresh(domestic);
+assert.equal(domestic.fields_dict.base_total_taxes_and_charges.df.hidden, 0, "Keep draft totals inspectable while pricing changes");
 childHandlers.supplied_items_add({ doc: { doctype: "Another Parent" } });
 console.log("Purchase Order UX: home scope, draft/submitted/cancelled, required/custom fields, materials, restoration and no document writes passed");

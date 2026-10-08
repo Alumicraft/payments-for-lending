@@ -318,5 +318,45 @@
     "property": "read_only",
     "property_type": "Check",
     "value": "0"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Purchase Order-address_and_contact_tab-label",
+    "doc_type": "Purchase Order",
+    "doctype_or_field": "DocField",
+    "field_name": "address_and_contact_tab",
+    "property": "label",
+    "property_type": "Data",
+    "value": "Delivery and Contacts"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Purchase Order-terms_tab-label",
+    "doc_type": "Purchase Order",
+    "doctype_or_field": "DocField",
+    "field_name": "terms_tab",
+    "property": "label",
+    "property_type": "Data",
+    "value": "Payment and Terms"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Purchase Order-more_info_tab-label",
+    "doc_type": "Purchase Order",
+    "doctype_or_field": "DocField",
+    "field_name": "more_info_tab",
+    "property": "label",
+    "property_type": "Data",
+    "value": "Status and Settings"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Purchase Order-connections_tab-label",
+    "doc_type": "Purchase Order",
+    "doctype_or_field": "DocField",
+    "field_name": "connections_tab",
+    "property": "label",
+    "property_type": "Data",
+    "value": "Related Documents"
   }
 ]
