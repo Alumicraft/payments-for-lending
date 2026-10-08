@@ -101,7 +101,7 @@ The personal Codex skill is installed as `$erpnext-docs`. It covers Desk forms a
 
 - Board-filter release: PR #36 merged as `a452e6e298b76e7fc23dd6d986f56dc18de75167`; DCR-only Cloud pipeline `6h7adcinkm` created and observed Pending. Resume this same pipeline, verify site migration and installed commit, then exercise native board filters.
 
-- Accounting source guard: PR #37 removes the income-account fallback for interest/penalty accrual mappings, preserving configured values and leaving missing values to native validation. Source checks passed: 463 Python tests and 33 subtests. PR is open; live mappings and historical reconciliation remain unresolved.
+- Accounting source guard: PR #37 removes the income-account fallback for interest/penalty accrual mappings, preserving configured values and leaving missing values to native validation. Source checks passed: 463 Python tests and 33 subtests. PR #37 merged as `13d3efdc5c1fabfc6dd89214e3722b2eb3c6f9ab`; DCR-only Cloud pipeline `0o9r75mm5u` is pending. Live mappings and historical reconciliation remain unresolved.
 - PO variant check: toggling subcontracting in an unsaved home PO shows raw materials and supplier warehouse; turning it off hides the empty raw-material section again. No order was saved or submitted.
 
 - Board live acceptance: native controls load once; partial quote search returns the matching delivered request, retaining the `docstatus in [0,1]` constraint in the URL. Selecting a dealer returns its three requests across Pending and Delivered. Serial and Factory controls are visible; their individual positive-match trials remain open.
@@ -109,3 +109,6 @@ The personal Codex skill is installed as `$erpnext-docs`. It covers Desk forms a
 
 - Serial lookup acceptance: inspected a saved demo serial, then searched only its last five digits. The board returned that one delivered request and retained native `LIKE %fragment%` matching plus the existing docstatus constraint. Factory selection also applies a native exact Supplier filter.
 - Accounting runtime: daily demand job is not stopped, last executed October 8 at 00:01:36, and all eight retained execution logs show Complete. The enabled fiscal year covers January 1 through December 31, 2026. These checks do not establish balanced or correct postings.
+
+- PO manufacturer exclusion check: selecting Durango returns no matching orders; the existing five orders are Champion. Filters were cleared after the trial.
+- Next release action: monitor existing pipeline `0o9r75mm5u`, confirm migration and installed 13d3efd, then re-read the loan product without changing its mappings. The source guard prevents new fallback assignments; it does not repair current configuration.
