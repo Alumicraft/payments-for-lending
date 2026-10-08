@@ -75,6 +75,16 @@
                 }
             }
         }
+        // ERPNext's currency-label refresh can toggle populated base tax
+        // totals back on after our refresh handler. Keep their dependency
+        // false while suppressed, then restore the native rule on scope exit.
+        Object.keys(overrides).forEach(function (name) {
+            var field = frm.fields_dict[name];
+            if (overrides[name].hidden && field && field.df.depends_on) {
+                overrides[name].depends_on = "eval:false";
+            }
+        });
+        var dependencies_changed = false;
         Array.from(new Set(Object.keys(state).concat(Object.keys(overrides)))).forEach(function (name) {
             var field = frm.fields_dict[name];
             if (!field) return;
@@ -86,11 +96,15 @@
                 }
                 var value = Object.prototype.hasOwnProperty.call(properties, property)
                     ? properties[property] : original[property];
-                if (field.df[property] !== value) frm.set_df_property(name, property, value);
+                if (field.df[property] !== value) {
+                    frm.set_df_property(name, property, value);
+                    if (property === "depends_on") dependencies_changed = true;
+                }
                 if (!Object.prototype.hasOwnProperty.call(properties, property)) delete original[property];
             });
             if (!Object.keys(original).length) delete state[name];
         });
+        if (dependencies_changed && frm.layout && frm.layout.refresh_dependency) frm.layout.refresh_dependency();
     }
 
     frappe.ui.form.on("Purchase Order", {
