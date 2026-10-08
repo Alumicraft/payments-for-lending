@@ -29,6 +29,7 @@ app_include_js = [
     versioned_asset("/assets/dcr/js/home_build_request.js"),
     versioned_asset("/assets/dcr/js/loan_application.js"),
     versioned_asset("/assets/dcr/js/factory_assignment.js"),
+    versioned_asset("/assets/dcr/js/purchase_order_ux.js"),
     versioned_asset("/assets/dcr/js/hbr_dashboard_plus_patch_20260525_10.js"),
     versioned_asset("/assets/dcr/js/loan_list_context_patch_20260525_14.js"),
     versioned_asset("/assets/dcr/js/email_preview.js"),
