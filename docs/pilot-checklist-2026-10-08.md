@@ -2,7 +2,7 @@
 
 Updated October 8, 2026. This is the ongoing status tracker for the full pilot review. Recording timestamps refer to Dcr meeting 2.m4a, reviewed in full locally. The recording and transcript are not included in this repository.
 
-**Implemented** means prepared and tested in draft PR #34; these changes are not deployed. Hosted verification, business decisions, provider configuration, and staff trials are tracked separately. No factory packets or accounting transactions were sent or entered during this work.
+**Implemented** means prepared and tested in PR #34, merged as `250400d6b0edc13387aee066004d60048976b30a`. Deployment and installed-version verification are underway; these changes are not yet confirmed live. Hosted verification, business decisions, provider configuration, and staff trials are tracked separately. No factory packets or accounting transactions were sent or entered during this work.
 
 ## Current work and next actions
 
@@ -12,11 +12,14 @@ This file is the main project-management list. Keep the item table below as the 
 | --- | --- | --- | --- | --- |
 | Purchase Order UX | Codex | In progress; signed-in submitted-order baseline captured | Context placement and barcode cleanup prepared and tested; Review the completed first-section, tab-label, barcode/material and totals candidate, deploy, then compare draft and submitted forms | Source changes, deployment, and browser readback |
 | Hosted staff and dealer flows | Codex / DCR | Access restored; baseline inspection underway | Check native filters, history, request variants, portal states, and required-document behavior against the item table | Candidate deployment; approved trial records for actions |
-| Release | Codex | PR #34 open; live DCR is 815de47a5104d2c6c06997eaedd883f4e5a137e0 | Review the candidate, complete deployment checks, deploy, and retain exact installed-commit evidence | Completed source and deployment checks |
+| Release | Codex | PR #34 merged as 250400d; live baseline is 815de47; Cloud deployment 913gsh35dp pending | Monitor build/migration for 913gsh35dp and retain exact installed-commit evidence | Completed source checks; Cloud deploy |
+| Accounting readiness | Codex / DCR accounting owner | Added to full checklist; audit pending | Inspect configuration and posting evidence, reconcile Lending and GL, then verify an authorized trial | Agreed lending rules and accounting-owner review |
 | Lending rules | DCR | Worked cases prepared; business decisions open | Confirm invoice basis, dated-interest convention/start date, horizon/end behavior, final-invoice/signature handling, and trial/cutover | DCR decisions; pending questions cover the first three |
 | Plant and packet setup | DCR / Codex | Current plant assignments and packet contacts unverified | Inspect existing configuration, identify missing names/contacts/documents, and reconcile with DCR | Confirmed business data; deliberate sends only |
 
 ### Latest hosted evidence
+
+- PR #34 merged as `250400d6b0edc13387aee066004d60048976b30a`. Cloud deployment `913gsh35dp` was started for DCR only, with site migration selected and skip-failed-patches disabled. Its current status is Pending; installation is unproven.
 
 - Signed-in Desk is at `https://backdesk.dealercapital.net`; Frappe Cloud confirms that domain belongs to the existing dealercapitalresources site. The earlier signed-out checks used the Frappe Cloud hostname.
 - Cloud Apps shows DCR `815de47`, Frappe `97a5dd9` (16.36.1), ERPNext `af63cde` (16.37.0), and Lending `97f692e` (16.6.0). PR #34 is not installed.
@@ -30,6 +33,7 @@ This file is the main project-management list. Keep the item table below as the 
 
 | Checklist name | Status | Priority | Kind | Follow up | Recording evidence |
 | --- | --- | --- | --- | --- | --- |
+| Accounting setup and reconciliation | Added; configuration audit and end-to-end verification pending | P1 | Configuration and verification | Verify Company, fiscal year, chart of accounts, currencies, opening balances, and required bank, loan principal, interest receivable/income, fee, insurance, payable and clearing account mappings. Inspect Loan Product and Lending settings, scheduled accrual/demand jobs, posting dates and permissions. Reconcile representative disbursement, invoice, fee, interest accrual, repayment, curtailment, early payoff and closure postings to the general ledger, bank/clearing balances and native Lending balances; check reversals, unpaid interest, residual balances and duplicate or missing postings. Use agreed acceptance amounts and an authorized trial; no financial transaction or historical balance correction is implied by this audit. Record exact configuration, exceptions and accounting-owner sign-off before calling accounting ready. | Tristan added October 8, 2026 |
 | Interest day-count examples | Worked cases prepared; waiting on business decision | P1 | Decision and verification | Agree dated interest examples using the team's 360-day basis, including February, a partial month, and which endpoint day is charged. A 360-day denominator alone does not settle how elapsed days are counted. Apply the same rule to accrual, payment demands, and payoff. | 46:51–50:39 |
 | Loan display and early payoff | Partial: display implemented; payoff-print forecast issue needs accounting verification | P1 | Implementation and verification | Remove or replace the misleading fixed-term **Total interest** and **Total payable** display. Show the loan information the team requested, including principal, rate, monthly payment, and applicable curtailment. Verify an early payoff does not collect future interest or leave a residual balance that prevents closure; the recording raised this concern but did not demonstrate a failed payoff. | 42:08–45:45; 1:28:23–1:29:55 |
 | Fixed invoice curtailment | Boundary cases prepared; waiting on invoice-basis decision | P1 | Decision, implementation and verification | Implement the clarified curtailment rule: starting with payment 13, principal reduction remains 1% of the original invoice each month. Interest and total payment decline as the outstanding balance falls. Confirm the invoice basis when loan fees differ from the factory invoice. Exercise payments 12, 13, 14, and an early payoff afterward. | 1:29:57–1:31:47 |
@@ -57,6 +61,8 @@ This file is the main project-management list. Keep the item table below as the 
 Worked [lending acceptance cases](lending-acceptance-cases.md) now cover payments 12–14, dated interest, early payoff, and the forecast horizon. Their illustrative inputs do not settle the open business rules.
 
 ## Source findings and pending decisions
+
+- Accounting audit added: existing `ensure_lending_accounting_defaults` can fill missing Loan Product income and accrual mappings with the service/fee income account, and principal/interest/penalty receivables with the loans receivable account. These existing defaults require live configuration and journal review; their presence is not proof that accounting is correct. DCR schedules ACH tasks, while native Lending accrual/demand jobs and their execution still need verification.
 
 - Curtailment is fixed at 1% of the original invoice starting with payment 13. The current controller still uses a percentage of remaining principal. Confirm the immutable invoice source and fee treatment before changing it; the schedule's loan amount can differ from the final invoice.
 - The current preview uses principal × annual rate / 1200, and a fixed number of monthly periods. Its default horizon is 12 periods. The custom schedule also uses monthly interest rather than dated daily accrual. Agree the 360-day convention, endpoint dates, and horizon before changing accounting behavior.
