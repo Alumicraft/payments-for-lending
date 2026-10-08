@@ -2,7 +2,7 @@
 
 Updated October 8, 2026. This is the ongoing status tracker for the full pilot review. Recording timestamps refer to Dcr meeting 2.m4a, reviewed in full locally. The recording and transcript are not included in this repository.
 
-**Implemented** means prepared and tested in PR #34, merged as `250400d6b0edc13387aee066004d60048976b30a`. Cloud deployment and site migration succeeded, and installed DCR `250400d` was verified. Each item still needs its own hosted evidence; two PO presentation fixes found during readback are merged in PR #35 as `2e7f0f3`; follow-up deployment `37ea3k8i0t` and site migration `79qam2jbrr` succeeded; installed DCR `2e7f0f3` was verified. The board-filter follow-up is prepared and tested locally, with hosted verification pending. Hosted verification, business decisions, provider configuration, and staff trials are tracked separately. No factory packets or accounting transactions were sent or entered during this work.
+**Implemented** means prepared and tested in PR #34, merged as `250400d6b0edc13387aee066004d60048976b30a`. Cloud deployment and site migration succeeded, and installed DCR `250400d` was verified. Each item still needs its own hosted evidence; two PO presentation fixes found during readback are merged in PR #35 as `2e7f0f3`; follow-up deployment `37ea3k8i0t` and site migration `79qam2jbrr` succeeded; installed DCR `2e7f0f3` was verified. The board-filter follow-up merged in PR #36 as `a452e6e`; Cloud deployment `6h7adcinkm` is pending. Hosted verification remains open. Hosted verification, business decisions, provider configuration, and staff trials are tracked separately. No factory packets or accounting transactions were sent or entered during this work.
 
 ## Current work and next actions
 
@@ -98,3 +98,5 @@ The personal Codex skill is installed as `$erpnext-docs`. It covers Desk forms a
 - Fresh Desk session: Home Build Request → Create → Purchase Order carries the factory, dealer and Flooring payment type after native defaults settle. The linked request and dealer appear first; barcode and empty raw materials disappear. The draft was not saved.
 - PO history: Dealer filtering returned the matching order; Completed returned two retained orders; a July date range returned three matching orders. Manufacturer controls are present but still need a selection trial.
 - HBR board labels are Requests, Pending, Ordered and Delivered. Native standard filters were missing on Kanban; the follow-up exposes Frappe filter controls while retaining board constraints and permissions. Local validation: 462 Python tests, 29 subtests and seven JavaScript test files passed. Hosted board-filter evidence is still pending.
+
+- Board-filter release: PR #36 merged as `a452e6e298b76e7fc23dd6d986f56dc18de75167`; DCR-only Cloud pipeline `6h7adcinkm` created and observed Pending. Resume this same pipeline, verify site migration and installed commit, then exercise native board filters.
