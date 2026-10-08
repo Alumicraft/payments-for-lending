@@ -12,7 +12,7 @@ const data = {
     customer: { name: "DEALER-A", label: "Pilot Dealer", email: "pilot@example.test" },
     factories: [], onboarding_documents: [], signatures: [{ name: "SIGN-A", document_type: "Flooring Packet", reference_name: "APP-A", status: "Sent", actionable: true }], ach: { accounts: [], available: false },
     deals: [{ name: "HBR-A", floor_plan: "Pilot home", home_type: "Inventory", financing_type: "Floored", property_type: "Private Property",
-        docstatus: 1, portal_status: "Accepted", order_stage: "Pending", loan_stage: "Applied", documents: { items: [] },
+        docstatus: 1, portal_status: "Accepted", order_stage: "Pending", loan_stage: "Applied", offline_date: "2026-11-20", documents: { items: [] },
         loan: { source: "Loan Application", name: "APP-A", principal: 220000, interest_rate: 12, monthly_payment: 2200, total_interest: 26400, total_payable: 246400 } }],
 };
 
@@ -94,6 +94,7 @@ const data = {
         assert.match(await page.locator("#dcr-portal-view").innerText(), /Next payment[\s\S]*\$4,400/);
         assert.doesNotMatch(await page.locator("#dcr-portal-view").innerText(), /Total interest|Total payable/);
         assert.match(await page.locator("#dcr-portal-view").innerText(), /TBD/);
+        assert.match(await page.locator("#dcr-portal-view").innerText(), /Offline date/);
         assert.doesNotMatch(await page.locator("#dcr-portal-view").innerText(), /â€/, "the production script must be served as UTF-8");
 
         // An in-flight request must not produce overlapping interval reads.
@@ -162,6 +163,14 @@ const data = {
         await advance();
         assert.match(await page.locator("#dcr-portal-view").innerText(), /Home delivered/, "a malformed background response preserves the current view");
         malformed = false;
+        Object.assign(data.deals[0], { home_type: "Customer Sold", end_buyer_name: "Pilot buyer", selling_price: 240000,
+            installed_value: 260000, quoted_amount: 220000, quote_no: "QT-A", factory: { name: "PLANT-A", label: "Pilot plant" } });
+        await advance();
+        const soldSummary = await page.locator("#dcr-portal-view").innerText();
+        for (const value of ["Pilot buyer", "$240,000.00", "$260,000.00", "QT-A", "Pilot plant"]) assert.ok(soldSummary.includes(value));
+        data.deals[0].home_type = "Inventory";
+        await advance();
+        assert.doesNotMatch(await page.locator("#dcr-portal-view").innerText(), /Pilot buyer/, "inventory detail must not expose a stale buyer field");
         if (process.env.DCR_PORTAL_SCREENSHOT) {
             await page.setViewportSize({ width: 1366, height: 900 });
             await page.locator("#dcr-portal-main").evaluate((node) => { node.scrollTop = 0; });

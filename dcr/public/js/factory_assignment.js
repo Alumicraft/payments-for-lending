@@ -10,6 +10,23 @@ frappe.ui.form.on('Factory Assignment', {
     refresh: function(frm) {
         if (frm.doc.docstatus !== 1) return;
 
+        if (frm.doc.retailer_application_status === 'Not Submitted') {
+            frm.add_custom_button(__('Send Retailer Application'), function() {
+                frappe.confirm(
+                    __('Send the retailer application, dealer license, seller’s permit and W-9 to {0}?', [frm.doc.factory]),
+                    function() {
+                        frappe.call({
+                            method: 'dcr.api.factory_packets.send_packet',
+                            args: { name: frm.doc.name },
+                            freeze: true,
+                            freeze_message: __('Preparing retailer application'),
+                            callback: function() { frm.reload_doc(); }
+                        });
+                    }
+                );
+            });
+        }
+
         // Status progression buttons — only when application is submitted and pending
         if (frm.doc.retailer_application_status === 'Submitted') {
             frm.add_custom_button(__('Mark as Approved'), function() {

@@ -12,3 +12,4 @@ dcr.patches.seed_factory_addresses
 dcr.patches.submit_imported_factory_assignments
 dcr.patches.backfill_submitted_hbr_checklists
 dcr.patches.repair_loan_calculation_totals
+dcr.patches.backfill_purchase_order_dealer

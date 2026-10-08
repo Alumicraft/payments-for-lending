@@ -428,6 +428,7 @@ def _serialize_hbr(hbr, customer=None):
         "end_buyer_phone": _value(hbr, "end_buyer_phone"),
         "installed_value": _json_value(_value(hbr, "installed_value")),
         "in_storage": bool(_value(hbr, "in_storage")),
+        "offline_date": _json_value(_value(hbr, "offline_date")),
         "quoted_amount": _json_value(_value(hbr, "home_invoice_plus_freight")),
         "order_stage": _value(hbr, "custom_order_stage") or ("Draft" if _value(hbr, "docstatus") == 0 else "Pending"),
         "loan_stage": _value(hbr, "custom_loan_stage") or "Not Started",

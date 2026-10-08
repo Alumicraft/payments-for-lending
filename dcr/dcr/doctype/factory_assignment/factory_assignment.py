@@ -11,9 +11,7 @@ class FactoryAssignment(Document):
         if self.retailer_application_status == "Approved":
             return
 
-        # Auto-set status to Submitted
-        self.db_set("retailer_application_status", "Submitted")
-        self.send_retailer_application()
+        # Staff sends the packet explicitly after reviewing the assignment.
 
     def send_retailer_application(self):
         """Send retailer application package to factory."""
@@ -75,6 +73,6 @@ class FactoryAssignment(Document):
         )
 
         frappe.msgprint(
-            _("Retailer application sent to {0} ({1})").format(factory_name, factory_email),
+            _("Retailer application queued for {0} ({1})").format(factory_name, factory_email),
             indicator="green"
         )
