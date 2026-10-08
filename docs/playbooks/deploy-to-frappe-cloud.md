@@ -35,6 +35,10 @@ git push origin main               # deploys
 
 Then open the Frappe Cloud dashboard → Bench → Deploys, and watch the build + migrate output.
 
+## Metadata helpers and optimized pulls
+
+On October 8, Cloud used **Update Site Pull** for changes limited to Python setup helpers and skipped migration. Source installation therefore did not apply a new field-position repair. When a setup-helper change must update existing metadata, verify that migration actually ran; if it did not, use the site Actions → **In-Place Migrate Site** action in Cloud, then verify the job and fresh form. A successful build or pull alone does not prove that the metadata changed.
+
 ## What to watch on Frappe Cloud
 
 - **Build phase** — pip install errors, app import errors. Usually a `setup.py` / `requirements.txt` mistake or a syntax error in a top-level module.
