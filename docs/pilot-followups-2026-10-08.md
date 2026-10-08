@@ -1,6 +1,6 @@
 # October 8 pilot follow ups
 
-This batch addresses dealer portal and staff workflow issues from the pilot recording. The [full checklist](pilot-checklist-2026-10-08.md) tracks each item by name and status. Source changes are merged and deployed through PR #37, installed as `13d3efd`. Hosted evidence and unresolved items are tracked individually in the checklist; the insurance placement repair in PR #38 is deploying separately.
+This batch addresses dealer portal and staff workflow issues from the pilot recording. The [full checklist](pilot-checklist-2026-10-08.md) tracks each item by name and status. Source changes are merged and deployed through PR #39, installed as `5a4ac61`; site migration succeeded and the Off Line Date label is verified on the saved request. Insurance placement is also verified. Hosted evidence and unresolved items are tracked individually in the checklist.
 
 ## Implemented in this batch
 
@@ -42,7 +42,7 @@ Set `DCR_PLAYWRIGHT_MODULE` to the Playwright package directory when using an ex
 - Curtailment starts with payment 13 and reduces principal by 1% of the original invoice each month, as Tristan clarified. Confirm the source of the original invoice amount when loan fees differ, then test payments 12–14 and early payoff. This batch does not change schedule calculations.
 - Confirm the 360-day interest convention, accrual start date, schedule horizon, and final-invoice principal mapping with dated worked examples.
 - Use the full checklist for hosted checks, factory/plant assignments, insurance entry, historical date filtering, and the accounting trial.
-- The personal `$erpnext-docs` skill is created and its package validates. Its instructions were edited using [humanizer](https://github.com/blader/humanizer/blob/main/SKILL.md). Purchase Order application is in progress. On October 8 the live `/desk` route reached the DCR sign-in page; sign-in was subsequently restored on backdesk.dealercapital.net, and the submitted PO baseline was inspected. Cloud Apps now confirms installed DCR `13d3efd`. The initial PO pass and its two repairs are deployed and inspected; further variants remain open. The source inventory used the [official ERPNext v16 Purchase Order metadata](https://github.com/frappe/erpnext/blob/version-16/erpnext/buying/doctype/purchase_order/purchase_order.json); Customize Form may differ on the site.
+- The personal `$erpnext-docs` skill is created and its package validates. Its instructions were edited using [humanizer](https://github.com/blader/humanizer/blob/main/SKILL.md). Purchase Order application is in progress. On October 8 the live `/desk` route reached the DCR sign-in page; sign-in was subsequently restored on backdesk.dealercapital.net, and the submitted PO baseline was inspected. Cloud Apps confirms installed DCR `5a4ac61`. The initial PO pass and its two repairs are deployed and inspected; further variants remain open. The source inventory used the [official ERPNext v16 Purchase Order metadata](https://github.com/frappe/erpnext/blob/version-16/erpnext/buying/doctype/purchase_order/purchase_order.json); Customize Form may differ on the site.
 
 ### Current authenticated evidence
 
