@@ -74,20 +74,6 @@ class HomeBuildRequest(Document):
                     title=_("Missing Factory Assignment")
                 )
 
-        # Enforce home_serial_no uniqueness (can't use DB unique because empty values conflict)
-        if self.home_serial_no:
-            existing = frappe.db.get_value(
-                "Home Build Request",
-                {"home_serial_no": self.home_serial_no, "name": ["!=", self.name]},
-                "name"
-            )
-            if existing:
-                frappe.throw(
-                    _("Home Serial No {0} is already used on {1}.").format(
-                        self.home_serial_no, existing
-                    )
-                )
-
     def on_update(self):
         self.sync_checklist_files()
 

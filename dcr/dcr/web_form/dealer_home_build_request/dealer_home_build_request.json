@@ -157,7 +157,8 @@
   {
    "fieldname": "home_serial_no",
    "fieldtype": "Data",
-   "label": "Serial No"
+   "label": "Serial No",
+   "description": "Leave blank or enter TBD until the factory assigns a serial number."
   },
   {
    "fieldname": "quote_no",

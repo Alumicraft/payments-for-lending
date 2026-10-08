@@ -95,6 +95,8 @@ LOAN_APPLICATION_FIELDS = (
     "loan_amount",
     "qualifying_amount",
     "rate_of_interest",
+    "repayment_amount",
+    "monthly_repayment_amount",
     "total_payable_interest",
     "total_interest_payable",
     "total_payable_amount",
@@ -109,6 +111,8 @@ LOAN_FIELDS = (
     "qualifying_amount",
     "loan_amount",
     "rate_of_interest",
+    "repayment_amount",
+    "monthly_repayment_amount",
     "total_interest_payable",
     "total_payable_interest",
     "total_payable_amount",
@@ -253,17 +257,6 @@ def _require_active_factory(customer_name, factory):
         _deny("That factory is not assigned to your dealer account.")
 
 
-def _validate_portal_serial(serial, current_name=None):
-    """Reject duplicate serials without leaking another dealer's HBR name."""
-    if not serial:
-        return
-    filters = {"home_serial_no": serial}
-    if current_name:
-        filters["name"] = ["!=", current_name]
-    if frappe.db.exists("Home Build Request", filters):
-        _deny("That home serial number is already in use.")
-
-
 def _hbr_document_items(hbr):
     checklist = _value(hbr, "doc_checklist", []) or []
     metadata = _attached_file_metadata("Home Build Request", _value(hbr, "name"),
@@ -389,6 +382,7 @@ def _loan_summary(hbr_name, customer_name=None):
         "status": _value(source, "status") or "Applied",
         "principal": _json_value(amount),
         "interest_rate": _json_value(_value(source, "rate_of_interest")),
+        "monthly_payment": _json_value(_value(source, "monthly_repayment_amount", _value(source, "repayment_amount"))),
         "total_interest": _json_value(total_interest),
         "total_payable": _json_value(total_payable),
         "signed": bool(_value(application, "signed_packet")),
@@ -715,7 +709,6 @@ def save_hbr_draft(payload=None, name=None, expected_modified=None):
         _require_active_factory(
             _value(customer, "name"), assigned_factory
         )
-        _validate_portal_serial(payload.get("home_serial_no"), name)
         for fieldname, value in payload.items():
             hbr.set(fieldname, value)
         if _has_field("Home Build Request", PORTAL_STATUS_FIELD):
@@ -723,7 +716,6 @@ def save_hbr_draft(payload=None, name=None, expected_modified=None):
         hbr.save(ignore_permissions=True)
     else:
         _require_active_factory(_value(customer, "name"), payload.get("factory"))
-        _validate_portal_serial(payload.get("home_serial_no"))
         hbr = frappe.new_doc("Home Build Request")
         hbr.customer = _value(customer, "name")
         for fieldname, value in payload.items():
@@ -1046,4 +1038,13 @@ def signature_complete(signature_request):
             frappe.db.commit()
             signed = True
     frappe.local.response["type"] = "redirect"
-    frappe.local.response["location"] = frappe.utils.get_url("/portal?signature=" + ("complete" if signed else "pending"))
+    location = "/portal?signature=" + ("complete" if signed else "pending")
+    if _value(sig_req, "document_type") == "Flooring Packet" and _value(sig_req, "reference_name"):
+        # Resolve through the reviewed application and recheck the HBR owner.
+        # Dealer-level agreements still return to Home.
+        hbr_name = frappe.db.get_value("Loan Application", {
+            "name": _value(sig_req, "reference_name"), "applicant": name, "docstatus": ["!=", 2],
+        }, "home_build_request")
+        if hbr_name and frappe.db.exists("Home Build Request", {"name": hbr_name, "customer": name}):
+            location += "&request=" + quote(hbr_name, safe="")
+    frappe.local.response["location"] = frappe.utils.get_url(location)

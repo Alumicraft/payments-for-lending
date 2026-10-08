@@ -24,6 +24,18 @@ assert.equal(M.needs(funded, [waiting]), "Sign the Flooring Packet");
 assert.deepEqual(M.identity(deal({ floor_plan: "Plan A", home_serial_no: "SN-1", home_type: "Spec", end_buyer_name: "Private Person" })), { primary: "Plan A", secondary: "SN-1 · Spec" });
 assert.equal(M.identity(deal({ floor_plan: "", home_serial_no: "SN-1" })).primary, "SN-1");
 assert.equal(M.identity(deal({ floor_plan: "", home_serial_no: "" })).primary, "HBR-1");
+for (const placeholder of ["TBD", "t.b.d", "tbd"]) assert.equal(M.identity(deal({ home_serial_no: placeholder })).primary, "HBR-1");
+
+// Scheduled curtailment changes the payment; the initial monthly amount
+// cannot replace it, and past-due amounts appear in their own section.
+assert.deepEqual(M.paymentDisplay(deal({ loan: loan({ monthly_payment: 2200, payments_summary: { funded: true, upcoming: [
+    { date: "2026-10-01", total: 100, due_status: "Past due" }, { date: "2026-12-01", total: 4378 }, { date: "2026-11-01", total: 4400 },
+] } }) })), { label: "Next payment", amount: 4400 });
+assert.equal(M.paymentDisplay(deal({ loan: loan({ monthly_payment: 2200, payments_summary: { funded: true, upcoming: [] } }) })).amount, null);
+assert.equal(M.paymentDisplay(deal({ loan: loan({ payments_summary: { funded: true, upcoming: [
+    { date: "2026-11-01", total: null }, { date: "2026-12-01", total: 4378 },
+] } }) })).amount, null, "a later known payment must not replace an unknown next payment");
+assert.deepEqual(M.paymentDisplay(deal({ loan: loan({ monthly_payment: 2200, payments_unavailable: true }) })), { label: "Next payment", amount: null });
 
 // Checklist progress is not an upload count: waived items complete it with no file.
 const waived = deal({ documents: { items: [{ document_type: "A", uploaded: false, complete: true }, { document_type: "B", uploaded: false, complete: true }] } });
@@ -83,7 +95,7 @@ assert.equal(M.principalOutlook([deal({ ...accepted, loan: loan({ payments_unava
 // Progress: done steps are facts, later steps are pending wording, and a funded
 // loan with no signature record says nothing about the packet.
 const labels = (d, s) => M.progressSteps(d, s || []).map((step) => step.kind + ":" + step.label);
-assert.deepEqual(labels(deal({ documents: { items: [{ document_type: "Plot Plan", uploaded: false, complete: false }] } })), ["done:Saved", "action:Upload Plot Plan", "current:Review", "upcoming:Acceptance"]);
+assert.deepEqual(labels(deal({ documents: { items: [{ document_type: "Plot Plan", uploaded: false, complete: false }] } })), ["done:Saved", "action:Upload Plot Plan", "current:Review", "upcoming:DCR submission"]);
 const fundedSteps = labels(deal({ ...accepted, loan_stage: "Funded", order_stage: "Pending", loan: loan({ signed: false }) }));
 assert.ok(!fundedSteps.some((l) => /Flooring Packet/.test(l)));
 assert.ok(fundedSteps.includes("current:Home order") && fundedSteps.includes("upcoming:Home delivery"));

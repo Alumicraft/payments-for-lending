@@ -54,7 +54,7 @@
         });
         // Frappe can retain a per-view client column order even after the
         // Kanban Board child rows are rebuilt. Draft is the stored value for
-        // saved/unsubmitted HBRs, so force that displayed Pending column to
+        // saved/unsubmitted HBRs, so force that displayed Requests column to
         // the first position after every render.
         $('.kanban-column[data-column-value="Draft"]').each(function() {
             var parent = this.parentElement;
@@ -65,9 +65,9 @@
         // Frappe must group by stored backend values. Present those values as
         // the four business lifecycle labels users expect.
         $('.kanban-column[data-column-value="Draft"] .kanban-title')
-            .text(__('Pending'));
+            .text(__('Requests'));
         $('.kanban-column[data-column-value="Pending"] .kanban-title')
-            .text(__('Not Ordered'));
+            .text(__('Pending'));
         $('.kanban .add-new-column, .kanban .column-options').remove();
         $('.kanban-card-body, .kanban-column-title').css('cursor', 'default');
     }
