@@ -116,6 +116,13 @@
                             !field.df.collapsible && typeof field.set_label === "function") {
                         field.set_label(value);
                     }
+                    // Grid.make creates its own label once; ControlTable's
+                    // refresh only refreshes rows. Update that grid-owned label
+                    // without touching columns, row editors, focus or values.
+                    if (property === "label" && field.df.fieldtype === "Table" &&
+                            field.grid && field.grid.wrapper) {
+                        field.grid.wrapper.children("label.control-label").text(value);
+                    }
                     if (property === "depends_on") dependencies_changed = true;
                 }
                 if (!Object.prototype.hasOwnProperty.call(properties, property)) delete original[property];

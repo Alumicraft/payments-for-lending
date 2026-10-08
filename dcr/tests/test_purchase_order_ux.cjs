@@ -71,9 +71,14 @@ const details = form({ custom_home_build_request: "HBR-A" }, [
     { fieldname: "contact_person", fieldtype: "Link", hidden: 0 }
 ]);
 details.fields_dict.section_addresses.set_label = function (label) { this.renderedLabel = label; };
+details.fields_dict.items.grid = { wrapper: { children(selector) {
+    assert.equal(selector, "label.control-label", "Only the grid's own heading is updated");
+    return { text(label) { details.fields_dict.items.renderedLabel = label; } };
+} } };
 handlers.refresh(details);
 assert.equal(details.fields_dict.section_addresses.renderedLabel, "Factory Address", "Section refresh alone does not render a changed label in v16");
 assert.equal(details.fields_dict.items.df.label, "Homes");
+assert.equal(details.fields_dict.items.renderedLabel, "Homes", "ControlTable refresh does not update the rendered grid heading");
 assert.equal(details.fields_dict.contact_email.df.hidden, 1);
 assert.equal(details.fields_dict.contact_person.df.hidden, 0, "Keep the selector usable when derived contact outputs are empty");
 details.doc.contact_email = "factory@example.test";
@@ -87,6 +92,7 @@ details.doc.custom_home_build_request = null;
 handlers.custom_home_build_request(details);
 assert.equal(details.fields_dict.section_addresses.renderedLabel, "Supplier Address");
 assert.equal(details.fields_dict.items.df.label, "Items");
+assert.equal(details.fields_dict.items.renderedLabel, "Items");
 const customized = form({ custom_home_build_request: "HBR-A" }, [{ fieldname: "custom_required_material_note", fieldtype: "Data", reqd: 1 }]);
 handlers.refresh(customized);
 assert.equal(customized.fields_dict.raw_material_details.df.hidden, 0, "Keep site-specific section inputs visible");
