@@ -2,13 +2,13 @@
  * by their existing controllers; this script never writes document data. */
 (function () {
     var labels = {
-        supplier_section: "Dealer and Factory",
         supplier: "Factory",
         supplier_name: "Factory Name",
         transaction_date: "Order Date",
-        items_section: "Homes",
+        items: "Homes",
         section_addresses: "Factory Address",
         supplier_address: "Factory Address",
+        address_display: "Factory Address Details",
         contact_person: "Factory Contact"
     };
 
@@ -19,6 +19,18 @@
         if (home_order) {
             Object.keys(labels).forEach(function (name) {
                 overrides[name] = { label: __(labels[name]) };
+            });
+            // These values are derived from the selected contact/address or
+            // upstream documents. Empty outputs add no information; keep the
+            // editable selectors and any required or populated values.
+            ["contact_display", "contact_mobile", "contact_email", "address_display",
+                "dispatch_address_display", "shipping_address_display", "billing_address_display",
+                "represents_company", "ref_sq", "mps", "inter_company_order_reference"].forEach(function (name) {
+                var field = frm.fields_dict[name];
+                if (field && field.df.read_only && !field.df.reqd &&
+                        !field.df.mandatory_depends_on && !frm.doc[name]) {
+                    overrides[name] = Object.assign({}, overrides[name], { hidden: 1 });
+                }
             });
             // Barcode scanning serves warehouse purchasing, not a home order.
             // Keep any populated or site-required inputs inspectable.
@@ -98,6 +110,12 @@
                     ? properties[property] : original[property];
                 if (field.df[property] !== value) {
                     frm.set_df_property(name, property, value);
+                    // Frappe v16 Section.refresh only changes visibility. Its
+                    // native label method updates an existing section heading.
+                    if (property === "label" && field.df.fieldtype === "Section Break" &&
+                            !field.df.collapsible && typeof field.set_label === "function") {
+                        field.set_label(value);
+                    }
                     if (property === "depends_on") dependencies_changed = true;
                 }
                 if (!Object.prototype.hasOwnProperty.call(properties, property)) delete original[property];
@@ -114,6 +132,18 @@
         is_old_subcontracting_flow: apply_layout,
         company: apply_layout,
         currency: apply_layout,
+        contact_person: apply_layout,
+        supplier_address: apply_layout,
+        dispatch_address: apply_layout,
+        shipping_address: apply_layout,
+        billing_address: apply_layout,
+        contact_display: apply_layout,
+        contact_mobile: apply_layout,
+        contact_email: apply_layout,
+        address_display: apply_layout,
+        dispatch_address_display: apply_layout,
+        shipping_address_display: apply_layout,
+        billing_address_display: apply_layout,
         supplied_items: apply_layout
     });
     // Frappe dispatches grid add/remove events to the child DocType.

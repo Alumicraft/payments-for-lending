@@ -64,6 +64,29 @@ const ordinary = form({ supplied_items: [] });
 handlers.refresh(ordinary);
 assert.equal(ordinary.fields_dict.supplier.df.label, "Supplier");
 assert.equal(ordinary.fields_dict.raw_material_details.df.hidden, 0);
+const details = form({ custom_home_build_request: "HBR-A" }, [
+    { fieldname: "section_addresses", fieldtype: "Section Break", label: "Supplier Address" },
+    { fieldname: "items", fieldtype: "Table", label: "Items" },
+    { fieldname: "contact_email", fieldtype: "Data", read_only: 1, hidden: 0 },
+    { fieldname: "contact_person", fieldtype: "Link", hidden: 0 }
+]);
+details.fields_dict.section_addresses.set_label = function (label) { this.renderedLabel = label; };
+handlers.refresh(details);
+assert.equal(details.fields_dict.section_addresses.renderedLabel, "Factory Address", "Section refresh alone does not render a changed label in v16");
+assert.equal(details.fields_dict.items.df.label, "Homes");
+assert.equal(details.fields_dict.contact_email.df.hidden, 1);
+assert.equal(details.fields_dict.contact_person.df.hidden, 0, "Keep the selector usable when derived contact outputs are empty");
+details.doc.contact_email = "factory@example.test";
+handlers.contact_email(details);
+assert.equal(details.fields_dict.contact_email.df.hidden, 0, "Fetched contact values must become visible without reopening the form");
+details.doc.contact_email = "";
+details.fields_dict.contact_email.df.reqd = 1;
+handlers.refresh(details);
+assert.equal(details.fields_dict.contact_email.df.hidden, 0, "Required fields remain usable");
+details.doc.custom_home_build_request = null;
+handlers.custom_home_build_request(details);
+assert.equal(details.fields_dict.section_addresses.renderedLabel, "Supplier Address");
+assert.equal(details.fields_dict.items.df.label, "Items");
 const customized = form({ custom_home_build_request: "HBR-A" }, [{ fieldname: "custom_required_material_note", fieldtype: "Data", reqd: 1 }]);
 handlers.refresh(customized);
 assert.equal(customized.fields_dict.raw_material_details.df.hidden, 0, "Keep site-specific section inputs visible");
