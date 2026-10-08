@@ -45,6 +45,7 @@
     function apply_lock() {
         apply_timer = null;
         if (!is_hbr_kanban()) return;
+        if (window.dcrShowHbrBoardFilters) window.dcrShowHbrBoardFilters(window.cur_list);
 
         $('.kanban, .kanban-cards').each(function() {
             disable_sortable(this);
@@ -65,9 +66,9 @@
         // Frappe must group by stored backend values. Present those values as
         // the four business lifecycle labels users expect.
         $('.kanban-column[data-column-value="Draft"] .kanban-title')
-            .text(__('Requests'));
+            .each(function() { if ($(this).text() !== __('Requests')) $(this).text(__('Requests')); });
         $('.kanban-column[data-column-value="Pending"] .kanban-title')
-            .text(__('Pending'));
+            .each(function() { if ($(this).text() !== __('Pending')) $(this).text(__('Pending')); });
         $('.kanban .add-new-column, .kanban .column-options').remove();
         $('.kanban-card-body, .kanban-column-title').css('cursor', 'default');
     }

@@ -2,7 +2,7 @@
 
 Updated October 8, 2026. This is the ongoing status tracker for the full pilot review. Recording timestamps refer to Dcr meeting 2.m4a, reviewed in full locally. The recording and transcript are not included in this repository.
 
-**Implemented** means prepared and tested in PR #34, merged as `250400d6b0edc13387aee066004d60048976b30a`. Cloud deployment and site migration succeeded, and installed DCR `250400d` was verified. Each item still needs its own hosted evidence; two PO presentation fixes found during readback are merged in PR #35 as `2e7f0f3`; follow-up deployment `37ea3k8i0t` is building. Hosted verification, business decisions, provider configuration, and staff trials are tracked separately. No factory packets or accounting transactions were sent or entered during this work.
+**Implemented** means prepared and tested in PR #34, merged as `250400d6b0edc13387aee066004d60048976b30a`. Cloud deployment and site migration succeeded, and installed DCR `250400d` was verified. Each item still needs its own hosted evidence; two PO presentation fixes found during readback are merged in PR #35 as `2e7f0f3`; follow-up deployment `37ea3k8i0t` and site migration `79qam2jbrr` succeeded; installed DCR `2e7f0f3` was verified. The board-filter follow-up is prepared and tested locally, with hosted verification pending. Hosted verification, business decisions, provider configuration, and staff trials are tracked separately. No factory packets or accounting transactions were sent or entered during this work.
 
 ## Current work and next actions
 
@@ -10,10 +10,10 @@ This file is the main project-management list. Keep the item table below as the 
 
 | Workstream | Owner | Current state | Next action | Dependency |
 | --- | --- | --- | --- | --- |
-| Purchase Order UX | Codex | In progress; signed-in submitted-order baseline captured | Release the saved-field-order and duplicate-tax-visibility fixes, then compare draft/submitted/cancelled and required-field variants | Source changes, deployment, and browser readback |
+| Purchase Order UX | Codex | In progress; submitted PO cleanup verified; HBR Create → PO carries factory, dealer and Flooring payment type into an unsaved draft | Complete cancelled, restricted-role and variant checks; continue removing unnecessary controls | Source changes, deployment, and browser readback |
 | Hosted staff and dealer flows | Codex / DCR | Access restored; baseline inspection underway | Check native filters, history, request variants, portal states, and required-document behavior against the item table | Candidate deployment; approved trial records for actions |
-| Release | Codex | PR #34 merged as 250400d; live baseline is 815de47; Cloud deployment 913gsh35dp and site migration f3nquld68n succeeded; installed DCR 250400d verified | Monitor deployment 37ea3k8i0t for 2e7f0f3, confirm site migration/installed commit, then verify context placement and duplicate tax suppression | Completed source checks; Cloud deploy |
-| Accounting readiness | Codex / DCR accounting owner | Company and product inspected; one accrual GL confirms mapping problem | Inspect configuration and posting evidence, reconcile Lending and GL, then verify an authorized trial | Agreed lending rules and accounting-owner review |
+| Release | Codex | PR #35 deployed successfully; migration 79qam2jbrr and installed DCR 2e7f0f3 verified; PO context placement and duplicate tax suppression verified | Release and exercise the board-filter follow-up | Completed source checks; Cloud deploy |
+| Accounting readiness | Codex / DCR accounting owner | In progress; Company and product inspected; one accrual GL confirms mapping problem | Correct and verify account mappings, confirm scheduled jobs run successfully, and reconcile representative transactions and balances | Agreed lending rules, trial procedure and accounting-owner review |
 | Lending rules | DCR | Worked cases prepared; business decisions open | Confirm invoice basis, dated-interest convention/start date, horizon/end behavior, final-invoice/signature handling, and trial/cutover | DCR decisions; pending questions cover the first three |
 | Plant and packet setup | DCR / Codex | Current plant assignments and packet contacts unverified | Inspect existing configuration, identify missing names/contacts/documents, and reconcile with DCR | Confirmed business data; deliberate sends only |
 
@@ -63,6 +63,8 @@ This file is the main project-management list. Keep the item table below as the 
 
 The [accounting readiness audit](accounting-readiness-audit.md) records the live Actual/365 mismatch, a confirmed accrual GL voucher with debit and credit to the same income account, and remaining repair/reconciliation evidence.
 
+**Accounting completion criteria:** configuration is correct for the agreed lending rules; scheduled accrual and demand jobs have successful execution evidence; representative transactions post to the intended accounts; Lending, general ledger, and bank/clearing balances reconcile; and material exceptions are resolved and reviewed by the accounting owner. Keep this checklist item open until that evidence is recorded.
+
 Worked [lending acceptance cases](lending-acceptance-cases.md) now cover payments 12–14, dated interest, early payoff, and the forecast horizon. Their illustrative inputs do not settle the open business rules.
 
 ## Source findings and pending decisions
@@ -90,3 +92,9 @@ Worked [lending acceptance cases](lending-acceptance-cases.md) now cover payment
 ## Cleanup skill
 
 The personal Codex skill is installed as `$erpnext-docs`. It covers Desk forms and document views while preserving validation, permissions, required information, and workflow controls. Its wording was edited using [humanizer](https://github.com/blader/humanizer/blob/main/SKILL.md), and package validation passed. Applying it to a selected live document is a separate task.
+
+### Latest browser and source checks
+
+- Fresh Desk session: Home Build Request → Create → Purchase Order carries the factory, dealer and Flooring payment type after native defaults settle. The linked request and dealer appear first; barcode and empty raw materials disappear. The draft was not saved.
+- PO history: Dealer filtering returned the matching order; Completed returned two retained orders; a July date range returned three matching orders. Manufacturer controls are present but still need a selection trial.
+- HBR board labels are Requests, Pending, Ordered and Delivered. Native standard filters were missing on Kanban; the follow-up exposes Frappe filter controls while retaining board constraints and permissions. Local validation: 462 Python tests, 29 subtests and seven JavaScript test files passed. Hosted board-filter evidence is still pending.
