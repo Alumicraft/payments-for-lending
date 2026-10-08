@@ -94,7 +94,7 @@ const data = {
         assert.match(await page.locator("#dcr-portal-view").innerText(), /Next payment[\s\S]*\$4,400/);
         assert.doesNotMatch(await page.locator("#dcr-portal-view").innerText(), /Total interest|Total payable/);
         assert.match(await page.locator("#dcr-portal-view").innerText(), /TBD/);
-        assert.match(await page.locator("#dcr-portal-view").innerText(), /Offline date/);
+        assert.match(await page.locator("#dcr-portal-view").innerText(), /Off Line Date/);
         assert.doesNotMatch(await page.locator("#dcr-portal-view").innerText(), /â€/, "the production script must be served as UTF-8");
 
         // An in-flight request must not produce overlapping interval reads.
