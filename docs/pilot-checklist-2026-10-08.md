@@ -2,7 +2,7 @@
 
 Updated October 8, 2026. This is the ongoing status tracker for the full pilot review. Recording timestamps refer to Dcr meeting 2.m4a, reviewed in full locally. The recording and transcript are not included in this repository.
 
-**Implemented** means prepared and tested in PR #34, merged as `250400d6b0edc13387aee066004d60048976b30a`. Cloud deployment and site migration succeeded, and installed DCR `250400d` was verified. Each item still needs its own hosted evidence; two PO presentation fixes found during readback are merged in PR #35 as `2e7f0f3`; follow-up deployment `37ea3k8i0t` is pending. Hosted verification, business decisions, provider configuration, and staff trials are tracked separately. No factory packets or accounting transactions were sent or entered during this work.
+**Implemented** means prepared and tested in PR #34, merged as `250400d6b0edc13387aee066004d60048976b30a`. Cloud deployment and site migration succeeded, and installed DCR `250400d` was verified. Each item still needs its own hosted evidence; two PO presentation fixes found during readback are merged in PR #35 as `2e7f0f3`; follow-up deployment `37ea3k8i0t` is building. Hosted verification, business decisions, provider configuration, and staff trials are tracked separately. No factory packets or accounting transactions were sent or entered during this work.
 
 ## Current work and next actions
 
@@ -19,7 +19,7 @@ This file is the main project-management list. Keep the item table below as the 
 
 ### Latest hosted evidence
 
-- After deployment, the submitted home PO opens without a new Save/Update action: Factory and Order Date labels, native tab names, barcode removal and empty raw-material section hiding are visible. Dealer is backfilled. Request/dealer/payment context remains on Related Documents because a pre-existing site `field_order` Property Setter overrides Custom Field positions; the follow-up updates only those context positions while preserving all other fields. Native currency-label refresh also reveals populated duplicate base tax totals; the follow-up preserves their conditional suppression through the dependency rule. Both fixes passed regression tests and are merged in PR #35; deployment `37ea3k8i0t` is Pending. They are not yet confirmed installed.
+- After deployment, the submitted home PO opens without a new Save/Update action: Factory and Order Date labels, native tab names, barcode removal and empty raw-material section hiding are visible. Dealer is backfilled. Request/dealer/payment context remains on Related Documents because a pre-existing site `field_order` Property Setter overrides Custom Field positions; the follow-up updates only those context positions while preserving all other fields. Native currency-label refresh also reveals populated duplicate base tax totals; the follow-up preserves their conditional suppression through the dependency rule. Both fixes passed regression tests and are merged in PR #35; deployment `37ea3k8i0t` is building. They are not yet confirmed installed.
 
 - PR #34 merged as `250400d6b0edc13387aee066004d60048976b30a`. Cloud deployment `913gsh35dp` was started for DCR only, with site migration selected and skip-failed-patches disabled. It succeeded in 5m 22s. Site migration job `f3nquld68n` succeeded in 37s; refreshed site Apps confirms installed DCR `250400d`.
 
