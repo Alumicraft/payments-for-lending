@@ -75,6 +75,41 @@ def ensure_purchase_order_form_layout():
         frappe.clear_cache(doctype="Purchase Order")
 
 
+def ensure_loan_application_insurance_layout():
+    """Make insurance available beside the monthly payment on every draft.
+
+    Older sites placed this field inside the conditional Deal Projections
+    section. Preserve its values and field rules; change only its position.
+    """
+    doctype = "Loan Application"
+    fieldname = "monthly_insurance_amount"
+    anchor = "repayment_amount"
+    name = frappe.db.exists("Custom Field", {"dt": doctype, "fieldname": fieldname})
+    if not name or not frappe.get_meta(doctype).has_field(anchor):
+        return
+    changed = False
+    field = frappe.get_doc("Custom Field", name)
+    if field.get("insert_after") != anchor:
+        field.set("insert_after", anchor)
+        field.save(ignore_permissions=True)
+        changed = True
+    for row in frappe.get_all("Property Setter", filters={
+        "doc_type": doctype, "doctype_or_field": "DocType", "property": "field_order",
+    }, fields=["name"]):
+        setter = frappe.get_doc("Property Setter", row.name)
+        order = json.loads(setter.value)
+        if not isinstance(order, list) or anchor not in order:
+            continue
+        revised = [value for value in order if value != fieldname]
+        revised.insert(revised.index(anchor) + 1, fieldname)
+        if revised != order:
+            setter.value = json.dumps(revised)
+            setter.save(ignore_permissions=True)
+            changed = True
+    if changed:
+        frappe.clear_cache(doctype=doctype)
+
+
 def populate_purchase_order_dealer(doc, method=None):
     """Keep new and edited orders aligned with their linked home request."""
     if not frappe.get_meta("Purchase Order").has_field("custom_dcr_dealer"):
