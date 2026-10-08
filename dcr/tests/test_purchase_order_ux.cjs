@@ -15,7 +15,7 @@ function form(doc, extra = []) {
         { fieldname: "supplier_section", fieldtype: "Section Break", label: "Supplier" },
         { fieldname: "supplier", fieldtype: "Link", label: "Supplier", reqd: 1 },
         { fieldname: "scan_barcode", fieldtype: "Data", hidden: 0 },
-        { fieldname: "base_total_taxes_and_charges", fieldtype: "Currency", read_only: 1, hidden: 0 },
+        { fieldname: "base_total_taxes_and_charges", fieldtype: "Currency", read_only: 1, hidden: 0, depends_on: "base_total_taxes_and_charges" },
         { fieldname: "in_words", fieldtype: "Data", read_only: 1, hidden: 0 },
         { fieldname: "raw_material_details", fieldtype: "Section Break", hidden: 0 },
         { fieldname: "supplied_items", fieldtype: "Table", hidden: 0 },
@@ -83,10 +83,12 @@ assert.equal(scanned.fields_dict.scan_barcode.df.hidden, 0);
 const domestic = form({ custom_home_build_request: "HBR-A", docstatus: 1, company: "DCR", currency: "USD", base_total_taxes_and_charges: 7440, total_taxes_and_charges: 7440 });
 handlers.refresh(domestic);
 assert.equal(domestic.fields_dict.base_total_taxes_and_charges.df.hidden, 1);
+assert.equal(domestic.fields_dict.base_total_taxes_and_charges.df.depends_on, "eval:false", "Native dependency refresh must not reveal a hidden duplicate");
 assert.equal(domestic.fields_dict.in_words.df.hidden, 1);
 domestic.doc.currency = "EUR";
 handlers.refresh(domestic);
 assert.equal(domestic.fields_dict.base_total_taxes_and_charges.df.hidden, 0, "Keep company-currency totals when currencies differ");
+assert.equal(domestic.fields_dict.base_total_taxes_and_charges.df.depends_on, "base_total_taxes_and_charges", "Restore the native visibility rule outside duplicate scope");
 domestic.doc.currency = "USD";
 domestic.doc.base_total_taxes_and_charges = 7441;
 handlers.refresh(domestic);

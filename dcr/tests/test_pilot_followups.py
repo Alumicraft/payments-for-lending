@@ -123,6 +123,33 @@ def test_po_layout_skips_missing_custom_fields(frappe):
     frappe.clear_cache.assert_not_called()
 
 
+@patch.object(pilot_fields, "frappe")
+def test_po_layout_updates_saved_field_order_without_reordering_site_fields(frappe):
+    context = ("custom_home_build_request", "custom_dcr_dealer", "custom_payment_type")
+    fields = {}
+    for name in context:
+        values = {"insert_after": "connections_tab"}
+        field = MagicMock()
+        field.get.side_effect = values.get
+        field.set.side_effect = values.__setitem__
+        fields[name] = field
+    original = ["supplier_section", "naming_series", "supplier", "site_reference",
+                "items_section", "items", "connections_tab", "custom_home_build_request"]
+    setter = MagicMock()
+    setter.value = json.dumps(original)
+    frappe.db.exists.side_effect = lambda dt, filters: filters["fieldname"]
+    frappe.get_all.return_value = [SimpleNamespace(name="Purchase Order-main-field_order")]
+    frappe.get_doc.side_effect = lambda dt, name: setter if dt == "Property Setter" else fields[name]
+
+    pilot_fields.ensure_purchase_order_form_layout()
+    pilot_fields.ensure_purchase_order_form_layout()
+
+    revised = json.loads(setter.value)
+    assert revised[:4] == ["supplier_section", *context]
+    assert [name for name in revised if name not in context] == [name for name in original if name not in context]
+    setter.save.assert_called_once_with(ignore_permissions=True)
+
+
 def test_offline_date_is_audited_editable_after_submission_and_staff_owned():
     from dcr.api.dealer_portal import HBR_INPUT_FIELDS
     data = json.loads((ROOT / "dcr/doctype/home_build_request/home_build_request.json").read_text())

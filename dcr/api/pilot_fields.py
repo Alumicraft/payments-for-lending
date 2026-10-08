@@ -1,4 +1,6 @@
 """Fields and source mappings for the staff pilot workflow."""
+import json
+
 import frappe
 
 
@@ -27,8 +29,8 @@ def ensure_purchase_order_form_layout():
     """Keep DCR's request context in the first PO section, not Connections.
 
     Change only the three DCR field positions and the app-owned dealer's fetch
-    rule. Native field order, site validation, and other custom fields remain
-    under their existing configuration.
+    rule. A saved field_order takes precedence over insert_after in Frappe, so
+    move this context there too while preserving every other field's order.
     """
     placements = {
         "custom_home_build_request": "supplier_section",
@@ -36,10 +38,12 @@ def ensure_purchase_order_form_layout():
         "custom_payment_type": "custom_dcr_dealer",
     }
     changed = False
+    available = []
     for fieldname, insert_after in placements.items():
         name = frappe.db.exists("Custom Field", {"dt": "Purchase Order", "fieldname": fieldname})
         if not name:
             continue
+        available.append(fieldname)
         field = frappe.get_doc("Custom Field", name)
         updates = {"insert_after": insert_after}
         if fieldname == "custom_dcr_dealer":
@@ -52,6 +56,21 @@ def ensure_purchase_order_form_layout():
         if dirty:
             field.save(ignore_permissions=True)
             changed = True
+    if available:
+        for row in frappe.get_all("Property Setter", filters={
+            "doc_type": "Purchase Order", "doctype_or_field": "DocType", "property": "field_order",
+        }, fields=["name"]):
+            setter = frappe.get_doc("Property Setter", row.name)
+            order = json.loads(setter.value)
+            if not isinstance(order, list) or "supplier_section" not in order:
+                continue
+            revised = [name for name in order if name not in available]
+            start = revised.index("supplier_section") + 1
+            revised[start:start] = available
+            if revised != order:
+                setter.value = json.dumps(revised)
+                setter.save(ignore_permissions=True)
+                changed = True
     if changed:
         frappe.clear_cache(doctype="Purchase Order")
 
