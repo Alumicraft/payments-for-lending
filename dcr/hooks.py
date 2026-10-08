@@ -11,7 +11,7 @@ boot_session = "dcr.api.boot.boot_session"
 # Frappe Cloud serves /assets files with a long immutable browser cache.
 # Keep these explicit URLs versioned so deployed client fixes are fetched
 # without requiring users to hard-refresh stale browser caches.
-DCR_ASSET_VERSION = "20261008-3"
+DCR_ASSET_VERSION = "20261008-4"
 
 
 def versioned_asset(path):
@@ -33,6 +33,7 @@ app_include_js = [
     versioned_asset("/assets/dcr/js/hbr_dashboard_plus_patch_20260525_10.js"),
     versioned_asset("/assets/dcr/js/loan_list_context_patch_20260525_14.js"),
     versioned_asset("/assets/dcr/js/email_preview.js"),
+    versioned_asset("/assets/dcr/js/hbr_board_filters.js"),
     versioned_asset("/assets/dcr/js/hbr_kanban_lock.js"),
     # Preconnects to Mapbox CDN, preloads icon assets, lazy-loads
     # mapbox-gl.js, and prefetches the map API responses on idle.
