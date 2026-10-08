@@ -101,7 +101,7 @@ The personal Codex skill is installed as `$erpnext-docs`. It covers Desk forms a
 
 - Board-filter release: PR #36 merged as `a452e6e298b76e7fc23dd6d986f56dc18de75167`; DCR-only Cloud pipeline `6h7adcinkm` created and observed Pending. Resume this same pipeline, verify site migration and installed commit, then exercise native board filters.
 
-- Accounting source guard: PR #37 removes the income-account fallback for interest/penalty accrual mappings, preserving configured values and leaving missing values to native validation. Source checks passed: 463 Python tests and 33 subtests. PR #37 merged as `13d3efdc5c1fabfc6dd89214e3722b2eb3c6f9ab`; DCR-only Cloud pipeline `0o9r75mm5u` is pending. Live mappings and historical reconciliation remain unresolved.
+- Accounting source guard: PR #37 removes the income-account fallback for interest/penalty accrual mappings, preserving configured values and leaving missing values to native validation. Source checks passed: 463 Python tests and 33 subtests. PR #37 merged as `13d3efdc5c1fabfc6dd89214e3722b2eb3c6f9ab`; DCR-only Cloud pipeline `0o9r75mm5u` succeeded in 4m46s; Update Site Pull `5r0q3v0b99` succeeded in 6s; installed `13d3efd` verified. Live mappings and historical reconciliation remain unresolved.
 - PO variant check: toggling subcontracting in an unsaved home PO shows raw materials and supplier warehouse; turning it off hides the empty raw-material section again. No order was saved or submitted.
 
 - Board live acceptance: native controls load once; partial quote search returns the matching delivered request, retaining the `docstatus in [0,1]` constraint in the URL. Selecting a dealer returns its three requests across Pending and Delivered. Serial and Factory controls are visible; their individual positive-match trials remain open.
@@ -115,3 +115,6 @@ The personal Codex skill is installed as `$erpnext-docs`. It covers Desk forms a
 
 - Insurance browser finding: the existing monthly-insurance Custom Field is positioned after Projected LTV in Deal Projections. Ordinary draft and signed application Details do not expose it. A prepared metadata repair moves it after Monthly Repayment Amount, including existing field_order overrides, while preserving all values, field rules and unrelated layout. Live readback remains pending release.
 - Dealer portal access: current Administrator session opens the portal but shows No dealer access yet. Dealer-owned flows remain unverified; a test-dealer account choice has been requested. No role or ownership mapping was changed.
+
+- Guard release readback: Standard product still maps interest income and accrued interest to the same service/fee account, as expected from a preservation-only fix. No account setting or transaction was changed.
+- Insurance repair: PR #38 merged as `1ffed82f38992d1e0a675b98081cf2bebea4aaf6`; DCR-only pipeline `4sle2sgfcp` created and observed Pending. Resume this same handle, verify migration and installed commit, and inspect a fresh ordinary draft for the insurance input beside the monthly payment. Python validation: 465 tests and 33 subtests passed.
