@@ -25,7 +25,7 @@ The installed Lending commit is `97f692e908e92b3ce6737ab08c3ff9cb3cdcca44`. Its 
 
 The General Ledger report was then inspected for September 8 through October 8, 2026. One normal-interest accrual voucher was isolated using Voucher No and Reload Report: its debit and credit both hit the service/fee income account, with zero net balance. This confirms the issue affects a posted voucher, not just configuration. The unfiltered report also shows interest demands debiting loans receivable and crediting service/fee income. The complete historical extent, cutoff impact and repayment allocation remain unverified; trace these before prescribing reversals or reposting. Financial amounts and raw captures are retained locally outside the public repository.
 
-Existing DCR setup code can assign missing or receivable-type accrual mappings to the service/fee income account. A repair must address that source behavior as well as the live mapping so a later migration cannot restore the problem. Select the proper accrued-interest asset account with the accounting owner, preserving the native controller's account-type requirements.
+The deployed DCR setup code can assign missing or receivable-type accrual mappings to the service/fee income account. A prepared source fix removes that fallback and preserves all accrual mappings, including blanks for native validation to identify. It does not correct an existing live mapping or historical voucher; both still require a separate repair. Select the proper accrued-interest asset account with the accounting owner, preserving the native controller's account-type requirements.
 
 ## Evidence still required
 
@@ -38,3 +38,9 @@ Existing DCR setup code can assign missing or receivable-type accrual mappings t
 - Cancellation and reversal evidence, bank reconciliation, and accounting-owner review of any historical correction.
 
 No accounting setting, payment, journal, loan closure or historical balance was changed during this audit.
+
+## Chart and scheduler readback
+
+The enabled chart was expanded in Desk. It contains a dedicated Flooring Interest Income account, while the inspected Standard product uses Service/Fee Income. No dedicated accrued-interest asset was visible among the enabled current-asset accounts; confirm the intended asset and any disabled accounts before selecting or creating one. No balance changes were made.
+
+The native interest-accrual Scheduled Job Type is not stopped, runs Daily Long, and shows last execution October 8, 2026 at 00:00:59 America/Los_Angeles. Its linked log list contains eight retained executions, all Complete, with the latest October 8. This proves the job runs, not that its incorrect account mappings produce correct accounting. Demand, classification and reconciliation execution evidence remain open.

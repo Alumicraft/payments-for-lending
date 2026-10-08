@@ -662,7 +662,7 @@ def ensure_hbr_kanban_columns():
 
 
 def ensure_lending_accounting_defaults():
-    """Repair DCR Lending account mappings required for demand generation."""
+    """Fill legacy DCR defaults without choosing accrued-interest accounts."""
     if not frappe.db.exists("DocType", "Loan Product") or not frappe.db.exists("DocType", "Account"):
         return
 
@@ -693,10 +693,6 @@ def ensure_lending_accounting_defaults():
         "interest_receivable_account",
         "penalty_receivable_account",
     )
-    accrual_fields = (
-        "interest_accrued_account",
-        "penalty_accrued_account",
-    )
     income_fields = (
         "interest_income_account",
         "interest_waiver_account",
@@ -726,15 +722,9 @@ def ensure_lending_accounting_defaults():
             if not current and frappe.db.exists("Account", income_account):
                 updates[fieldname] = income_account
 
-        for fieldname in accrual_fields:
-            if not frappe.db.has_column("Loan Product", fieldname):
-                continue
-
-            current = frappe.db.get_value("Loan Product", product_name, fieldname)
-            if (
-                not current or current == receivable_account or _account_is_type(current, "Receivable")
-            ) and frappe.db.exists("Account", income_account):
-                updates[fieldname] = income_account
+        # Accrual debits an asset and credits income. Never use an income
+        # fallback or replace an owner's accrued-interest mapping here.
+        # Missing mappings must be configured through Loan Product validation.
 
         if (
             frappe.db.has_column("Loan Product", "write_off_account")
