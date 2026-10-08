@@ -32,7 +32,7 @@ def after_install():
     # bypass those checks through Frappe's resource and client APIs. Fail the
     # migration if this security repair cannot be applied.
     ensure_dealer_portal_permissions()
-    from dcr.api.pilot_fields import ensure_pilot_fields
+    from dcr.api.pilot_fields import ensure_pilot_fields, ensure_purchase_order_form_layout
     # Map block first — isolated so any later setup failure cannot block it.
     try:
         ensure_map_block()
@@ -135,6 +135,7 @@ def after_install():
         ensure_dealer_portal_fields,
         ensure_dealer_customer_document_fields,
         ensure_purchase_order_email_fields,
+        ensure_purchase_order_form_layout,
         ensure_payment_entry_calculated_fields,
         ensure_loan_application_field_repairs,
         ensure_inventory_loan_application_fields,

@@ -92,6 +92,37 @@ def test_purchase_order_dealer_tracks_changed_or_removed_home_reference(frappe):
     assert doc.custom_dcr_dealer is None
 
 
+@patch.object(pilot_fields, "frappe")
+def test_po_layout_moves_only_dcr_context_and_is_repeatable(frappe):
+    fields = {}
+    for name in ("custom_home_build_request", "custom_dcr_dealer", "custom_payment_type"):
+        field = MagicMock()
+        values = {"insert_after": "connections_tab", "reqd": 1, "description": "Site instruction"}
+        field.get.side_effect = values.get
+        field.set.side_effect = values.__setitem__
+        fields[name] = field
+    frappe.db.exists.side_effect = lambda dt, filters: filters["fieldname"]
+    frappe.get_doc.side_effect = lambda dt, name: fields[name]
+    pilot_fields.ensure_purchase_order_form_layout()
+    pilot_fields.ensure_purchase_order_form_layout()
+    for field in fields.values():
+        field.save.assert_called_once_with(ignore_permissions=True)
+        assert field.get("reqd") == 1
+        assert field.get("description") == "Site instruction"
+    assert fields["custom_home_build_request"].get("insert_after") == "supplier_section"
+    assert fields["custom_dcr_dealer"].get("fetch_from") == "custom_home_build_request.customer"
+    assert fields["custom_payment_type"].get("insert_after") == "custom_dcr_dealer"
+    frappe.clear_cache.assert_called_once_with(doctype="Purchase Order")
+
+
+@patch.object(pilot_fields, "frappe")
+def test_po_layout_skips_missing_custom_fields(frappe):
+    frappe.db.exists.return_value = None
+    pilot_fields.ensure_purchase_order_form_layout()
+    frappe.get_doc.assert_not_called()
+    frappe.clear_cache.assert_not_called()
+
+
 def test_offline_date_is_audited_editable_after_submission_and_staff_owned():
     from dcr.api.dealer_portal import HBR_INPUT_FIELDS
     data = json.loads((ROOT / "dcr/doctype/home_build_request/home_build_request.json").read_text())

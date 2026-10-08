@@ -20,6 +20,14 @@
             Object.keys(labels).forEach(function (name) {
                 overrides[name] = { label: __(labels[name]) };
             });
+            // Barcode scanning serves warehouse purchasing, not a home order.
+            // Keep any populated or site-required inputs inspectable.
+            ["scan_barcode", "last_scanned_warehouse"].forEach(function (name) {
+                var field = frm.fields_dict[name];
+                if (field && !field.df.reqd && !field.df.mandatory_depends_on && !frm.doc[name]) {
+                    overrides[name] = { hidden: 1 };
+                }
+            });
             // Existing materials or either subcontracting flow must remain
             // inspectable, including on submitted and cancelled orders.
             if (!frm.doc.is_subcontracted && !frm.doc.is_old_subcontracting_flow &&

@@ -4,6 +4,27 @@ Updated October 8, 2026. This is the ongoing status tracker for the full pilot r
 
 **Implemented** means prepared and tested in draft PR #34; these changes are not deployed. Hosted verification, business decisions, provider configuration, and staff trials are tracked separately. No factory packets or accounting transactions were sent or entered during this work.
 
+## Current work and next actions
+
+This file is the main project-management list. Keep the item table below as the complete scope; update each status only with source, deployment, or hosted evidence. Record the next action and any dependency here so work can resume without reconstructing the conversation.
+
+| Workstream | Current state | Next action | Dependency |
+| --- | --- | --- | --- |
+| Purchase Order UX | In progress; signed-in submitted-order baseline captured | Context placement and barcode cleanup prepared and tested; finish section/tab simplification, deploy, then compare draft and submitted forms | Source changes, deployment, and browser readback |
+| Hosted staff and dealer flows | Access restored; baseline inspection underway | Check native filters, history, request variants, portal states, and required-document behavior against the item table | Candidate deployment; approved trial records for actions |
+| Release | PR #34 open; live DCR is 815de47a5104d2c6c06997eaedd883f4e5a137e0 | Review the completed candidate, run required checks, deploy, then retain exact installed-commit evidence | Completed source and deployment checks |
+| Lending rules | Worked cases prepared; business decisions open | Confirm invoice basis, dated-interest convention/start date, horizon/end behavior, final-invoice/signature handling, and trial/cutover | DCR decisions; pending questions cover the first three |
+| Plant and packet setup | Current plant assignments and packet contacts unverified | Inspect existing configuration, identify missing names/contacts/documents, and reconcile with DCR | Confirmed business data; deliberate sends only |
+
+### Latest hosted evidence
+
+- Signed-in Desk is at `https://backdesk.dealercapital.net`; Frappe Cloud confirms that domain belongs to the existing dealercapitalresources site. The earlier signed-out checks used the Frappe Cloud hostname.
+- Cloud Apps shows DCR `815de47`, Frappe `97a5dd9` (16.36.1), ERPNext `af63cde` (16.37.0), and Lending `97f692e` (16.6.0). PR #34 is not installed.
+- Purchase Order List opens with five existing orders, Supplier, Company, status and Home Build Request filters, and date columns. The candidate Dealer filter is not installed yet.
+- The inspected submitted home PO opens as To Bill. Its linked home request and Payment Type are on **Connections**, away from the main order details. The Details tab shows an empty Raw Materials Supplied table and barcode/warehouse controls. A starting-layout screenshot is retained locally in `docs/pilot-evidence/po-before.jpg`, excluded from the public repository.
+
+## Full checklist
+
 | Checklist name | Status | Priority | Kind | Follow up | Recording evidence |
 | --- | --- | --- | --- | --- | --- |
 | Interest day-count examples | Worked cases prepared; waiting on business decision | P1 | Decision and verification | Agree dated interest examples using the team's 360-day basis, including February, a partial month, and which endpoint day is charged. A 360-day denominator alone does not settle how elapsed days are counted. Apply the same rule to accrual, payment demands, and payoff. | 46:51–50:39 |
@@ -28,7 +49,7 @@ Updated October 8, 2026. This is the ongoing status tracker for the full pilot r
 | Map address verification | Source tests pass; real-address hosted verification pending | P2 | Verification | Verify map positions with real addresses and ZIP codes, including parks and spaces. The suspicious demo location was attributed to an invented ZIP code. A park-level pin can be useful, with the space number retained in the deal details. | 1:51:19–1:53:23 |
 | Staff scenario trial | Trial instructions prepared; staff execution pending | P2 | Configuration and verification | Set up the staff trial and have Jake exercise COD or Cash, Customer Sold, Spec, and Inventory or Stock scenarios. Record missing documents and sequencing problems as they arise. Cover the simpler cash path explicitly; the main walkthrough concentrated on the most complicated floored case. | 6:11–7:39; 1:15:18–1:15:56; 1:31:59–1:33:17; 1:48:27–1:49:59 |
 | Phone support | Deferred; scope decision needed | P3 | Decision and implementation | Confirm the scope of phone support. The team discussed removing the desktop restriction but also deferred the question; test the actual dealer workflow and access to files before calling it ready. | 33:03–34:55 |
-| ERPNext docs skill and Purchase Order cleanup | Skill created; first PO source pass tested; live layout review pending sign-in | P3 | Skill creation and form design | Apply erpnext-docs to Purchase Order: minimal forms, consistent section placement, names, fill rules, and child-table columns. First pass labels factory context and hides empty raw materials on ordinary linked home orders. Preserve subcontracting, populated materials, required inputs, and site customizations. Inspect the live layout before finishing placement and tabs. Print formats remain separate. | Tristan requested this after the review. |
+| ERPNext docs skill and Purchase Order cleanup | Skill created; first PO source pass tested; authenticated baseline inspected; layout work in progress | P3 | Skill creation and form design | Apply erpnext-docs to Purchase Order: minimal forms, consistent section placement, names, fill rules, and child-table columns. First pass labels factory context and hides empty raw materials on ordinary linked home orders. Preserve subcontracting, populated materials, required inputs, and site customizations. Live inspection found home-request/payment context on Connections. First-section placement, dealer fetch, and unused barcode cleanup are now prepared and tested; finish tab/control simplification and hosted validation. Print formats remain separate. | Tristan requested this after the review. |
 
 Worked [lending acceptance cases](lending-acceptance-cases.md) now cover payments 12–14, dated interest, early payoff, and the forecast horizon. Their illustrative inputs do not settle the open business rules.
 
