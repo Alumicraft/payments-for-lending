@@ -28,7 +28,7 @@ Updated October 8, 2026. This is the ongoing status tracker for the full pilot r
 | Map address verification | Source tests pass; real-address hosted verification pending | P2 | Verification | Verify map positions with real addresses and ZIP codes, including parks and spaces. The suspicious demo location was attributed to an invented ZIP code. A park-level pin can be useful, with the space number retained in the deal details. | 1:51:19–1:53:23 |
 | Staff scenario trial | Trial instructions prepared; staff execution pending | P2 | Configuration and verification | Set up the staff trial and have Jake exercise COD or Cash, Customer Sold, Spec, and Inventory or Stock scenarios. Record missing documents and sequencing problems as they arise. Cover the simpler cash path explicitly; the main walkthrough concentrated on the most complicated floored case. | 6:11–7:39; 1:15:18–1:15:56; 1:31:59–1:33:17; 1:48:27–1:49:59 |
 | Phone support | Deferred; scope decision needed | P3 | Decision and implementation | Confirm the scope of phone support. The team discussed removing the desktop restriction but also deferred the question; test the actual dealer workflow and access to files before calling it ready. | 33:03–34:55 |
-| ERPNext document cleanup skill | Created; package validation passed | P3 | Skill creation | Create a reusable skill to clean up ERPNext documents: improve field order, grouping, hierarchy, and visual clutter while preserving validation, permissions, and workflow controls. Do this after the pilot fixes. | Tristan requested this after the review. |
+| ERPNext docs skill | Created; package validation passed | P3 | Skill creation | Create erpnext-docs for minimal ERPNext forms and document views, with consistent section placement, names, fill rules, and child-table columns throughout the workflow. Hide unnecessary fields and tabs while preserving validation, permissions, and workflow controls. Print formats will use a separate skill. | Tristan requested this after the review. |
 
 ## Source findings and pending decisions
 
@@ -52,4 +52,4 @@ Updated October 8, 2026. This is the ongoing status tracker for the full pilot r
 
 ## Cleanup skill
 
-The personal Codex skill is installed as `$erpnext-document-cleanup`. It covers Desk forms, document views, and print layouts while preserving validation, permissions, required information, and workflow controls. Its wording was edited using [humanizer](https://github.com/blader/humanizer/blob/main/SKILL.md), and package validation passed. Applying it to a selected live document is a separate task.
+The personal Codex skill is installed as `$erpnext-docs`. It covers Desk forms and document views while preserving validation, permissions, required information, and workflow controls. Its wording was edited using [humanizer](https://github.com/blader/humanizer/blob/main/SKILL.md), and package validation passed. Applying it to a selected live document is a separate task.
