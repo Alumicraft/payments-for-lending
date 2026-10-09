@@ -1,6 +1,6 @@
 # October 8 pilot follow ups
 
-This batch addresses dealer portal and staff workflow issues from the pilot recording. The [full checklist](pilot-checklist-2026-10-08.md) tracks each item by name and status. Source changes are merged and deployed through PR #51, reported installed by Cloud as `bffad5c`; the latest site migration succeeded. Off Line Date, insurance placement, Factory Address heading, empty derived-detail hiding and the Homes grid heading are verified live. Hosted evidence and unresolved items are tracked individually in the checklist.
+This batch addresses dealer portal and staff workflow issues from the pilot recording. The [full checklist](pilot-checklist-2026-10-08.md) tracks each item by name and status. Source changes are merged and deployed through PR #52, reported installed by Cloud as `e9189b9`; the latest site migration succeeded. Off Line Date, insurance placement, Factory Address heading, empty derived-detail hiding and the Homes grid heading are verified live. Hosted evidence and unresolved items are tracked individually in the checklist.
 
 ## Implemented in this batch
 
@@ -46,7 +46,7 @@ Set `DCR_PLAYWRIGHT_MODULE` to the Playwright package directory when using an ex
 
 ### Current authenticated evidence
 
-Administrator Desk checks cover linked PO creation, submitted PO presentation, historical dealer/date/manufacturer filters and board dealer/factory/quote/serial-fragment searches. The current Administrator portal session reports No dealer access yet, so dealer-owned behavior remains unverified. The accounting audit confirms accrual and demand scheduler executions, an enabled 2026 fiscal year, and a posted accrued-interest mapping defect. The deployed source guard prevents the legacy income-account fallback; live account repair and reconciliation are still required.
+Administrator Desk checks cover linked PO creation, submitted PO presentation, historical dealer/date/manufacturer filters and board dealer/factory/quote/serial-fragment searches. The user restored the demo dealer session and opened Gmail. Dealer summary, lending/payments/settings, assigned factory, owned file download and unsaved request variants were checked. Archived signing and completion email delivery is verified; the portal still lacks a signed-copy download action. Saved-request updates, duplicate acceptance, populated Off Line Date and fresh signing/banking trials remain open. The accounting audit confirms accrual and demand scheduler executions, an enabled 2026 fiscal year, and a posted accrued-interest mapping defect. The deployed source guard prevents the legacy income-account fallback; live account repair and reconciliation are still required.
 
 The invoice-default guard in PR #45 is installed and regression-tested. It prevents blank non-stock receipt rows from being assigned stock clearing by DCR. A configured hosted invoice posting trial remains open. Read-only accounting checks found two unmatched purchasing-clearing debits and one balanced demo disbursement whose amount agrees with linked Loan principal stats; they do not establish complete accounting readiness. See the [accounting audit](accounting-readiness-audit.md).
 
@@ -61,3 +61,5 @@ PR #49 moves the existing Loan monthly repayment out of the known hidden credit-
 - PO rounding summary: PR #50 merged and deployed. Fresh asset 20261008-14 hides duplicate Rounded Total and zero Rounding Adjustment only on saved home orders with matching totals. Grand Total and actual tax values remain visible; the saved form stays clean. Ten client files, 481 Python tests and 40 subtests pass. Pipeline 9bbrd7fmur and migration edhtrhtfbc succeeded. Remaining role/cancelled variants stay open in the full checklist.
 
 - Saved PO selectors: PR #51 deployed and verified with asset 20261008-15. Blank immutable tax/shipping selectors and ordinary header warehouse hide on saved home orders; populated tax template and row warehouse remain. A separate unsaved linked draft retains the inputs. Pipeline 7kp6hqjbf0 and migration cn1b3tpmlc succeeded. No values or print formats changed.
+
+- Unused PO sections: PR #52 deployed and verified at asset 20261008-16. Empty Pricing Rules and zero Additional Discount groups disappear entirely on saved home orders; an unsaved home-linked draft retains both headings. Real rules/discounts, required or site-specific controls and supplied-material/subcontracting reserve context remain guarded. Pipeline askeb8f3t5 and migration 6vb59sdvpl succeeded. No values or print formats changed.
