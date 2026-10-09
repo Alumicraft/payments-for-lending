@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import frappe
-from frappe.utils import add_months, flt
+from frappe.utils import flt
+from dcr.lending_rules import floorplan_schedule
 from lending.loan_management.doctype.loan_repayment_schedule.loan_repayment_schedule import (
     LoanRepaymentSchedule,
 )
@@ -14,15 +15,21 @@ class CustomLoanRepaymentSchedule(LoanRepaymentSchedule):
 
     Pattern:
     - Interest-only for first N periods.
-    - Then interest + principal as fixed % of outstanding balance.
+    - Then dated interest + principal as a fixed % of original financed principal.
     """
 
     def make_repayment_schedule(self, schedule_field="repayment_schedule", *args, **kwargs):
         if not self.is_dcr_floorplan_structure():
             return super().make_repayment_schedule(schedule_field, *args, **kwargs)
 
-        self.set(schedule_field, [])
-        self.make_dcr_repayment_schedule(schedule_field)
+        # The installed v16 caller has already reset this table and may have
+        # copied prior rows. Keep those rows and consume its actual arguments.
+        names = ("previous_interest_amount", "balance_amount", "additional_principal_amount",
+                 "pending_prev_days", "rate_of_interest", "principal_share_percentage",
+                 "interest_share_percentage", "partner_schedule_type")
+        values = dict(zip(names, args))
+        values.update(kwargs)
+        self.make_dcr_repayment_schedule(schedule_field, **values)
 
     def is_dcr_floorplan_structure(self) -> bool:
         if not getattr(self, "loan_product", None):
@@ -63,58 +70,54 @@ class CustomLoanRepaymentSchedule(LoanRepaymentSchedule):
         product_default_rate = self.get_loan_product_value("custom_default_interest_rate")
         return flt(product_default_rate) if product_default_rate is not None else 0.0
 
-    def make_dcr_repayment_schedule(self, schedule_field: str) -> None:
-        principal = flt(getattr(self, "current_principal_amount", None) or self.loan_amount)
-        monthly_rate = self.get_contract_interest_rate() / 1200
-        interest_only_months = int(
-            flt(
-                self.get_loan_product_value(
-                    "custom_interest_only_months", "custom_interest_only_periods"
-                )
+    def make_dcr_repayment_schedule(self, schedule_field: str, **native_values) -> None:
+        original = flt(self.loan_amount)
+        if getattr(self, "loan", None):
+            original = flt(frappe.db.get_value("Loan", self.loan, "loan_amount")) or original
+        principal = native_values.get("balance_amount")
+        if principal is None:
+            principal = getattr(self, "current_principal_amount", None)
+        if principal is None:
+            principal = original
+        existing = self.get(schedule_field) or []
+        one_time = getattr(self, "repayment_frequency", None) == "One Time"
+        if schedule_field == "colender_schedule" and native_values.get("partner_schedule_type") == "EMI (PMT) based":
+            full_balance = flt(getattr(self, "current_principal_amount", 0))
+            if full_balance > 0:
+                original *= flt(principal) / full_balance
+        rate = native_values.get("rate_of_interest") if schedule_field == "colender_schedule" else None
+        if rate is None:
+            rate = self.get_contract_interest_rate()
+        start = getattr(self, "posting_date", None)
+        if not start:
+            frappe.throw("Invoice/funding date is required to calculate floorplan interest")
+        interest_only = self.get_loan_product_value("custom_interest_only_months", "custom_interest_only_periods")
+        principal_percent = self.get_loan_product_value("custom_monthly_principal_pct", "custom_monthly_principal_percent")
+        try:
+            rows = floorplan_schedule(
+                original_principal=flt(principal) if one_time else original,
+                outstanding_principal=flt(principal), annual_rate=rate,
+                interest_start_date=start, first_payment_date=self.repayment_start_date,
+                prior_periods=len(existing),
+                interest_only_periods=0 if one_time else int(flt(12 if interest_only is None else interest_only)),
+                monthly_principal_percent=100 if one_time else flt(1 if principal_percent is None else principal_percent),
+                carried_interest=flt(native_values.get("previous_interest_amount")) +
+                    flt(getattr(self, "adjusted_interest", 0)),
             )
-            or 12
-        )
-        monthly_principal_pct = flt(
-            self.get_loan_product_value(
-                "custom_monthly_principal_pct", "custom_monthly_principal_percent"
-            )
-        ) or 1
-
-        payment_date = self.repayment_start_date
-        max_periods = int(self.repayment_periods or 0)
-
-        for period in range(1, max_periods + 1):
-            interest_amount = flt(principal * monthly_rate, 2)
-            principal_amount = 0.0
-
-            if period > interest_only_months:
-                principal_amount = flt(principal * (monthly_principal_pct / 100), 2)
-                principal_amount = min(principal_amount, principal)
-
-            total_payment = flt(interest_amount + principal_amount, 2)
-            balance_loan_amount = flt(principal - principal_amount, 2)
-
-            self._add_schedule_row(
-                schedule_field=schedule_field,
-                payment_date=payment_date,
-                principal_amount=principal_amount,
-                interest_amount=interest_amount,
-                total_payment=total_payment,
-                balance_loan_amount=balance_loan_amount,
-                days=30,
-            )
-
-            principal = balance_loan_amount
-            if principal <= 0:
-                break
-
-            payment_date = self.get_next_payment_date(payment_date) if hasattr(
-                self, "get_next_payment_date"
-            ) else add_months(payment_date, 1)
-
-        self.repayment_periods = len(self.get(schedule_field) or [])
-        if self.get(schedule_field):
-            self.monthly_repayment_amount = self.get(schedule_field)[0].total_payment
+        except ValueError as error:
+            frappe.throw(str(error))
+        for row in rows:
+            principal_share = flt(native_values.get("principal_share_percentage", 100)) / 100
+            interest_share = flt(native_values.get("interest_share_percentage", 100)) / 100
+            row["principal_amount"] = flt(row["principal_amount"] * principal_share, 2)
+            row["interest_amount"] = flt(row["interest_amount"] * interest_share, 2)
+            row["total_payment"] = flt(row["principal_amount"] + row["interest_amount"], 2)
+            self._add_schedule_row(schedule_field=schedule_field, **row)
+        if schedule_field == "repayment_schedule":
+            self.repayment_periods = len(self.get(schedule_field) or [])
+            self.monthly_repayment_amount = rows[0]["total_payment"] if rows else 0
+        elif self.get(schedule_field):
+            self.partner_monthly_repayment_amount = self.get(schedule_field)[0].total_payment
 
     def _add_schedule_row(self, **row_data):
         """Append the DCR-owned row shape directly.
@@ -122,6 +125,8 @@ class CustomLoanRepaymentSchedule(LoanRepaymentSchedule):
         The upstream helper signature has changed across Lending releases; this
         custom schedule only needs the core child-table fields below.
         """
+        if row_data["schedule_field"] != "colender_schedule":
+            self.number_of_rows = (getattr(self, "number_of_rows", 0) or 0) + 1
         self.append(
             row_data["schedule_field"],
             {
@@ -130,5 +135,6 @@ class CustomLoanRepaymentSchedule(LoanRepaymentSchedule):
                 "interest_amount": row_data["interest_amount"],
                 "total_payment": row_data["total_payment"],
                 "balance_loan_amount": row_data["balance_loan_amount"],
+                "number_of_days": row_data.get("number_of_days", row_data.get("days", 0)),
             },
         )
