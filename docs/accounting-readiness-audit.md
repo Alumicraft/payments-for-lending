@@ -150,3 +150,5 @@ Financed-fee guards are prepared after six failing admission cases: missing/exce
 PR #59 merged as cde9d663980e032e3f80c2bb251a09cff45ea45e; DCR-only Cloud pipeline 3gsidmtbqp started October 9 2:55 AM. Installation, native fee posting, rollback and clearing reconciliation remain pending. DocuSign environment is configured Sandbox (read-only observation). Accounting remains not ready.
 
 PR #59 is installed at exact cde9d663980e032e3f80c2bb251a09cff45ea45e; pipeline 3gsidmtbqp and site migration October 9 3:01 AM succeeded. Real fee posting and reconciliation remain open. Dealer bank invitation stops on an incomplete enabled legacy record; explicit reconnect option prepared, with 594 mocked tests and 40 subtests passing. No bank account or provider connection has been changed.
+
+Bank reconnect PR #60 is merged at 60554806e2b245f7189ada492d578155f442b2e5 and pipeline 9mebt5gb73 is running. A second source repair now retains the selected Plaid Auth routing mask instead of saving it empty; 600 mocked tests and 40 subtests pass. No provider transaction, connection or bank save has been performed. Native loan/fee/repayment acceptance remains pending.
