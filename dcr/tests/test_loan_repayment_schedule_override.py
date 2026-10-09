@@ -1,5 +1,6 @@
 """Tests for DCR Loan Repayment Schedule controller compatibility."""
 
+from datetime import date
 import importlib
 import sys
 import types
@@ -13,9 +14,15 @@ def import_override_with_stubs():
 
     frappe_utils = types.ModuleType("frappe.utils")
     frappe_utils.add_months = lambda date, months: date
+    frappe_utils.getdate = lambda value: value if isinstance(value, date) else date.fromisoformat(str(value))
+    frappe_utils.date_diff = lambda end, start: (frappe_utils.getdate(end) - frappe_utils.getdate(start)).days
     frappe_utils.flt = lambda value, precision=None: round(float(value or 0), precision) if precision is not None else float(value or 0)
 
     class BaseLoanRepaymentSchedule:
+        def add_rows_from_prev_disbursement(self, *args):
+            self.base_carry_args = args
+            return (1, 2, 3, 4)
+
         def make_repayment_schedule(self, *args, **kwargs):
             self.base_args = args
             self.base_kwargs = kwargs
@@ -49,6 +56,13 @@ def import_override_with_stubs():
 
 
 class TestLoanRepaymentScheduleOverride(unittest.TestCase):
+    def test_non_dcr_carry_still_uses_native_controller(self):
+        module, _ = import_override_with_stubs()
+        schedule = module.CustomLoanRepaymentSchedule()
+        schedule.is_dcr_floorplan_structure = lambda: False
+        self.assertEqual(schedule.add_rows_from_prev_disbursement('repayment_schedule', 75, 50), (1,2,3,4))
+        self.assertEqual(schedule.base_carry_args, ('repayment_schedule',75,50))
+
     def test_non_dcr_schedule_passes_lending_v16_args_to_base(self):
         module, _frappe = import_override_with_stubs()
 
