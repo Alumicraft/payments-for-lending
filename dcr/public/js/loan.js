@@ -138,6 +138,10 @@ function set_loan_calculated_value(frm, fieldname, value) {
     if (!frm.fields_dict[fieldname]) return;
     var current = frm.doc[fieldname];
     if (value === null || value === undefined) {
+        // Empty numeric fields reload as zero in Frappe. Writing null again
+        // would dirty the draft after every save, hiding its Submit action.
+        var type = (frm.fields_dict[fieldname].df || {}).fieldtype;
+        if (['Currency', 'Float', 'Percent', 'Int'].includes(type) && Number(current) === 0) return;
         if (current !== null && current !== undefined && current !== '') {
             frm.set_value(fieldname, null);
         }
