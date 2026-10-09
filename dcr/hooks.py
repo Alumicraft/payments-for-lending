@@ -161,12 +161,18 @@ doc_events = {
     "Loan Disbursement": {
         "before_submit": "dcr.api.financing_basis.validate_invoice_funding",
         "validate": "dcr.api.lending.on_loan_disbursement_validate",
-        "on_submit": "dcr.api.hbr_stage.sync_from_doc",
+        "on_submit": [
+            "dcr.api.financing_basis.validate_posted_financed_fees",
+            "dcr.api.hbr_stage.sync_from_doc",
+        ],
         "on_cancel": "dcr.api.hbr_stage.sync_from_doc",
     },
     "Loan Repayment": {
         "on_submit": "dcr.api.hbr_stage.sync_from_doc",
         "on_cancel": "dcr.api.hbr_stage.sync_from_doc",
+    },
+    "Sales Invoice": {
+        "before_validate": "dcr.api.financing_basis.prepare_financed_charge_invoice",
     },
     "Loan Demand": {
         "validate": "dcr.api.lending.populate_loan_demand_from_loan",
