@@ -127,4 +127,68 @@ domestic.doc.docstatus = 0;
 handlers.refresh(domestic);
 assert.equal(domestic.fields_dict.base_total_taxes_and_charges.df.hidden, 0, "Keep draft totals inspectable while pricing changes");
 childHandlers.supplied_items_add({ doc: { doctype: "Another Parent" } });
+function itemForm(status = 1) {
+    const frm = form({ docstatus: status, company: "DCR", currency: "USD", custom_home_build_request: "HBR-A" },
+        [{ fieldname: "items", fieldtype: "Table", label: "Items" }]);
+    const fields = [
+        { fieldname: "base_rate", fieldtype: "Currency", read_only: 1, reqd: 1 },
+        { fieldname: "base_amount", fieldtype: "Currency", read_only: 1, reqd: 1 },
+        { fieldname: "rate", fieldtype: "Currency", reqd: 1 },
+        { fieldname: "qty", fieldtype: "Float", reqd: 1 },
+        { fieldname: "warehouse", fieldtype: "Link", reqd: 1 },
+        { fieldname: "manufacturer", fieldtype: "Link" },
+        { fieldname: "manufacturer_part_no", fieldtype: "Data" },
+        { fieldname: "bom", fieldtype: "Link", read_only: 1 },
+        { fieldname: "include_exploded_items", fieldtype: "Check" }
+    ].map(df => ({ df: { hidden: 0, ...df }, toggle(show) { this.df.hidden = show ? 0 : 1; } }));
+    const section = { df: { fieldname: "manufacture_details", fieldtype: "Section Break", hidden: 0 },
+        fields_list: fields.slice(5), refresh() {} };
+    const row = { doc: { rate: 120, base_rate: 120, amount: 120, base_amount: 120, qty: 1 },
+        grid_form: { fields_dict: Object.fromEntries(fields.map(field => [field.df.fieldname, field])),
+            layout: { sections_dict: { manufacture_details: section }, refresh_sections() {} } } };
+    frm.fields_dict.items.grid = { grid_rows: [row], visible_columns: [[fields[2].df, 1], [fields[3].df, 1]] };
+    return { frm, row, fields: row.grid_form.fields_dict, section };
+}
+for (const status of [0, 1, 2]) {
+    const { frm, row, fields, section } = itemForm(status);
+    const original = JSON.stringify(row.doc);
+    handlers.items_on_form_rendered(frm);
+    assert.equal(fields.base_rate.df.hidden, status > 0 ? 1 : 0, "Only verified immutable calculations may hide required base amounts");
+    assert.equal(fields.rate.df.hidden, 0);
+    assert.equal(fields.qty.df.hidden, 0);
+    assert.equal(fields.warehouse.df.hidden, 0);
+    assert.equal(section.df.hidden, 1);
+    row.doc.manufacturer = "Populated manufacturer";
+    registered["Purchase Order Item"].manufacturer(frm);
+    assert.equal(fields.manufacturer.df.hidden, 0);
+    assert.equal(section.df.hidden, 0);
+    frm.doc.is_subcontracted = 1;
+    handlers.is_subcontracted(frm);
+    assert.equal(fields.manufacturer_part_no.df.hidden, 0);
+    assert.equal(fields.base_rate.df.hidden, 0);
+    frm.doc.is_subcontracted = 0;
+    row.doc.manufacturer = "";
+    frm.doc.custom_home_build_request = null;
+    handlers.custom_home_build_request(frm);
+    assert.equal(fields.manufacturer_part_no.df.hidden, 0);
+    assert.equal(fields.base_amount.df.hidden, 0);
+    assert.equal(JSON.stringify({ ...row.doc, manufacturer: undefined }), original);
+}
+const rowMismatch = itemForm();
+rowMismatch.row.doc.base_rate = 121;
+handlers.items_on_form_rendered(rowMismatch.frm);
+assert.equal(rowMismatch.fields.base_rate.df.hidden, 0);
+rowMismatch.frm.doc.currency = "EUR";
+handlers.currency(rowMismatch.frm);
+assert.equal(rowMismatch.fields.base_amount.df.hidden, 0);
+const customizedRow = itemForm();
+customizedRow.section.fields_list.push({ df: { fieldname: "custom_note", hidden: 0 } });
+customizedRow.fields.manufacturer.df.mandatory_depends_on = "eval:doc.qty";
+customizedRow.fields.base_rate.df.allow_on_submit = 1;
+customizedRow.frm.fields_dict.items.grid.visible_columns.push([customizedRow.fields.base_amount.df, 1]);
+handlers.items_on_form_rendered(customizedRow.frm);
+assert.equal(customizedRow.section.df.hidden, 0, "Site fields keep their section available");
+assert.equal(customizedRow.fields.manufacturer.df.hidden, 0);
+assert.equal(customizedRow.fields.base_rate.df.hidden, 0);
+assert.equal(customizedRow.fields.base_amount.df.hidden, 0, "Preserve user-configured grid columns");
 console.log("Purchase Order UX: home scope, draft/submitted/cancelled, required/custom fields, materials, restoration and no document writes passed");

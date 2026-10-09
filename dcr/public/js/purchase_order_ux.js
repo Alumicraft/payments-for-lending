@@ -130,6 +130,77 @@
             if (!Object.keys(original).length) delete state[name];
         });
         if (dependencies_changed && frm.layout && frm.layout.refresh_dependency) frm.layout.refresh_dependency();
+        apply_item_layout(frm);
+    }
+
+    function apply_item_layout(frm) {
+        if (frm.doc.doctype !== "Purchase Order") return;
+        var grid = frm.fields_dict.items && frm.fields_dict.items.grid;
+        if (!grid) return;
+        var visible_columns = (grid.visible_columns || []).map(function (column) { return column[0].fieldname; });
+        var home_order = Boolean(frm.doc.custom_home_build_request) &&
+            !frm.doc.is_subcontracted && !frm.doc.is_old_subcontracting_flow;
+        var company_currency = frm.doc.company && typeof erpnext !== "undefined" && erpnext.get_currency
+            ? erpnext.get_currency(frm.doc.company) : null;
+        (grid.grid_rows || []).forEach(function (row) {
+            // Work with the row editor's own controls, never shared child
+            // DocType metadata or another parent's table/column settings.
+            var editor = row.grid_form;
+            if (!editor || !editor.fields_dict || !row.doc) return;
+            var state = row.__dcr_home_item_layout || (row.__dcr_home_item_layout = {});
+            var overrides = {};
+            var empty_fields = ["product_bundle", "production_plan", "job_card",
+                "weight_per_unit", "total_weight", "weight_uom",
+                "manufacturer", "manufacturer_part_no", "bom", "include_exploded_items"];
+            if (home_order) {
+                empty_fields.forEach(function (name) {
+                    var field = editor.fields_dict[name];
+                    var value = row.doc[name];
+                    if (field && !visible_columns.includes(name) && !field.df.reqd && !field.df.mandatory_depends_on &&
+                            (value == null || value === "" || value === 0 || value === false)) {
+                        overrides[name] = 1;
+                    }
+                });
+                // Required base rate/amount fields can be suppressed only on
+                // immutable records with their stored calculations verified.
+                // Drafts and any discrepancy retain both currency values.
+                if (frm.doc.docstatus > 0 && company_currency && company_currency === frm.doc.currency) {
+                    ["price_list_rate", "rate", "amount", "net_rate", "net_amount"].forEach(function (name) {
+                        var base = "base_" + name;
+                        var field = editor.fields_dict[base];
+                        if (field && !visible_columns.includes(base) && field.df.read_only && !field.df.allow_on_submit &&
+                                !field.df.mandatory_depends_on && row.doc[base] != null &&
+                                row.doc[name] != null && Number.isFinite(Number(row.doc[base])) &&
+                                Number(row.doc[base]) === Number(row.doc[name])) {
+                            overrides[base] = 1;
+                        }
+                    });
+                }
+                ["manufacture_details", "item_weight_details"].forEach(function (name) {
+                    var section = editor.layout && editor.layout.sections_dict && editor.layout.sections_dict[name];
+                    // An extra site field keeps the section available.
+                    if (section && section.fields_list && section.fields_list.length &&
+                            section.fields_list.every(function (field) {
+                                return empty_fields.includes(field.df.fieldname) && overrides[field.df.fieldname] === 1;
+                            })) overrides[name] = 1;
+                });
+            }
+            Array.from(new Set(Object.keys(state).concat(Object.keys(overrides)))).forEach(function (name) {
+                var field = editor.fields_dict[name] ||
+                    (editor.layout && editor.layout.sections_dict && editor.layout.sections_dict[name]);
+                if (!field) return;
+                if (!Object.prototype.hasOwnProperty.call(state, name)) state[name] = field.df.hidden;
+                var hidden = Object.prototype.hasOwnProperty.call(overrides, name) ? overrides[name] : state[name];
+                if (field.df.hidden !== hidden) {
+                    if (field.df.fieldtype === "Section Break") {
+                        field.df.hidden = hidden;
+                        field.refresh();
+                    } else field.toggle(!hidden);
+                }
+                if (!Object.prototype.hasOwnProperty.call(overrides, name)) delete state[name];
+            });
+            if (editor.layout && editor.layout.refresh_sections) editor.layout.refresh_sections();
+        });
     }
 
     frappe.ui.form.on("Purchase Order", {
@@ -151,8 +222,15 @@
         dispatch_address_display: apply_layout,
         shipping_address_display: apply_layout,
         billing_address_display: apply_layout,
+        items_on_form_rendered: apply_item_layout,
         supplied_items: apply_layout
     });
+    var item_handlers = {};
+    ["product_bundle", "production_plan", "job_card", "weight_per_unit", "total_weight", "weight_uom",
+        "manufacturer", "manufacturer_part_no", "bom", "include_exploded_items"].forEach(function (name) {
+        item_handlers[name] = apply_item_layout;
+    });
+    frappe.ui.form.on("Purchase Order Item", item_handlers);
     // Frappe dispatches grid add/remove events to the child DocType.
     function materials_changed(frm) {
         if (frm.doc.doctype === "Purchase Order") apply_layout(frm);

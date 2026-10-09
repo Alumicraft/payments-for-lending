@@ -29,18 +29,20 @@
     function hydrate_payment_type(frm) {
         if (!frm.fields_dict.custom_payment_type || !frm.doc.custom_home_build_request) return;
         if (frm.doc.custom_payment_type) return;
-        // A submitted PO must remain a clean, read-only document. The email
+        // A submitted or cancelled PO must remain a clean document. The email
         // preview derives this value from the linked HBR when the field is
         // blank, so do not mark the submitted form dirty just for display.
-        if (frm.doc.docstatus === 1) return;
+        if (frm.doc.docstatus !== 0) return;
+        var request = frm.doc.custom_home_build_request;
 
         frappe.db.get_value(
             'Home Build Request',
-            frm.doc.custom_home_build_request,
+            request,
             'financing_type',
             function(r) {
                 if (!r || !r.financing_type || frm.doc.custom_payment_type) return;
-                if (frm.doc.docstatus === 1) return;
+                if (frm.doc.docstatus !== 0) return;
+                if (frm.doc.custom_home_build_request !== request) return;
                 frm.set_value(
                     'custom_payment_type',
                     r.financing_type === 'Floored' ? 'Flooring' : 'COD'
