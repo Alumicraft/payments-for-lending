@@ -98,6 +98,23 @@
             });
             var company_currency = frm.doc.company && typeof erpnext !== "undefined" && erpnext.get_currency
                 ? erpnext.get_currency(frm.doc.company) : null;
+            // An unchanged rounded total repeats the grand total. Keep both
+            // when rounding differs, while editing, or when a site requires it.
+            var grand = frm.doc.grand_total;
+            var rounded = frm.doc.rounded_total;
+            var adjustment = frm.doc.rounding_adjustment;
+            if (frm.doc.docstatus > 0 && grand != null && grand !== "" &&
+                    rounded != null && rounded !== "" && adjustment != null && adjustment !== "" &&
+                    Number.isFinite(Number(grand)) && Number.isFinite(Number(rounded)) &&
+                    Number(grand) === Number(rounded) && Number(adjustment) === 0) {
+                ["rounded_total", "rounding_adjustment"].forEach(function (name) {
+                    var field = frm.fields_dict[name];
+                    if (field && field.df.fieldtype === "Currency" && field.df.read_only &&
+                            !field.df.allow_on_submit && !field.df.reqd && !field.df.mandatory_depends_on) {
+                        overrides[name] = { hidden: 1 };
+                    }
+                });
+            }
             // Amounts on submitted/cancelled orders are immutable. Drafts keep
             // both totals available while currency and pricing are being edited.
             if (frm.doc.docstatus > 0 && company_currency && company_currency === frm.doc.currency) {
