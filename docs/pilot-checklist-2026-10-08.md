@@ -271,3 +271,5 @@ The personal Codex skill is installed as `$erpnext-docs`. It covers Desk forms a
 
 - Signed-copy follow-up prepared: request Signatures and Settings history now offer View/Download for Signed records with a matching private File. The endpoint rechecks authenticated customer ownership, signature status/type and exact parent/private file URL before streaming unchanged bytes. Native DocuSign attachments have no attached_to_field; customer/HBR field checks remain intact. Focused reproduction failed before the fix; 492 Python tests, 40 subtests and 10 client test files pass afterward. Manual preflight/v16 review passed. Deployment and dealer readback pending.
 - Portal modernization direction: user prefers React with shadcn. Keep Frappe as the authority for permissions and financial workflows; assess selective native-control adapters, and migrate the dashboard in stages. No React conversion is included in the signed-copy fix.
+
+- PR #53 merged as `5e6f34f9745b947b6ea569cdde80d55d4ac40b0d`. DCR-only Cloud pipeline `essujd3gbo` started with site migration selected and skip-failed-patches disabled. Pipeline pending; dealer download acceptance not yet recorded.
