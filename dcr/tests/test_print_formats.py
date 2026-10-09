@@ -49,6 +49,15 @@ def test_ach_missing_bank_identifiers_are_explicit():
     assert 'Routing identifier not recorded' in html
 
 
+def test_ach_identifies_the_application_instead_of_naming_the_dealer_as_loan_id():
+    import re
+    html = render_financial_format('ach_recurring_payment_authorization', {'name': 'ACC-LOAP-TEST-13'})
+    row = re.search(r'<td[^>]*>Loan Application</td>\s*<td[^>]*>(.*?)</td>', html, re.S)
+    assert row is not None
+    assert row.group(1).strip() == 'ACC-LOAP-TEST-13'
+    assert 'Loan ID' not in html
+
+
 def test_ach_recorded_identifiers_remain_masked():
     html = render_financial_format('ach_recurring_payment_authorization', {},
         bank={'bank': 'DEMO', 'custom_account_last_four': '0088', 'custom_routing_last_4': '1111'})
