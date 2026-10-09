@@ -19,7 +19,9 @@
   "signed_attachment",
   "recipient_email",
   "recipient_name",
-  "review_hash"
+  "review_hash",
+  "financial_basis_hash",
+  "financial_basis"
  ],
  "fields": [
   {
@@ -117,6 +119,20 @@
    "fieldtype": "Data",
    "label": "Reviewed Document Hash",
    "read_only": 1
+  },
+  {
+   "fieldname": "financial_basis_hash",
+   "label": "Reviewed Financial Terms Hash",
+   "fieldtype": "Data",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "financial_basis",
+   "label": "Reviewed Financial Terms",
+   "fieldtype": "Long Text",
+   "read_only": 1,
+   "hidden": 1
   }
  ],
  "index_web_pages_for_search": 1,

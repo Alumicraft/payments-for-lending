@@ -130,3 +130,44 @@ def test_voided_json_sim_event_releases_sent_request():
         docusign.docusign_webhook()
         assert void.call_args.args[0]=='ENV-1'
         assert void.call_args.args[2]=='Voided'
+
+
+def test_revised_flooring_packet_admits_new_terms_but_retains_old_signed_request(context):
+    from dcr.api.financing_basis import snapshot_hash
+    context.update(document_type='Flooring Packet',reference_doctype='Loan Application',
+                   reference_name='APP',financial_basis={'principal':'225000.00','invoice':'PI-NEW'})
+    old_hash = snapshot_hash({'principal':'220000.00','invoice':'PI-OLD'})
+    review = dict(context,user='staff@example.test',documents=[])
+    with patch.object(docusign,'_signature_context',return_value=context), patch.object(docusign,'require_staff'), patch.object(docusign,'_send_signing_email'), patch.object(docusign,'frappe') as f, patch.object(docusign,'DocuSignClient') as provider:
+        f.session.user = 'staff@example.test'; f.cache.get_value.return_value = review
+        def existing(doctype,filters):
+            return 'OLD-SIGNED' if filters.get('financial_basis_hash') == old_hash else None
+        f.db.exists.side_effect = existing
+        provider.return_value.create_envelope.return_value = {'envelope_id':'NEW-ENVELOPE'}
+        assert docusign.send_flooring_packet('APP','TOKEN')['success']
+        assert f.new_doc.return_value.financial_basis_hash == snapshot_hash(context['financial_basis'])
+        f.delete_doc.assert_not_called()
+        assert f.db.exists.call_args_list[0].args[1]['status'] == ['in',['Sent','Outcome Unknown']]
+
+
+def test_same_signed_financial_terms_prevent_duplicate_flooring_send(context):
+    context.update(document_type='Flooring Packet',reference_doctype='Loan Application',
+                   reference_name='APP',financial_basis={'principal':'225000.00','invoice':'PI'})
+    review = dict(context,user='staff@example.test',documents=[])
+    with patch.object(docusign,'_signature_context',return_value=context), patch.object(docusign,'require_staff'), patch.object(docusign,'frappe') as f, patch.object(docusign,'DocuSignClient') as provider:
+        f.session.user = 'staff@example.test'; f.cache.get_value.return_value = review
+        f.db.exists.side_effect = [None,'CURRENT-SIGNED']; f.throw.side_effect = ValueError
+        with pytest.raises(ValueError): docusign.send_flooring_packet('APP','TOKEN')
+        provider.assert_not_called()
+
+
+def test_late_old_packet_completion_cannot_overwrite_current_application_copy():
+    from dcr.api.financing_basis import snapshot_hash
+    record = MagicMock(document_type='Flooring Packet',reference_doctype='Loan Application',reference_name='APP')
+    record.financial_basis_hash = snapshot_hash({'principal':'220000.00'})
+    record.get.side_effect = lambda key: record.financial_basis_hash if key == 'financial_basis_hash' else None
+    with patch.object(docusign,'frappe') as f, patch('dcr.api.financing_basis.financial_snapshot',return_value={'principal':'225000.00'}) as snapshot, patch.object(docusign,'_send_signed_email') as email:
+        docusign._update_reference_document(record)
+        f.db.set_value.assert_not_called()
+        snapshot.assert_called_once_with(f.get_doc.return_value,check_permission=False)
+        email.assert_not_called()
