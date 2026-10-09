@@ -966,13 +966,15 @@ def process_plaid_callback(public_token, account_id, customer, is_default=True):
         exchange_result = exchange_response.json()
         access_token = exchange_result.get("access_token")
 
-        # Step 2: Get account details
+        # Step 2: Read Auth for the selected account, including its routing
+        # identifier. Retain only the mask in DCR; ACHQ uses the processor token.
         accounts_response = requests.post(
-            f"{plaid_base_url}/accounts/get",
+            f"{plaid_base_url}/auth/get",
             json={
                 "client_id": plaid_client_id,
                 "secret": plaid_secret,
-                "access_token": access_token
+                "access_token": access_token,
+                "options": {"account_ids": [account_id]},
             },
             timeout=30
         )
@@ -988,6 +990,13 @@ def process_plaid_callback(public_token, account_id, customer, is_default=True):
 
         if not account_info:
             frappe.throw(_("Selected account not found"))
+
+        ach_numbers = next((row for row in (accounts_result.get("numbers") or {}).get("ach") or []
+                            if row.get("account_id") == account_id), None)
+        routing = str((ach_numbers or {}).get("routing") or "")
+        if len(routing) != 9 or not routing.isascii() or not routing.isdigit():
+            frappe.throw(_("Plaid did not return ACH routing details for the selected account. Please connect a verified US checking or savings account."))
+        routing_last4 = routing[-4:]
 
         # Step 3: Create processor token for ACHQ
         processor_response = requests.post(
@@ -1039,7 +1048,7 @@ def process_plaid_callback(public_token, account_id, customer, is_default=True):
             token_source="Plaid",
             verify_status="POS",  # Plaid-verified accounts are considered positive
             account_last4=account_last4,
-            routing_last4="",  # Not available from Plaid directly
+            routing_last4=routing_last4,
             is_default=is_default,
             settings=settings,
         )
