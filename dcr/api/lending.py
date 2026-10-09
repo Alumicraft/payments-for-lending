@@ -4,7 +4,7 @@ from frappe import _
 from frappe.utils import getdate, add_days, today
 
 
-DEFAULT_REPAYMENT_PERIODS = 12
+DEFAULT_REPAYMENT_PERIODS = 112
 
 
 def _as_int(value):
@@ -20,8 +20,10 @@ def _loan_calculation_values(
     rate_of_interest,
     repayment_periods,
     projected_sales_price=None,
+    *, interest_start_date=None, first_payment_date=None,
+    interest_only_periods=12, monthly_principal_percent=1,
 ):
-    """Return DCR's interest-only preview values for a loan.
+    """Return DCR's dated full-schedule forecast values for a loan.
 
     Frappe Lending uses several field names for the same concepts depending on
     whether the document is a Loan Application or a Loan. Keeping the math in
@@ -30,7 +32,6 @@ def _loan_calculation_values(
     """
     amount = float(loan_amount or 0)
     rate = float(rate_of_interest or 0)
-    periods = _as_int(repayment_periods)
     sales_price = float(projected_sales_price or 0)
 
     values = {
@@ -45,33 +46,51 @@ def _loan_calculation_values(
         "custom_projected_ltv": None,
     }
 
-    # DCR floor-plan loans are interest-only. Principal is paid at payoff;
-    # this is also the convention used by the custom repayment schedule.
-    if amount and rate:
-        monthly_interest = amount * rate / 1200
-        values.update(
-            {
-                "repayment_amount": monthly_interest,
-                "monthly_repayment_amount": monthly_interest,
-                "monthly_interest_amount": monthly_interest,
-            }
+    # Payment totals require dates. The forecast covers the complete repayment
+    # schedule, rather than treating an arbitrary display horizon as maturity.
+    if amount > 0 and rate >= 0 and interest_start_date and first_payment_date:
+        from dcr.lending_rules import floorplan_schedule
+        from decimal import Decimal
+        rows = floorplan_schedule(
+            original_principal=amount, outstanding_principal=amount, annual_rate=rate,
+            interest_start_date=interest_start_date, first_payment_date=first_payment_date,
+            interest_only_periods=interest_only_periods,
+            monthly_principal_percent=monthly_principal_percent,
         )
-        if periods:
-            total_interest = monthly_interest * periods
-            values.update(
-                {
-                    "total_payable_interest": total_interest,
-                    "total_interest_payable": total_interest,
-                    "total_payable_amount": amount + total_interest,
-                    "total_payment": amount + total_interest,
-                }
-            )
+        first_payment = rows[0]["total_payment"]
+        total_interest = float(sum(Decimal(str(row["interest_amount"])) for row in rows))
+        values.update({
+            "repayment_amount": first_payment,
+            "monthly_repayment_amount": first_payment,
+            "monthly_interest_amount": rows[0]["interest_amount"],
+            "total_payable_interest": total_interest,
+            "total_interest_payable": total_interest,
+            "total_payable_amount": amount + total_interest,
+            "total_payment": amount + total_interest,
+            "repayment_periods": len(rows),
+        })
 
     if amount and sales_price:
         values["custom_projected_equity"] = sales_price - amount
         values["custom_projected_ltv"] = amount / sales_price * 100
 
     return values
+
+
+@frappe.whitelist()
+def get_dated_loan_preview(doctype, loan_amount, rate_of_interest, repayment_periods=0,
+                          projected_sales_price=None, interest_start_date=None,
+                          first_payment_date=None, loan_application=None):
+    if doctype not in ("Loan", "Loan Application"):
+        frappe.throw("A Loan or Loan Application is required.")
+    require_staff(doctype)
+    if doctype == "Loan" and loan_application:
+        require_staff("Loan Application", loan_application)
+        interest_start_date = frappe.db.get_value("Loan Application", loan_application, "financed_invoice_date")
+    return _loan_calculation_values(
+        loan_amount, rate_of_interest, repayment_periods, projected_sales_price,
+        interest_start_date=interest_start_date, first_payment_date=first_payment_date,
+    )
 
 
 def _doc_has_field(doc, fieldname):
@@ -91,9 +110,11 @@ def _doc_has_field(doc, fieldname):
 
 def _apply_loan_calculation_values(doc):
     """Apply calculated aliases to whichever fields exist on ``doc``."""
+    if doc.get("docstatus") == 1 and getattr(doc, "_action", None) != "submit":
+        return  # Keep already-submitted schedule totals authoritative.
     # Lending's Loan DocType stores the principal as ``qualifying_amount``
     # on some releases, while Loan Application uses ``loan_amount``. Keep
-    # both workflows on the same interest-only calculation path.
+    # both workflows on the same dated calculation path.
     # Loan exposes ``qualifying_amount`` as the editable principal while the
     # stock ``loan_amount`` field can retain the Loan Application amount in a
     # hidden field. Prefer the visible value on Loan so edits recalculate the
@@ -103,11 +124,18 @@ def _apply_loan_calculation_values(doc):
         loan_amount = doc.get("qualifying_amount") or doc.get("loan_amount")
     else:
         loan_amount = doc.get("loan_amount") or doc.get("qualifying_amount")
+    start = doc.get("financed_invoice_date")
+    first_due = doc.get("first_payment_date") or doc.get("repayment_start_date")
+    if doc.get("doctype") == "Loan":
+        start = doc.get("posting_date")
+        if doc.get("loan_application"):
+            start = frappe.db.get_value("Loan Application", doc.loan_application, "financed_invoice_date")
     values = _loan_calculation_values(
         loan_amount,
         doc.get("rate_of_interest"),
         doc.get("repayment_periods"),
         doc.get("custom_projected_sales_price"),
+        interest_start_date=start, first_payment_date=first_due,
     )
     for fieldname, value in values.items():
         if not _doc_has_field(doc, fieldname):
@@ -410,10 +438,9 @@ def validate_loan_application(doc, method):
         if hbr.factory:
             validate_advance_date(hbr.factory, doc.advance_date_requested)
 
-    # DCR floor-plan loans are interest-only: dealer pays just the accruing
-    # interest each period; principal balloons at payoff. Apply the same
-    # calculation aliases used by the Loan form so saved values never depend
-    # on which client-side event happened to fire first.
+    # First twelve payments are interest-only, followed by fixed original-
+    # basis principal reductions. Persist the same dated forecast as the Loan
+    # form rather than relying on client event order.
     _apply_loan_calculation_values(doc)
 
     from dcr.api.hbr_stage import sync_hbr_stages
@@ -796,7 +823,13 @@ def get_loan_defaults_from_application(loan_application):
         rate_of_interest,
         la.get("repayment_periods"),
         la.get("custom_projected_sales_price"),
+        interest_start_date=la.get("financed_invoice_date"),
+        first_payment_date=la.get("first_payment_date"),
     )
+    if la.get("first_payment_date"):
+        defaults["repayment_start_date"] = la.first_payment_date
+    if calculation_values.get("repayment_periods"):
+        defaults["repayment_periods"] = calculation_values["repayment_periods"]
     # Only pass fields that Loan actually exposes. This keeps the endpoint
     # compatible with Lending releases that use different total-field names
     # and avoids sending custom Loan Application fields into new_doc().

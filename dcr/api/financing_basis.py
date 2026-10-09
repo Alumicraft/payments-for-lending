@@ -59,12 +59,18 @@ def financial_snapshot(application, *, require_invoice=False, check_permission=T
     amount = total + fees
     if amount <= 0:
         frappe.throw('Financed principal must be greater than zero.')
+    first_payment_date = application.get('first_payment_date')
+    if first_payment_date:
+        first_payment_date = date.fromisoformat(str(first_payment_date)[:10])
+        if invoice_date and first_payment_date < invoice_date:
+            frappe.throw('First Payment Date cannot precede the invoice/funding date.')
     return dict(version=1, source='invoice' if invoice else 'quote',
                 invoice=invoice_name or None, invoice_date=str(invoice_date) if invoice_date else None,
                 company=company, currency=company_currency, customer=application.applicant,
                 home_build_request=application.get('home_build_request'),
                 invoice_total=str(total), additional_financed_fees=str(fees), principal=str(amount),
                 annual_interest_rate=str(money(application.get('rate_of_interest'))),
+                first_payment_date=str(first_payment_date) if first_payment_date else None,
                 monthly_insurance_amount=str(money(application.get('monthly_insurance_amount'))))
 
 
@@ -115,6 +121,8 @@ def validate_invoice_funding(doc, method=None):
         frappe.throw('Loan and application principal must match the final invoice plus additional financed fees. Revise the documents and packet before funding.')
     if money(loan.get('rate_of_interest')) != money(basis['annual_interest_rate']):
         frappe.throw('Loan interest rate must match the rate reviewed in the current Flooring Packet.')
+    if not basis['first_payment_date'] or str(doc.get('repayment_start_date'))[:10] != basis['first_payment_date']:
+        frappe.throw('First payment date must match the date reviewed in the current Flooring Packet.')
     require_current_signed_packet(application, basis)
     if str(doc.disbursement_date)[:10] != basis['invoice_date']:
         frappe.throw('Funding date must equal the Funding Invoice date ({0}).'.format(basis['invoice_date']))
@@ -131,6 +139,8 @@ def ensure_financing_fields():
              description='Only additional financed DCR fees not already included in the Funding Invoice.'),
         dict(fieldname='financed_invoice_date', label='Invoice / Funding Date', fieldtype='Date',
              insert_after='financed_dcr_fees', read_only=1),
+        dict(fieldname='first_payment_date', label='First Payment Date', fieldtype='Date',
+             insert_after='financed_invoice_date'),
     ]:
         if not frappe.get_meta('Loan Application').has_field(field['fieldname']):
             frappe.get_doc(dict(doctype='Custom Field', dt='Loan Application', **field)).insert(ignore_permissions=True)

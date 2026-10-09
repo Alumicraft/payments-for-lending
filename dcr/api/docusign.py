@@ -826,6 +826,8 @@ def _signature_context(document_type, reference_name, permission="read"):
         sources.append(hbr)
         from dcr.api.financing_basis import financial_snapshot, money
         financial_basis = financial_snapshot(reference)
+        if financial_basis['source'] == 'invoice' and not financial_basis['first_payment_date']:
+            frappe.throw(_("Set the First Payment Date before reviewing the final invoice packet."))
         if money(reference.loan_amount) != money(financial_basis["principal"]):
             frappe.throw(_("Save the Loan Application with the final invoice amount before reviewing its packet."))
         prints = [

@@ -163,21 +163,13 @@ class TestCustomerClientScript(unittest.TestCase):
 
 class TestLoanClientScript(unittest.TestCase):
 
-    def test_loan_form_recalculates_visible_interest_only_totals(self):
-        script = (ROOT / "dcr/public/js/loan.js").read_text()
-
-        self.assertIn("function calculate_loan_preview(frm)", script)
-        self.assertIn("amount * rate / 1200", script)
-        self.assertIn("frm.fields_dict.qualifying_amount", script)
-        self.assertIn("? frm.doc.qualifying_amount", script)
-        self.assertNotIn("frm.doc.qualifying_amount || frm.doc.loan_amount", script)
-        self.assertIn("qualifying_amount: function(frm)", script)
-        self.assertIn("function ensure_loan_preview_defaults(frm)", script)
-        self.assertIn("frm.set_value('repayment_periods', 12)", script)
-        self.assertIn("frm.set_value('qualifying_amount', frm.doc.loan_amount)", script)
-        self.assertIn("set_loan_calculated_value(frm, 'monthly_repayment_amount', monthly)", script)
-        self.assertIn("set_loan_calculated_value(frm, 'total_payment', total_amount)", script)
-        self.assertIn("custom_projected_ltv", script)
+    def test_loan_forms_load_shared_dated_preview_before_form_handlers(self):
+        hooks = (ROOT / "dcr/hooks.py").read_text()
+        self.assertLess(hooks.index('/js/dated_loan_preview.js'), hooks.index('/js/loan_application.js'))
+        for filename in ('loan.js', 'loan_application.js'):
+            script = (ROOT / "dcr/public/js" / filename).read_text()
+            self.assertIn('dcr.update_dated_loan_preview', script)
+            self.assertNotIn('/ 1200', script)
 
     def test_loan_defaults_only_apply_to_fields_on_the_new_loan_form(self):
         script = (ROOT / "dcr/public/js/loan_list_context_patch_20260525_14.js").read_text()

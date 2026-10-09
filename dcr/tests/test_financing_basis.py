@@ -21,13 +21,14 @@ def deal():
     application = Doc(name='APP',company='DCR',applicant='DEALER',home_build_request='HBR',
                       loan_amount=220000,financed_invoice='PI',financed_dcr_fees=5000,
                       rate_of_interest=12,monthly_insurance_amount=100)
+    application.set('first_payment_date','2026-02-01')
     invoice = Doc(name='PI',docstatus=1,company='DCR',currency='USD',supplier='FACTORY',
                   home_build_request='HBR',grand_total=220000,bill_date='2026-01-01',
                   posting_date='2026-01-20')
     request = Doc(customer='DEALER',factory='FACTORY')
     loan = Doc(name='LOAN',loan_application='APP',home_build_request='HBR',applicant='DEALER',
                company='DCR',loan_amount=225000,rate_of_interest=12)
-    disbursement = Doc(against_loan='LOAN',disbursement_date='2026-01-01')
+    disbursement = Doc(against_loan='LOAN',disbursement_date='2026-01-01',repayment_start_date='2026-02-01')
     with patch.object(rules,'frappe') as f:
         def fail(message, *args, **kwargs):
             raise ValueError(message)
@@ -122,6 +123,13 @@ def test_cross_request_loan_cannot_use_another_deal_packet(deal):
     loan.set('home_build_request','OTHER-HBR')
     with pytest.raises(ValueError,match='Home Build Request'):
         rules.validate_invoice_funding(disbursement)
+
+
+def test_packet_cannot_describe_a_payment_before_interest_starts(deal):
+    app,_,_,_,_ = deal
+    app.set('first_payment_date','2025-12-31')
+    with pytest.raises(ValueError,match='cannot precede'):
+        rules.financial_snapshot(app)
 
 
 @pytest.mark.parametrize('changes', [dict(rate_of_interest=15),dict(qualifying_amount=200000)])
