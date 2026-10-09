@@ -1,0 +1,21 @@
+/* Only known pricing groups in a reclaimed home-order row column. */
+.dcr-home-pricing-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--padding-lg, 24px);
+}
+
+.dcr-home-pricing-fields > .frappe-control {
+    min-width: 0;
+    max-width: none;
+}
+
+.dcr-home-pricing-fields > [data-fieldname="item_tax_template"] {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 767px) {
+    .dcr-home-pricing-fields {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

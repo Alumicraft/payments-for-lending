@@ -213,9 +213,18 @@
                     var contents = (section.fields_list || []).filter(function (field) {
                         return field.parent === parent;
                     });
+                    var suppressed_field = function (field) { return overrides[field.df.fieldname] === 1; };
+                    var native_hidden_pricing = function (field) {
+                        // These native calculations live beside base amounts.
+                        // Respect their existing visibility; never hide them.
+                        return frm.doc.docstatus > 0 &&
+                            ["pricing_rules", "stock_uom_rate", "is_free_item"].includes(field.df.fieldname) &&
+                            field.df.read_only && !field.df.reqd && !field.df.mandatory_depends_on &&
+                            !field.df.allow_on_submit && (field.df.hidden || field.df.hidden_due_to_dependency);
+                    };
                     var suppress = home_order && !column.df.label && !column.df.description &&
-                        contents.length > 0 && contents.every(function (field) {
-                            return overrides[field.df.fieldname] === 1;
+                        contents.some(suppressed_field) && contents.every(function (field) {
+                            return suppressed_field(field) || native_hidden_pricing(field);
                         });
                     if (suppress && !column_state.has(column)) column_state.set(column, column.df.hidden);
                     if (!column_state.has(column)) return;
@@ -226,6 +235,26 @@
                         column.refresh();
                     }
                     if (!suppress) column_state.delete(column);
+                });
+            });
+            Object.keys(sections).forEach(function (name) {
+                var section = sections[name];
+                var columns = section.columns || [];
+                var visible = columns.filter(function (column) {
+                    return column.df && !column.df.hidden && !column.df.hidden_due_to_dependency;
+                });
+                var reclaimed = columns.some(function (column) { return column_state.has(column); });
+                columns.forEach(function (column) {
+                    if (!column.form || typeof column.form.toggleClass !== "function") return;
+                    var parent = column.form.get(0);
+                    var names = (section.fields_list || []).filter(function (field) {
+                        return field.parent === parent;
+                    }).map(function (field) { return field.df.fieldname; }).join(",");
+                    var pair = ["price_list_rate,last_purchase_rate", "net_rate,net_amount",
+                        "rate,amount,item_tax_template"].includes(names);
+                    column.form.toggleClass("dcr-home-pricing-fields", Boolean(home_order && reclaimed &&
+                        visible.length === 1 && visible[0] === column && !column.df.label &&
+                        !column.df.description && pair));
                 });
             });
             if (editor.layout && editor.layout.refresh_sections) editor.layout.refresh_sections();
@@ -256,7 +285,8 @@
     });
     var item_handlers = {};
     ["product_bundle", "production_plan", "job_card", "weight_per_unit", "total_weight", "weight_uom",
-        "manufacturer", "manufacturer_part_no", "bom", "include_exploded_items"].forEach(function (name) {
+        "manufacturer", "manufacturer_part_no", "bom", "include_exploded_items",
+        "pricing_rules", "stock_uom_rate", "is_free_item"].forEach(function (name) {
         item_handlers[name] = apply_item_layout;
     });
     frappe.ui.form.on("Purchase Order Item", item_handlers);
