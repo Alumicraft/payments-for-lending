@@ -178,6 +178,38 @@ function tabForm(status = 1, extra = []) {
         ...extra
     ]);
 }
+const savedSelectors = ["tax_category", "shipping_rule", "incoterm", "taxes_and_charges", "set_warehouse"];
+for (const status of [0, 1, 2]) {
+    const frm = form({ custom_home_build_request: "HBR-A", docstatus: status },
+        savedSelectors.map(fieldname => ({ fieldname, fieldtype: "Link", hidden: 0 })));
+    const unchanged = JSON.stringify(frm.doc);
+    handlers.refresh(frm);
+    for (const name of savedSelectors) assert.equal(frm.fields_dict[name].df.hidden, status > 0 ? 1 : 0);
+    assert.equal(JSON.stringify(frm.doc), unchanged);
+    for (const name of savedSelectors) {
+        frm.doc[name] = "Existing reference";
+        handlers[name](frm);
+        assert.equal(frm.fields_dict[name].df.hidden, 0, "Retain populated saved references");
+        frm.doc[name] = "";
+        handlers[name](frm);
+    }
+    frm.doc.is_subcontracted = 1;
+    handlers.is_subcontracted(frm);
+    assert.equal(frm.fields_dict.set_warehouse.df.hidden, 0, "Retain subcontracting warehouse context");
+    frm.doc.is_subcontracted = 0;
+    frm.doc.is_old_subcontracting_flow = 1;
+    handlers.is_old_subcontracting_flow(frm);
+    assert.equal(frm.fields_dict.set_warehouse.df.hidden, 0);
+    frm.doc.custom_home_build_request = null;
+    handlers.custom_home_build_request(frm);
+    for (const name of savedSelectors) assert.equal(frm.fields_dict[name].df.hidden, 0);
+}
+for (const property of ["reqd", "mandatory_depends_on", "allow_on_submit"]) {
+    const frm = form({ custom_home_build_request: "HBR-A", docstatus: 1 },
+        savedSelectors.map(fieldname => ({ fieldname, fieldtype: "Link", hidden: 0, [property]: 1 })));
+    handlers.refresh(frm);
+    for (const name of savedSelectors) assert.equal(frm.fields_dict[name].df.hidden, 0, "Preserve site-required or editable selectors");
+}
 for (const status of [0, 1, 2]) {
     const frm = tabForm(status);
     const unchanged = JSON.stringify(frm.doc);

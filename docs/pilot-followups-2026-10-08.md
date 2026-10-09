@@ -1,6 +1,6 @@
 # October 8 pilot follow ups
 
-This batch addresses dealer portal and staff workflow issues from the pilot recording. The [full checklist](pilot-checklist-2026-10-08.md) tracks each item by name and status. Source changes are merged and deployed through PR #49, installed as `fd9a3df`; the latest site migration succeeded. Off Line Date, insurance placement, Factory Address heading, empty derived-detail hiding and the Homes grid heading are verified live. Hosted evidence and unresolved items are tracked individually in the checklist.
+This batch addresses dealer portal and staff workflow issues from the pilot recording. The [full checklist](pilot-checklist-2026-10-08.md) tracks each item by name and status. Source changes are merged and deployed through PR #50, reported installed by Cloud as `8187b39`; the latest site migration succeeded. Off Line Date, insurance placement, Factory Address heading, empty derived-detail hiding and the Homes grid heading are verified live. Hosted evidence and unresolved items are tracked individually in the checklist.
 
 ## Implemented in this batch
 
@@ -9,7 +9,7 @@ This batch addresses dealer portal and staff workflow issues from the pilot reco
 - Request submission displays as Submitted, with Loan approved reserved for the financial milestone.
 - The dealer portal updates automatically every ten seconds while visible. It preserves unchanged content, focus, and scroll position, waits for uploads or signing actions, and clears cached data when the session expires.
 - Completed and pending Flooring Packet signing returns open the same owned home request. Dealer agreements return to Home.
-- Dealer portal loan details show principal, rate, and monthly or next scheduled payment. The portal fixed-term Total interest and Total payable display is removed; optional read-only forecasts are also hidden on linked native staff Loan/Application forms. The Loan monthly-payment placement and early-payoff accounting remain open. An unavailable next payment displays as unknown.
+- Dealer portal loan details show principal, rate, and monthly or next scheduled payment. The portal fixed-term Total interest and Total payable display is removed; optional read-only forecasts are also hidden on linked native staff Loan/Application forms. The Loan monthly-payment placement is verified live; dated amounts and early-payoff accounting remain open. An unavailable next payment displays as unknown.
 
 - Home Build Requests have one staff-editable Off Line Date, including changes after submission and existing document history. The dealer detail displays it as read-only information.
 - Native staff filters include dealer, factory, quote, and partial serial number. Purchase Orders have read-only Dealer context and a standard Dealer filter.
@@ -57,3 +57,5 @@ The remaining Purchase Order tab pass is deployed in PR #47. A submitted home or
 PR #48 staff display acceptance: exact installed release and successful migration verified. Fresh saved Loan and Application forms hide forecasts without unsaved changes; actual paid totals and Application monthly repayment/insurance remain visible. The native Loan still needs its populated monthly-payment control moved from a hidden section and its now-empty forecast column collapsed. Accounting rules, early payoff and print-format calculations remain outside this presentation change.
 
 PR #49 moves the existing Loan monthly repayment out of the known hidden credit-limit placement and into Loan Details after interest rate. The metadata migration, exact installed source and fresh saved form confirm the repair. The empty forecast column now collapses, preserving actual paid totals, and both saved Loan/Application forms remain clean. These are display checks of stored values; demands, curtailment and payoff accounting remain unresolved.
+
+- PO rounding summary: PR #50 merged and deployed. Fresh asset 20261008-14 hides duplicate Rounded Total and zero Rounding Adjustment only on saved home orders with matching totals. Grand Total and actual tax values remain visible; the saved form stays clean. Ten client files, 481 Python tests and 40 subtests pass. Pipeline 9bbrd7fmur and migration edhtrhtfbc succeeded. Remaining role/cancelled variants stay open in the full checklist.

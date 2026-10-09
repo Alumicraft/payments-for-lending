@@ -57,7 +57,8 @@
             // Keep draft inputs, staff-editable fields and populated references.
             if (frm.doc.docstatus > 0) {
                 ["contact_person", "shipping_address", "billing_address",
-                    "payment_terms_template", "tc_name", "terms"].forEach(function (name) {
+                    "payment_terms_template", "tc_name", "terms", "tax_category",
+                    "shipping_rule", "incoterm", "taxes_and_charges"].forEach(function (name) {
                     var field = frm.fields_dict[name];
                     if (field && !field.df.allow_on_submit && !field.df.reqd &&
                             !field.df.mandatory_depends_on && !frm.doc[name]) {
@@ -67,6 +68,14 @@
                 hide_empty_section(frm, overrides, "company_billing_address_section",
                     ["billing_address", "billing_address_display"]);
                 hide_empty_section(frm, overrides, "terms_section_break", ["tc_name", "terms"]);
+                // A blank header warehouse has no bulk-entry purpose on a
+                // saved ordinary home order. Row warehouse values stay visible.
+                var warehouse = frm.fields_dict.set_warehouse;
+                if (!frm.doc.is_subcontracted && !frm.doc.is_old_subcontracting_flow &&
+                        warehouse && !warehouse.df.allow_on_submit && !warehouse.df.reqd &&
+                        !warehouse.df.mandatory_depends_on && !frm.doc.set_warehouse) {
+                    overrides.set_warehouse = { hidden: 1 };
+                }
             }
             // Home purchases do not repeat automatically. When no repeat or
             // dates exist, remove the unused group, including its heading.
@@ -347,6 +356,11 @@
         billing_address_display: apply_layout,
         items_on_form_rendered: apply_item_layout,
         payment_terms_template: apply_layout,
+        tax_category: apply_layout,
+        shipping_rule: apply_layout,
+        incoterm: apply_layout,
+        taxes_and_charges: apply_layout,
+        set_warehouse: apply_layout,
         tc_name: apply_layout,
         terms: apply_layout,
         from_date: apply_layout,
