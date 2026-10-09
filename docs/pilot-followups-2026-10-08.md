@@ -1,6 +1,6 @@
 # October 8 pilot follow ups
 
-This batch addresses dealer portal and staff workflow issues from the pilot recording. The [full checklist](pilot-checklist-2026-10-08.md) tracks each item by name and status. Source changes are merged and deployed through PR #44, installed as `064a4a9`; site migration succeeded. Off Line Date, insurance placement, Factory Address heading, empty derived-detail hiding and the Homes grid heading are verified live. Hosted evidence and unresolved items are tracked individually in the checklist.
+This batch addresses dealer portal and staff workflow issues from the pilot recording. The [full checklist](pilot-checklist-2026-10-08.md) tracks each item by name and status. Source changes are merged and deployed through PR #45, installed as `23b9e6d`; the latest source-only pull succeeded. Off Line Date, insurance placement, Factory Address heading, empty derived-detail hiding and the Homes grid heading are verified live. Hosted evidence and unresolved items are tracked individually in the checklist.
 
 ## Implemented in this batch
 
@@ -9,7 +9,7 @@ This batch addresses dealer portal and staff workflow issues from the pilot reco
 - Request submission displays as Submitted, with Loan approved reserved for the financial milestone.
 - The dealer portal updates automatically every ten seconds while visible. It preserves unchanged content, focus, and scroll position, waits for uploads or signing actions, and clears cached data when the session expires.
 - Completed and pending Flooring Packet signing returns open the same owned home request. Dealer agreements return to Home.
-- Loan details show principal, rate, and monthly or next scheduled payment. The fixed-term Total interest and Total payable display is removed. An unavailable next payment displays as unknown.
+- Dealer portal loan details show principal, rate, and monthly or next scheduled payment. The portal fixed-term Total interest and Total payable display is removed; those totals remain visible on the native staff Loan form and still need review. An unavailable next payment displays as unknown.
 
 - Home Build Requests have one staff-editable Off Line Date, including changes after submission and existing document history. The dealer detail displays it as read-only information.
 - Native staff filters include dealer, factory, quote, and partial serial number. Purchase Orders have read-only Dealer context and a standard Dealer filter.
@@ -20,7 +20,7 @@ This batch addresses dealer portal and staff workflow issues from the pilot reco
 
 ## Verification
 
-The latest Python suite passed 465 tests and 33 subtests using mocked Frappe. The eight dependency-free Node test files passed, including Purchase Order scope, draft/submitted/cancelled states, required and custom fields, materials, restoration, and opening without data writes. A separate Chrome test exercised the production portal shell, CSS, and script with synthetic API responses, including updates, focus/scroll, uploads, signing, visibility, transient failures, malformed responses, expired sessions, offline date display, and Customer Sold summaries.
+The latest Python suite passed 469 tests and 40 subtests using mocked Frappe. The eight dependency-free Node test files passed, including Purchase Order scope, draft/submitted/cancelled states, required and custom fields, materials, restoration, and opening without data writes. A separate Chrome test exercised the production portal shell, CSS, and script with synthetic API responses, including updates, focus/scroll, uploads, signing, visibility, transient failures, malformed responses, expired sessions, offline date display, and Customer Sold summaries.
 
 Run the dependency-free client checks with `node --test dcr/tests/*.cjs`. The browser test additionally requires Playwright and Chrome:
 
@@ -42,8 +42,10 @@ Set `DCR_PLAYWRIGHT_MODULE` to the Playwright package directory when using an ex
 - Curtailment starts with payment 13 and reduces principal by 1% of the original invoice each month, as Tristan clarified. Confirm the source of the original invoice amount when loan fees differ, then test payments 12–14 and early payoff. This batch does not change schedule calculations.
 - Confirm the 360-day interest convention, accrual start date, schedule horizon, and final-invoice principal mapping with dated worked examples.
 - Use the full checklist for hosted checks, factory/plant assignments, insurance entry, historical date filtering, and the accounting trial.
-- The personal `$erpnext-docs` skill is created and its package validates. Its instructions were edited using [humanizer](https://github.com/blader/humanizer/blob/main/SKILL.md). Purchase Order application is in progress. On October 8 the live `/desk` route reached the DCR sign-in page; sign-in was subsequently restored on backdesk.dealercapital.net, and the submitted PO baseline was inspected. Cloud Apps confirms installed DCR `dafb01c`. The initial PO pass and its two repairs are deployed and inspected; further variants remain open. The source inventory used the [official ERPNext v16 Purchase Order metadata](https://github.com/frappe/erpnext/blob/version-16/erpnext/buying/doctype/purchase_order/purchase_order.json); Customize Form may differ on the site.
+- The personal `$erpnext-docs` skill is created and its package validates. Its instructions were edited using [humanizer](https://github.com/blader/humanizer/blob/main/SKILL.md). Purchase Order application is in progress. On October 8 the live `/desk` route reached the DCR sign-in page; sign-in was subsequently restored on backdesk.dealercapital.net, and the submitted PO baseline was inspected. Cloud Apps confirms installed DCR `23b9e6d`. The initial PO pass and its two repairs are deployed and inspected; further variants remain open. The source inventory used the [official ERPNext v16 Purchase Order metadata](https://github.com/frappe/erpnext/blob/version-16/erpnext/buying/doctype/purchase_order/purchase_order.json); Customize Form may differ on the site.
 
 ### Current authenticated evidence
 
 Administrator Desk checks cover linked PO creation, submitted PO presentation, historical dealer/date/manufacturer filters and board dealer/factory/quote/serial-fragment searches. The current Administrator portal session reports No dealer access yet, so dealer-owned behavior remains unverified. The accounting audit confirms accrual and demand scheduler executions, an enabled 2026 fiscal year, and a posted accrued-interest mapping defect. The deployed source guard prevents the legacy income-account fallback; live account repair and reconciliation are still required.
+
+The invoice-default guard in PR #45 is installed and regression-tested. It prevents blank non-stock receipt rows from being assigned stock clearing by DCR. A configured hosted invoice posting trial remains open. Read-only accounting checks found two unmatched purchasing-clearing debits and one balanced demo disbursement whose amount agrees with linked Loan principal stats; they do not establish complete accounting readiness. See the [accounting audit](accounting-readiness-audit.md).

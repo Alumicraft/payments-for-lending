@@ -6,7 +6,7 @@
  * - Email → "FL Payoff Letter" / "COD Payoff Letter" — payoff letters
  *
  * Indicators:
- * - Auto-Pay status (green if bank account linked, red if not)
+ * - Linked bank account (does not certify automatic debit activation)
  *
  * Auto-Pay setup email is sent automatically on save when no bank account
  * is linked (server-side, with 24-hour dedup).
@@ -21,7 +21,7 @@ frappe.ui.form.on('Loan', {
             return;
         }
 
-        // Auto-Pay status indicator (show on saved and submitted loans)
+        // Linked bank account indicator (show on saved and submitted loans)
         show_autopay_indicator(frm);
 
         // Draft loans need the same visible preview as Loan Applications.
@@ -175,27 +175,33 @@ function set_loan_calculated_value(frm, fieldname, value) {
 
 
 function show_autopay_indicator(frm) {
+    var loan_name = frm.doc.name;
     // Clear any existing headline first to prevent duplicates
     frm.dashboard.clear_headline();
 
     frappe.call({
         method: 'dcr.api.achq_integration.get_loan_account_info',
-        args: { loan: frm.doc.name },
+        args: { loan: loan_name },
         callback: function(r) {
+            if (frm.doc.name !== loan_name) return;
             frm.dashboard.clear_headline();
             if (r.message && r.message.has_account) {
                 var info = r.message;
-                frm.dashboard.set_headline(
-                    __('Auto-Pay: {0} ending in {1}', [info.bank_name || 'Bank', info.account_last4]),
-                    'green'
-                );
+                // Account resolution proves linkage, not debit activation. Only
+                // display a four-digit mask; never render a missing or full number.
+                var mask = String(info.account_last4 || '').trim();
+                var bank_name = frappe.utils.escape_html(info.bank_name || __('Bank'));
+                var headline = /^\d{4}$/.test(mask)
+                    ? __('Bank account: {0} ending in {1}', [bank_name, mask])
+                    : __('Bank account: {0} (account number unavailable)', [bank_name]);
+                frm.dashboard.set_headline(headline, 'blue');
             } else {
                 frm.dashboard.set_headline(
                     '<span style="display:flex;justify-content:space-between;align-items:center;width:100%">' +
-                    '<span>' + __('Auto-Pay: No bank account linked') + '</span>' +
+                    '<span>' + __('Bank account: Not linked') + '</span>' +
                     '<button class="btn btn-xs btn-primary resend-autopay-email" style="font-weight:600;">Resend Setup Email</button>' +
                     '</span>',
-                    'red'
+                    'orange'
                 );
                 // Bind after headline renders
                 frm.$wrapper.find('.resend-autopay-email').on('click', function() {
