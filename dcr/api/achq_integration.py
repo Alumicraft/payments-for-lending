@@ -13,6 +13,7 @@ import hashlib
 import hmac
 import io
 import json
+from contextlib import contextmanager
 
 import frappe
 from dcr.api.access import require_staff
@@ -1105,23 +1106,31 @@ def _verify_plaid_guest_token(customer, token):
 @frappe.whitelist(allow_guest=True)
 def get_plaid_link_token_guest(customer, token):
     """Guest-accessible wrapper for get_plaid_link_token. Verified via HMAC token."""
-    _verify_plaid_guest_token(customer, token)
-    # Token verification is the authorization — elevate to bypass doc-level permission checks
-    original_user = frappe.session.user
-    try:
-        frappe.set_user("Administrator")
+    with _plaid_token_context(customer, token):
         return get_plaid_link_token(customer)
-    finally:
-        frappe.set_user(original_user)
 
 
 @frappe.whitelist(allow_guest=True)
 def process_plaid_callback_guest(public_token, account_id, customer, token):
     """Guest-accessible wrapper for process_plaid_callback. Verified via HMAC token."""
+    with _plaid_token_context(customer, token):
+        return process_plaid_callback(public_token, account_id, customer, is_default=True)
+
+
+@contextmanager
+def _plaid_token_context(customer, token):
+    """Keep token-authorized work from replacing the caller's session cookie.
+
+    Frappe set_user resets sid, session data and request arguments, so restoring
+    just the username still leaves a signed-in browser with an invalid sid.
+    """
     _verify_plaid_guest_token(customer, token)
-    original_user = frappe.session.user
+    original_session = dict(frappe.local.session)
+    original_form = frappe.local.form_dict
     try:
         frappe.set_user("Administrator")
-        return process_plaid_callback(public_token, account_id, customer, is_default=True)
+        yield
     finally:
-        frappe.set_user(original_user)
+        frappe.set_user(original_session['user'])
+        frappe.local.session.update(original_session)
+        frappe.local.form_dict = original_form
