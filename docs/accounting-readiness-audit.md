@@ -74,3 +74,9 @@ PR #45 rollout: pipeline `3frnu0bt3f` succeeded in 3m57s; Update Site Pull `3i3r
 Hourly DCR settlement-reconciliation scheduler readback: Stopped is unchecked, last execution is October 8 at 18:00:56 America/Los_Angeles, and the filtered log list contains 78 of 78 retained executions, all Complete. This establishes scheduler execution only. The source routine retries accounting for Accounting Pending transactions using stored settlement evidence; no eligible transaction, resulting posting or real provider settlement was exercised during this check.
 
 Native loan classification is enabled (Stopped unchecked), runs Daily Long, and last executed October 8 at 00:00:41 America/Los_Angeles. Its filtered list shows eight of eight retained logs, all Complete. No classification job was manually run. Accrual, demand, classification and DCR settlement-reconciliation scheduler execution are now observed; their accounting results still require the configured transaction cases and reconciliation.
+
+## Authorized trial resumed
+
+The user confirms this is resettable test data, permits normal-workflow transaction tests and directs Codex to select sensible mappings and reconcile postings. Principal/curtailment basis is the purchase invoice total including freight and financed DCR fees; interest is actual elapsed days / 360 from the invoice date; monthly payments continue after 36 months. Changed invoice amounts require a revised signed packet.
+
+Company day-count convention is now saved as Actual/360, with Version `8un72gqin6` confirming Actual/365 → Actual/360. Historical entries were not changed. Custom schedule code still uses fixed 30-day interest and percent of remaining principal; its correction and dated posting reconciliation remain required. The mapping and historical findings above remain unresolved. Accounting is still not ready.
