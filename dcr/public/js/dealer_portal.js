@@ -592,6 +592,12 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
         return table(caption, columns, rows);
     }
 
+    function signed_document_links(item) {
+        return item.status === "Signed" && item.can_download === true
+            ? document_links("signature", item.name, item.document_type, "signed " + item.document_type)
+            : "";
+    }
+
     function signature_status(item) {
         if (item.status === "Signed") return status("done", "Signed");
         if (item.actionable) return status("action", "Waiting for your signature");
@@ -857,7 +863,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
         if (signed.length) {
             body += section("Signatures", sign_alert(signed) + table("Signatures for " + deal.name, [{ label: "File type", cls: "dcr-c-icon", hidden: true }, { label: "Document" }, { label: "Status" }, { label: "Date", cls: "dcr-nowrap dcr-muted" }, { label: "Actions", cls: "dcr-c-act", hidden: true }],
                 signed.map(function (item) {
-                    return { header: 1, cells: [FILE_ICONS.pdf, '<span class="dcr-strong">' + esc(item.document_type) + "</span>", signature_status(item), esc(fmt_date(item.signed_date || item.sent_date)), '<span class="dcr-actions">' + (item.actionable ? sign_button(item, item.document_type) : "") + "</span>"] };
+                    return { header: 1, cells: [FILE_ICONS.pdf, '<span class="dcr-strong">' + esc(item.document_type) + "</span>", signature_status(item), esc(fmt_date(item.signed_date || item.sent_date)), '<span class="dcr-actions">' + (item.actionable ? sign_button(item, item.document_type) : signed_document_links(item)) + "</span>"] };
                 })));
         }
         if (accepted && M.hasLoan(deal)) body += loan_payments_section(deal);
@@ -1010,10 +1016,10 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
         }
         // History keeps every record; nothing is collapsed to "latest".
         var history = preview(parts.history, "signatures");
-        body += section("Agreements and signatures", parts.history.length ? table("Agreement and signature history", [{ label: "File type", cls: "dcr-c-icon", hidden: true }, { label: "Document" }, { label: "For" }, { label: "Status", cls: "dcr-nowrap" }, { label: "Date", cls: "dcr-nowrap dcr-muted" }],
+        body += section("Agreements and signatures", parts.history.length ? table("Agreement and signature history", [{ label: "File type", cls: "dcr-c-icon", hidden: true }, { label: "Document" }, { label: "For" }, { label: "Status", cls: "dcr-nowrap" }, { label: "Date", cls: "dcr-nowrap dcr-muted" }, { label: "Actions", cls: "dcr-c-act", hidden: true }],
             history.map(function (entry) {
                 var item = entry.signature;
-                return { header: 1, cells: [FILE_ICONS.pdf, '<span class="dcr-strong">' + esc(item.document_type) + "</span>", signature_scope(entry), signature_status(item), esc(fmt_date(item.signed_date || item.sent_date))] };
+                return { header: 1, cells: [FILE_ICONS.pdf, '<span class="dcr-strong">' + esc(item.document_type) + "</span>", signature_scope(entry), signature_status(item), esc(fmt_date(item.signed_date || item.sent_date)), '<span class="dcr-actions">' + signed_document_links(item) + "</span>"] };
             })) + (parts.history.length > PREVIEW_ROWS ? toggle_button("signatures", parts.history.length, "record") : "")
             : '<p class="dcr-note">' + (parts.waiting.length ? "No earlier records." : "No agreements have been sent yet.") + "</p>", parts.history.length ? esc(plural(parts.history.length, "record")) : "");
 

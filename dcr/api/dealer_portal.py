@@ -502,6 +502,7 @@ def _get_signatures(customer):
         "sent_date",
         "signed_date",
         "envelope_id",
+        "signed_attachment",
     ]
     rows = frappe.get_all(
         "Signature Request",
@@ -511,6 +512,18 @@ def _get_signatures(customer):
         limit_page_length=50,
         ignore_permissions=True,
     )
+    signed_rows = [row for row in rows or []
+                   if _value(row, "status") == "Signed" and _value(row, "signed_attachment")]
+    files = frappe.get_all(
+        "File", filters={
+            "attached_to_doctype": "Signature Request",
+            "attached_to_name": ["in", [_value(row, "name") for row in signed_rows]],
+            "file_url": ["in", [_value(row, "signed_attachment") for row in signed_rows]],
+            "is_private": 1,
+        }, fields=["attached_to_name", "file_url"], ignore_permissions=True,
+        limit_page_length=0,
+    ) if signed_rows else []
+    available = {(_value(file, "attached_to_name"), _value(file, "file_url")) for file in files or []}
     return [
         {
             "name": _value(row, "name"),
@@ -521,6 +534,8 @@ def _get_signatures(customer):
             "sent_date": _json_value(_value(row, "sent_date")),
             "signed_date": _json_value(_value(row, "signed_date")),
             "actionable": _value(row, "status") == "Sent" and bool(_value(row, "envelope_id")),
+            "can_download": _value(row, "status") == "Signed" and
+                (_value(row, "name"), _value(row, "signed_attachment")) in available,
         }
         for row in rows or []
     ]
@@ -868,6 +883,19 @@ def upload_document(target_type, target_name=None, document_type=None):
 
 
 def _document_url(customer, target_type, target_name, document_type):
+    if target_type == "signature":
+        values = frappe.db.get_value(
+            "Signature Request", target_name,
+            ["name", "customer", "status", "document_type", "signed_attachment"], as_dict=True,
+        ) if target_name else None
+        if (not values or _value(values, "customer") != _value(customer, "name")
+                or _value(values, "status") != "Signed"
+                or _value(values, "document_type") != document_type
+                or not _value(values, "signed_attachment")):
+            _deny("That signed document is not available in your dealer account.")
+        # DocuSign creates the private File on the Signature Request without
+        # attached_to_field. Bind to the owned parent and its exact stored URL.
+        return "Signature Request", target_name, None, _value(values, "signed_attachment")
     if target_type == "customer":
         if target_name and target_name != _value(customer, "name"):
             _deny("That dealer account is not available.")
@@ -905,10 +933,13 @@ def download_document(target_type, target_name=None, document_type=None):
         _deny("That document has not been uploaded yet.")
     # A missing get_doc-by-filters logs the entire filters dict in Frappe,
     # including its private storage URL. Preflight without a throwing lookup.
-    file_name = frappe.db.get_value("File", {
+    file_filters = {
         "file_url": file_url, "attached_to_doctype": doctype,
-        "attached_to_name": name, "attached_to_field": fieldname, "is_private": 1,
-    }, "name")
+        "attached_to_name": name, "is_private": 1,
+    }
+    if fieldname is not None:
+        file_filters["attached_to_field"] = fieldname
+    file_name = frappe.db.get_value("File", file_filters, "name")
     if not file_name:
         return _document_unavailable()
     try:
@@ -918,7 +949,7 @@ def download_document(target_type, target_name=None, document_type=None):
     if (
         _value(file_doc, "attached_to_doctype") != doctype
         or _value(file_doc, "attached_to_name") != name
-        or _value(file_doc, "attached_to_field") != fieldname
+        or (fieldname is not None and _value(file_doc, "attached_to_field") != fieldname)
         or _value(file_doc, "file_url") != file_url
         or not _value(file_doc, "is_private")
     ):
