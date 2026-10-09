@@ -143,3 +143,29 @@ def test_advance_payment_keeps_actual_adjustment_and_carries_remaining_days_once
     frappe.db.get_value.return_value = 225000
     schedule.make_repayment_schedule('repayment_schedule',carry,balance,0,days,12,100,100)
     assert saved['repayment_schedule'][1].interest_amount == 73.33
+
+
+def test_second_normal_restructure_does_not_restart_interest_only_phase():
+    schedule, frappe, old, saved = fixture(posting='2027-03-16', due='2027-04-01')
+    schedule.restructure_type = 'Normal Restructure'
+    schedule.current_principal_amount = 5000
+    previous = frappe.get_doc.return_value
+    # The first restructure removed the twelve old IO rows from its new table.
+    previous.floorplan_periods_before_schedule = 12
+    previous.get = lambda key: [SimpleNamespace(**{**vars(old), 'payment_date': date(2027, month, 1)})
+                                for month in (2, 3, 4)]
+    carry, balance, _, _ = schedule.add_rows_from_prev_disbursement('repayment_schedule', 100)
+    assert schedule.floorplan_periods_before_schedule == 14
+    frappe.db.get_value.return_value = 225000
+    schedule.make_repayment_schedule('repayment_schedule', carry, balance, 0, 0, 12, 100, 100)
+    assert [row.principal_amount for row in saved['repayment_schedule']] == [2250, 2250, 500]
+    assert schedule.get_floorplan_principal_reduction(0, 5000) == 2250
+
+
+def test_legacy_restructured_loan_without_verified_basis_fails_explicitly():
+    schedule, frappe, _, _ = fixture()
+    frappe.db.get_value.return_value = None
+    frappe.db.exists.return_value = True
+    frappe.throw = MagicMock(side_effect=ValueError)
+    with pytest.raises(ValueError):
+        schedule.get_original_financed_principal()

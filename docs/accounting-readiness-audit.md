@@ -89,3 +89,24 @@ Company day-count convention is now saved as Actual/360, with Version `8un72gqin
 - Local carry repair now makes the same diagnostic pass with `--dcr`, preserves previous balances and native adjustments, and prevents overlap between a pre/advance-payment due row and later interest periods. Normal restructure no longer restarts the IO phase. Full mocked Python suite: 513 tests and 40 subtests passed, 9 existing warnings. This repair has not been deployed; final invoice sourcing, revised-packet enforcement, previews, remaining account mappings and normal-document GL reconciliation remain open.
 
 - Local final-invoice funding checks now use the submitted Purchase Invoice payable total, including its rounding treatment, plus only additional financed DCR fees outside that invoice. Supplier bill_date is the interest/funding start, falling back to posting_date. Before new disbursement submission, application/loan principal and interest rate must agree with a current signed financial snapshot; its private PDF must exist and the funding date must agree. Quote-only or older signed terms cannot pass this check. Source tests pass (534 Python, 40 subtests), but ordinary amendment/revision usability, previews, contract-rate consistency, deployment and actual GL reconciliation remain open. No financial trial transaction was posted during this source work.
+
+
+## October 9 trial ledger plan — not posted or reconciled yet
+
+PR #54 (`fe2d76c`) is installed with a successful site migration. Its invoice and signed-term admission checks are live; hosted accounting proof remains open. A follow-up is required to preserve original principal and payment phase across repeated native restructuring.
+
+Pinned Loan Disbursement source `97f692e` debits the loan account and credits the disbursement account. Its charge Sales Invoice creates fee receivables/income, then a negative disbursement GL entry clears fee receivables and reduces net proceeds. This source trace is not voucher acceptance.
+
+For a $220,000 factory invoice and $5,000 separately financed upfront DCR fee, test normal documents using an internal Funding Clearing asset account as the Loan Disbursement source. Expected postings:
+
+| Normal document | Debit | Credit | Amount |
+| --- | --- | --- | --- |
+| Loan Disbursement | Loans Receivable | Funding Clearing | 225,000 |
+| Native fee Sales Invoice | Fee Receivable | DCR Fee Income | 5,000 |
+| Native charge offset | Funding Clearing | Fee Receivable | 5,000 |
+| Factory Purchase Invoice | Funding Clearing | Factory Payables | 220,000 |
+| Factory Payment Entry | Factory Payables | Bank | 220,000 |
+
+Expected closing clearing, fee receivable and payable balances are zero; loan asset is $225,000 and fee income is $5,000. No provider transfer is needed for this internal trial. Using the actual bank as both loan disbursement source and factory-payment source would double count the cash outflow.
+
+This mapping is a proposed trial configuration, not saved yet. Additional financed fees still need to be matched to native upfront charge invoices; Add to first repayment must not collect them twice. Native disbursement posting_date defaults to today while schedule/value dates use disbursement_date; verify dated GL/accrual behavior separately. Historical vouchers and bank reconciliation remain unresolved. Accounting remains **not ready**.

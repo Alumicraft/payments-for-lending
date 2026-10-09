@@ -103,6 +103,30 @@ def test_unavailable_signed_file_blocks_funding(deal):
         rules.validate_invoice_funding(disbursement)
 
 
+def test_funding_freezes_reviewed_principal_and_never_overwrites_it(deal):
+    app, _, loan, disbursement, f = deal
+    rules.apply_application_invoice(app)
+    rules.validate_invoice_funding(disbursement)
+    f.db.set_value.assert_called_once_with('Loan', 'LOAN', 'original_financed_principal', 225000.0)
+    loan.set('original_financed_principal', 225000)
+    f.db.set_value.reset_mock()
+    rules.validate_invoice_funding(disbursement)
+    f.db.set_value.assert_not_called()
+    loan.set('original_financed_principal', 220000)
+    with pytest.raises(ValueError, match='already fixed'):
+        rules.validate_invoice_funding(disbursement)
+    f.db.set_value.assert_not_called()
+
+
+def test_failed_date_admission_cannot_freeze_a_loan_basis(deal):
+    app, _, _, disbursement, f = deal
+    rules.apply_application_invoice(app)
+    disbursement.set('disbursement_date', '2026-01-20')
+    with pytest.raises(ValueError, match='Funding date must equal'):
+        rules.validate_invoice_funding(disbursement)
+    f.db.set_value.assert_not_called()
+
+
 def test_bill_date_falls_back_to_invoice_posting_date(deal):
     app,invoice,_,_,_ = deal
     invoice.set('bill_date',None)
