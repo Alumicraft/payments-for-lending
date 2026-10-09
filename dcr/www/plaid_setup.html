@@ -22,9 +22,10 @@
         <h2>Bank Account Already on File</h2>
         <p style="color: #666; margin-top: 16px;">
             {{ customer_name }}, a bank account is already on file for your dealer account.
-            No further action is needed.
             {% if not autopay_enabled %}This step does not turn on automatic payments.{% endif %}
         </p>
+        <p style="color: #666; margin-top: 16px;">If you need to complete your bank details or use a different account, connect it below.</p>
+        <a href="{{ connect_another_url }}" class="btn btn-primary" style="margin-top: 20px;">Connect another bank account</a>
     </div>
 
     {% elif show_plaid %}

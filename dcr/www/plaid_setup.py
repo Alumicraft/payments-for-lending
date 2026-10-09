@@ -10,6 +10,7 @@ Security: HMAC token in URL verified before rendering.
 
 import frappe
 import time
+from urllib.parse import urlencode
 
 no_cache = 1
 PLAID_TOKEN_MAX_AGE_SECONDS = 7 * 24 * 60 * 60
@@ -41,11 +42,14 @@ def get_context(context):
     context.autopay_enabled = bool(settings.enable_ach_autopay)
     context.plaid_environment = settings.plaid_environment
 
-    # Check if already connected
+    # A saved account does not prevent a dealer from correcting incomplete
+    # bank details or selecting another account through the same invitation.
     existing = frappe.db.exists("Bank Account", {"party_type": "Customer", "party": customer, "disabled": 0})
-    if existing:
+    if existing and frappe.form_dict.get("connect_another") != "1":
         context.already_connected = True
         context.customer_name = customer_name
+        context.connect_another_url = "/plaid-setup?" + urlencode({
+            "customer": customer, "token": token, "connect_another": "1"})
         return
 
     # Get Plaid link token
