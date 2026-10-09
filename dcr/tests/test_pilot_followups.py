@@ -225,3 +225,72 @@ def test_dealer_backfill_skips_missing_columns_and_only_fills_missing_context(fr
     assert "COALESCE(po.custom_dcr_dealer, '') = ''" in query
     assert "COALESCE(hbr.customer, '') != ''" in query
     frappe.db.commit.assert_called_once()
+
+
+def _loan_layout_meta():
+    return SimpleNamespace(fields=[SimpleNamespace(fieldname=name, fieldtype=kind) for name, kind in [
+        ('section_break_8', 'Section Break'), ('rate_of_interest', 'Percent'),
+        ('loan_credit_limits_section', 'Section Break'), ('monthly_repayment_amount', 'Currency'),
+        ('custom_note', 'Data'), ('loan_product', 'Link'), ('other_section', 'Section Break')
+    ]])
+
+
+@patch.object(pilot_fields, 'frappe')
+def test_loan_payment_leaves_hidden_credit_limits_and_preserves_other_positions(frappe):
+    original = ['section_break_8', 'loan_product', 'rate_of_interest', 'custom_note',
+                'loan_credit_limits_section', 'monthly_repayment_amount', 'other_section']
+    setter = MagicMock(value=json.dumps(original))
+    frappe.get_meta.return_value = _loan_layout_meta()
+    frappe.get_all.return_value = [SimpleNamespace(name='Loan-main-field_order')]
+    frappe.get_doc.return_value = setter
+    pilot_fields.ensure_loan_payment_layout()
+    pilot_fields.ensure_loan_payment_layout()
+    revised = json.loads(setter.value)
+    assert revised[revised.index('rate_of_interest') + 1] == 'monthly_repayment_amount'
+    assert [value for value in revised if value != 'monthly_repayment_amount'] == [
+        value for value in original if value != 'monthly_repayment_amount']
+    setter.save.assert_called_once_with(ignore_permissions=True)
+    frappe.clear_cache.assert_called_once_with(doctype='Loan')
+    frappe.db.set_value.assert_not_called()
+
+
+@patch.object(pilot_fields, 'frappe')
+@pytest.mark.parametrize('order', [
+    'broken json', '{}', '[1]',
+    json.dumps(['loan_credit_limits_section', 'monthly_repayment_amount']),
+    json.dumps(['section_break_8', 'rate_of_interest', 'monthly_repayment_amount']),
+    json.dumps(['other_section', 'rate_of_interest', 'loan_credit_limits_section', 'monthly_repayment_amount']),
+    json.dumps(['section_break_8', 'rate_of_interest', 'other_section', 'monthly_repayment_amount']),
+    json.dumps(['section_break_8', 'rate_of_interest', 'loan_credit_limits_section',
+                'monthly_repayment_amount', 'monthly_repayment_amount'])
+])
+def test_loan_payment_preserves_unknown_or_invalid_layouts(frappe, order):
+    setter = MagicMock(value=order)
+    frappe.get_meta.return_value = _loan_layout_meta()
+    frappe.get_all.return_value = [SimpleNamespace(name='Layout')]
+    frappe.get_doc.return_value = setter
+    pilot_fields.ensure_loan_payment_layout()
+    assert setter.value == order
+    setter.save.assert_not_called()
+    frappe.clear_cache.assert_not_called()
+
+
+@patch.object(pilot_fields, 'frappe')
+def test_loan_payment_waits_for_native_fields(frappe):
+    frappe.db.exists.return_value = False
+    pilot_fields.ensure_loan_payment_layout()
+    frappe.get_meta.assert_not_called()
+    frappe.db.exists.return_value = True
+    frappe.get_meta.return_value = SimpleNamespace(fields=[])
+    pilot_fields.ensure_loan_payment_layout()
+    frappe.get_all.assert_not_called()
+
+
+@patch.object(pilot_fields, 'frappe')
+@pytest.mark.parametrize('attribute,value', [('hidden', 1), ('depends_on', 'eval:doc.custom_rule')])
+def test_loan_payment_preserves_conditional_destination(frappe, attribute, value):
+    meta = _loan_layout_meta()
+    setattr(meta.fields[0], attribute, value)
+    frappe.get_meta.return_value = meta
+    pilot_fields.ensure_loan_payment_layout()
+    frappe.get_all.assert_not_called()
