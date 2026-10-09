@@ -29,6 +29,39 @@ function form(doc, extra = []) {
     };
 }
 for (const docstatus of [0, 1, 2]) {
+    const frm = form({ docstatus, custom_home_build_request: "HBR-A", grand_total: 106, rounded_total: 106, rounding_adjustment: 0 },
+        ["rounded_total", "rounding_adjustment"].map(fieldname => ({ fieldname, fieldtype: "Currency", read_only: 1, hidden: 0 })));
+    const before = JSON.stringify(frm.doc);
+    handlers.refresh(frm);
+    assert.equal(frm.fields_dict.rounded_total.df.hidden, docstatus > 0 ? 1 : 0);
+    assert.equal(frm.fields_dict.rounding_adjustment.df.hidden, docstatus > 0 ? 1 : 0);
+    assert.equal(JSON.stringify(frm.doc), before);
+    frm.doc.custom_home_build_request = null;
+    handlers.refresh(frm);
+    assert.equal(frm.fields_dict.rounded_total.df.hidden, 0, "Restore native totals outside home orders");
+    frm.doc.custom_home_build_request = "HBR-A";
+    frm.doc.rounded_total = 107;
+    frm.doc.rounding_adjustment = 1;
+    handlers.refresh(frm);
+    assert.equal(frm.fields_dict.rounded_total.df.hidden, 0, "Actual rounding must remain visible");
+    frm.doc.rounded_total = 106;
+    frm.doc.rounding_adjustment = 0;
+    frm.fields_dict.rounded_total.df.allow_on_submit = 1;
+    frm.fields_dict.rounding_adjustment.df.mandatory_depends_on = "eval:doc.company";
+    handlers.refresh(frm);
+    assert.equal(frm.fields_dict.rounded_total.df.hidden, 0);
+    assert.equal(frm.fields_dict.rounding_adjustment.df.hidden, 0);
+    frm.doc.custom_home_build_request = null;
+    handlers.refresh(frm);
+    assert.equal(frm.fields_dict.rounded_total.df.hidden, 0);
+}
+for (const invalid of [null, "", "not-a-number"]) {
+    const frm = form({ docstatus: 1, custom_home_build_request: "HBR-A", grand_total: invalid, rounded_total: invalid, rounding_adjustment: 0 },
+        [{ fieldname: "rounded_total", fieldtype: "Currency", read_only: 1, hidden: 0 }]);
+    handlers.refresh(frm);
+    assert.equal(frm.fields_dict.rounded_total.df.hidden, 0, "Missing or invalid totals are not verified duplicates");
+}
+for (const docstatus of [0, 1, 2]) {
     const doc = { docstatus, custom_home_build_request: "HBR-A", supplied_items: [] };
     const frm = form(doc);
     const before = JSON.stringify(frm.doc);
