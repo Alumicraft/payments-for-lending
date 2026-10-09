@@ -2,6 +2,7 @@
 
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
@@ -57,3 +58,59 @@ def test_sandbox_page_context_keeps_environment_and_disabled_autopay(already_con
     assert context.autopay_enabled is False
     assert getattr(context, "already_connected", False) is already_connected
     assert getattr(context, "show_plaid", False) is not already_connected
+    if already_connected:
+        parsed = urlsplit(context.connect_another_url)
+        assert parsed.path == "/plaid-setup"
+        assert parse_qs(parsed.query) == {
+            "customer": ["DEMO DEALER"], "token": ["test-token"], "connect_another": ["1"]}
+
+
+def test_existing_bank_can_be_reconnected_through_verified_invitation():
+    from dcr.www.plaid_setup import get_context
+
+    fake = MagicMock()
+    fake.form_dict = {"loan": "DEMO LOAN", "token": "test-token", "connect_another": "1"}
+    fake.db.exists.return_value = True
+    fake.db.get_value.side_effect = ["DEMO DEALER", "Demo Dealer"]
+    fake.get_single.return_value = SimpleNamespace(enable_ach_autopay=0, plaid_environment="Sandbox")
+    context = SimpleNamespace()
+    with patch("dcr.www.plaid_setup.frappe", fake), \
+            patch("dcr.www.plaid_setup.verify_plaid_token", return_value=True) as verify, \
+            patch("dcr.api.achq_integration.is_plaid_available", return_value={"available": True}):
+        get_context(context)
+    verify.assert_called_once_with("DEMO DEALER", "test-token")
+    assert getattr(context, "show_plaid", False)
+    assert context.customer == "DEMO DEALER"
+    assert context.autopay_enabled is False
+
+
+def test_reconnect_cannot_bypass_expired_invitation():
+    from dcr.www.plaid_setup import get_context
+
+    fake = MagicMock()
+    fake.form_dict = {"customer": "DEMO DEALER", "token": "expired", "connect_another": "1"}
+    context = SimpleNamespace()
+    with patch("dcr.www.plaid_setup.frappe", fake), \
+            patch("dcr.www.plaid_setup.verify_plaid_token", return_value=False), \
+            patch("dcr.api.achq_integration.is_plaid_available") as available:
+        get_context(context)
+    assert "expired" in context.error
+    assert not getattr(context, "show_plaid", False)
+    available.assert_not_called()
+
+
+def test_reconnect_reports_unavailable_provider_instead_of_success():
+    from dcr.www.plaid_setup import get_context
+
+    fake = MagicMock()
+    fake.form_dict = {"customer": "DEMO DEALER", "token": "test-token", "connect_another": "1"}
+    fake.db.exists.return_value = True
+    fake.db.get_value.return_value = "Demo Dealer"
+    fake.get_single.return_value = SimpleNamespace(enable_ach_autopay=0, plaid_environment="Sandbox")
+    context = SimpleNamespace()
+    with patch("dcr.www.plaid_setup.frappe", fake), \
+            patch("dcr.www.plaid_setup.verify_plaid_token", return_value=True), \
+            patch("dcr.api.achq_integration.is_plaid_available", return_value={"available": False}):
+        get_context(context)
+    assert "unavailable" in context.error
+    assert not getattr(context, "show_plaid", False)
