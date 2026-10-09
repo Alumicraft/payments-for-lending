@@ -76,6 +76,34 @@
                         !warehouse.df.mandatory_depends_on && !frm.doc.set_warehouse) {
                     overrides.set_warehouse = { hidden: 1 };
                 }
+                var pricing = frm.fields_dict.pricing_rules;
+                if (pricing && pricing.df.fieldtype === "Table" && !pricing.df.reqd &&
+                        !pricing.df.mandatory_depends_on && !pricing.df.allow_on_submit &&
+                        Array.isArray(frm.doc.pricing_rules) && !frm.doc.pricing_rules.length) {
+                    overrides.pricing_rules = { hidden: 1 };
+                    var reserve = frm.fields_dict.set_reserve_warehouse;
+                    if (reserve && reserve.df.fieldtype === "Link" && !reserve.df.reqd &&
+                            !reserve.df.mandatory_depends_on && !reserve.df.allow_on_submit &&
+                            !frm.doc.set_reserve_warehouse && !frm.doc.is_subcontracted &&
+                            !frm.doc.is_old_subcontracting_flow && !(frm.doc.supplied_items || []).length) {
+                        overrides.set_reserve_warehouse = { hidden: 1 };
+                    }
+                    hide_empty_section(frm, overrides, "section_break_48", ["pricing_rules", "set_reserve_warehouse"]);
+                }
+                var discount_names = ["apply_discount_on", "base_discount_amount",
+                    "additional_discount_percentage", "discount_amount"];
+                var discount_fields = known_section_fields(frm, "discount_section", discount_names);
+                var zero_discount = ["base_discount_amount", "additional_discount_percentage", "discount_amount"].every(function (name) {
+                    var value = frm.doc[name];
+                    return value != null && value !== "" && Number.isFinite(Number(value)) && Number(value) === 0;
+                });
+                if (zero_discount && ["", "Grand Total", "Net Total"].includes(frm.doc.apply_discount_on || "") &&
+                        discount_fields && discount_fields.length && discount_fields.every(function (df) {
+                            return !df.reqd && !df.mandatory_depends_on && !df.allow_on_submit;
+                        })) {
+                    discount_fields.forEach(function (df) { overrides[df.fieldname] = { hidden: 1 }; });
+                    overrides.discount_section = { hidden: 1 };
+                }
             }
             // Home purchases do not repeat automatically. When no repeat or
             // dates exist, remove the unused group, including its heading.
@@ -361,6 +389,12 @@
         incoterm: apply_layout,
         taxes_and_charges: apply_layout,
         set_warehouse: apply_layout,
+        pricing_rules: apply_layout,
+        set_reserve_warehouse: apply_layout,
+        apply_discount_on: apply_layout,
+        base_discount_amount: apply_layout,
+        additional_discount_percentage: apply_layout,
+        discount_amount: apply_layout,
         tc_name: apply_layout,
         terms: apply_layout,
         from_date: apply_layout,

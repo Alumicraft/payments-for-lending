@@ -179,6 +179,70 @@ function tabForm(status = 1, extra = []) {
     ]);
 }
 const savedSelectors = ["tax_category", "shipping_rule", "incoterm", "taxes_and_charges", "set_warehouse"];
+function unusedSections(status = 1, extra = []) {
+    return form({ docstatus: status, custom_home_build_request: "HBR-A", pricing_rules: [],
+        apply_discount_on: "Grand Total", base_discount_amount: 0, additional_discount_percentage: 0, discount_amount: 0 }, [
+        { fieldname: "section_break_48", fieldtype: "Section Break", hidden: 0 },
+        { fieldname: "pricing_rules", fieldtype: "Table", hidden: 0 },
+        { fieldname: "set_reserve_warehouse", fieldtype: "Link", hidden: 0, depends_on: "supplied_items" },
+        { fieldname: "discount_section", fieldtype: "Section Break", hidden: 0 },
+        { fieldname: "apply_discount_on", fieldtype: "Select", hidden: 0 },
+        { fieldname: "base_discount_amount", fieldtype: "Currency", hidden: 0 },
+        { fieldname: "additional_discount_percentage", fieldtype: "Float", hidden: 0 },
+        { fieldname: "discount_amount", fieldtype: "Currency", hidden: 0 }, ...extra
+    ]);
+}
+for (const status of [0, 1, 2]) {
+    const frm = unusedSections(status);
+    const unchanged = JSON.stringify(frm.doc);
+    handlers.refresh(frm);
+    assert.equal(frm.fields_dict.section_break_48.df.hidden, status > 0 ? 1 : 0);
+    assert.equal(frm.fields_dict.discount_section.df.hidden, status > 0 ? 1 : 0);
+    assert.equal(JSON.stringify(frm.doc), unchanged);
+    frm.doc.supplied_items = [{ item_code: "Required material" }];
+    handlers.supplied_items(frm);
+    assert.equal(frm.fields_dict.section_break_48.df.hidden, 0, "Keep shared reserve warehouse context with supplied materials");
+    assert.equal(frm.fields_dict.set_reserve_warehouse.df.depends_on, "supplied_items");
+    frm.doc.supplied_items = [];
+    handlers.supplied_items(frm);
+    frm.doc.pricing_rules = [{ pricing_rule: "Existing rule" }];
+    handlers.pricing_rules(frm);
+    assert.equal(frm.fields_dict.pricing_rules.df.hidden, 0);
+    assert.equal(frm.fields_dict.section_break_48.df.hidden, 0);
+    frm.doc.discount_amount = 10;
+    handlers.discount_amount(frm);
+    assert.equal(frm.fields_dict.discount_section.df.hidden, 0);
+    frm.doc.discount_amount = 0;
+    handlers.discount_amount(frm);
+    frm.doc.custom_home_build_request = null;
+    handlers.custom_home_build_request(frm);
+    assert.equal(frm.fields_dict.discount_section.df.hidden, 0);
+}
+for (const property of ["reqd", "mandatory_depends_on", "allow_on_submit"]) {
+    const frm = unusedSections();
+    frm.fields_dict.pricing_rules.df[property] = 1;
+    frm.fields_dict.discount_amount.df[property] = 1;
+    handlers.refresh(frm);
+    assert.equal(frm.fields_dict.section_break_48.df.hidden, 0);
+    assert.equal(frm.fields_dict.discount_section.df.hidden, 0);
+}
+for (const value of [null, "", "invalid", 1]) {
+    for (const name of ["discount_amount", "base_discount_amount", "additional_discount_percentage"]) {
+        const frm = unusedSections();
+        frm.doc[name] = value;
+        handlers.refresh(frm);
+        assert.equal(frm.fields_dict.discount_section.df.hidden, 0, "Missing, invalid and nonzero discounts remain inspectable");
+    }
+}
+const customDiscount = unusedSections(1, [{ fieldname: "custom_discount_note", fieldtype: "Data", hidden: 0 }]);
+handlers.refresh(customDiscount);
+assert.equal(customDiscount.fields_dict.discount_section.df.hidden, 0, "Preserve site-specific section controls");
+const unknownDiscount = unusedSections();
+unknownDiscount.doc.apply_discount_on = "Custom basis";
+unknownDiscount.doc.pricing_rules = {};
+handlers.refresh(unknownDiscount);
+assert.equal(unknownDiscount.fields_dict.discount_section.df.hidden, 0);
+assert.equal(unknownDiscount.fields_dict.pricing_rules.df.hidden, 0);
 for (const status of [0, 1, 2]) {
     const frm = form({ custom_home_build_request: "HBR-A", docstatus: status },
         savedSelectors.map(fieldname => ({ fieldname, fieldtype: "Link", hidden: 0 })));
