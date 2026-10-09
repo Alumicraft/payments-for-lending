@@ -126,6 +126,8 @@ def validate_invoice_funding(doc, method=None):
         frappe.throw('A dealer Loan Application is required before funding this home.')
     application = frappe.get_doc('Loan Application', loan.loan_application)
     basis = financial_snapshot(application, require_invoice=True)
+    if (doc.get('repayment_frequency') or loan.get('repayment_frequency') or 'Monthly') != 'Monthly':
+        frappe.throw('DCR floorplan funding requires monthly repayments.')
     if (loan.applicant != application.applicant or loan.company != application.company or
             loan.home_build_request != application.home_build_request or
             loan.get('loan_product') != application.get('loan_product')):
@@ -163,7 +165,7 @@ def ensure_financing_fields():
              insert_after='financed_invoice_date'),
     ]:
         if not frappe.get_meta('Loan Application').has_field(field['fieldname']):
-            frappe.get_doc(dict(doctype='Custom Field', dt='Loan Application', **field)).insert(ignore_permissions=True)
+            frappe.get_doc(dict(doctype='Custom Field', dt='Loan Application', depends_on='home_build_request', **field)).insert(ignore_permissions=True)
     # A native duplicate/amendment must receive a new signature. The original
     # packet remains on its original application and Signature Request.
     for field,property_name,property_type,value in (

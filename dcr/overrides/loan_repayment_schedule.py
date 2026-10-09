@@ -355,6 +355,8 @@ class CustomLoanRepaymentSchedule(LoanRepaymentSchedule):
         if prior_periods is None:
             prior_periods = len(existing)
         one_time = getattr(self, "repayment_frequency", None) == "One Time"
+        if getattr(self, "repayment_frequency", None) not in (None, "", "Monthly", "One Time"):
+            frappe.throw("DCR floorplan schedules require Monthly repayments or a One Time payoff.")
         if schedule_field == "colender_schedule" and native_values.get("partner_schedule_type") == "EMI (PMT) based":
             full_balance = flt(getattr(self, "current_principal_amount", 0))
             if full_balance > 0:

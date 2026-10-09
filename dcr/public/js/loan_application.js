@@ -18,6 +18,12 @@ frappe.ui.form.on('Loan Application', {
         frm.set_query('home_build_request', function() {
             return { filters: { docstatus: 1 } };
         });
+        frm.set_query('financed_invoice', function() {
+            var filters = {docstatus: 1, is_return: 0, company: frm.doc.company};
+            if (frm.doc.home_build_request) filters.home_build_request = frm.doc.home_build_request;
+            if (frm.doc.factory) filters.supplier = frm.doc.factory;
+            return {filters: filters};
+        });
     },
 
     onload: function(frm) {

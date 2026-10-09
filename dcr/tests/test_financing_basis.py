@@ -158,6 +158,14 @@ def test_actual365_company_cannot_fund_actual360_packet(deal):
         rules.validate_invoice_funding(disbursement)
 
 
+def test_daily_frequency_cannot_fund_a_monthly_floorplan_contract(deal):
+    app,_,_,disbursement,_ = deal
+    rules.apply_application_invoice(app)
+    disbursement.set('repayment_frequency','Daily')
+    with pytest.raises(ValueError,match='requires monthly'):
+        rules.validate_invoice_funding(disbursement)
+
+
 @pytest.mark.parametrize('changes', [dict(interest_only_periods=6),dict(monthly_principal_percent=2)])
 def test_product_curtailment_must_match_owner_approved_rules(deal,changes):
     app,_,_,disbursement,_ = deal
