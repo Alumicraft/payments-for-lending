@@ -62,3 +62,51 @@ const application = fs.readFileSync(path.join(__dirname, '../public/js/loan_appl
 const forcedFields = application.slice(application.indexOf('// Force-show'), application.indexOf('// Submitted applications'));
 assert.doesNotMatch(forcedFields, /total_payable_amount|total_payable_interest/, 'Refresh must not force hidden forecasts visible again');
 console.log('Home-financing display: draft/submitted/cancelled, required/editable fields, non-home restoration, native-hidden state and no data writes passed');
+const nativePaymentRule = 'eval: doc.is_term_loan && doc.repayment_schedule_type != "Line of Credit"';
+const paymentForm = form('Loan');
+paymentForm.fields_dict.monthly_repayment_amount.df.depends_on = nativePaymentRule;
+handlers.Loan.refresh(paymentForm);
+assert.equal(paymentForm.fields_dict.monthly_repayment_amount.df.depends_on, 'eval:true');
+paymentForm.doc.home_build_request = null;
+handlers.Loan.home_build_request(paymentForm);
+assert.equal(paymentForm.fields_dict.monthly_repayment_amount.df.depends_on, nativePaymentRule);
+const customPayment = form('Loan');
+customPayment.fields_dict.monthly_repayment_amount.df.depends_on = 'eval:doc.custom_approval';
+handlers.Loan.refresh(customPayment);
+assert.equal(customPayment.fields_dict.monthly_repayment_amount.df.depends_on, 'eval:doc.custom_approval');
+const hiddenPayment = form('Loan');
+hiddenPayment.fields_dict.monthly_repayment_amount.df.hidden = 1;
+hiddenPayment.fields_dict.monthly_repayment_amount.df.depends_on = nativePaymentRule;
+handlers.Loan.refresh(hiddenPayment);
+assert.equal(hiddenPayment.fields_dict.monthly_repayment_amount.df.depends_on, nativePaymentRule);
+function columnForm(extra = [], heading = '') {
+    const frm = form('Loan');
+    const parent = {};
+    const column = { df: { hidden: 0, label: heading }, form: { get: () => parent }, refreshes: 0,
+        refresh() { this.refreshes++; } };
+    const contents = ['total_interest_payable', 'total_payment'].map(name => {
+        const field = frm.fields_dict[name]; field.df.fieldname = name; field.parent = parent; return field;
+    });
+    frm.layout.sections_dict = { totals: { columns: [column], fields_list: contents.concat(extra.map(name => ({
+        df: { fieldname: name }, parent
+    }))) } };
+    return { frm, column };
+}
+const collapsed = columnForm();
+handlers.Loan.refresh(collapsed.frm);
+assert.equal(collapsed.column.df.hidden, 1);
+assert.equal(collapsed.column.refreshes, 1);
+handlers.Loan.refresh(collapsed.frm);
+assert.equal(collapsed.column.refreshes, 1);
+collapsed.frm.fields_dict.total_payment.df.reqd = 1;
+handlers.Loan.refresh(collapsed.frm);
+assert.equal(collapsed.column.df.hidden, 0, 'A required field restores its column');
+const restored = columnForm();
+handlers.Loan.refresh(restored.frm);
+restored.frm.doc.home_build_request = null;
+handlers.Loan.home_build_request(restored.frm);
+assert.equal(restored.column.df.hidden, 0);
+for (const fixture of [columnForm(['custom_note']), columnForm([], 'Important figures')]) {
+    handlers.Loan.refresh(fixture.frm);
+    assert.equal(fixture.column.df.hidden, 0, 'Custom controls and headings retain column space');
+}

@@ -110,6 +110,58 @@ def ensure_loan_application_insurance_layout():
         frappe.clear_cache(doctype=doctype)
 
 
+def ensure_loan_payment_layout():
+    """Repair the known Loan override that traps monthly payment in credit limits.
+
+    Move only the existing currency field, preserving all other site positions.
+    Other layouts, invalid overrides and missing anchors remain untouched.
+    """
+    doctype = "Loan"
+    fieldname = "monthly_repayment_amount"
+    anchor = "rate_of_interest"
+    if not frappe.db.exists("DocType", doctype):
+        return
+    meta = frappe.get_meta(doctype)
+    fields = {df.fieldname: df for df in meta.fields}
+    field = fields.get(fieldname)
+    destination = fields.get("section_break_8")
+    if (not field or field.fieldtype != "Currency" or anchor not in fields
+            or not destination or destination.fieldtype != "Section Break"
+            or getattr(destination, "hidden", 0) or getattr(destination, "depends_on", None)):
+        return
+
+    def section_for(order, name):
+        for value in reversed(order[:order.index(name)]):
+            df = fields.get(value)
+            if df and df.fieldtype in ("Section Break", "Tab Break"):
+                return value
+        return None
+
+    changed = False
+    for row in frappe.get_all("Property Setter", filters={
+        "doc_type": doctype, "doctype_or_field": "DocType", "property": "field_order",
+    }, fields=["name"]):
+        setter = frappe.get_doc("Property Setter", row.name)
+        try:
+            order = json.loads(setter.value)
+        except (ValueError, TypeError):
+            continue
+        if not isinstance(order, list) or not all(isinstance(value, str) for value in order):
+            continue
+        if order.count(fieldname) != 1 or order.count(anchor) != 1:
+            continue
+        if (section_for(order, fieldname) != "loan_credit_limits_section"
+                or section_for(order, anchor) != "section_break_8"):
+            continue
+        revised = [value for value in order if value != fieldname]
+        revised.insert(revised.index(anchor) + 1, fieldname)
+        setter.value = json.dumps(revised)
+        setter.save(ignore_permissions=True)
+        changed = True
+    if changed:
+        frappe.clear_cache(doctype=doctype)
+
+
 def populate_purchase_order_dealer(doc, method=None):
     """Keep new and edited orders aligned with their linked home request."""
     if not frappe.get_meta("Purchase Order").has_field("custom_dcr_dealer"):

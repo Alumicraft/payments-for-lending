@@ -1,6 +1,6 @@
 # October 8 pilot follow ups
 
-This batch addresses dealer portal and staff workflow issues from the pilot recording. The [full checklist](pilot-checklist-2026-10-08.md) tracks each item by name and status. Source changes are merged and deployed through PR #47, installed as `fb5baa9`; the latest site migration succeeded. Off Line Date, insurance placement, Factory Address heading, empty derived-detail hiding and the Homes grid heading are verified live. Hosted evidence and unresolved items are tracked individually in the checklist.
+This batch addresses dealer portal and staff workflow issues from the pilot recording. The [full checklist](pilot-checklist-2026-10-08.md) tracks each item by name and status. Source changes are merged and deployed through PR #48, installed as `be35d5f`; the latest site migration succeeded. Off Line Date, insurance placement, Factory Address heading, empty derived-detail hiding and the Homes grid heading are verified live. Hosted evidence and unresolved items are tracked individually in the checklist.
 
 ## Implemented in this batch
 
@@ -9,7 +9,7 @@ This batch addresses dealer portal and staff workflow issues from the pilot reco
 - Request submission displays as Submitted, with Loan approved reserved for the financial milestone.
 - The dealer portal updates automatically every ten seconds while visible. It preserves unchanged content, focus, and scroll position, waits for uploads or signing actions, and clears cached data when the session expires.
 - Completed and pending Flooring Packet signing returns open the same owned home request. Dealer agreements return to Home.
-- Dealer portal loan details show principal, rate, and monthly or next scheduled payment. The portal fixed-term Total interest and Total payable display is removed; those totals remain visible on the native staff Loan form and still need review. An unavailable next payment displays as unknown.
+- Dealer portal loan details show principal, rate, and monthly or next scheduled payment. The portal fixed-term Total interest and Total payable display is removed; optional read-only forecasts are also hidden on linked native staff Loan/Application forms. The Loan monthly-payment placement and early-payoff accounting remain open. An unavailable next payment displays as unknown.
 
 - Home Build Requests have one staff-editable Off Line Date, including changes after submission and existing document history. The dealer detail displays it as read-only information.
 - Native staff filters include dealer, factory, quote, and partial serial number. Purchase Orders have read-only Dealer context and a standard Dealer filter.
@@ -20,7 +20,7 @@ This batch addresses dealer portal and staff workflow issues from the pilot reco
 
 ## Verification
 
-The latest Python suite passed 469 tests and 40 subtests using mocked Frappe. The nine dependency-free Node test files passed, including Purchase Order scope, draft/submitted/cancelled states, required and custom fields, materials, restoration, and opening without data writes. A separate Chrome test exercised the production portal shell, CSS, and script with synthetic API responses, including updates, focus/scroll, uploads, signing, visibility, transient failures, malformed responses, expired sessions, offline date display, and Customer Sold summaries.
+The latest Python suite passed 469 tests and 40 subtests using mocked Frappe. The ten dependency-free Node test files passed, including Purchase Order scope, draft/submitted/cancelled states, required and custom fields, materials, restoration, and opening without data writes. A separate Chrome test exercised the production portal shell, CSS, and script with synthetic API responses, including updates, focus/scroll, uploads, signing, visibility, transient failures, malformed responses, expired sessions, offline date display, and Customer Sold summaries.
 
 Run the dependency-free client checks with `node --test dcr/tests/*.cjs`. The browser test additionally requires Playwright and Chrome:
 
@@ -42,7 +42,7 @@ Set `DCR_PLAYWRIGHT_MODULE` to the Playwright package directory when using an ex
 - Curtailment starts with payment 13 and reduces principal by 1% of the original invoice each month, as Tristan clarified. Confirm the source of the original invoice amount when loan fees differ, then test payments 12–14 and early payoff. This batch does not change schedule calculations.
 - Confirm the 360-day interest convention, accrual start date, schedule horizon, and final-invoice principal mapping with dated worked examples.
 - Use the full checklist for hosted checks, factory/plant assignments, insurance entry, historical date filtering, and the accounting trial.
-- The personal `$erpnext-docs` skill is created and its package validates. Its instructions were edited using [humanizer](https://github.com/blader/humanizer/blob/main/SKILL.md). Purchase Order application is in progress. On October 8 the live `/desk` route reached the DCR sign-in page; sign-in was subsequently restored on backdesk.dealercapital.net, and the submitted PO baseline was inspected. Cloud Apps confirms installed DCR `fb5baa9`. The initial PO pass and its two repairs are deployed and inspected; further variants remain open. The source inventory used the [official ERPNext v16 Purchase Order metadata](https://github.com/frappe/erpnext/blob/version-16/erpnext/buying/doctype/purchase_order/purchase_order.json); Customize Form may differ on the site.
+- The personal `$erpnext-docs` skill is created and its package validates. Its instructions were edited using [humanizer](https://github.com/blader/humanizer/blob/main/SKILL.md). Purchase Order application is in progress. On October 8 the live `/desk` route reached the DCR sign-in page; sign-in was subsequently restored on backdesk.dealercapital.net, and the submitted PO baseline was inspected. Cloud Apps confirms installed DCR `be35d5f`. The initial PO pass and its two repairs are deployed and inspected; further variants remain open. The source inventory used the [official ERPNext v16 Purchase Order metadata](https://github.com/frappe/erpnext/blob/version-16/erpnext/buying/doctype/purchase_order/purchase_order.json); Customize Form may differ on the site.
 
 ### Current authenticated evidence
 
@@ -53,3 +53,5 @@ The invoice-default guard in PR #45 is installed and regression-tested. It preve
 The staff Loan bank banner now describes linkage without claiming debit activation. Only four-digit masks display; missing numbers use an explicit unavailable message. A freshly loaded submitted Loan verified the fallback and remained clean after PR #46 deployment. Full bank/provider eligibility and automatic debit trials remain open.
 
 The remaining Purchase Order tab pass is deployed in PR #47. A submitted home order now omits blank immutable selectors, empty billing/terms headings and unused Auto Repeat, retaining populated addresses, its payment schedule and status percentages. A separate unsaved home draft kept its contact/address and terms inputs available. Restricted-role, cancelled and further custom variants remain open. Scheduler execution checks now include classification (eight retained Complete logs) and hourly settlement reconciliation (78 retained Complete logs); accounting correctness is still unresolved.
+
+PR #48 staff display acceptance: exact installed release and successful migration verified. Fresh saved Loan and Application forms hide forecasts without unsaved changes; actual paid totals and Application monthly repayment/insurance remain visible. The native Loan still needs its populated monthly-payment control moved from a hidden section and its now-empty forecast column collapsed. Accounting rules, early payoff and print-format calculations remain outside this presentation change.
