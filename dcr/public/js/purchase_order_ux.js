@@ -12,6 +12,27 @@
         contact_person: "Factory Contact"
     };
 
+    function known_section_fields(frm, section_name, names) {
+        var fields = (frm.meta && frm.meta.fields) || [];
+        var start = fields.findIndex(function (df) { return df.fieldname === section_name; });
+        if (start < 0) return null;
+        var end = fields.findIndex(function (df, index) {
+            return index > start && ["Section Break", "Tab Break"].includes(df.fieldtype);
+        });
+        var contents = fields.slice(start + 1, end < 0 ? fields.length : end);
+        if (!contents.length || !contents.every(function (df) {
+            return df.fieldtype === "Column Break" || names.includes(df.fieldname);
+        })) return null;
+        return contents.filter(function (df) { return df.fieldtype !== "Column Break"; });
+    }
+
+    function hide_empty_section(frm, overrides, section_name, names) {
+        var contents = known_section_fields(frm, section_name, names);
+        if (contents && contents.length && contents.every(function (df) {
+            return overrides[df.fieldname] && overrides[df.fieldname].hidden;
+        })) overrides[section_name] = { hidden: 1 };
+    }
+
     function apply_layout(frm) {
         var home_order = Boolean(frm.doc.custom_home_build_request);
         var state = frm.__dcr_po_layout || (frm.__dcr_po_layout = {});
@@ -32,6 +53,33 @@
                     overrides[name] = Object.assign({}, overrides[name], { hidden: 1 });
                 }
             });
+            // A submitted/cancelled order cannot use blank immutable selectors.
+            // Keep draft inputs, staff-editable fields and populated references.
+            if (frm.doc.docstatus > 0) {
+                ["contact_person", "shipping_address", "billing_address",
+                    "payment_terms_template", "tc_name", "terms"].forEach(function (name) {
+                    var field = frm.fields_dict[name];
+                    if (field && !field.df.allow_on_submit && !field.df.reqd &&
+                            !field.df.mandatory_depends_on && !frm.doc[name]) {
+                        overrides[name] = { hidden: 1 };
+                    }
+                });
+                hide_empty_section(frm, overrides, "company_billing_address_section",
+                    ["billing_address", "billing_address_display"]);
+                hide_empty_section(frm, overrides, "terms_section_break", ["tc_name", "terms"]);
+            }
+            // Home purchases do not repeat automatically. When no repeat or
+            // dates exist, remove the unused group, including its heading.
+            // A site field, populated value or required input retains the group.
+            var repeat_names = ["from_date", "to_date", "auto_repeat", "update_auto_repeat_reference"];
+            var repeat_fields = known_section_fields(frm, "auto_repeat_section", repeat_names);
+            if (!frm.doc.is_subcontracted && !frm.doc.is_old_subcontracting_flow &&
+                    repeat_fields && repeat_fields.length && repeat_fields.every(function (df) {
+                        return !df.reqd && !df.mandatory_depends_on && !frm.doc[df.fieldname];
+                    })) {
+                repeat_fields.forEach(function (df) { overrides[df.fieldname] = { hidden: 1 }; });
+                overrides.auto_repeat_section = { hidden: 1 };
+            }
             // Barcode scanning serves warehouse purchasing, not a home order.
             // Keep any populated or site-required inputs inspectable.
             ["scan_barcode", "last_scanned_warehouse"].forEach(function (name) {
@@ -281,6 +329,12 @@
         shipping_address_display: apply_layout,
         billing_address_display: apply_layout,
         items_on_form_rendered: apply_item_layout,
+        payment_terms_template: apply_layout,
+        tc_name: apply_layout,
+        terms: apply_layout,
+        from_date: apply_layout,
+        to_date: apply_layout,
+        auto_repeat: apply_layout,
         supplied_items: apply_layout
     });
     var item_handlers = {};

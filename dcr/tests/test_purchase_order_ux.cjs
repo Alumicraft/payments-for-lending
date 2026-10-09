@@ -127,6 +127,84 @@ domestic.doc.docstatus = 0;
 handlers.refresh(domestic);
 assert.equal(domestic.fields_dict.base_total_taxes_and_charges.df.hidden, 0, "Keep draft totals inspectable while pricing changes");
 childHandlers.supplied_items_add({ doc: { doctype: "Another Parent" } });
+function tabForm(status = 1, extra = []) {
+    return form({ custom_home_build_request: "HBR-A", docstatus: status }, [
+        { fieldname: "section_addresses", fieldtype: "Section Break" },
+        { fieldname: "contact_person", fieldtype: "Link", hidden: 0 },
+        { fieldname: "company_billing_address_section", fieldtype: "Section Break", hidden: 0 },
+        { fieldname: "billing_address", fieldtype: "Link", hidden: 0 },
+        { fieldname: "billing_address_display", fieldtype: "Text Editor", read_only: 1, hidden: 0 },
+        { fieldname: "terms_section_break", fieldtype: "Section Break", hidden: 0 },
+        { fieldname: "tc_name", fieldtype: "Link", hidden: 0 },
+        { fieldname: "terms", fieldtype: "Text Editor", hidden: 0 },
+        { fieldname: "auto_repeat_section", fieldtype: "Section Break", hidden: 0 },
+        { fieldname: "from_date", fieldtype: "Date", allow_on_submit: 1, hidden: 0 },
+        { fieldname: "to_date", fieldtype: "Date", allow_on_submit: 1, hidden: 0 },
+        { fieldname: "auto_repeat", fieldtype: "Link", read_only: 1, hidden: 0 },
+        { fieldname: "update_auto_repeat_reference", fieldtype: "Button", depends_on: "eval:doc.auto_repeat", hidden: 0 },
+        ...extra
+    ]);
+}
+for (const status of [0, 1, 2]) {
+    const frm = tabForm(status);
+    const unchanged = JSON.stringify(frm.doc);
+    handlers.refresh(frm);
+    assert.equal(frm.fields_dict.contact_person.df.hidden, status > 0 ? 1 : 0);
+    assert.equal(frm.fields_dict.terms_section_break.df.hidden, status > 0 ? 1 : 0);
+    assert.equal(frm.fields_dict.company_billing_address_section.df.hidden, status > 0 ? 1 : 0);
+    assert.equal(frm.fields_dict.auto_repeat_section.df.hidden, 1);
+    assert.equal(JSON.stringify(frm.doc), unchanged);
+    frm.doc.terms = "Agreed factory terms";
+    handlers.terms(frm);
+    assert.equal(frm.fields_dict.terms.df.hidden, 0);
+    assert.equal(frm.fields_dict.terms_section_break.df.hidden, 0);
+    frm.doc.billing_address = "Company office";
+    handlers.billing_address(frm);
+    assert.equal(frm.fields_dict.billing_address.df.hidden, 0);
+    assert.equal(frm.fields_dict.company_billing_address_section.df.hidden, 0);
+    frm.doc.from_date = "2026-10-08";
+    handlers.from_date(frm);
+    assert.equal(frm.fields_dict.auto_repeat_section.df.hidden, 0);
+    assert.equal(frm.fields_dict.to_date.df.hidden, 0);
+    assert.equal(frm.fields_dict.update_auto_repeat_reference.df.depends_on, "eval:doc.auto_repeat");
+    frm.doc.custom_home_build_request = null;
+    handlers.custom_home_build_request(frm);
+    assert.equal(frm.fields_dict.contact_person.df.hidden, 0);
+    assert.equal(frm.fields_dict.tc_name.df.hidden, 0);
+}
+for (const property of ["reqd", "mandatory_depends_on", "allow_on_submit"]) {
+    const frm = tabForm();
+    frm.fields_dict.tc_name.df[property] = 1;
+    handlers.refresh(frm);
+    assert.equal(frm.fields_dict.tc_name.df.hidden, 0, "Required and staff-editable terms stay available");
+    assert.equal(frm.fields_dict.terms_section_break.df.hidden, 0);
+}
+for (const property of ["reqd", "mandatory_depends_on"]) {
+    const frm = tabForm();
+    frm.fields_dict.from_date.df[property] = 1;
+    handlers.refresh(frm);
+    assert.equal(frm.fields_dict.from_date.df.hidden, 0);
+    assert.equal(frm.fields_dict.auto_repeat_section.df.hidden, 0);
+}
+for (const name of ["from_date", "to_date", "auto_repeat"]) {
+    const frm = tabForm(); frm.doc[name] = "Existing";
+    handlers.refresh(frm);
+    assert.equal(frm.fields_dict.auto_repeat_section.df.hidden, 0);
+}
+const repeatCustom = tabForm(1, [{ fieldname: "custom_repeat_note", fieldtype: "Data" }]);
+handlers.refresh(repeatCustom);
+assert.equal(repeatCustom.fields_dict.auto_repeat_section.df.hidden, 0);
+assert.equal(repeatCustom.fields_dict.from_date.df.hidden, 0, "Custom repeat groups retain all their native controls");
+const termsCustom = tabForm();
+termsCustom.meta.fields.splice(termsCustom.meta.fields.findIndex(df => df.fieldname === "auto_repeat_section"), 0,
+    { fieldname: "custom_terms_note", fieldtype: "Data" });
+handlers.refresh(termsCustom);
+assert.equal(termsCustom.fields_dict.terms_section_break.df.hidden, 0);
+for (const flag of ["is_subcontracted", "is_old_subcontracting_flow"]) {
+    const frm = tabForm(); frm.doc[flag] = 1;
+    handlers.refresh(frm);
+    assert.equal(frm.fields_dict.auto_repeat_section.df.hidden, 0);
+}
 function itemForm(status = 1) {
     const frm = form({ docstatus: status, company: "DCR", currency: "USD", custom_home_build_request: "HBR-A" },
         [{ fieldname: "items", fieldtype: "Table", label: "Items" }]);
