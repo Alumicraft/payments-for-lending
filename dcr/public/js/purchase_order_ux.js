@@ -199,6 +199,35 @@
                 }
                 if (!Object.prototype.hasOwnProperty.call(overrides, name)) delete state[name];
             });
+            // Native columns do not shrink when their individual controls
+            // disappear. Collapse only columns wholly suppressed by this
+            // profile; unknown controls and column headings retain their space.
+            var column_state = row.__dcr_home_item_columns || (row.__dcr_home_item_columns = new Map());
+            var sections = (editor.layout && editor.layout.sections_dict) || {};
+            Object.keys(sections).forEach(function (name) {
+                var section = sections[name];
+                (section.columns || []).forEach(function (column) {
+                    if (!column.df || !column.form || typeof column.form.get !== "function" ||
+                            typeof column.refresh !== "function") return;
+                    var parent = column.form.get(0);
+                    var contents = (section.fields_list || []).filter(function (field) {
+                        return field.parent === parent;
+                    });
+                    var suppress = home_order && !column.df.label && !column.df.description &&
+                        contents.length > 0 && contents.every(function (field) {
+                            return overrides[field.df.fieldname] === 1;
+                        });
+                    if (suppress && !column_state.has(column)) column_state.set(column, column.df.hidden);
+                    if (!column_state.has(column)) return;
+                    var hidden = suppress ? 1 : column_state.get(column);
+                    if (column.df.hidden !== hidden) {
+                        column.df.hidden = hidden;
+                        // Refresh uses Frappe's own direct-child column sizing.
+                        column.refresh();
+                    }
+                    if (!suppress) column_state.delete(column);
+                });
+            });
             if (editor.layout && editor.layout.refresh_sections) editor.layout.refresh_sections();
         });
     }

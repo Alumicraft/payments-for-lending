@@ -191,4 +191,51 @@ assert.equal(customizedRow.section.df.hidden, 0, "Site fields keep their section
 assert.equal(customizedRow.fields.manufacturer.df.hidden, 0);
 assert.equal(customizedRow.fields.base_rate.df.hidden, 0);
 assert.equal(customizedRow.fields.base_amount.df.hidden, 0, "Preserve user-configured grid columns");
+// A suppressed base-currency column must release its reserved width. Keep
+// columns containing any other field, heading or site customization intact.
+function columnFixture(status = 1) {
+    const fixture = itemForm(status);
+    const parent = {};
+    fixture.fields.base_rate.parent = parent;
+    fixture.fields.base_amount.parent = parent;
+    const column = { df: { fieldname: "base_currency_column", fieldtype: "Column Break", hidden: 0 },
+        form: { get() { return parent; } }, refreshes: 0,
+        refresh() { this.refreshes++; this.renderedHidden = Boolean(this.df.hidden); } };
+    const section = { df: { fieldname: "amounts" },
+        fields_list: [fixture.fields.base_rate, fixture.fields.base_amount], columns: [column] };
+    fixture.row.grid_form.layout.sections_dict.amounts = section;
+    return { ...fixture, column, amountSection: section };
+}
+for (const status of [0, 1, 2]) {
+    const fixture = columnFixture(status);
+    const before = JSON.stringify(fixture.row.doc);
+    handlers.items_on_form_rendered(fixture.frm);
+    assert.equal(fixture.column.df.hidden, status > 0 ? 1 : 0,
+        "Hide only a column whose complete contents are verified suppressed fields");
+    if (status > 0) assert.equal(fixture.column.renderedHidden, true);
+    fixture.row.doc.base_rate = 121;
+    handlers.items_on_form_rendered(fixture.frm);
+    assert.equal(fixture.column.df.hidden, 0, "A discrepancy restores the column and its original width");
+    fixture.row.doc.base_rate = 120;
+    handlers.items_on_form_rendered(fixture.frm);
+    fixture.frm.doc.custom_home_build_request = null;
+    handlers.custom_home_build_request(fixture.frm);
+    assert.equal(fixture.column.df.hidden, 0, "Restore native columns on scope exit");
+    assert.equal(JSON.stringify(fixture.row.doc), before);
+}
+for (const extra of ["field", "label", "description"]) {
+    const fixture = columnFixture();
+    if (extra === "field") fixture.amountSection.fields_list.push({
+        df: { fieldname: "custom_note", hidden: 1 }, parent: fixture.fields.base_rate.parent
+    });
+    else fixture.column.df[extra] = "Site context";
+    handlers.items_on_form_rendered(fixture.frm);
+    assert.equal(fixture.column.df.hidden, 0, "Preserve site column content even when it is currently hidden");
+}
+const nativeHiddenColumn = columnFixture();
+nativeHiddenColumn.column.df.hidden = 1;
+handlers.items_on_form_rendered(nativeHiddenColumn.frm);
+nativeHiddenColumn.frm.doc.is_subcontracted = 1;
+handlers.is_subcontracted(nativeHiddenColumn.frm);
+assert.equal(nativeHiddenColumn.column.df.hidden, 1, "Preserve an originally hidden column");
 console.log("Purchase Order UX: home scope, draft/submitted/cancelled, required/custom fields, materials, restoration and no document writes passed");
