@@ -487,6 +487,13 @@ def _update_reference_document(sig_req):
             _send_signed_email(sig_req)
 
         elif sig_req.document_type == "Flooring Packet" and sig_req.reference_doctype == "Loan Application":
+            if sig_req.get("financial_basis_hash"):
+                from dcr.api.financing_basis import financial_snapshot, snapshot_hash
+                application = frappe.get_doc("Loan Application", sig_req.reference_name)
+                if snapshot_hash(financial_snapshot(application, check_permission=False)) != sig_req.financial_basis_hash:
+                    frappe.log_error("Signed packet retained in signature history; its financial terms have changed.",
+                                     "Stale Flooring Packet")
+                    return
             frappe.db.set_value("Loan Application", sig_req.reference_name,
                                 "signed_packet", sig_req.signed_attachment)
             _send_signed_email(sig_req)
@@ -807,6 +814,7 @@ def _signature_context(document_type, reference_name, permission="read"):
         frappe.throw(_("MIFA requires a Loan Product and a positive Credit Limit"))
     prints = [(doctype, reference_name, document_type, f"{document_type.replace(' ', '-')}-{reference_name}.pdf")]
     sources = [reference, customer]
+    financial_basis = None
     if document_type == "Flooring Packet":
         if not reference.get("home_build_request"):
             frappe.throw(_("Loan Application must be linked to a Home Build Request"))
@@ -816,6 +824,12 @@ def _signature_context(document_type, reference_name, permission="read"):
         if hbr.customer != customer_name:
             frappe.throw(_("The linked deal belongs to a different dealer"))
         sources.append(hbr)
+        from dcr.api.financing_basis import financial_snapshot, money
+        financial_basis = financial_snapshot(reference)
+        if financial_basis['source'] == 'invoice' and not financial_basis['first_payment_date']:
+            frappe.throw(_("Set the First Payment Date before reviewing the final invoice packet."))
+        if money(reference.loan_amount) != money(financial_basis["principal"]):
+            frappe.throw(_("Save the Loan Application with the final invoice amount before reviewing its packet."))
         prints = [
             ("Home Build Request", hbr.name, "New Home Info Sheet", "New-Home-Info-Sheet.pdf"),
             (doctype, reference_name, "Exhibit A Receipt", "Exhibit-A.pdf"),
@@ -823,10 +837,10 @@ def _signature_context(document_type, reference_name, permission="read"):
         ]
     formats = [(fmt, frappe.db.get_value("Print Format", fmt, "modified")) for _, _, fmt, _ in prints]
     version = [(doc.doctype, doc.name, str(doc.modified)) for doc in sources]
-    fingerprint = hashlib.sha256(json.dumps([version, formats, customer.email_id, customer.customer_name], default=str).encode()).hexdigest()
+    fingerprint = hashlib.sha256(json.dumps([version, formats, customer.email_id, customer.customer_name, financial_basis], default=str).encode()).hexdigest()
     return {"document_type": document_type, "reference_doctype": doctype, "reference_name": reference_name,
         "customer": customer_name, "recipient_email": customer.email_id, "recipient_name": customer.customer_name,
-        "fingerprint": fingerprint, "prints": prints}
+        "fingerprint": fingerprint, "prints": prints, "financial_basis": financial_basis}
 
 
 @frappe.whitelist()
@@ -855,9 +869,18 @@ def _send_reviewed_signature(document_type, reference_name, review_token):
     context = _signature_context(document_type, reference_name, permission="email")
     if review.get("fingerprint") != context["fingerprint"]:
         frappe.throw(_("The document or recipient changed. Open a fresh preview before sending."))
-    existing = frappe.db.exists("Signature Request", {"document_type": document_type,
+    duplicate_filters = {"document_type": document_type,
         "reference_doctype": context["reference_doctype"], "reference_name": reference_name,
-        "status": ["in", ["Sent", "Signed", "Outcome Unknown"]]})
+        "status": ["in", ["Sent", "Signed", "Outcome Unknown"]]}
+    if document_type == "Flooring Packet":
+        from dcr.api.financing_basis import snapshot_hash
+        duplicate_filters["status"] = ["in", ["Sent", "Outcome Unknown"]]
+    existing = frappe.db.exists("Signature Request", duplicate_filters)
+    if not existing and document_type == "Flooring Packet":
+        existing = frappe.db.exists("Signature Request", {
+            **duplicate_filters, "status": "Signed",
+            "financial_basis_hash": snapshot_hash(context["financial_basis"]),
+        })
     if existing:
         frappe.throw(_("A signature request already exists ({0}). Review it before sending another.").format(existing))
     client = DocuSignClient()
@@ -867,6 +890,10 @@ def _send_reviewed_signature(document_type, reference_name, review_token):
     sig_req.recipient_email = context["recipient_email"]
     sig_req.recipient_name = context["recipient_name"]
     sig_req.review_hash = hashlib.sha256(json.dumps(review["documents"], sort_keys=True).encode()).hexdigest()
+    if context.get("financial_basis"):
+        from dcr.api.financing_basis import snapshot_hash
+        sig_req.financial_basis_hash = snapshot_hash(context["financial_basis"])
+        sig_req.financial_basis = json.dumps(context["financial_basis"], sort_keys=True)
     sig_req.status = "Outcome Unknown"
     sig_req.insert()
     # Durable admission is retained if the request times out or the worker crashes.

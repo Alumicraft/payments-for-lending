@@ -348,8 +348,8 @@ class TestLoanCalculations(unittest.TestCase):
 
         _apply_loan_calculation_values(doc)
 
-        self.assertEqual(doc.total_interest_payable, 26400)
-        self.assertEqual(doc.total_payment, 246400)
+        self.assertIsNone(doc.total_interest_payable)
+        self.assertIsNone(doc.total_payment)
 
     def test_loan_calculation_prefers_visible_qualifying_amount(self):
         from dcr.api.lending import _apply_loan_calculation_values
@@ -365,8 +365,8 @@ class TestLoanCalculations(unittest.TestCase):
 
         _apply_loan_calculation_values(doc)
 
-        self.assertEqual(doc.total_interest_payable, 12000)
-        self.assertEqual(doc.total_payment, 112000)
+        self.assertIsNone(doc.total_interest_payable)
+        self.assertIsNone(doc.total_payment)
 
     @patch("dcr.api.lending._populate_deal_reference")
     def test_loan_validate_defaults_visible_amount_and_tenure(self, mock_reference):
@@ -385,19 +385,21 @@ class TestLoanCalculations(unittest.TestCase):
         on_loan_validate(doc, "validate")
 
         self.assertEqual(doc.qualifying_amount, 220000)
-        self.assertEqual(doc.repayment_periods, 12)
-        self.assertEqual(doc.total_interest_payable, 26400)
-        self.assertEqual(doc.total_payment, 246400)
+        self.assertEqual(doc.repayment_periods, 112)
+        self.assertIsNone(doc.total_interest_payable)
+        self.assertIsNone(doc.total_payment)
 
     def test_interest_only_calculation_matches_floor_plan_schedule(self):
         from dcr.api.lending import _loan_calculation_values
 
-        values = _loan_calculation_values(120000, 12, 10, 150000)
+        values = _loan_calculation_values(120000, 12, 10, 150000,
+            interest_start_date="2026-01-20", first_payment_date="2026-02-01",
+            interest_only_periods=0, monthly_principal_percent=100)
 
-        self.assertEqual(values["repayment_amount"], 1200)
-        self.assertEqual(values["monthly_repayment_amount"], 1200)
-        self.assertEqual(values["total_payable_interest"], 12000)
-        self.assertEqual(values["total_payment"], 132000)
+        self.assertEqual(values["repayment_amount"], 120480)
+        self.assertEqual(values["monthly_repayment_amount"], 120480)
+        self.assertEqual(values["total_payable_interest"], 480)
+        self.assertEqual(values["total_payment"], 120480)
         self.assertEqual(values["custom_projected_equity"], 30000)
         self.assertEqual(values["custom_projected_ltv"], 80)
 

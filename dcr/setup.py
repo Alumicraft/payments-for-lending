@@ -32,6 +32,8 @@ def after_install():
     # bypass those checks through Frappe's resource and client APIs. Fail the
     # migration if this security repair cannot be applied.
     ensure_dealer_portal_permissions()
+    from dcr.api.financing_basis import ensure_financing_fields
+    ensure_financing_fields()
     from dcr.api.pilot_fields import (
         ensure_pilot_fields, ensure_purchase_order_form_layout,
         ensure_loan_application_insurance_layout, ensure_loan_payment_layout,

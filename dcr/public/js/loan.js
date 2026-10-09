@@ -72,6 +72,10 @@ frappe.ui.form.on('Loan', {
         calculate_loan_preview(frm);
     },
 
+    posting_date: function(frm) { calculate_loan_preview(frm); },
+    repayment_start_date: function(frm) { calculate_loan_preview(frm); },
+    loan_application: function(frm) { calculate_loan_preview(frm); },
+
     custom_projected_sales_price: function(frm) {
         calculate_loan_preview(frm);
     }
@@ -79,11 +83,10 @@ frappe.ui.form.on('Loan', {
 
 
 function ensure_loan_preview_defaults(frm) {
-    // DCR floor-plan loans use a 12-period interest-only term. Directly
-    // opening Add Loan does not inherit Loan Application defaults, so seed
-    // the same tenure used by the mapped workflow before calculating.
+    // Twelve interest-only payments plus one hundred 1% reductions.
+    // The server derives the actual row count once payment dates are known.
     if (!frm.doc.repayment_periods && frm.fields_dict.repayment_periods) {
-        frm.set_value('repayment_periods', 12);
+        frm.set_value('repayment_periods', 112);
     }
 
     // Lending may carry the mapped principal in a hidden loan_amount field,
@@ -126,36 +129,8 @@ function calculate_loan_preview(frm) {
     // has already persisted them, so do not dirty a submitted form on refresh.
     if (frm.doc.docstatus && frm.doc.docstatus !== 0) return;
 
-    // On Loan, qualifying_amount is the visible principal field. Do not fall
-    // back to a stale hidden loan_amount when an operator clears or zeroes it.
-    var amount_value = frm.fields_dict.qualifying_amount
-        ? frm.doc.qualifying_amount
-        : frm.doc.loan_amount;
-    var amount = parseFloat(amount_value || 0);
-    var rate = parseFloat(frm.doc.rate_of_interest || 0);
-    var periods = parseInt(frm.doc.repayment_periods || 0, 10);
-    var sales_price = parseFloat(frm.doc.custom_projected_sales_price || 0);
-    var monthly = amount && rate ? amount * rate / 1200 : null;
-    var total_interest = monthly && periods ? monthly * periods : null;
-    var total_amount = total_interest !== null ? amount + total_interest : null;
+    dcr.update_dated_loan_preview(frm, set_loan_calculated_value);
 
-    set_loan_calculated_value(frm, 'repayment_amount', monthly);
-    set_loan_calculated_value(frm, 'monthly_repayment_amount', monthly);
-    set_loan_calculated_value(frm, 'monthly_interest_amount', monthly);
-    set_loan_calculated_value(frm, 'total_payable_interest', total_interest);
-    set_loan_calculated_value(frm, 'total_interest_payable', total_interest);
-    set_loan_calculated_value(frm, 'total_payable_amount', total_amount);
-    set_loan_calculated_value(frm, 'total_payment', total_amount);
-    set_loan_calculated_value(
-        frm,
-        'custom_projected_equity',
-        amount && sales_price ? sales_price - amount : null
-    );
-    set_loan_calculated_value(
-        frm,
-        'custom_projected_ltv',
-        amount && sales_price ? amount / sales_price * 100 : null
-    );
 }
 
 

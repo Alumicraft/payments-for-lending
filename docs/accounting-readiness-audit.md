@@ -2,9 +2,9 @@
 
 Updated October 8, 2026. Status: **not ready; configuration findings and posting reconciliation remain open**. This is part of the pilot checklist, not a certification of the ledger.
 
-## Confirmed configuration
+## Initial configuration findings
 
-Read from the signed-in Company and Standard Loan Product forms without saving:
+Initially read from the signed-in Company and Standard Loan Product forms without saving. Subsequent authorized changes are recorded under **Authorized trial resumed** below: Actual/360 is saved, and Standard now has separate accrued-interest asset and interest-income mappings. The table retains the original findings for the historical posting investigation.
 
 | Setting | Observed state | Required follow-up |
 | --- | --- | --- |
@@ -74,3 +74,18 @@ PR #45 rollout: pipeline `3frnu0bt3f` succeeded in 3m57s; Update Site Pull `3i3r
 Hourly DCR settlement-reconciliation scheduler readback: Stopped is unchecked, last execution is October 8 at 18:00:56 America/Los_Angeles, and the filtered log list contains 78 of 78 retained executions, all Complete. This establishes scheduler execution only. The source routine retries accounting for Accounting Pending transactions using stored settlement evidence; no eligible transaction, resulting posting or real provider settlement was exercised during this check.
 
 Native loan classification is enabled (Stopped unchecked), runs Daily Long, and last executed October 8 at 00:00:41 America/Los_Angeles. Its filtered list shows eight of eight retained logs, all Complete. No classification job was manually run. Accrual, demand, classification and DCR settlement-reconciliation scheduler execution are now observed; their accounting results still require the configured transaction cases and reconciliation.
+
+## Authorized trial resumed
+
+The user confirms this is resettable test data, permits normal-workflow transaction tests and directs Codex to select sensible mappings and reconcile postings. Principal/curtailment basis is the purchase invoice total including freight and financed DCR fees; interest is actual elapsed days / 360 from the invoice date; monthly payments continue after 36 months. Changed invoice amounts require a revised signed packet.
+
+Company day-count convention is now saved as Actual/360, with Version `8un72gqin6` confirming Actual/365 → Actual/360. Historical entries were not changed. Custom schedule code still uses fixed 30-day interest and percent of remaining principal; its correction and dated posting reconciliation remain required. The mapping and historical findings above remain unresolved. Accounting is still not ready.
+
+- Authorized mapping repair: created enabled leaf Asset/Balance Sheet `Accrued Flooring Interest - DCR` under Current Assets, with USD currency. Native Account rejects Current Asset as a leaf account type, so its leaf type is blank and its parent/root classify it. Standard product now maps interest_accrued_account to this asset and interest_income_account to existing `40102 - Flooring Interest Income - DCR`; Version `31esehnjfs` confirms both changes from Service/Fee Income. Other product mappings and historical vouchers remain to reconcile. No financial transaction was posted. Proof `docs/pilot-evidence/loan-product-interest-mapping-after.jpg` retained privately.
+- Clean Company readback reconfirms Actual/360 and an empty IRAC table. An accidental empty row created by keyboard focus during proof capture was never saved; that temporary tab was discarded and the screenshot replaced with the clean persisted page.
+
+- Native schedule carry defect reproduced against installed Lending `97f692e`, using its actual extracted method with a synthetic partial-disbursement fixture: 15 days on $100,000 at 12% gives $493.15 versus Actual/360 $500.00. Company configuration does not change that hardcoded native schedule path. Diagnostic `tools/diagnostics/floorplan_native_carry.py` verifies the upstream file hash and performs no database operations. Carry/restructure repairs remain a source release prerequisite; no trial posting can yet establish end-to-end schedule correctness.
+
+- Local carry repair now makes the same diagnostic pass with `--dcr`, preserves previous balances and native adjustments, and prevents overlap between a pre/advance-payment due row and later interest periods. Normal restructure no longer restarts the IO phase. Full mocked Python suite: 513 tests and 40 subtests passed, 9 existing warnings. This repair has not been deployed; final invoice sourcing, revised-packet enforcement, previews, remaining account mappings and normal-document GL reconciliation remain open.
+
+- Local final-invoice funding checks now use the submitted Purchase Invoice payable total, including its rounding treatment, plus only additional financed DCR fees outside that invoice. Supplier bill_date is the interest/funding start, falling back to posting_date. Before new disbursement submission, application/loan principal and interest rate must agree with a current signed financial snapshot; its private PDF must exist and the funding date must agree. Quote-only or older signed terms cannot pass this check. Source tests pass (534 Python, 40 subtests), but ordinary amendment/revision usability, previews, contract-rate consistency, deployment and actual GL reconciliation remain open. No financial trial transaction was posted during this source work.

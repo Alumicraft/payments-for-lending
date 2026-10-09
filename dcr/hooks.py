@@ -11,7 +11,7 @@ boot_session = "dcr.api.boot.boot_session"
 # Frappe Cloud serves /assets files with a long immutable browser cache.
 # Keep these explicit URLs versioned so deployed client fixes are fetched
 # without requiring users to hard-refresh stale browser caches.
-DCR_ASSET_VERSION = "20261008-16"
+DCR_ASSET_VERSION = "20261008-17"
 
 
 def versioned_asset(path):
@@ -27,6 +27,7 @@ app_include_js = [
     # both work on Frappe Cloud.
     versioned_asset("/assets/dcr/js/signature_preview.js"),
     versioned_asset("/assets/dcr/js/home_build_request.js"),
+    versioned_asset("/assets/dcr/js/dated_loan_preview.js"),
     versioned_asset("/assets/dcr/js/loan_application.js"),
     versioned_asset("/assets/dcr/js/flooring_loan_display.js"),
     versioned_asset("/assets/dcr/js/factory_assignment.js"),
@@ -105,6 +106,8 @@ fixtures = [
                 "Loan Application-applicant_phone_number-options",
                 "Loan Application-dcr_documents_section-depends_on",
                 "Loan Application-signed_packet-placeholder",
+                "Loan Application-signed_packet-no_copy",
+                "Loan Application-status-no_copy",
                 "Loan Application-applicant_email_address-read_only",
                 "Loan Application-applicant_phone_number-read_only",
             ]]
@@ -145,6 +148,7 @@ doc_events = {
         "on_update_after_submit": "dcr.api.status_notices.capture_hbr_changes",
     },
     "Loan Application": {
+        "before_validate": "dcr.api.financing_basis.apply_application_invoice",
         "validate": "dcr.api.lending.validate_loan_application",
         "on_update": "dcr.api.hbr_stage.sync_from_doc",
     },
@@ -155,6 +159,7 @@ doc_events = {
         "on_update_after_submit": "dcr.api.hbr_stage.sync_from_doc",
     },
     "Loan Disbursement": {
+        "before_submit": "dcr.api.financing_basis.validate_invoice_funding",
         "validate": "dcr.api.lending.on_loan_disbursement_validate",
         "on_submit": "dcr.api.hbr_stage.sync_from_doc",
         "on_cancel": "dcr.api.hbr_stage.sync_from_doc",

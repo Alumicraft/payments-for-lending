@@ -1,0 +1,34 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+const calls = [];
+const context = {dcr: {}, frappe: {provide() {}, call(request) { calls.push(request); }}};
+vm.createContext(context);
+vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/dated_loan_preview.js'),'utf8'),context);
+const frm = {doc:{doctype:'Loan',name:'DRAFT',docstatus:0,loan_amount:225000,qualifying_amount:100000,
+                  rate_of_interest:12,posting_date:'2026-01-20',repayment_start_date:'2026-02-01'},
+             fields_dict:{qualifying_amount:{}}, changes:[]};
+const set = (form,key,value) => form.changes.push([key,value]);
+context.dcr.update_dated_loan_preview(frm,set);
+const old = calls.pop();
+assert.equal(old.args.loan_amount,100000);
+assert.equal(old.args.interest_start_date,'2026-01-20');
+assert.equal(old.args.first_payment_date,'2026-02-01');
+frm.doc.qualifying_amount = 0;
+context.dcr.update_dated_loan_preview(frm,set);
+const current = calls.pop();
+assert.equal(current.args.loan_amount,0,'Clearing visible principal must not use a stale hidden amount');
+old.callback({message:{monthly_repayment_amount:1000}});
+assert.deepEqual(frm.changes,[],'An old response cannot overwrite newer inputs');
+current.callback({message:{monthly_repayment_amount:null}});
+assert.deepEqual(frm.changes,[['monthly_repayment_amount',null]]);
+frm.changes = [];
+context.dcr.update_dated_loan_preview(frm,set);
+const pending = calls.pop();
+frm.doc.docstatus = 1;
+pending.callback({message:{monthly_repayment_amount:999}});
+assert.deepEqual(frm.changes,[],'A response arriving after submit must not dirty a submitted loan');
+context.dcr.update_dated_loan_preview(frm,set);
+assert.equal(calls.length,0,'Submitted forms do not request calculated edits');
+console.log('Dated preview: dates, qualifying principal, zeroing, stale responses and submission protected');
