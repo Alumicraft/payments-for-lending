@@ -2,9 +2,9 @@
 
 Updated October 8, 2026. Status: **not ready; configuration findings and posting reconciliation remain open**. This is part of the pilot checklist, not a certification of the ledger.
 
-## Confirmed configuration
+## Initial configuration findings
 
-Read from the signed-in Company and Standard Loan Product forms without saving:
+Initially read from the signed-in Company and Standard Loan Product forms without saving. Subsequent authorized changes are recorded under **Authorized trial resumed** below: Actual/360 is saved, and Standard now has separate accrued-interest asset and interest-income mappings. The table retains the original findings for the historical posting investigation.
 
 | Setting | Observed state | Required follow-up |
 | --- | --- | --- |
@@ -83,3 +83,5 @@ Company day-count convention is now saved as Actual/360, with Version `8un72gqin
 
 - Authorized mapping repair: created enabled leaf Asset/Balance Sheet `Accrued Flooring Interest - DCR` under Current Assets, with USD currency. Native Account rejects Current Asset as a leaf account type, so its leaf type is blank and its parent/root classify it. Standard product now maps interest_accrued_account to this asset and interest_income_account to existing `40102 - Flooring Interest Income - DCR`; Version `31esehnjfs` confirms both changes from Service/Fee Income. Other product mappings and historical vouchers remain to reconcile. No financial transaction was posted. Proof `docs/pilot-evidence/loan-product-interest-mapping-after.jpg` retained privately.
 - Clean Company readback reconfirms Actual/360 and an empty IRAC table. An accidental empty row created by keyboard focus during proof capture was never saved; that temporary tab was discarded and the screenshot replaced with the clean persisted page.
+
+- Native schedule carry defect reproduced against installed Lending `97f692e`, using its actual extracted method with a synthetic partial-disbursement fixture: 15 days on $100,000 at 12% gives $493.15 versus Actual/360 $500.00. Company configuration does not change that hardcoded native schedule path. Diagnostic `tools/diagnostics/floorplan_native_carry.py` verifies the upstream file hash and performs no database operations. Carry/restructure repairs remain a source release prerequisite; no trial posting can yet establish end-to-end schedule correctness.
