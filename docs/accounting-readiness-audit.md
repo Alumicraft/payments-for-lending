@@ -128,3 +128,11 @@ Funding Clearing Account Type is now **Temporary**, Version 7i7ji8q5n1, supersed
 Application ACC-LOAP-2026-00013 derives principal $225,000 from the submitted invoice plus $5,000 additional fees, with October 1 funding date and November 1 first payment. Hosted interest preview is $2,325 for 31 days at 12% / 360. Monthly insurance $123.45 is entered for PDF acceptance. Application is saved but not submitted/signed/funded. Additional fees still require matching native upfront charge documents.
 
 A repeated Not Saved state was reproduced on this application: unknown numeric projections are cleared to null by the browser, then restored to zero on reload by Frappe. Client repair is prepared and regression-tested; release/readback remains pending. Accounting remains **not ready**.
+
+### October 9 fee configuration and release acceptance
+
+DCR Fee Receivable - DCR is saved as an enabled USD leaf Receivable account under Accounts Receivable. Standard Loan Product now contains DCR Financing Fee with Fixed Amount default zero, Service/Fee Income for income and waiver, and DCR Fee Receivable for receivable; native Version csm544jffu confirms these mappings. Actual per-loan fees, their native invoice postings and receivable clearing are not yet verified. Suspense and write-off remain unconfigured for this charge.
+
+PR #56 is installed at 28721005a8eda0785da2d39fc565ffda18e27ac9 after successful pipeline 5mqiijgu3t. Fresh application assets are 20261009-18, but the trial application still becomes Not Saved after saving. Hosted save acceptance failed; application submission, signature, loan funding and accounting reconciliation remain open. Accounting remains **not ready**.
+
+The remaining save loop is a credit-response mismatch: ordinary savedocs returns outstanding $124,561 and current status No, while the refresh endpoint returns zero outstanding and no current_yn when the MIFA limit is absent. That refresh rewrites saved fields. Numeric projection script repair is actually installed; the subsequent Version zero-to-null entries arise during server calculation. A source fix now preserves actual balance/status with available credit zero for absent/zero limits. 566 mocked Python tests plus 40 subtests and 12 Node files pass. Hosted acceptance awaits deployment; do not regard this as proof of the overall loan/accounting flow.

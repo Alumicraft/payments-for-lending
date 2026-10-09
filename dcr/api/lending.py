@@ -324,14 +324,14 @@ def get_available_credit(customer):
         require_staff("MIFA", mifa_record.name)
     mifa = mifa_record.credit_limit if mifa_record else None
 
-    if not mifa:
-        return {"credit_limit": 0, "outstanding": 0, "available": 0}
-
+    # A missing/zero limit does not erase existing loans or payment status.
+    # Keep this response consistent with validate_loan_application; otherwise
+    # each draft refresh overwrites its saved balance/status and dirties it.
     outstanding = _get_dealer_outstanding_balance(customer)
-    available = mifa - outstanding
+    available = mifa - outstanding if mifa else 0
 
     return {
-        "credit_limit": mifa,
+        "credit_limit": mifa or 0,
         "outstanding": outstanding,
         "available": available,
         "current_yn": is_dealer_current(customer)
