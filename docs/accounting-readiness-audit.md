@@ -1,6 +1,6 @@
 # Accounting readiness audit
 
-Updated October 8, 2026. Status: **not ready; configuration findings and posting reconciliation remain open**. This is part of the pilot checklist, not a certification of the ledger.
+Updated October 9, 2026. Status: **not ready; configuration findings and posting reconciliation remain open**. This is part of the pilot checklist, not a certification of the ledger.
 
 ## Initial configuration findings
 
@@ -110,3 +110,21 @@ For a $220,000 factory invoice and $5,000 separately financed upfront DCR fee, t
 Expected closing clearing, fee receivable and payable balances are zero; loan asset is $225,000 and fee income is $5,000. No provider transfer is needed for this internal trial. Using the actual bank as both loan disbursement source and factory-payment source would double count the cash outflow.
 
 This mapping is a proposed trial configuration, not saved yet. Additional financed fees still need to be matched to native upfront charge invoices; Add to first repayment must not collect them twice. Native disbursement posting_date defaults to today while schedule/value dates use disbursement_date; verify dated GL/accrual behavior separately. Historical vouchers and bank reconciliation remain unresolved. Accounting remains **not ready**.
+
+- Accounting trial configuration saved through native forms: enabled USD Asset/Balance Sheet Funding Clearing - DCR under Current Assets (Bank account type for native disbursement selection), and Flooring Interest Receivable - DCR under Accounts Receivable (Receivable type). Standard disbursement_account now uses Funding Clearing, Version `94puhvhhg0`; interest_receivable_account uses the separate receivable and broken-period recovery uses Flooring Interest Income, Version `45alk37pm1`; interest waiver also uses Flooring Interest Income, Version `a5j8nj423l`. Repayment still uses the existing trust bank. No financial transaction, provider movement or historical-voucher edit was performed. Native saves and Version readbacks passed; normal-document GL and bank reconciliation remain open.
+
+- Company Default Cost Center now Main - DCR, native Version `985it84fq4`; the stale initial save was rejected and successfully retried after refreshing. Current factory-payable and bank defaults were inspected; receivable and purchase-invoice/item debit configuration still need completion. No financial trial transaction posted.
+
+- PR #55 exact source `254f68a` installed; optimized pull succeeded, followed by explicit metadata migration `28rc1246es` Success in 20s. Hidden original-principal field appears in a fresh Loan form. No legacy basis/GL backfill. Normal-document funded schedules, repeated restructuring, fee linkage and GL/accrual/repayment/reversal reconciliation remain pending; accounting is still not ready.
+
+## First normal-workflow trial posting
+
+Synthetic request ACC-HBR-2026-00029 and PO PUR-ORD-2026-00016 are submitted. Staff waivers identify missing attachments as a test choice, not genuine factory evidence. Trial factory invoice ACC-PINV-2026-00009 is submitted for $220,000 including freight, with no tax in this bounded case. Its supplier invoice date is October 1 and GL posting date October 9. The default 6% tax template reappeared when mapping the order into an invoice; it was removed explicitly on this synthetic invoice. Tax-bearing financed invoices remain a separate accounting case.
+
+The native GL shows debit Funding Clearing $220,000 and credit Trade Payables $220,000, cost center Main; voucher totals balance. Funding Clearing now has a $220,000 debit pending the corresponding loan funding. Fees, factory payment, accrual, demands, repayment, reversal and closure are not reconciled yet. No provider transfer occurred. Private screenshot accounting-trial-invoice-gl.jpg retained outside public Git.
+
+Funding Clearing Account Type is now **Temporary**, Version 7i7ji8q5n1, superseding the earlier Bank classification. The installed ERPNext get_expense_account query admits Temporary assets but excludes Bank accounts; installed Lending Loan/Product queries admit leaf Asset accounts without requiring Bank type. Native account selection, invoice save and submission passed after this correction. USD, root Asset, Balance Sheet, Current Assets parent and Standard disbursement mapping remain unchanged.
+
+Application ACC-LOAP-2026-00013 derives principal $225,000 from the submitted invoice plus $5,000 additional fees, with October 1 funding date and November 1 first payment. Hosted interest preview is $2,325 for 31 days at 12% / 360. Monthly insurance $123.45 is entered for PDF acceptance. Application is saved but not submitted/signed/funded. Additional fees still require matching native upfront charge documents.
+
+A repeated Not Saved state was reproduced on this application: unknown numeric projections are cleared to null by the browser, then restored to zero on reload by Frappe. Client repair is prepared and regression-tested; release/readback remains pending. Accounting remains **not ready**.
