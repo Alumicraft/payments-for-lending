@@ -1,4 +1,5 @@
 from dcr.api.access import require_staff
+from dcr.api.floorplan_terms import product_terms
 import frappe
 from frappe import _
 from frappe.utils import getdate, add_days, today
@@ -80,16 +81,23 @@ def _loan_calculation_values(
 @frappe.whitelist()
 def get_dated_loan_preview(doctype, loan_amount, rate_of_interest, repayment_periods=0,
                           projected_sales_price=None, interest_start_date=None,
-                          first_payment_date=None, loan_application=None):
+                          first_payment_date=None, loan_application=None, loan_product=None):
     if doctype not in ("Loan", "Loan Application"):
         frappe.throw("A Loan or Loan Application is required.")
     require_staff(doctype)
     if doctype == "Loan" and loan_application:
         require_staff("Loan Application", loan_application)
         interest_start_date = frappe.db.get_value("Loan Application", loan_application, "financed_invoice_date")
+    if loan_product:
+        require_staff("Loan Product", loan_product)
+    terms = product_terms(loan_product, rate_of_interest)
+    if terms['schedule_type'] != 'Interest Only Then Percent Principal':
+        return {}
     return _loan_calculation_values(
-        loan_amount, rate_of_interest, repayment_periods, projected_sales_price,
+        loan_amount, terms["annual_rate"], repayment_periods, projected_sales_price,
         interest_start_date=interest_start_date, first_payment_date=first_payment_date,
+        interest_only_periods=terms["interest_only_periods"],
+        monthly_principal_percent=terms["monthly_principal_percent"],
     )
 
 
@@ -130,12 +138,17 @@ def _apply_loan_calculation_values(doc):
         start = doc.get("posting_date")
         if doc.get("loan_application"):
             start = frappe.db.get_value("Loan Application", doc.loan_application, "financed_invoice_date")
+    terms = product_terms(doc.get("loan_product"),doc.get("rate_of_interest"))
+    if terms['schedule_type'] != 'Interest Only Then Percent Principal':
+        return  # Other products keep the native Lending calculation.
     values = _loan_calculation_values(
         loan_amount,
-        doc.get("rate_of_interest"),
+        terms["annual_rate"],
         doc.get("repayment_periods"),
         doc.get("custom_projected_sales_price"),
         interest_start_date=start, first_payment_date=first_due,
+        interest_only_periods=terms["interest_only_periods"],
+        monthly_principal_percent=terms["monthly_principal_percent"],
     )
     for fieldname, value in values.items():
         if not _doc_has_field(doc, fieldname):
@@ -818,14 +831,17 @@ def get_loan_defaults_from_application(loan_application):
         "buyer_name": la.buyer_name,
         "factory": la.factory,
     }
+    terms = product_terms(la.get("loan_product"),rate_of_interest)
     calculation_values = _loan_calculation_values(
         la.get("loan_amount"),
-        rate_of_interest,
+        terms["annual_rate"],
         la.get("repayment_periods"),
         la.get("custom_projected_sales_price"),
         interest_start_date=la.get("financed_invoice_date"),
         first_payment_date=la.get("first_payment_date"),
-    )
+        interest_only_periods=terms["interest_only_periods"],
+        monthly_principal_percent=terms["monthly_principal_percent"],
+    ) if terms['schedule_type'] == 'Interest Only Then Percent Principal' else {}
     if la.get("first_payment_date"):
         defaults["repayment_start_date"] = la.first_payment_date
     if calculation_values.get("repayment_periods"):

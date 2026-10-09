@@ -106,6 +106,8 @@ fixtures = [
                 "Loan Application-applicant_phone_number-options",
                 "Loan Application-dcr_documents_section-depends_on",
                 "Loan Application-signed_packet-placeholder",
+                "Loan Application-signed_packet-no_copy",
+                "Loan Application-status-no_copy",
                 "Loan Application-applicant_email_address-read_only",
                 "Loan Application-applicant_phone_number-read_only",
             ]]

@@ -17,7 +17,8 @@ dcr.update_dated_loan_preview = function(frm, set_value) {
             interest_start_date: frm.doc.financed_invoice_date ||
                 (frm.doc.doctype === 'Loan' && !frm.doc.loan_application ? frm.doc.posting_date : null),
             first_payment_date: frm.doc.first_payment_date || frm.doc.repayment_start_date || null,
-            loan_application: frm.doc.loan_application || null
+            loan_application: frm.doc.loan_application || null,
+            loan_product: frm.doc.loan_product || null
         },
         callback: function(r) {
             if (frm.doc.name !== name || frm.__dcr_preview_sequence !== sequence || frm.doc.docstatus) return;

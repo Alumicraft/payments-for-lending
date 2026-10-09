@@ -5,6 +5,7 @@ import hashlib
 import json
 
 import frappe
+from dcr.api.floorplan_terms import product_terms
 
 
 def money(value):
@@ -15,6 +16,13 @@ def money(value):
         return amount.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
     except InvalidOperation as error:
         raise ValueError('Invalid financed amount') from error
+
+
+def interest_rate(value):
+    rate = Decimal(str(value or 0))
+    if not rate.is_finite() or rate < 0:
+        frappe.throw('Interest rate must be finite and non-negative.')
+    return rate.normalize()
 
 
 def financial_snapshot(application, *, require_invoice=False, check_permission=True):
@@ -31,6 +39,11 @@ def financial_snapshot(application, *, require_invoice=False, check_permission=T
     invoice = frappe.get_doc('Purchase Invoice', invoice_name) if invoice_name else None
     company = application.get('company')
     company_currency = frappe.db.get_value('Company', company, 'default_currency')
+    terms = product_terms(application.get('loan_product'),application.get('rate_of_interest'))
+    if terms['schedule_type'] != 'Interest Only Then Percent Principal':
+        frappe.throw('Select a DCR floorplan loan product before reviewing the Flooring Packet.')
+    if interest_rate(terms['annual_rate']) != interest_rate(application.get('rate_of_interest')):
+        frappe.throw('Application interest rate must match the configured product contract rate before reviewing its packet.')
     fees = money(application.get('financed_dcr_fees'))
     if fees < 0:
         frappe.throw('Additional financed DCR fees cannot be negative.')
@@ -69,9 +82,10 @@ def financial_snapshot(application, *, require_invoice=False, check_permission=T
                 company=company, currency=company_currency, customer=application.applicant,
                 home_build_request=application.get('home_build_request'),
                 invoice_total=str(total), additional_financed_fees=str(fees), principal=str(amount),
-                annual_interest_rate=str(money(application.get('rate_of_interest'))),
+                annual_interest_rate=str(interest_rate(application.get('rate_of_interest'))),
                 first_payment_date=str(first_payment_date) if first_payment_date else None,
-                monthly_insurance_amount=str(money(application.get('monthly_insurance_amount'))))
+                monthly_insurance_amount=str(money(application.get('monthly_insurance_amount'))),
+                loan_product=application.get('loan_product'), schedule_terms=terms)
 
 
 def snapshot_hash(snapshot):
@@ -113,16 +127,22 @@ def validate_invoice_funding(doc, method=None):
     application = frappe.get_doc('Loan Application', loan.loan_application)
     basis = financial_snapshot(application, require_invoice=True)
     if (loan.applicant != application.applicant or loan.company != application.company or
-            loan.home_build_request != application.home_build_request):
-        frappe.throw('Loan and application must belong to the same dealer, company and Home Build Request.')
+            loan.home_build_request != application.home_build_request or
+            loan.get('loan_product') != application.get('loan_product')):
+        frappe.throw('Loan and application must belong to the same dealer, company, loan product and Home Build Request.')
     if (money(loan.loan_amount) != money(basis['principal']) or
             money(application.loan_amount) != money(basis['principal']) or
             (loan.get('qualifying_amount') and money(loan.qualifying_amount) != money(basis['principal']))):
         frappe.throw('Loan and application principal must match the final invoice plus additional financed fees. Revise the documents and packet before funding.')
-    if money(loan.get('rate_of_interest')) != money(basis['annual_interest_rate']):
+    if interest_rate(loan.get('rate_of_interest')) != interest_rate(basis['annual_interest_rate']):
         frappe.throw('Loan interest rate must match the rate reviewed in the current Flooring Packet.')
     if not basis['first_payment_date'] or str(doc.get('repayment_start_date'))[:10] != basis['first_payment_date']:
         frappe.throw('First payment date must match the date reviewed in the current Flooring Packet.')
+    if frappe.db.get_value('Company',loan.company,'interest_day_count_convention') != 'Actual/360':
+        frappe.throw('Company interest day-count convention must be Actual/360 before funding.')
+    if (basis['schedule_terms']['interest_only_periods'] != 12 or
+            basis['schedule_terms']['monthly_principal_percent'] != 1):
+        frappe.throw('DCR floorplan funding requires 12 interest-only payments followed by 1% of original principal.')
     require_current_signed_packet(application, basis)
     if str(doc.disbursement_date)[:10] != basis['invoice_date']:
         frappe.throw('Funding date must equal the Funding Invoice date ({0}).'.format(basis['invoice_date']))
@@ -144,4 +164,19 @@ def ensure_financing_fields():
     ]:
         if not frappe.get_meta('Loan Application').has_field(field['fieldname']):
             frappe.get_doc(dict(doctype='Custom Field', dt='Loan Application', **field)).insert(ignore_permissions=True)
+    # A native duplicate/amendment must receive a new signature. The original
+    # packet remains on its original application and Signature Request.
+    for field,property_name,property_type,value in (
+        ('signed_packet','no_copy','Check','1'),
+        ('status','no_copy','Check','1'),
+        ('loan_amount','fetch_from','Small Text',''),
+    ):
+        filters = dict(doc_type='Loan Application',field_name=field,property=property_name)
+        existing = frappe.db.exists('Property Setter',filters)
+        if existing:
+            if frappe.db.get_value('Property Setter',existing,'value') != value:
+                frappe.db.set_value('Property Setter',existing,'value',value)
+        else:
+            frappe.get_doc(dict(doctype='Property Setter',doctype_or_field='DocField',
+                                property_type=property_type,value=value,**filters)).insert(ignore_permissions=True)
     frappe.clear_cache(doctype='Loan Application')

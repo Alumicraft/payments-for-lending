@@ -127,7 +127,7 @@
     "field_name": "repayment_periods",
     "property": "default",
     "property_type": "Text",
-    "value": "12"
+    "value": "112"
   },
   {
     "doctype": "Property Setter",
@@ -177,7 +177,7 @@
     "field_name": "loan_amount",
     "property": "fetch_from",
     "property_type": "Small Text",
-    "value": "home_build_request.home_invoice_plus_freight"
+    "value": ""
   },
   {
     "doctype": "Property Setter",
@@ -358,5 +358,25 @@
     "property": "label",
     "property_type": "Data",
     "value": "Related Documents"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-signed_packet-no_copy",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "signed_packet",
+    "property": "no_copy",
+    "property_type": "Check",
+    "value": "1"
+  },
+  {
+    "doctype": "Property Setter",
+    "name": "Loan Application-status-no_copy",
+    "doc_type": "Loan Application",
+    "doctype_or_field": "DocField",
+    "field_name": "status",
+    "property": "no_copy",
+    "property_type": "Check",
+    "value": "1"
   }
 ]

@@ -35,7 +35,7 @@ def deal():
         f.throw.side_effect = fail
         f.get_doc.side_effect = lambda doctype,name: {'Purchase Invoice':invoice,'Home Build Request':request,
                                                     'Loan Application':application,'Loan':loan}[doctype]
-        f.db.get_value.side_effect = lambda doctype,*args,**kwargs: 'USD' if doctype == 'Company' else Doc(name='SIG',signed_attachment='/private/files/demo.pdf')
+        f.db.get_value.side_effect = lambda doctype,*args,**kwargs: ('Actual/360' if args[-1] == 'interest_day_count_convention' else 'USD') if doctype == 'Company' else Doc(name='SIG',signed_attachment='/private/files/demo.pdf')
         f.db.exists.return_value = True
         yield application,invoice,loan,disbursement,f
 
@@ -90,7 +90,7 @@ def test_changed_invoice_does_not_use_previously_signed_principal(deal):
         rules.validate_invoice_funding(disbursement)
     rules.apply_application_invoice(app)
     deal[2].set('loan_amount',235000)
-    f.db.get_value.side_effect = lambda doctype,*args,**kwargs: 'USD' if doctype == 'Company' else None
+    f.db.get_value.side_effect = lambda doctype,*args,**kwargs: ('Actual/360' if args[-1] == 'interest_day_count_convention' else 'USD') if doctype == 'Company' else None
     with pytest.raises(ValueError,match='dealer must sign'):
         rules.validate_invoice_funding(disbursement)
 
@@ -138,6 +138,46 @@ def test_loan_cannot_fund_different_terms_from_reviewed_application(deal,changes
     rules.apply_application_invoice(app)
     loan.update(changes)
     with pytest.raises(ValueError): rules.validate_invoice_funding(disbursement)
+
+
+def test_rates_are_not_rounded_like_currency_when_matching_signed_terms(deal):
+    app,_,loan,disbursement,_ = deal
+    app.set('rate_of_interest',12.345)
+    loan.set('rate_of_interest',12.346)
+    rules.apply_application_invoice(app)
+    with pytest.raises(ValueError,match='interest rate must match'):
+        rules.validate_invoice_funding(disbursement)
+
+
+def test_actual365_company_cannot_fund_actual360_packet(deal):
+    app,_,_,disbursement,f = deal
+    rules.apply_application_invoice(app)
+    previous = f.db.get_value.side_effect
+    f.db.get_value.side_effect = lambda doctype,*args,**kwargs: 'Actual/365' if doctype == 'Company' and args[-1] == 'interest_day_count_convention' else previous(doctype,*args,**kwargs)
+    with pytest.raises(ValueError,match='must be Actual/360'):
+        rules.validate_invoice_funding(disbursement)
+
+
+@pytest.mark.parametrize('changes', [dict(interest_only_periods=6),dict(monthly_principal_percent=2)])
+def test_product_curtailment_must_match_owner_approved_rules(deal,changes):
+    app,_,_,disbursement,_ = deal
+    rules.apply_application_invoice(app)
+    terms = dict(annual_rate=12,interest_only_periods=12,monthly_principal_percent=1,
+                 day_count='Actual/360',schedule_type='Interest Only Then Percent Principal')
+    terms.update(changes)
+    with patch.object(rules,'product_terms',return_value=terms):
+        with pytest.raises(ValueError,match='requires 12 interest-only'):
+            rules.validate_invoice_funding(disbursement)
+
+
+def test_metadata_prevents_duplicate_signature_and_quote_overwrite():
+    with patch.object(rules,'frappe') as f:
+        f.get_meta.return_value.has_field.return_value = True
+        f.db.exists.return_value = None
+        rules.ensure_financing_fields()
+        properties = [call.args[0] for call in f.get_doc.call_args_list]
+    assert {(row['field_name'],row['property'],row['value']) for row in properties} == {
+        ('signed_packet','no_copy','1'),('status','no_copy','1'),('loan_amount','fetch_from','')}
 
 
 @pytest.mark.parametrize('field,value', [('grand_total','NaN'),('grand_total','Infinity')])
