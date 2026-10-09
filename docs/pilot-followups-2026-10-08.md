@@ -1,6 +1,6 @@
 # October 8 pilot follow ups
 
-This batch addresses dealer portal and staff workflow issues from the pilot recording. The [full checklist](pilot-checklist-2026-10-08.md) tracks each item by name and status. Source changes are merged and deployed through PR #50, reported installed by Cloud as `8187b39`; the latest site migration succeeded. Off Line Date, insurance placement, Factory Address heading, empty derived-detail hiding and the Homes grid heading are verified live. Hosted evidence and unresolved items are tracked individually in the checklist.
+This batch addresses dealer portal and staff workflow issues from the pilot recording. The [full checklist](pilot-checklist-2026-10-08.md) tracks each item by name and status. Source changes are merged and deployed through PR #51, reported installed by Cloud as `bffad5c`; the latest site migration succeeded. Off Line Date, insurance placement, Factory Address heading, empty derived-detail hiding and the Homes grid heading are verified live. Hosted evidence and unresolved items are tracked individually in the checklist.
 
 ## Implemented in this batch
 
@@ -59,3 +59,5 @@ PR #48 staff display acceptance: exact installed release and successful migratio
 PR #49 moves the existing Loan monthly repayment out of the known hidden credit-limit placement and into Loan Details after interest rate. The metadata migration, exact installed source and fresh saved form confirm the repair. The empty forecast column now collapses, preserving actual paid totals, and both saved Loan/Application forms remain clean. These are display checks of stored values; demands, curtailment and payoff accounting remain unresolved.
 
 - PO rounding summary: PR #50 merged and deployed. Fresh asset 20261008-14 hides duplicate Rounded Total and zero Rounding Adjustment only on saved home orders with matching totals. Grand Total and actual tax values remain visible; the saved form stays clean. Ten client files, 481 Python tests and 40 subtests pass. Pipeline 9bbrd7fmur and migration edhtrhtfbc succeeded. Remaining role/cancelled variants stay open in the full checklist.
+
+- Saved PO selectors: PR #51 deployed and verified with asset 20261008-15. Blank immutable tax/shipping selectors and ordinary header warehouse hide on saved home orders; populated tax template and row warehouse remain. A separate unsaved linked draft retains the inputs. Pipeline 7kp6hqjbf0 and migration cn1b3tpmlc succeeded. No values or print formats changed.
