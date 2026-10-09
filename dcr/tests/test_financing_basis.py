@@ -16,6 +16,10 @@ class Doc(dict):
         return None
 
 
+def fee_invoice_row(**values):
+    return Doc(currency="USD", conversion_rate=1, **values)
+
+
 @pytest.fixture
 def deal():
     application = Doc(name='APP',company='DCR',applicant='DEALER',home_build_request='HBR',
@@ -28,7 +32,10 @@ def deal():
     request = Doc(customer='DEALER',factory='FACTORY')
     loan = Doc(name='LOAN',loan_application='APP',home_build_request='HBR',applicant='DEALER',
                company='DCR',loan_amount=225000,rate_of_interest=12)
-    disbursement = Doc(against_loan='LOAN',disbursement_date='2026-01-01',repayment_start_date='2026-02-01')
+    disbursement = Doc(name='DISB',against_loan='LOAN',disbursed_amount=225000,
+                      disbursement_date='2026-01-01',repayment_start_date='2026-02-01',
+                      loan_disbursement_charges=[Doc(charge='FEE',amount=5000,
+                          treatment_of_charge='Billed Separately')])
     with patch.object(rules,'frappe') as f:
         def fail(message, *args, **kwargs):
             raise ValueError(message)
@@ -37,6 +44,7 @@ def deal():
                                                     'Loan Application':application,'Loan':loan}[doctype]
         f.db.get_value.side_effect = lambda doctype,*args,**kwargs: ('Actual/360' if args[-1] == 'interest_day_count_convention' else 'USD') if doctype == 'Company' else Doc(name='SIG',signed_attachment='/private/files/demo.pdf')
         f.db.exists.return_value = True
+        f.get_all.return_value = []
         yield application,invoice,loan,disbursement,f
 
 
@@ -217,3 +225,170 @@ def test_non_finite_invoice_amount_fails(deal,field,value):
     app,invoice,_,_,_ = deal
     invoice.set(field,value)
     with pytest.raises(ValueError): rules.financial_snapshot(app)
+
+
+def test_full_funding_requires_actual_financed_fee_charges(deal):
+    app, _, _, disb, _ = deal
+    rules.apply_application_invoice(app)
+    disb['loan_disbursement_charges'] = []
+    with pytest.raises(ValueError, match='financed fees'):
+        rules.validate_invoice_funding(disb)
+
+
+@pytest.mark.parametrize('amount,treatment', [(5001, 'Billed Separately'),
+                                             (5000, 'Add to first repayment'),
+                                             (-1, 'Billed Separately')])
+def test_financed_charges_cannot_exceed_basis_or_be_collected_twice(deal, amount, treatment):
+    app, _, _, disb, _ = deal
+    rules.apply_application_invoice(app)
+    disb['loan_disbursement_charges'] = [Doc(amount=amount,treatment_of_charge=treatment)]
+    with pytest.raises(ValueError, match='financed|negative'):
+        rules.validate_invoice_funding(disb)
+
+
+def test_fees_already_on_factory_invoice_are_not_charged_again(deal):
+    app, invoice, _, disb, _ = deal
+    invoice['grand_total'] = 225000
+    app['financed_dcr_fees'] = 0
+    rules.apply_application_invoice(app)
+    with pytest.raises(ValueError, match='financed fees'):
+        rules.validate_invoice_funding(disb)
+
+
+def test_partial_funding_can_allocate_fee_at_final_tranche(deal):
+    app, _, _, disb, f = deal
+    rules.apply_application_invoice(app)
+    disb['disbursed_amount'] = 100000
+    disb['loan_disbursement_charges'] = []
+    rules.validate_invoice_funding(disb)
+    disb['disbursed_amount'] = 125000
+    disb['loan_disbursement_charges'] = [Doc(amount=5000,treatment_of_charge='Billed Separately')]
+    f.get_all.side_effect = lambda doctype, **kwargs: (
+        [Doc(name='PRIOR',disbursed_amount=100000)] if doctype == 'Loan Disbursement' else [])
+    rules.validate_invoice_funding(disb)
+
+
+def test_later_tranche_does_not_repeat_fees_already_invoiced(deal):
+    app, _, _, disb, f = deal
+    rules.apply_application_invoice(app)
+    disb['disbursed_amount'] = 125000
+    f.get_all.side_effect = lambda doctype, **kwargs: (
+        [Doc(name='PRIOR',disbursed_amount=100000)] if doctype == 'Loan Disbursement'
+        else [fee_invoice_row(grand_total=5000)])
+    with pytest.raises(ValueError, match='financed fees'):
+        rules.validate_invoice_funding(disb)
+    disb['loan_disbursement_charges'] = []
+    rules.validate_invoice_funding(disb)
+
+
+@pytest.mark.parametrize('posted', [[], [fee_invoice_row(grand_total=5300, debit_to='FEE-AR')]])
+def test_native_posting_must_invoice_the_exact_financed_fee(deal, posted):
+    _, _, _, disb, f = deal
+    f.get_all.side_effect = lambda doctype, **kwargs: posted if doctype=='Sales Invoice' else []
+    with pytest.raises(ValueError, match='Posted fee invoice total'):
+        rules.validate_posted_financed_fees(disb)
+
+
+def test_native_fee_invoice_must_use_selected_receivable(deal):
+    _, _, _, disb, f = deal
+    disb['loan_disbursement_charges'][0]['account'] = 'FEE-AR'
+    invoices = [fee_invoice_row(grand_total=5000, debit_to='OTHER-AR')]
+    f.get_all.side_effect = lambda doctype, **kwargs: invoices if doctype=='Sales Invoice' else []
+    with pytest.raises(ValueError, match='receivable account differs'):
+        rules.validate_posted_financed_fees(disb)
+    invoices[0]['debit_to'] = 'FEE-AR'
+    rules.validate_posted_financed_fees(disb)
+
+
+def test_native_fee_invoice_cannot_silently_ignore_a_second_receivable(deal):
+    _, _, _, disb, f = deal
+    disb['loan_disbursement_charges'] = [
+        Doc(amount=2500, account='FEE-AR',treatment_of_charge='Billed Separately'),
+        Doc(amount=2500, account='OTHER-AR',treatment_of_charge='Billed Separately')]
+    f.get_all.side_effect = lambda doctype, **kwargs: (
+        [fee_invoice_row(grand_total=5000, debit_to='FEE-AR')] if doctype=='Sales Invoice' else [])
+    with pytest.raises(ValueError, match='receivable account differs'):
+        rules.validate_posted_financed_fees(disb)
+
+
+def test_native_fee_checks_are_scoped_to_home_financing(deal):
+    _, _, loan, disb, f = deal
+    loan['home_build_request'] = None
+    rules.validate_posted_financed_fees(disb)
+    f.get_all.assert_not_called()
+
+
+def test_fee_checks_lock_the_loan_and_exclude_cancelled_or_current_disbursements(deal):
+    app, _, _, disb, f = deal
+    rules.apply_application_invoice(app)
+    rules.validate_invoice_funding(disb)
+    f.db.get_value.assert_any_call('Loan','LOAN','name',for_update=True)
+    prior_query = next(call for call in f.get_all.call_args_list if call.args[0]=='Loan Disbursement')
+    assert prior_query.kwargs['filters']=={
+        'against_loan':'LOAN','docstatus':1,'name':['!=','DISB']}
+
+
+def test_posted_fee_check_runs_before_stage_sync():
+    from dcr import hooks
+    assert hooks.doc_events['Loan Disbursement']['on_submit']==[
+        'dcr.api.financing_basis.validate_posted_financed_fees',
+        'dcr.api.hbr_stage.sync_from_doc']
+
+
+def test_signed_financed_fees_can_include_native_exclusive_tax(deal):
+    app, _, loan, disb, f = deal
+    app['financed_dcr_fees'] = 5300
+    rules.apply_application_invoice(app)
+    loan['loan_amount'] = disb['disbursed_amount'] = 225300
+    rules.validate_invoice_funding(disb)  # Fee item 5000 plus native tax 300
+    f.get_all.side_effect = lambda doctype, **kwargs: (
+        [fee_invoice_row(grand_total=5300, debit_to='FEE-AR')] if doctype == 'Sales Invoice' else [])
+    rules.validate_posted_financed_fees(disb)
+
+
+def test_full_funding_rejects_fee_shortfall_after_native_invoice_calculation(deal):
+    app, _, _, disb, f = deal
+    rules.apply_application_invoice(app)
+    disb['loan_disbursement_charges'][0]['amount'] = 4500
+    rules.validate_invoice_funding(disb)  # Tax calculation occurs later
+    f.get_all.side_effect = lambda doctype, **kwargs: (
+        [fee_invoice_row(grand_total=4500)] if doctype == 'Sales Invoice' else [])
+    with pytest.raises(ValueError, match='Posted fee invoice total'):
+        rules.validate_posted_financed_fees(disb)
+
+
+def test_only_home_disbursement_fee_invoices_disable_separate_rounding(deal):
+    _, _, _, _, f = deal
+    fee_invoice = Doc(loan='LOAN',loan_disbursement='DISB',disable_rounded_total=0)
+    rules.prepare_financed_charge_invoice(fee_invoice)
+    assert fee_invoice.disable_rounded_total == 1
+    ordinary = Doc(loan=None,loan_disbursement=None,disable_rounded_total=0)
+    rules.prepare_financed_charge_invoice(ordinary)
+    assert ordinary.disable_rounded_total == 0
+    f.db.get_value.side_effect = None
+    f.db.get_value.return_value = None
+    other_loan = Doc(loan='OTHER',loan_disbursement='OTHER-DISB',disable_rounded_total=0)
+    rules.prepare_financed_charge_invoice(other_loan)
+    assert other_loan.disable_rounded_total == 0
+
+
+def test_home_funding_requires_loan_accounting_enabled(deal):
+    app, _, _, disb, f = deal
+    rules.apply_application_invoice(app)
+    original = f.db.get_value.side_effect
+    f.db.get_value.side_effect = lambda doctype, *args, **kwargs: (
+        0 if doctype == 'Company' and args[-1] == 'enable_loan_accounting'
+        else original(doctype, *args, **kwargs))
+    with pytest.raises(ValueError, match='Enable loan accounting'):
+        rules.validate_invoice_funding(disb)
+    f.db.set_value.assert_not_called()
+
+
+@pytest.mark.parametrize('currency,rate', [('CAD', 1), ('USD', 1.1)])
+def test_fee_posting_uses_the_signed_currency(deal, currency, rate):
+    _, _, _, disb, f = deal
+    invoice = fee_invoice_row(grand_total=5000)
+    invoice.update(currency=currency, conversion_rate=rate)
+    f.get_all.side_effect = lambda doctype, **kwargs: [invoice] if doctype=='Sales Invoice' else []
+    with pytest.raises(ValueError, match='reviewed company currency'):
+        rules.validate_posted_financed_fees(disb)

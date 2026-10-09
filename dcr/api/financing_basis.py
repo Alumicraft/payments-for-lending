@@ -122,6 +122,10 @@ def validate_invoice_funding(doc, method=None):
     loan = frappe.get_doc('Loan', doc.against_loan)
     if not loan.get('home_build_request'):
         return
+    # Serialize tranches before reading the reviewed basis and prior charges.
+    # Otherwise two concurrent submissions can both allocate the same fee.
+    frappe.db.get_value('Loan', loan.name, 'name', for_update=True)
+    loan = frappe.get_doc('Loan', doc.against_loan)
     if not loan.get('loan_application'):
         frappe.throw('A dealer Loan Application is required before funding this home.')
     application = frappe.get_doc('Loan Application', loan.loan_application)
@@ -142,12 +146,15 @@ def validate_invoice_funding(doc, method=None):
         frappe.throw('First payment date must match the date reviewed in the current Flooring Packet.')
     if frappe.db.get_value('Company',loan.company,'interest_day_count_convention') != 'Actual/360':
         frappe.throw('Company interest day-count convention must be Actual/360 before funding.')
+    if not frappe.db.get_value('Company', loan.company, 'enable_loan_accounting'):
+        frappe.throw('Enable loan accounting for the Company before funding this home.')
     if (basis['schedule_terms']['interest_only_periods'] != 12 or
             basis['schedule_terms']['monthly_principal_percent'] != 1):
         frappe.throw('DCR floorplan funding requires 12 interest-only payments followed by 1% of original principal.')
     require_current_signed_packet(application, basis)
     if str(doc.disbursement_date)[:10] != basis['invoice_date']:
         frappe.throw('Funding date must equal the Funding Invoice date ({0}).'.format(basis['invoice_date']))
+    validate_financed_fee_plan(doc, basis)
     original = money(loan.get('original_financed_principal'))
     if original and original != money(basis['principal']):
         frappe.throw('The original financed principal is already fixed. Use a revised loan and signed packet for a changed invoice.')
@@ -155,6 +162,91 @@ def validate_invoice_funding(doc, method=None):
         # Native restructuring later overwrites Loan.loan_amount with the new
         # balance. Freeze the reviewed basis in this submission transaction.
         frappe.db.set_value('Loan', loan.name, 'original_financed_principal', float(basis['principal']))
+
+
+def financed_charge_total(doc):
+    total = Decimal(0)
+    for charge in doc.get('loan_disbursement_charges') or []:
+        amount = money(charge.get('amount'))
+        if amount < 0:
+            frappe.throw('Financed fee charges cannot be negative.')
+        if amount and charge.get('treatment_of_charge') != 'Billed Separately':
+            frappe.throw('Use Billed Separately for financed fees; they are already included in principal and cannot be added to the first repayment.')
+        total += amount
+    return total
+
+
+def financed_fee_history(doc):
+    prior_filters = {'against_loan': doc.against_loan, 'docstatus': 1}
+    if doc.get('name'):
+        prior_filters['name'] = ['!=', doc.name]
+    prior = frappe.get_all('Loan Disbursement', filters=prior_filters,
+                          fields=['name', 'disbursed_amount'])
+    prior_fees = Decimal(0)
+    if prior:
+        invoices = frappe.get_all('Sales Invoice', filters={
+            'loan': doc.against_loan, 'loan_disbursement': ['in', [row.name for row in prior]],
+            'docstatus': 1, 'is_return': 0}, fields=['grand_total'])
+        prior_fees = sum((money(row.get('grand_total')) for row in invoices), Decimal(0))
+    funded = money(doc.get('disbursed_amount')) + sum(
+        (money(row.get('disbursed_amount')) for row in prior), Decimal(0))
+    return prior_fees, funded
+
+
+def validate_financed_fee_plan(doc, basis):
+    """Check fee allocation before native tax calculation and posting.
+
+    The signed extra-fee amount includes any charge-invoice taxes. Native
+    posting below checks the actual invoice gross total, so exclusive taxes
+    need not be misrepresented as fee-item rates here.
+    """
+    current = financed_charge_total(doc)
+    prior_fees, funded = financed_fee_history(doc)
+    fees = prior_fees + current
+    reviewed = money(basis['additional_financed_fees'])
+    if fees > reviewed:
+        frappe.throw('Disbursement charges exceed the additional financed fees reviewed in the packet. Do not charge fees already included in the invoice or a prior tranche.')
+    if funded >= money(basis['principal']) and not current and prior_fees != reviewed:
+        frappe.throw('Full funding must invoice all additional financed fees reviewed in the packet. Add the missing disbursement charges before submitting.')
+
+
+def validate_posted_financed_fees(doc, method=None):
+    """After native posting, reject fee invoice/offset drift in this transaction."""
+    loan = frappe.get_doc('Loan', doc.against_loan)
+    if not loan.get('home_build_request'):
+        return
+    expected = financed_charge_total(doc)
+    application = frappe.get_doc('Loan Application', loan.loan_application)
+    basis = financial_snapshot(application, require_invoice=True)
+    prior_fees, funded = financed_fee_history(doc)
+    invoices = frappe.get_all('Sales Invoice', filters={
+        'loan': doc.against_loan, 'loan_disbursement': doc.name,
+        'docstatus': 1, 'is_return': 0},
+        fields=['grand_total', 'debit_to', 'currency', 'conversion_rate'])
+    if any(row.get('currency') != basis['currency'] or
+           Decimal(str(row.get('conversion_rate') or 0)) != 1 for row in invoices):
+        frappe.throw('Fee invoices must use the reviewed company currency and a conversion rate of 1 before funding.')
+    actual = sum((money(row.get('grand_total')) for row in invoices), Decimal(0))
+    total = prior_fees + actual
+    reviewed = money(basis['additional_financed_fees'])
+    if ((expected and not invoices) or (not expected and actual) or actual < 0 or
+            total > reviewed or (funded >= money(basis['principal']) and total != reviewed)):
+        frappe.throw('Posted fee invoice total does not match the financed charges. Check charge taxes and loan accounting settings; funding has not been completed.')
+    accounts = {row.get('account') for row in doc.get('loan_disbursement_charges') or []
+                if money(row.get('amount')) and row.get('account')}
+    if accounts and (len(accounts) != 1 or any(row.get('debit_to') not in accounts for row in invoices)):
+        frappe.throw('The fee invoice receivable account differs from the selected charge account. Correct the invoice receivable default before funding.')
+
+
+def prepare_financed_charge_invoice(doc, method=None):
+    """Lending offsets invoice grand_total, so fee payable must use that total.
+
+    A separately rounded payable would leave residual receivable/clearing
+    even when the financing amount agrees with the gross fee invoice.
+    """
+    if (doc.get('loan') and doc.get('loan_disbursement') and
+            frappe.db.get_value('Loan', doc.loan, 'home_build_request')):
+        doc.set('disable_rounded_total', 1)
 
 
 def ensure_financing_fields():
