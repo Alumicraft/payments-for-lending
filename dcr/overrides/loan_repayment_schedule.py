@@ -30,6 +30,7 @@ class CustomLoanRepaymentSchedule(LoanRepaymentSchedule):
                 schedule_field, principal_share_percentage, interest_share_percentage
             )
         self._dcr_prior_periods = None
+        self.floorplan_periods_before_schedule = 0
         if self.restructure_type == "Normal Restructure":
             previous = frappe.get_doc("Loan Repayment Schedule", {
                 "loan": self.loan, "docstatus": 1, "status": "Active"
@@ -37,10 +38,11 @@ class CustomLoanRepaymentSchedule(LoanRepaymentSchedule):
             # Normal restructure already supplies unpaid interest through
             # adjusted_interest. Retain the payment phase without adding that
             # interest again or restarting twelve interest-only installments.
-            self._dcr_prior_periods = sum(
+            self._dcr_prior_periods = int(flt(getattr(previous, "floorplan_periods_before_schedule", 0))) + sum(
                 getdate(row.payment_date) <= getdate(self.posting_date)
                 for row in previous.get(schedule_field)
             )
+            self.floorplan_periods_before_schedule = self._dcr_prior_periods
             return 0, self.current_principal_amount, 0, 0
         previous_interest_amount = 0
         completed_tenure = 0
@@ -60,6 +62,8 @@ class CustomLoanRepaymentSchedule(LoanRepaymentSchedule):
                 filters["loan_disbursement"] = self.loan_disbursement
 
             prev_schedule = frappe.get_doc("Loan Repayment Schedule", filters)
+            self.floorplan_periods_before_schedule = int(flt(
+                getattr(prev_schedule, "floorplan_periods_before_schedule", 0)))
 
             self.total_installments_raised = prev_schedule.total_installments_raised
             self.total_installments_paid = prev_schedule.total_installments_paid
@@ -282,12 +286,26 @@ class CustomLoanRepaymentSchedule(LoanRepaymentSchedule):
 
 
     def get_floorplan_principal_reduction(self, prior_periods, balance):
+        prior_periods += int(flt(getattr(self, "floorplan_periods_before_schedule", 0)))
         interest_only = self.get_loan_product_value("custom_interest_only_months", "custom_interest_only_periods")
         if prior_periods < int(flt(12 if interest_only is None else interest_only)):
             return 0
         percent = self.get_loan_product_value("custom_monthly_principal_pct", "custom_monthly_principal_percent")
-        original = flt(frappe.db.get_value("Loan", self.loan, "loan_amount")) or flt(self.loan_amount)
+        original = self.get_original_financed_principal()
         return min(flt(balance), flt(original * flt(1 if percent is None else percent) / 100, 2))
+
+    def get_original_financed_principal(self):
+        if not getattr(self, "loan", None):
+            return flt(self.loan_amount)
+        if frappe.db.has_column("Loan", "original_financed_principal"):
+            original = flt(frappe.db.get_value("Loan", self.loan, "original_financed_principal"))
+            if original > 0:
+                return original
+        # An old restructured loan has already lost its original amount in the
+        # native loan_amount field. Require a verified basis instead of guessing.
+        if frappe.db.exists("Loan Restructure", {"loan": self.loan, "docstatus": 1}):
+            frappe.throw("Restore the verified original financed principal before rebuilding this restructured floorplan loan.")
+        return flt(frappe.db.get_value("Loan", self.loan, "loan_amount")) or flt(self.loan_amount)
 
     def make_repayment_schedule(self, schedule_field="repayment_schedule", *args, **kwargs):
         if not self.is_dcr_floorplan_structure():
@@ -342,9 +360,7 @@ class CustomLoanRepaymentSchedule(LoanRepaymentSchedule):
         return flt(product_default_rate) if product_default_rate is not None else 0.0
 
     def make_dcr_repayment_schedule(self, schedule_field: str, **native_values) -> None:
-        original = flt(self.loan_amount)
-        if getattr(self, "loan", None):
-            original = flt(frappe.db.get_value("Loan", self.loan, "loan_amount")) or original
+        original = self.get_original_financed_principal()
         principal = native_values.get("balance_amount")
         if principal is None:
             principal = getattr(self, "current_principal_amount", None)
@@ -353,7 +369,7 @@ class CustomLoanRepaymentSchedule(LoanRepaymentSchedule):
         existing = self.get(schedule_field) or []
         prior_periods = getattr(self, "_dcr_prior_periods", None)
         if prior_periods is None:
-            prior_periods = len(existing)
+            prior_periods = int(flt(getattr(self, "floorplan_periods_before_schedule", 0))) + len(existing)
         one_time = getattr(self, "repayment_frequency", None) == "One Time"
         if getattr(self, "repayment_frequency", None) not in (None, "", "Monthly", "One Time"):
             frappe.throw("DCR floorplan schedules require Monthly repayments or a One Time payoff.")

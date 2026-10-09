@@ -148,10 +148,29 @@ def validate_invoice_funding(doc, method=None):
     require_current_signed_packet(application, basis)
     if str(doc.disbursement_date)[:10] != basis['invoice_date']:
         frappe.throw('Funding date must equal the Funding Invoice date ({0}).'.format(basis['invoice_date']))
+    original = money(loan.get('original_financed_principal'))
+    if original and original != money(basis['principal']):
+        frappe.throw('The original financed principal is already fixed. Use a revised loan and signed packet for a changed invoice.')
+    if not original:
+        # Native restructuring later overwrites Loan.loan_amount with the new
+        # balance. Freeze the reviewed basis in this submission transaction.
+        frappe.db.set_value('Loan', loan.name, 'original_financed_principal', float(basis['principal']))
 
 
 def ensure_financing_fields():
     """Required metadata must migrate successfully before funding is enabled."""
+    if not frappe.get_meta('Loan').has_field('original_financed_principal'):
+        frappe.get_doc(dict(doctype='Custom Field', dt='Loan',
+                            fieldname='original_financed_principal', label='Original Financed Principal',
+                            fieldtype='Currency', insert_after='loan_amount',
+                            read_only=1, hidden=1, no_copy=1)).insert(ignore_permissions=True)
+    frappe.clear_cache(doctype='Loan')
+    if not frappe.get_meta('Loan Repayment Schedule').has_field('floorplan_periods_before_schedule'):
+        frappe.get_doc(dict(doctype='Custom Field', dt='Loan Repayment Schedule',
+                            fieldname='floorplan_periods_before_schedule', label='Prior Floorplan Periods',
+                            fieldtype='Int', insert_after='repayment_periods', default='0',
+                            read_only=1, hidden=1, no_copy=1)).insert(ignore_permissions=True)
+    frappe.clear_cache(doctype='Loan Repayment Schedule')
     for field in [
         dict(fieldname='financed_invoice', label='Funding Invoice', fieldtype='Link',
              options='Purchase Invoice', insert_after='loan_amount',

@@ -98,6 +98,31 @@ def test_carried_interest_is_applied_once_not_every_future_month():
     assert result[1]['interest_amount'] == 2100
 
 
+def test_successive_restructures_keep_original_invoice_principal_basis():
+    from dcr.tests.test_loan_repayment_schedule_override import import_override_with_stubs
+    module, frappe = import_override_with_stubs()
+    schedule = module.CustomLoanRepaymentSchedule()
+    schedule.loan = 'LOAN-1'
+    schedule.rate_of_interest = 12
+    schedule.get_contract_interest_rate = lambda: 12
+    schedule.get_loan_product_value = lambda *names: 12 if 'custom_interest_only_months' in names else 1
+    schedule._dcr_prior_periods = 14
+    schedule.posting_date = '2027-03-01'
+    schedule.repayment_start_date = '2027-04-01'
+    saved = {'repayment_schedule': []}
+    schedule.get = lambda key: saved.get(key)
+    schedule.append = lambda key, value: saved[key].append(SimpleNamespace(**value))
+    for remaining in (220500, 218250):
+        # Native Loan Restructure.update_totals writes the new balance to
+        # Loan.loan_amount. The original invoice basis must remain 225,000.
+        schedule.loan_amount = remaining
+        frappe.db.get_value.side_effect = lambda dt, name, field: 225000 if field == 'original_financed_principal' else remaining
+        saved['repayment_schedule'] = []
+        schedule.make_dcr_repayment_schedule('repayment_schedule', balance_amount=remaining)
+        assert saved['repayment_schedule'][0].principal_amount == 2250
+        assert schedule.get_floorplan_principal_reduction(14, remaining) == 2250
+
+
 def test_zero_outstanding_principal_has_no_future_charges():
     assert rows(outstanding_principal=0) == []
 
