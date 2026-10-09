@@ -238,4 +238,38 @@ handlers.items_on_form_rendered(nativeHiddenColumn.frm);
 nativeHiddenColumn.frm.doc.is_subcontracted = 1;
 handlers.is_subcontracted(nativeHiddenColumn.frm);
 assert.equal(nativeHiddenColumn.column.df.hidden, 1, "Preserve an originally hidden column");
+const nativePricing = columnFixture();
+const calculation = { df: { fieldname: "stock_uom_rate", read_only: 1, hidden_due_to_dependency: 1 },
+    parent: nativePricing.fields.base_rate.parent };
+nativePricing.amountSection.fields_list.push(calculation);
+handlers.items_on_form_rendered(nativePricing.frm);
+assert.equal(nativePricing.column.df.hidden, 1, "Already hidden native calculations do not reserve an empty column");
+calculation.df.hidden_due_to_dependency = 0;
+handlers.items_on_form_rendered(nativePricing.frm);
+assert.equal(nativePricing.column.df.hidden, 0, "Visible native calculations restore their column");
+assert.equal(calculation.df.hidden, undefined, "Never change native calculation visibility");
+for (const names of [["price_list_rate", "last_purchase_rate"], ["net_rate", "net_amount"],
+    ["rate", "amount", "item_tax_template"]]) {
+    const fixture = columnFixture();
+    const parent = {};
+    const pairColumn = { df: { fieldname: "pricing_values", hidden: 0 },
+        form: { get() { return parent; }, toggleClass(name, enabled) {
+            assert.equal(name, "dcr-home-pricing-fields"); pairColumn.paired = enabled;
+        } }, refresh() {} };
+    fixture.amountSection.columns.unshift(pairColumn);
+    fixture.amountSection.fields_list.unshift(...names.map(fieldname => ({ df: { fieldname }, parent })));
+    handlers.items_on_form_rendered(fixture.frm);
+    assert.equal(pairColumn.paired, true, "Pair only known pricing groups after their sibling column collapses");
+    fixture.amountSection.fields_list.push({ df: { fieldname: "custom_context" }, parent });
+    handlers.items_on_form_rendered(fixture.frm);
+    assert.equal(pairColumn.paired, false, "Preserve custom column layout");
+    fixture.amountSection.fields_list.pop();
+    fixture.frm.doc.currency = "EUR";
+    handlers.currency(fixture.frm);
+    assert.equal(pairColumn.paired, false, "Separate currencies retain their native layout");
+    fixture.frm.doc.currency = "USD";
+    fixture.frm.doc.docstatus = 0;
+    handlers.items_on_form_rendered(fixture.frm);
+    assert.equal(pairColumn.paired, false, "Draft pricing remains native");
+}
 console.log("Purchase Order UX: home scope, draft/submitted/cancelled, required/custom fields, materials, restoration and no document writes passed");
