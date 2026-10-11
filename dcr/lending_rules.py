@@ -1,6 +1,33 @@
 """Pure business rules shared by DCR Lending overrides."""
 
 
+def principal_on_day(events, day):
+    """Use valued funding and principal receipts, rather than forecast payments."""
+    from datetime import date
+    from decimal import Decimal
+
+    cutoff = date.fromisoformat(str(day)[:10])
+    return max(Decimal(0), sum(
+        (Decimal(str(amount)) for event_date, amount in events
+         if date.fromisoformat(str(event_date)[:10]) <= cutoff), Decimal(0)))
+
+
+def elapsed_floorplan_interest(events, start, end, annual_rate):
+    """Daily-rounded Actual/360 interest on actual balances over [start, end)."""
+    from datetime import date, timedelta
+    from decimal import Decimal, ROUND_HALF_UP
+
+    day = date.fromisoformat(str(start)[:10])
+    end = date.fromisoformat(str(end)[:10])
+    rate = Decimal(str(annual_rate))
+    total = Decimal(0)
+    while day < end:
+        total += (principal_on_day(events, day) * rate / Decimal(36000)).quantize(
+            Decimal('0.01'), rounding=ROUND_HALF_UP)
+        day += timedelta(days=1)
+    return total
+
+
 def has_material_outstanding_principal(
     loan_amount,
     total_principal_paid,

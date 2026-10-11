@@ -50,6 +50,7 @@ app_include_css = [
 ]
 
 override_whitelisted_methods = {
+    "lending.loan_management.doctype.loan_repayment.loan_repayment.calculate_amounts": "dcr.api.floorplan_accrual.calculate_amounts",
     "frappe.www.login.login_via_key": "dcr.api.dealer_auth.login_via_key",
     "frappe.website.doctype.web_form.web_form.accept": "dcr.api.dealer_web_form.accept",
     "frappe.website.doctype.web_form.web_form.get_form_data": "dcr.api.dealer_web_form.get_form_data",
@@ -214,6 +215,7 @@ override_doctype_class = {
     "Web Form": "dcr.overrides.dealer_web_form.DealerWebForm",
     "Loan Demand": "dcr.overrides.loan_demand.CustomLoanDemand",
     "Process Loan Demand": "dcr.overrides.process_loan_demand.CustomProcessLoanDemand",
+    "Process Loan Interest Accrual": "dcr.overrides.process_loan_interest_accrual.CustomProcessLoanInterestAccrual",
     "Loan Repayment": "dcr.overrides.loan_repayment.CustomLoanRepayment",
     "Loan Repayment Schedule": "dcr.overrides.loan_repayment_schedule.CustomLoanRepaymentSchedule",
 }
