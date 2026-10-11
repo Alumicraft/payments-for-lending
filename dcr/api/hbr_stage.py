@@ -153,6 +153,14 @@ def apply_hbr_stage_defaults(doc):
     Always recomputes custom_order_stage from PO/PR/loan state so a kanban
     drag to an unsupported column snaps back to the derived value.
     """
+    if doc.get("docstatus") == 0:
+        doc.set("status", "Draft")
+        if _doc_has_field(doc, "custom_portal_status") and doc.get("custom_portal_status") == "Accepted":
+            doc.set("custom_portal_status", "Draft")
+            for field in ("custom_portal_submitted_on", "custom_portal_submitted_by"):
+                if _doc_has_field(doc, field):
+                    doc.set(field, None)
+
     if _doc_has_field(doc, ORDER_STAGE_FIELD):
         has_po = bool(doc.name) and _has_submitted_purchase_order(doc.name)
         has_pr = bool(doc.name) and _has_submitted_purchase_receipt(doc.name)
@@ -172,8 +180,12 @@ def apply_hbr_stage_defaults(doc):
 
     if doc.get("financing_type") == "Cash":
         doc.set(LOAN_STAGE_FIELD, "Not Applicable")
-    elif not doc.get(LOAN_STAGE_FIELD):
-        doc.set(LOAN_STAGE_FIELD, "Not Started")
+    else:
+        doc.set(LOAN_STAGE_FIELD, derive_loan_stage(
+            financing_type=doc.get("financing_type"),
+            loan_application_status=_latest_loan_application_status(doc.name) if doc.name else None,
+            loan_status=_latest_loan_status(doc.name) if doc.name else None,
+        ))
 
 
 def _hbr_from_doc(doc):

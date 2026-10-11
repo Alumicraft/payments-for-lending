@@ -1000,6 +1000,7 @@ def ensure_dealer_portal_fields():
     fields = [
         {
             "fieldname": "custom_portal_status",
+            "no_copy": 1,
             "label": "Dealer Portal Status",
             "fieldtype": "Select",
             "options": options,
@@ -1480,6 +1481,8 @@ def ensure_hbr_stage_field_options():
             updates["options"] = options
         if frappe.db.get_value("Custom Field", custom_field, "read_only") != 1:
             updates["read_only"] = 1
+        if frappe.db.get_value("Custom Field", custom_field, "no_copy") != 1:
+            updates["no_copy"] = 1
         if frappe.db.get_value("Custom Field", custom_field, "allow_on_submit") != 0:
             updates["allow_on_submit"] = 0
         if frappe.db.get_value("Custom Field", custom_field, "reqd") != 0:
