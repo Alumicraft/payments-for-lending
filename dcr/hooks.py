@@ -11,7 +11,7 @@ boot_session = "dcr.api.boot.boot_session"
 # Frappe Cloud serves /assets files with a long immutable browser cache.
 # Keep these explicit URLs versioned so deployed client fixes are fetched
 # without requiring users to hard-refresh stale browser caches.
-DCR_ASSET_VERSION = "20261009-18"
+DCR_ASSET_VERSION = "20261011-1"
 
 
 def versioned_asset(path):
@@ -153,6 +153,7 @@ doc_events = {
         "on_update": "dcr.api.hbr_stage.sync_from_doc",
     },
     "Loan": {
+        "before_validate": "dcr.api.lending.apply_application_repayment_date",
         "validate": "dcr.api.lending.on_loan_validate",
         "after_insert": "dcr.api.lending.on_loan_after_insert",
         "on_update": "dcr.api.lending.on_loan_on_update",
