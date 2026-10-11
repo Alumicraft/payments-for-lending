@@ -111,7 +111,8 @@
    "in_standard_filter": 1,
    "label": "Status",
    "options": "Draft\nSubmitted",
-   "read_only": 1
+   "read_only": 1,
+   "no_copy": 1
   },
   {
    "fieldname": "column_break_1",
