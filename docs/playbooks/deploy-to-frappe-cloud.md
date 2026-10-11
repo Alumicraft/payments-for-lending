@@ -66,3 +66,7 @@ On October 8, Cloud used **Update Site Pull** for changes limited to Python setu
 - Don't push directly with `--no-verify` to bypass hooks. If a hook fails, fix the underlying issue.
 - Don't ship a patch you haven't read line-by-line — patches run against prod data on the next deploy.
 - Don't combine a destructive schema change (column drop, doctype rename, data migration) with unrelated feature work in the same push. If something fails, you want a narrow blast radius.
+
+## Restore an authorized staff session
+
+When Desk redirects to Login and the owner has authorized Administrator access, use the existing signed-in Cloud site page: top-right three-dot Options → Login As Administrator → Confirm. Verify a fresh Desk list or record on the custom domain after the normal login redirect. This uses Cloud’s existing site-admin access; do not request or export passwords, login tokens or browser cookies. Preserve unsaved human-owned forms while reopening agent-owned tabs.
