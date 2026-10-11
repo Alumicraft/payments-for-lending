@@ -8,6 +8,34 @@ from dcr.lending_rules import has_material_outstanding_principal
 
 
 class CustomLoanRepayment(LoanRepayment):
+    def set_missing_values(self, amounts):
+        if self.repayment_type == 'Loan Closure':
+            from dcr.api.floorplan_accrual import adjust_closure_amounts
+
+            adjust_closure_amounts(self.against_loan, self.value_date, amounts)
+        return super().set_missing_values(amounts)
+
+    def before_submit(self):
+        if self.repayment_type == 'Loan Closure':
+            from datetime import timedelta
+            from frappe.utils import getdate
+            from dcr.api.floorplan_accrual import floorplan_loan
+
+            if floorplan_loan(self.against_loan):
+                from lending.loan_management.doctype.process_loan_interest_accrual.process_loan_interest_accrual import (
+                    process_loan_interest_accrual_for_loans,
+                )
+
+                process_loan_interest_accrual_for_loans(
+                    posting_date=getdate(self.value_date) - timedelta(days=1),
+                    loan=self.against_loan, loan_disbursement=self.loan_disbursement,
+                    from_demand=True,
+                )
+                self.validate()
+        native_before_submit = getattr(super(), 'before_submit', None)
+        if callable(native_before_submit):
+            return native_before_submit()
+
     def validate(self):
         self._reopen_legacy_interest_only_loan()
         super().validate()
