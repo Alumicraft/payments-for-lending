@@ -860,6 +860,16 @@
             maxWidth: '420px'
         }, opts || {}));
         p.setLngLat(lngLat).setHTML(html).addTo(map);
+        var frame = map.getContainer().getBoundingClientRect();
+        var topPadding = isMapPage ? 80 : 16;
+        var content = p.getElement().querySelector('.mapboxgl-popup-content');
+        content.style.maxHeight = Math.max(120, frame.height - topPadding - 16) + 'px';
+        var bounds = p.getElement().getBoundingClientRect();
+        var dx = bounds.left < frame.left + 16 ? frame.left + 16 - bounds.left
+            : bounds.right > frame.right - 16 ? frame.right - 16 - bounds.right : 0;
+        var dy = bounds.top < frame.top + topPadding ? frame.top + topPadding - bounds.top
+            : bounds.bottom > frame.bottom - 16 ? frame.bottom - 16 - bounds.bottom : 0;
+        if (dx || dy) map.panBy([-dx, -dy], { duration: 200 });
         bindPopupActions(p);
         p.on('close', function() {
             if (_activePopup === p) _activePopup = null;
