@@ -1476,6 +1476,9 @@ def ensure_hbr_stage_field_options():
             continue
 
         updates = {}
+        default = "Draft" if fieldname == "custom_order_stage" else "Not Started"
+        if frappe.db.get_value("Custom Field", custom_field, "default") != default:
+            updates["default"] = default
         current_options = frappe.db.get_value("Custom Field", custom_field, "options")
         if current_options != options:
             updates["options"] = options

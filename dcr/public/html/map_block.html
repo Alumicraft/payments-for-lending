@@ -5,7 +5,7 @@
 .mapboxgl-ctrl-bottom-left, .mapboxgl-ctrl-bottom-right { transform: translateY(150%); }
 
 /* DCR map popup styling — see docs/superpowers/specs/2026-04-30-map-icons-and-trails.md */
-.mapboxgl-popup-content { padding: 0 !important; border-radius: 12px !important; overflow: hidden !important; box-shadow: 0 8px 24px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06) !important; background: transparent !important; }
+.mapboxgl-popup-content { padding: 0 !important; border-radius: 12px !important; overflow-x: hidden !important; overflow-y: auto !important; box-shadow: 0 8px 24px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06) !important; background: transparent !important; }
 .mapboxgl-popup--dark .mapboxgl-popup-content { box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 0 1px #2D3137 !important; }
 /* Hide tip pointer + close button to match the mockup's floating-card look.
    Popup auto-dismisses on Esc / map move / map zoom / new pin. */
