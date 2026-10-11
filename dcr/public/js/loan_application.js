@@ -125,7 +125,7 @@ frappe.ui.form.on('Loan Application', {
                 return;
             }
             frappe.model.open_mapped_doc({
-                method: 'lending.loan_management.doctype.loan_application.loan_application.create_loan',
+                method: 'dcr.api.lending.create_loan_from_application',
                 frm: frm
             });
         }, __('Create'));

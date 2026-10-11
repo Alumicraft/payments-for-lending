@@ -629,6 +629,22 @@ def validate_advance_date(factory, requested_date):
         )
 
 
+def apply_application_repayment_date(doc, method=None):
+    """Keep unfunded home loans on the invoice-backed application date."""
+    if (doc.get('docstatus') not in (None, 0) and getattr(doc, '_action', None) != 'submit'):
+        return
+    if not doc.get('home_build_request') or not doc.get('loan_application'):
+        return
+    application = frappe.db.get_value('Loan Application', doc.loan_application,
+        ['docstatus', 'applicant', 'loan_product', 'financed_invoice', 'first_payment_date'],
+        as_dict=True)
+    if (application and application.get('docstatus') == 1 and application.get('financed_invoice')
+            and application.get('applicant') == doc.get('applicant')
+            and application.get('loan_product') == doc.get('loan_product')
+            and application.get('first_payment_date')):
+        doc.set('repayment_start_date', application.get('first_payment_date'))
+
+
 def on_loan_validate(doc, method):
     """Populate deal reference fields from Loan Application on every save,
     and block submission if no active bank account is linked.
@@ -787,6 +803,8 @@ def get_loan_defaults_from_application(loan_application):
         "home_serial_no",
         "buyer_name",
         "factory",
+        "financed_invoice_date",
+        "first_payment_date",
     ]
     try:
         if frappe.get_meta("Loan Application").has_field("custom_projected_sales_price"):
@@ -890,6 +908,19 @@ def get_loan_defaults_from_application(loan_application):
         )
     )
     return {field: value for field, value in defaults.items() if value is not None}
+
+
+@frappe.whitelist()
+def create_loan_from_application(source_name, target_doc=None):
+    """Use Lending's mapper and permissions, then carry DCR's dated defaults."""
+    defaults = get_loan_defaults_from_application(source_name)
+    from lending.loan_management.doctype.loan_application.loan_application import create_loan
+    doc = create_loan(source_name, target_doc)
+    meta = frappe.get_meta('Loan')
+    for field, value in defaults.items():
+        if meta.has_field(field):
+            doc.set(field, value)
+    return doc
 
 
 def on_loan_on_update(doc, method):
