@@ -26,7 +26,7 @@ def test_hbr_metadata_is_queried_once_with_all_private_attachment_constraints():
         filters = frappe.get_all.call_args.kwargs["filters"]
         assert filters["attached_to_doctype"] == "Home Build Request"
         assert filters["attached_to_name"] == "HBR-A"
-        assert filters["attached_to_field"] == ["in", ["doc_checklist"]]
+        assert filters["attached_to_field"] == ["in", ["attachment", "doc_checklist"]]
         assert filters["is_private"] == 1
         assert set(filters["file_url"][1]) == {"/private/files/a.pdf", "/private/files/b.pdf"}
 
