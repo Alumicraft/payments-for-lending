@@ -445,3 +445,14 @@ PR #97 is installed at `ae63849bd21bab557ce7663492804ef00119ccb8`. Cloud pipelin
 Synthetic payoff amendment `LM-REP-0014-2` and native excess refund `LM-RF-00003` exercised the new registered Refund hooks. A fresh Loan and Home Build Request both show a Closed loan stage after refund submission. The order remains Ordered because no receipt is submitted. Refund cancellation preserves the native Closed loan state; subsequent payoff cancellation restores Loan Disbursed and request Funded. Both trial documents are now Cancelled.
 
 The fresh loan-scoped native GL export contains the same 1,022 posted rows as the pre-trial baseline. Exact multiset comparison found zero added or removed rows. Private evidence includes `oct11-refund-request-stage-closed.jpg`, `oct11-loan25-stage-refund-reversal-gl.csv` and `oct11-stage-refund-cancel-ledger-comparison.json`. This closes the persisted request-stage defect, not the separate simultaneous dealer-polling or full accounting-readiness checks.
+
+
+## October 11 undemanded interest waiver defects
+
+A normal synthetic Interest Waiver at February 2, 2028 allocated $72.75 to interest and zero to principal. The selected repayment account was interest income, so no bank movement posted. All prior 1,022 GL rows remained, plus six balanced rows from waiver `LM-REP-0015` and demand `LM-LD-00116`. Net earned interest decreased by the waived amount, and accrued interest cleared. Two same-account income rows net to zero.
+
+The pinned native `book_interest_accrued_not_demanded` calls `create_loan_demand` with `paid_amount` even for Interest Waiver and Penalty Waiver. The fresh generated demand therefore showed Paid Amount rather than Waived Amount. The native cancellation path reverses the waiver and allocated pre-existing demands, but leaves this separately generated demand Submitted and paid. Fresh GL after cancellation retained its two posting rows, and native unpaid-interest state disagreed with interest receivable. This trial does not pass waiver acceptance.
+
+Cancelling the synthetic generated demand through its native form restored an exact match to all 1,022 baseline posted rows. Both trial documents are Cancelled. Private posted, cancelled and fixture-restored CSVs and comparison JSONs retain the evidence. No historical demand was changed.
+
+A scoped repayment-controller repair is prepared. It converts paid to waived on the generated interest or penalty demand for DCR floorplan loans, then uses the native Demand cancellation when its owning waiver is cancelled. Existing demands, other loans and other repayment types retain native behavior. Four regression cases and the full 694-test Python suite pass, with 40 subtests and nine existing warnings. Deployment and hosted closure of both defects remain pending.
