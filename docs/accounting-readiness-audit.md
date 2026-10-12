@@ -384,3 +384,11 @@ PR #86 merged as `267592ffd7b1e64372ab298091c68ee2274b27f7`. DCR-only Cloud pipe
 ### October 11 retained Map release
 
 PR #87 deployed as e0154a8; site migration8:23PM and same-session saved-space return passed. No financial mappings, loan balances or accounting records changed in this release. Deployment-era Desk socket connection error is tracked in the pilot checklist; realtime transition acceptance remains open.
+
+### October 11: company-wide historical ledger inventory
+
+Read-only native GeneralLedger export, January1,2026 through February1,2028, CompanyDCR, no voucher/loan filter. There are2,390posted rows and1,192vouchers after excluding report summaries. Every voucher balances. However575LoanInterestAccrual vouchers offset equal debits/credits within Service/FeeIncome alone, across seven legacy loans. This quantifies the earlier single-voucher finding and does not establish the adjustment amount or a duplicate-interest claim. Gross amounts, account balances, exact loans and voucher IDs remain in private evidence.
+
+Adjacent sampled accruals cover distinct October6/7 daily periods, despite the same October8 GL posting date. Their loan remains Disbursed with no repayment and an older unpaid monthly-interest demand. Its principal badge matches the disbursement, while GL receivables also include the demand and later accruals use the corrected separate asset/income mapping. Preserve this as an unresolved legacy recognition reconciliation. Demand dates, covered periods and both generations of mappings must be reconciled before deciding whether and how to reverse/repost. No legacy balance, term, product setting or voucher was changed.
+
+Private native report filter readback, CSV, voucher-balance/self-offset JSON, both accrual forms, loan form, demand form and per-loan ledger remain excluded from Git. This export covers the stated window; it is not proof of dates outside that window or full accounting readiness. Current synthetic Loan25 acceptance remains separate from legacy reconciliation, cash routing, insurance ownership and final accounting review.
