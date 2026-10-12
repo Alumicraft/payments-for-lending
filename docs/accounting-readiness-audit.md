@@ -373,3 +373,10 @@ This passes the latest normal receipt's cancellation and reposting after two res
 ### October 11: repeated scoped accrual and demand batches passed
 
 Native Duplicate/Save/Submit creates Process Loan Interest Accrual `LM-PLA-00378` at January31,2028 and Process Loan Demand `0r8k20q6cc` at February1,2028. Both saved wrappers explicitly retain Loan25 scope before submission. Their linked native output lists, filtered by the exact new process IDs, contain no accruals or demands. A fresh full native GL export still contains all 1,020 posted rows, identical as complete row multisets to the amended-receipt baseline. This verifies repeated processing at an already-processed cutoff creates no duplicate charges or postings on this synthetic loan. Enabled schedules and October11 execution logs are separate evidence; no broad all-loan batch was manually triggered. Private submitted-process screenshots, filtered-list readbacks, CSV and comparison JSON remain excluded from Git.
+
+
+### October 11: classification scheduler and map release running
+
+Read-only native classification Scheduled Job Type `process_loan_classification.create_process_loan_classification` has Stopped unchecked, DailyLong frequency, last execution October11 at00:01:36 and next execution October12 at00:00. Its linked list contains eight of eight Complete logs; latest `b2p5rdrcsg` is Complete with no displayed error details. No classification job or settings were saved or manually triggered. This updates execution evidence; NPA/classification outcomes still need their own trial.
+
+PR #86 merged as `267592ffd7b1e64372ab298091c68ee2274b27f7`. DCR-only Cloud pipeline `d0rj5q88n6` started October11 at7:59PM, site update selected and SkipFailedPatches unchecked. Last observed Running, app build complete and image upload in progress. Continue this same pipeline. Verify terminal status, exact installed source and migration of the maintained Map CustomHTMLBlock before testing same-session save-to-map freshness. Current synthetic request35 is saved Draft with the ElDorado public address; no downstream business documents exist.

@@ -474,6 +474,20 @@
         document.head.appendChild(s);
     }
 
+    function bindMapReturn(map) {
+        frappe.router.on('change', function() {
+            setTimeout(function() {
+                var route = (frappe.get_route() || []).join('/').toLowerCase();
+                if ((route !== 'map' && route !== 'workspaces/map') ||
+                        !container.isConnected || !container.getBoundingClientRect().height ||
+                        !map.getSource('hbr-locations')) return;
+                if (_activePopup) _activePopup.remove();
+                loadData(map);
+                loadFactories(map);
+            }, 0);
+        });
+    }
+
     function initMap() {
         callMapData('dcr.api.map.get_map_settings', function(r) {
                 if (!r.message || !r.message.access_token) {
@@ -703,6 +717,7 @@
                     attributes: true, attributeFilter: ['data-theme']
                 });
 
+                if (isMapPage) bindMapReturn(map);
                 var _initialLoadDone = false;
                 map.on('load', function() {
                     _initialLoadDone = true;
@@ -1133,14 +1148,9 @@
     function loadData(map) {
         callMapData('dcr.api.map.get_heatmap_data', function(r) {
                 _searchDataLoaded.homes = true;
-                if (!r.message || !r.message.length) {
-                    window._dcrHomeFeatures = [];
-                    buildSearchIndex();
-                    return;
-                }
                 var geojson = {
                     type: 'FeatureCollection',
-                    features: r.message.map(function(d) {
+                    features: (r.message || []).map(function(d) {
                         return {
                             type: 'Feature',
                             geometry: { type: 'Point', coordinates: [d.longitude, d.latitude] },
@@ -1167,6 +1177,12 @@
                 window._dcrHomeFeatures = geojson.features.slice();
                 buildSearchIndex();
 
+                var existingSource = map.getSource('hbr-locations');
+                if (existingSource) {
+                    existingSource.setData(geojson);
+                    buildLegend(map, geojson);
+                    return;
+                }
                 // Heatmap layer
                 map.addSource('hbr-locations', { type: 'geojson', data: geojson });
                 map.addLayer({
@@ -1273,18 +1289,8 @@
     function loadFactories(map) {
         callMapData('dcr.api.map.get_factory_locations', function(r) {
                 _searchDataLoaded.factories = true;
-                if (!r.message || !r.message.length) {
-                    window._dcrFactoryFeatures = [];
-                    buildSearchIndex();
-                    return;
-                }
-                geocodeFactoryRows(r.message, function(rows) {
+                geocodeFactoryRows(r.message || [], function(rows) {
                 rows = rows.filter(hasFactoryCoords);
-                if (!rows.length) {
-                    window._dcrFactoryFeatures = [];
-                    buildSearchIndex();
-                    return;
-                }
                 var geojson = {
                     type: 'FeatureCollection',
                     features: rows.map(function(d) {
@@ -1306,6 +1312,11 @@
                 window._dcrFactoryFeatures = geojson.features.slice();
                 buildSearchIndex();
 
+                var existingSource = map.getSource('factory-locations');
+                if (existingSource) {
+                    existingSource.setData(geojson);
+                    return;
+                }
                 map.addSource('factory-locations', { type: 'geojson', data: geojson });
 
                 // Try to load factory pin assets; fall back to a black circle
