@@ -6,10 +6,64 @@ const registered = {};
 vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../public/js/purchase_order_ux.js"), "utf8"), {
     frappe: { ui: { form: { on: (name, callbacks) => { registered[name] = callbacks; } } } },
     erpnext: { get_currency: () => "USD" },
+    $: value => value,
     __: value => value
 });
 const handlers = registered["Purchase Order"];
 const childHandlers = registered["Purchase Order Item Supplied"];
+{
+    const link = doctype => ({ hidden: false, attr: () => doctype,
+        toggleClass(name, hidden) { assert.equal(name, "dcr-po-unused-link"); this.hidden = Boolean(hidden); } });
+    const manufacturing = [link("BOM"), link("Production Plan")];
+    const purchasing = [link("Purchase Receipt"), link("Purchase Invoice"), link("Sales Order")];
+    const custom = [link("Site Custom Document")];
+    const groups = [manufacturing, purchasing, custom].map(links => ({ hidden: false,
+        find: () => ({ length: links.length, filter: () => ({ length: links.filter(l => !l.hidden).length }) }),
+        toggleClass(name, hidden) { assert.equal(name, "dcr-po-unused-link-group"); this.hidden = Boolean(hidden); } }));
+    const links = manufacturing.concat(purchasing, custom);
+    const frm = { doc: { custom_home_build_request: "HBR-A", docstatus: 1 },
+        dashboard: { _fetched_counts: false, links_area: { body: {
+            find(selector) { return { each(fn) { (selector === ".document-link" ? links : groups).forEach(el => fn.call(el)); } }; }
+        } } },
+        dashboard_data: { count: { internal_links_found: [], external_links_found: links.map(l => ({ doctype: l.attr(), count: 0, open_count: 0 })) } }
+    };
+    handlers.dashboard_update(frm);
+    assert.ok(links.every(l => !l.hidden), "Do not infer empty links before the count response");
+    frm.dashboard._fetched_counts = true;
+    handlers.dashboard_update(frm);
+    assert.ok(manufacturing.every(l => l.hidden));
+    assert.equal(groups[0].hidden, true);
+    assert.deepEqual(purchasing.map(l => l.hidden), [false, false, true]);
+    assert.equal(custom[0].hidden, false, "Retain site links even when empty");
+    const counts = frm.dashboard_data.count.external_links_found;
+    counts[0].count = 1;
+    handlers.dashboard_update(frm);
+    assert.equal(manufacturing[0].hidden, false, "Retain historical linked manufacturing documents");
+    assert.equal(groups[0].hidden, false);
+    for (const value of ["?", "0", undefined]) {
+        counts[0].count = value;
+        handlers.dashboard_update(frm);
+        assert.equal(manufacturing[0].hidden, false, "Unknown counts remain accessible");
+    }
+    counts[0].count = 0;
+    counts[0].names = ["BOM-A"];
+    handlers.dashboard_update(frm);
+    assert.equal(manufacturing[0].hidden, false);
+    delete counts[0].names;
+    for (const field of ["is_subcontracted", "is_old_subcontracting_flow"]) {
+        frm.doc[field] = 1;
+        handlers.dashboard_update(frm);
+        assert.ok(links.every(l => !l.hidden));
+        frm.doc[field] = 0;
+    }
+    frm.doc.supplied_items = [{}];
+    handlers.dashboard_update(frm);
+    assert.ok(links.every(l => !l.hidden));
+    frm.doc.supplied_items = [];
+    frm.doc.custom_home_build_request = null;
+    handlers.dashboard_update(frm);
+    assert.ok(links.every(l => !l.hidden), "Restore native links outside home orders");
+}
 function form(doc, extra = []) {
     const fields = [
         { fieldname: "supplier_section", fieldtype: "Section Break", label: "Supplier" },

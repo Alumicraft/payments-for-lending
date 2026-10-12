@@ -33,7 +33,37 @@
         })) overrides[section_name] = { hidden: 1 };
     }
 
+    function apply_related_documents(frm) {
+        var dashboard = frm.dashboard;
+        var body = dashboard && dashboard.links_area && dashboard.links_area.body;
+        if (!body) return;
+        var ordinary_home = Boolean(frm.doc.custom_home_build_request) &&
+            !frm.doc.is_subcontracted && !frm.doc.is_old_subcontracting_flow &&
+            !(frm.doc.supplied_items || []).length;
+        var counts = dashboard._fetched_counts && frm.dashboard_data && frm.dashboard_data.count;
+        var optional = ["Sales Order", "Supplier Quotation", "Project", "Auto Repeat",
+            "Material Request", "BOM", "Production Plan", "Blanket Order",
+            "Subcontracting Order", "Subcontracting Receipt", "Stock Entry"];
+        var found = counts ? (counts.internal_links_found || []).concat(counts.external_links_found || []) : [];
+        body.find(".document-link").each(function () {
+            var link = $(this);
+            var doctype = link.attr("data-doctype");
+            var matches = found.filter(function (entry) { return entry.doctype === doctype; });
+            var empty = matches.length > 0 && matches.every(function (entry) {
+                return entry.count === 0 && entry.open_count === 0 && !(entry.names || []).length;
+            });
+            link.toggleClass("dcr-po-unused-link", ordinary_home && optional.includes(doctype) && empty);
+        });
+        body.find(".form-documents .col-md-4").each(function () {
+            var group = $(this);
+            var links = group.find(".document-link");
+            group.toggleClass("dcr-po-unused-link-group", links.length > 0 &&
+                links.filter(":not(.dcr-po-unused-link)").length === 0);
+        });
+    }
+
     function apply_layout(frm) {
+        apply_related_documents(frm);
         var home_order = Boolean(frm.doc.custom_home_build_request);
         var state = frm.__dcr_po_layout || (frm.__dcr_po_layout = {});
         var overrides = {};
@@ -396,6 +426,7 @@
 
     frappe.ui.form.on("Purchase Order", {
         refresh: apply_layout,
+        dashboard_update: apply_related_documents,
         custom_home_build_request: apply_layout,
         is_subcontracted: apply_layout,
         is_old_subcontracting_flow: apply_layout,
