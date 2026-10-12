@@ -89,13 +89,17 @@
             if (frm.doc.docstatus > 0) {
                 ["contact_person", "shipping_address", "billing_address",
                     "payment_terms_template", "tc_name", "terms", "tax_category",
-                    "shipping_rule", "incoterm", "named_place", "taxes_and_charges"].forEach(function (name) {
+                    "shipping_rule", "incoterm", "named_place", "taxes_and_charges",
+                    "cost_center", "project", "is_subcontracted", "ignore_pricing_rule",
+                    "disable_rounded_total"].forEach(function (name) {
                     var field = frm.fields_dict[name];
                     if (field && !field.df.allow_on_submit && !field.df.reqd &&
                             !field.df.mandatory_depends_on && !frm.doc[name]) {
                         overrides[name] = { hidden: 1 };
                     }
                 });
+                hide_empty_section(frm, overrides, "accounting_dimensions_section",
+                    ["cost_center", "project"]);
                 hide_empty_section(frm, overrides, "company_billing_address_section",
                     ["billing_address", "billing_address_display"]);
                 if (frm.doc.supplier_address && frm.doc.address_display &&
