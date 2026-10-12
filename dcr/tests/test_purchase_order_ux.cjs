@@ -479,4 +479,72 @@ for (const names of [["price_list_rate", "last_purchase_rate"], ["net_rate", "ne
     handlers.items_on_form_rendered(fixture.frm);
     assert.equal(pairColumn.paired, false, "Draft pricing remains native");
 }
-console.log("Purchase Order UX: home scope, draft/submitted/cancelled, required/custom fields, materials, restoration and no document writes passed");
+function taxFixture(doc = {}, extra = []) {
+    return form({ custom_home_build_request: "HBR-A", docstatus: 1,
+        taxes: [], total_taxes_and_charges: 0, base_total_taxes_and_charges: 0, ...doc }, [
+        { fieldname: "taxes_section", fieldtype: "Section Break", hidden: 0 },
+        ...["tax_category", "taxes_and_charges", "shipping_rule", "incoterm", "named_place"].map(fieldname =>
+            ({ fieldname, fieldtype: "Link", hidden: 0 })),
+        ...extra,
+        { fieldname: "section_break_52", fieldtype: "Section Break", hidden: 0 },
+        { fieldname: "taxes", fieldtype: "Table", hidden: 0 },
+        { fieldname: "tax_totals", fieldtype: "Section Break" },
+        { fieldname: "total_taxes_and_charges", fieldtype: "Currency", read_only: 1, hidden: 0 }
+    ]);
+}
+for (const docstatus of [0, 1, 2]) {
+    const frm = taxFixture({ docstatus });
+    const before = JSON.stringify(frm.doc);
+    handlers.refresh(frm);
+    for (const name of ["taxes_section", "section_break_52", "taxes", "total_taxes_and_charges"]) {
+        assert.equal(frm.fields_dict[name].df.hidden, docstatus > 0 ? 1 : 0, name);
+    }
+    assert.equal(JSON.stringify(frm.doc), before);
+    frm.doc.taxes = [{ rate: 0 }];
+    handlers.refresh(frm);
+    assert.equal(frm.fields_dict.taxes.df.hidden, 0, "Populated zero-rate tax rows remain inspectable");
+    assert.equal(frm.fields_dict.section_break_52.df.hidden, 0);
+    assert.equal(frm.fields_dict.total_taxes_and_charges.df.hidden, 0);
+}
+for (const property of ["reqd", "mandatory_depends_on", "allow_on_submit"]) {
+    const frm = taxFixture();
+    frm.fields_dict.taxes.df[property] = 1;
+    frm.fields_dict.named_place.df[property] = 1;
+    handlers.refresh(frm);
+    assert.equal(frm.fields_dict.taxes.df.hidden, 0);
+    assert.equal(frm.fields_dict.taxes_section.df.hidden, 0);
+}
+const customizedTax = taxFixture({}, [{ fieldname: "custom_tax_review", fieldtype: "Data" }]);
+handlers.refresh(customizedTax);
+assert.equal(customizedTax.fields_dict.taxes_section.df.hidden, 0, "Keep site tax inputs accessible");
+const populatedTax = taxFixture({ named_place: "Factory", total_taxes_and_charges: 10 });
+handlers.refresh(populatedTax);
+assert.equal(populatedTax.fields_dict.taxes_section.df.hidden, 0);
+assert.equal(populatedTax.fields_dict.total_taxes_and_charges.df.hidden, 0, "Do not hide unexplained tax totals");
+populatedTax.doc.custom_home_build_request = null;
+handlers.refresh(populatedTax);
+assert.equal(populatedTax.fields_dict.taxes.df.hidden, 0, "Restore unrelated purchasing forms");
+for (const docstatus of [0, 1, 2]) {
+    const frm = form({ docstatus, custom_home_build_request: "HBR-A", supplier_address: "FACTORY",
+        address_display: "Factory address", dispatch_address: "FACTORY", dispatch_address_display: "Factory address" }, [
+        { fieldname: "shipping_address_section", fieldtype: "Section Break", hidden: 0 },
+        { fieldname: "dispatch_address", fieldtype: "Link", hidden: 0 },
+        { fieldname: "dispatch_address_display", fieldtype: "Small Text", read_only: 1, hidden: 0 },
+        { fieldname: "shipping_address", fieldtype: "Link", hidden: 0 },
+        { fieldname: "shipping_address_display", fieldtype: "Small Text", read_only: 1, hidden: 0 }
+    ]);
+    handlers.refresh(frm);
+    assert.equal(frm.fields_dict.dispatch_address.df.hidden, docstatus > 0 ? 1 : 0);
+    assert.equal(frm.fields_dict.shipping_address_section.df.hidden, docstatus > 0 ? 1 : 0);
+    frm.doc.dispatch_address_display = "Different pickup instructions";
+    handlers.dispatch_address_display(frm);
+    assert.equal(frm.fields_dict.dispatch_address.df.hidden, 0, "Preserve distinct address details");
+    frm.doc.dispatch_address_display = "Factory address";
+    frm.doc.shipping_address = "DELIVERY";
+    handlers.shipping_address_display(frm);
+    assert.equal(frm.fields_dict.shipping_address_section.df.hidden, 0, "Keep the delivery destination");
+    frm.fields_dict.dispatch_address.df.allow_on_submit = 1;
+    handlers.refresh(frm);
+    assert.equal(frm.fields_dict.dispatch_address.df.hidden, 0, "Keep an editable dispatch selector");
+}
+console.log("Purchase Order UX: home scope, draft/submitted/cancelled, required/custom fields, materials, taxes, addresses, restoration and no document writes passed");

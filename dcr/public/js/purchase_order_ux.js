@@ -58,7 +58,7 @@
             if (frm.doc.docstatus > 0) {
                 ["contact_person", "shipping_address", "billing_address",
                     "payment_terms_template", "tc_name", "terms", "tax_category",
-                    "shipping_rule", "incoterm", "taxes_and_charges"].forEach(function (name) {
+                    "shipping_rule", "incoterm", "named_place", "taxes_and_charges"].forEach(function (name) {
                     var field = frm.fields_dict[name];
                     if (field && !field.df.allow_on_submit && !field.df.reqd &&
                             !field.df.mandatory_depends_on && !frm.doc[name]) {
@@ -67,7 +67,38 @@
                 });
                 hide_empty_section(frm, overrides, "company_billing_address_section",
                     ["billing_address", "billing_address_display"]);
+                if (frm.doc.supplier_address && frm.doc.address_display &&
+                        frm.doc.dispatch_address === frm.doc.supplier_address &&
+                        frm.doc.dispatch_address_display === frm.doc.address_display) {
+                    ["dispatch_address", "dispatch_address_display"].forEach(function (name) {
+                        var field = frm.fields_dict[name];
+                        if (field && !field.df.allow_on_submit && !field.df.reqd && !field.df.mandatory_depends_on) {
+                            overrides[name] = { hidden: 1 };
+                        }
+                    });
+                }
+                hide_empty_section(frm, overrides, "shipping_address_section",
+                    ["dispatch_address", "dispatch_address_display", "shipping_address", "shipping_address_display"]);
                 hide_empty_section(frm, overrides, "terms_section_break", ["tc_name", "terms"]);
+                hide_empty_section(frm, overrides, "taxes_section",
+                    ["tax_category", "taxes_and_charges", "shipping_rule", "incoterm", "named_place"]);
+                var taxes = frm.fields_dict.taxes;
+                if (Array.isArray(frm.doc.taxes) && !frm.doc.taxes.length && taxes &&
+                        !taxes.df.reqd && !taxes.df.mandatory_depends_on && !taxes.df.allow_on_submit) {
+                    overrides.taxes = { hidden: 1 };
+                    hide_empty_section(frm, overrides, "section_break_52", ["taxes"]);
+                    ["total_taxes_and_charges", "base_total_taxes_and_charges",
+                        "taxes_and_charges_added", "base_taxes_and_charges_added",
+                        "taxes_and_charges_deducted", "base_taxes_and_charges_deducted"].forEach(function (name) {
+                        var field = frm.fields_dict[name];
+                        var value = frm.doc[name];
+                        if (field && field.df.read_only && !field.df.reqd &&
+                                !field.df.mandatory_depends_on && !field.df.allow_on_submit &&
+                                value != null && value !== "" && Number(value) === 0) {
+                            overrides[name] = { hidden: 1 };
+                        }
+                    });
+                }
                 // A blank header warehouse has no bulk-entry purpose on a
                 // saved ordinary home order. Row warehouse values stay visible.
                 var warehouse = frm.fields_dict.set_warehouse;
