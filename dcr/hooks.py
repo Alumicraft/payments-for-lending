@@ -182,6 +182,10 @@ doc_events = {
         "before_submit": "dcr.api.lending.populate_loan_demand_from_loan",
     },
     "Loan Restructure": {
+        "before_update_after_submit": "dcr.api.restructure_reversal.capture_before_approval",
+        "on_update_after_submit": "dcr.api.restructure_reversal.capture_after_approval",
+        "before_cancel": "dcr.api.restructure_reversal.guard_cancellation",
+        "on_cancel": "dcr.api.restructure_reversal.restore_after_cancellation",
         "after_insert": "dcr.api.restructure_payment.sync_schedule_payment",
         "on_update": "dcr.api.restructure_payment.sync_schedule_payment",
         "before_submit": "dcr.api.restructure_payment.sync_schedule_payment",
