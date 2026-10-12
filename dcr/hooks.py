@@ -180,6 +180,11 @@ doc_events = {
         "validate": "dcr.api.lending.populate_loan_demand_from_loan",
         "before_submit": "dcr.api.lending.populate_loan_demand_from_loan",
     },
+    "Loan Restructure": {
+        "after_insert": "dcr.api.restructure_payment.sync_schedule_payment",
+        "on_update": "dcr.api.restructure_payment.sync_schedule_payment",
+        "before_submit": "dcr.api.restructure_payment.sync_schedule_payment",
+    },
     "Purchase Order": {
         "before_validate": "dcr.api.pilot_fields.populate_purchase_order_dealer",
         "on_submit": "dcr.api.hbr_stage.sync_from_doc",
