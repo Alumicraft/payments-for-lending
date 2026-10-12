@@ -83,6 +83,8 @@ function harness(hydrate = false) {
     h.form.fields_dict.park_contact_name={...optional(null),$wrapper:{is:()=>false}};
     h.form.fields_dict.factory_quote_no=optional(null,{read_only:1});
     h.form.fields_dict.factory=optional(null,{reqd:1});
+    h.form.doc.contact_name=null;h.form.fields_dict.contact_name=optional('');
+    h.form.fields_dict.address_line_2=optional(null);
     assert.equal(h.form.validate(),true);
     // Pinned native WebForm.save merges non-null FieldGroup values into doc.
     // A cleared Data control is omitted, so the saved reference value must
@@ -93,6 +95,8 @@ function harness(hydrate = false) {
     assert.equal(nativePayload.factory_quote_no,'Read-only quote');
     assert.equal(nativePayload.factory,'Required factory','native required validation remains responsible');
     assert.equal(nativePayload.selling_price,0,'zero is preserved as a numeric value');
+    assert.equal(nativePayload.contact_name,null,'an untouched empty field keeps its original null');
+    assert.equal('address_line_2' in nativePayload,false,'an untouched missing field is not added');
 
     h=harness();await settle();h.nativeValidation.result=false;
     h.form.doc.end_buyer_name='Saved buyer';h.form.fields_dict.end_buyer_name=optional(null);

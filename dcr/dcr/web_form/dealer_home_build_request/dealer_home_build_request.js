@@ -139,7 +139,10 @@ frappe.ready(function () {
             const value = control.get_value();
             // Native get_values omits nulls before merging into the saved doc.
             // Keep an explicit clear so that merge cannot restore the old value.
-            if (value == null || value === "") form.doc[fieldname] = value ?? null;
+            const previous = form.doc[fieldname];
+            if (previous != null && previous !== "" && (value == null || value === "")) {
+                form.doc[fieldname] = value ?? null;
+            }
         }
         return valid;
     };
