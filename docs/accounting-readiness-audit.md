@@ -252,3 +252,10 @@ Private corrected-payoff-draft/gl, post-curtailment-closed/reopened screenshots,
 ### October 11: separate Spec revision trial baseline
 
 Synthetic request30/PO18/invoice10/application14 is separate from reconciled Loan25. PO18 submits at260000. Native Create Invoice needed an explicit Funding Clearing Expense Head; missing account was rejected before save. Per-record trial taxes cleared without changing global defaults. Invoice10 submits October11 with DRFundingClearing260000/CRTradePayables260000 and balanced totals. Application14 submitted with invoice260000 plus5000additional fee, principal265000, November1 first payment1855 (21Actual/360 days at12%). It has no loan/disbursement/repayment. Original packet review is prepared but browser policy blocks opening blob PDF links; user review required before sending. Revised-invoice accounting and revised signing remain untested. Missing automatic invoice expense mapping remains open; do not assume one global item account is valid across cash, inventory and floored flows.
+
+
+### October 11: Customer Sold cash delivery reversal and tax-default finding
+
+Separate synthetic request32/PO19/receipt5 uses normal documents, no loan or supplier payment. Receipt5 at220000 submitted with zero trial tax; exact voucher/day GL shows only zero Opening/Total/Closing, with no financial postings. Native cancellation reverts request32 from Delivered to Ordered. Native amendment5-1, corrected to220000 with zero trial tax before submission, restores Delivered. This verifies receipt lifecycle and operational stage reversal, not cash payable/invoice/payment reconciliation.
+
+ERPNext's new invoice/receipt and amended receipt flows reapply US ST6% even from zero-tax trial originals. Receipt amendment briefly saves a233200draft before the trial-only tax correction; no233200receipt was submitted. Global tax settings unchanged. Owner asked whether documents should default to no tax and follow actual factory invoice taxes, or retain6%. Account default selection, tax policy, insurance ownership and final accounting-owner review remain open.
