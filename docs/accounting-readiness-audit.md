@@ -259,3 +259,8 @@ Synthetic request30/PO18/invoice10/application14 is separate from reconciled Loa
 Separate synthetic request32/PO19/receipt5 uses normal documents, no loan or supplier payment. Receipt5 at220000 submitted with zero trial tax; exact voucher/day GL shows only zero Opening/Total/Closing, with no financial postings. Native cancellation reverts request32 from Delivered to Ordered. Native amendment5-1, corrected to220000 with zero trial tax before submission, restores Delivered. This verifies receipt lifecycle and operational stage reversal, not cash payable/invoice/payment reconciliation.
 
 ERPNext's new invoice/receipt and amended receipt flows reapply US ST6% even from zero-tax trial originals. Receipt amendment briefly saves a233200draft before the trial-only tax correction; no233200receipt was submitted. Global tax settings unchanged. Owner asked whether documents should default to no tax and follow actual factory invoice taxes, or retain6%. Account default selection, tax policy, insurance ownership and final accounting-owner review remain open.
+
+
+### October 11: Inventory ordering and Cash dealer readback
+
+Synthetic Inventory33/PO20 submits normally at240000 with Flooring payment type and trial-only zero tax. No Inventory invoice, loan, receipt or payment created, so this proves ordering and checklist gates only. Fresh authenticated owner dealer sees Inventory33 Ordered/LoanNotStarted and CustomerSoldCash32 Delivered/LoanNotApplicable. Administrator session restored normally. Insurance, tax-default decision, automatic invoice account mapping and remaining financial reconciliations stay open; accounting is NOT READY.
