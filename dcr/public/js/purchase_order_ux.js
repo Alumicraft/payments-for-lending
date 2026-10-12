@@ -76,7 +76,8 @@
             // editable selectors and any required or populated values.
             ["contact_display", "contact_mobile", "contact_email", "address_display",
                 "dispatch_address_display", "shipping_address_display", "billing_address_display",
-                "represents_company", "ref_sq", "mps", "inter_company_order_reference"].forEach(function (name) {
+                "represents_company", "ref_sq", "mps", "inter_company_order_reference",
+                "is_internal_supplier"].forEach(function (name) {
                 var field = frm.fields_dict[name];
                 if (field && field.df.read_only && !field.df.reqd &&
                         !field.df.mandatory_depends_on && !frm.doc[name]) {
