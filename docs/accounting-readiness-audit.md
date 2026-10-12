@@ -380,3 +380,7 @@ Native Duplicate/Save/Submit creates Process Loan Interest Accrual `LM-PLA-00378
 Read-only native classification Scheduled Job Type `process_loan_classification.create_process_loan_classification` has Stopped unchecked, DailyLong frequency, last execution October11 at00:01:36 and next execution October12 at00:00. Its linked list contains eight of eight Complete logs; latest `b2p5rdrcsg` is Complete with no displayed error details. No classification job or settings were saved or manually triggered. This updates execution evidence; NPA/classification outcomes still need their own trial.
 
 PR #86 merged as `267592ffd7b1e64372ab298091c68ee2274b27f7`. DCR-only Cloud pipeline `d0rj5q88n6` started October11 at7:59PM, site update selected and SkipFailedPatches unchecked. Last observed Running, app build complete and image upload in progress. Continue this same pipeline. Verify terminal status, exact installed source and migration of the maintained Map CustomHTMLBlock before testing same-session save-to-map freshness. Current synthetic request35 is saved Draft with the ElDorado public address; no downstream business documents exist.
+
+### October 11 retained Map release
+
+PR #87 deployed as e0154a8; site migration8:23PM and same-session saved-space return passed. No financial mappings, loan balances or accounting records changed in this release. Deployment-era Desk socket connection error is tracked in the pilot checklist; realtime transition acceptance remains open.
