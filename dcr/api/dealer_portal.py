@@ -257,10 +257,14 @@ def _require_active_factory(customer_name, factory):
         _deny("That factory is not assigned to your dealer account.")
 
 
+# Desk records the child Attach field; older portal uploads record its table.
+HBR_CHECKLIST_FILE_FIELDS = ("attachment", "doc_checklist")
+
+
 def _hbr_document_items(hbr):
     checklist = _value(hbr, "doc_checklist", []) or []
     metadata = _attached_file_metadata("Home Build Request", _value(hbr, "name"),
-        ["doc_checklist"], [_value(row, "attachment") for row in checklist])
+        list(HBR_CHECKLIST_FILE_FIELDS), [_value(row, "attachment") for row in checklist])
     rows = []
     for row in checklist:
         document_type = _value(row, "document_type")
@@ -299,7 +303,10 @@ def _attached_file_metadata(doctype, name, fieldnames, urls):
         ignore_permissions=True, limit_page_length=0)
     metadata, ambiguous = {}, set()
     for file in files or []:
-        key = (_value(file, "attached_to_field"), _value(file, "file_url"))
+        field = _value(file, "attached_to_field")
+        if doctype == "Home Build Request" and field in HBR_CHECKLIST_FILE_FIELDS:
+            field = "doc_checklist"
+        key = (field, _value(file, "file_url"))
         if key in metadata:
             ambiguous.add(key)
         metadata[key] = {
@@ -866,7 +873,7 @@ def upload_document(target_type, target_name=None, document_type=None):
             content,
             "Home Build Request",
             target_name,
-            "doc_checklist",
+            "attachment",
         )
         row.attachment = file_doc.file_url
         hbr.save(ignore_permissions=True)
@@ -937,8 +944,11 @@ def download_document(target_type, target_name=None, document_type=None):
         "file_url": file_url, "attached_to_doctype": doctype,
         "attached_to_name": name, "is_private": 1,
     }
+    attachment_fields = (HBR_CHECKLIST_FILE_FIELDS
+        if doctype == "Home Build Request" and fieldname == "doc_checklist" else (fieldname,))
     if fieldname is not None:
-        file_filters["attached_to_field"] = fieldname
+        file_filters["attached_to_field"] = (
+            ["in", list(attachment_fields)] if len(attachment_fields) > 1 else fieldname)
     file_name = frappe.db.get_value("File", file_filters, "name")
     if not file_name:
         return _document_unavailable()
@@ -949,7 +959,7 @@ def download_document(target_type, target_name=None, document_type=None):
     if (
         _value(file_doc, "attached_to_doctype") != doctype
         or _value(file_doc, "attached_to_name") != name
-        or (fieldname is not None and _value(file_doc, "attached_to_field") != fieldname)
+        or (fieldname is not None and _value(file_doc, "attached_to_field") not in attachment_fields)
         or _value(file_doc, "file_url") != file_url
         or not _value(file_doc, "is_private")
     ):
