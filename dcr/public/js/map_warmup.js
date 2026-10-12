@@ -2,10 +2,9 @@
  *
  * Loaded via app_include_js so it runs on every desk page. Goal: by the
  * time the user navigates to the Map workspace, all expensive prerequisites
- * (Mapbox CDN handshake, GL JS script, icon PNGs, API responses) are
- * already in flight or cached. The map block itself reads from
- * window._dcrMapPrefetch when present and falls through to live API calls
- * when not (cold-start safety).
+ * (Mapbox CDN handshake, GL JS script and pin icons) are
+ * already in flight or cached. Deal data is fetched when the map loads,
+ * so documents saved after Desk boot appear on the map.
  *
  * Idempotent — guarded by window._dcrMapWarmedUp so multiple route changes
  * don't re-fire the warm-up.
@@ -67,34 +66,4 @@
     document.head.appendChild(css);
   }
 
-  // ---- 4) Prefetch the three API responses on idle --------------------
-  // Stash results on window._dcrMapPrefetch[method] so the block JS can
-  // synchronously hand them back to its callbacks instead of round-tripping.
-  function prefetchData() {
-    if (!window.frappe || !window.frappe.call) return;
-    window._dcrMapPrefetch = window._dcrMapPrefetch || {};
-    [
-      "dcr.api.map.get_map_settings",
-      "dcr.api.map.get_heatmap_data",
-      "dcr.api.map.get_factory_locations",
-    ].forEach(function (method) {
-      // Skip if already cached (e.g., on a re-warm that somehow slipped past
-      // the _dcrMapWarmedUp guard).
-      if (window._dcrMapPrefetch[method]) return;
-      frappe.call({
-        method: method,
-        callback: function (r) {
-          window._dcrMapPrefetch[method] = r;
-        },
-      });
-    });
-  }
-
-  if (window.requestIdleCallback) {
-    requestIdleCallback(prefetchData, { timeout: 3000 });
-  } else {
-    // Safari < 17 has no requestIdleCallback. setTimeout fallback —
-    // delay enough that we don't fight the desk's first paint.
-    setTimeout(prefetchData, 1500);
-  }
 })();

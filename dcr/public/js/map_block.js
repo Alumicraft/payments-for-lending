@@ -82,16 +82,7 @@
     // sibling closure) can reach it. Set from get_map_settings; default 10.
     var puckFullThreshold = 10;
 
-    // Prefetch adapter — first checks window._dcrMapPrefetch (populated
-    // by map_warmup.js on desk boot). If hit, hand the cached response
-    // back asynchronously to match frappe.call's contract; if miss, fall
-    // through to the live call.
-    function callOrCache(method, callback) {
-        var pre = window._dcrMapPrefetch && window._dcrMapPrefetch[method];
-        if (pre) {
-            setTimeout(function() { callback(pre); }, 0);
-            return;
-        }
+    function callMapData(method, callback) {
         frappe.call({ method: method, callback: callback });
     }
 
@@ -484,7 +475,7 @@
     }
 
     function initMap() {
-        callOrCache('dcr.api.map.get_map_settings', function(r) {
+        callMapData('dcr.api.map.get_map_settings', function(r) {
                 if (!r.message || !r.message.access_token) {
                     container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#8d99a6;font-size:14px;">Configure Map Settings to enable the heatmap</div>';
                     return;
@@ -1140,7 +1131,7 @@
     }
 
     function loadData(map) {
-        callOrCache('dcr.api.map.get_heatmap_data', function(r) {
+        callMapData('dcr.api.map.get_heatmap_data', function(r) {
                 _searchDataLoaded.homes = true;
                 if (!r.message || !r.message.length) {
                     window._dcrHomeFeatures = [];
@@ -1280,7 +1271,7 @@
     }
 
     function loadFactories(map) {
-        callOrCache('dcr.api.map.get_factory_locations', function(r) {
+        callMapData('dcr.api.map.get_factory_locations', function(r) {
                 _searchDataLoaded.factories = true;
                 if (!r.message || !r.message.length) {
                     window._dcrFactoryFeatures = [];
