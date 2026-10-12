@@ -174,6 +174,10 @@ doc_events = {
         "on_submit": "dcr.api.hbr_stage.sync_from_doc",
         "on_cancel": "dcr.api.hbr_stage.sync_from_doc",
     },
+    "Loan Refund": {
+        "on_submit": "dcr.api.hbr_stage.sync_from_doc",
+        "on_cancel": "dcr.api.hbr_stage.sync_from_doc",
+    },
     "Sales Invoice": {
         "before_validate": "dcr.api.financing_basis.prepare_financed_charge_invoice",
     },

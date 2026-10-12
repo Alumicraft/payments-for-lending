@@ -206,6 +206,10 @@ def _hbr_from_doc(doc):
         loan_name = doc.get("against_loan")
         if loan_name:
             return frappe.db.get_value("Loan", loan_name, "home_build_request")
+    if doc.doctype == "Loan Refund":
+        loan_name = doc.get("loan")
+        if loan_name:
+            return frappe.db.get_value("Loan", loan_name, "home_build_request")
     return None
 
 
