@@ -33,6 +33,8 @@ frappe.ui.form.on('Loan', {
             return;
         }
 
+        configure_excess_refund_action(frm);
+
         // Email: Disbursement Notice
         frappe.db.count('Loan Disbursement', {
             filters: { against_loan: frm.doc.name, docstatus: 1 }
@@ -80,6 +82,26 @@ frappe.ui.form.on('Loan', {
         calculate_loan_preview(frm);
     }
 });
+
+
+function configure_excess_refund_action(frm) {
+    if (!frm.doc.home_build_request || !(Number(frm.doc.original_financed_principal) > 0)) return;
+    frm.remove_custom_button(__('Loan Refund'), __('Create'));
+    const amount = Number(frm.doc.excess_amount_paid);
+    if (!Number.isFinite(amount) || amount <= 0 || !frappe.model.can_create('Loan Refund')) return;
+    frm.add_custom_button(__('Loan Refund'), function() {
+        frappe.new_doc('Loan Refund', {
+            loan: frm.doc.name,
+            company: frm.doc.company,
+            applicant_type: frm.doc.applicant_type,
+            applicant: frm.doc.applicant,
+            loan_product: frm.doc.loan_product,
+            refund_account: frm.doc.payment_account,
+            refund_amount: amount,
+            is_excess_amount_refund: 1
+        });
+    }, __('Create'));
+}
 
 
 function ensure_loan_preview_defaults(frm) {
