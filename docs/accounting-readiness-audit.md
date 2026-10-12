@@ -455,4 +455,36 @@ The pinned native `book_interest_accrued_not_demanded` calls `create_loan_demand
 
 Cancelling the synthetic generated demand through its native form restored an exact match to all 1,022 baseline posted rows. Both trial documents are Cancelled. Private posted, cancelled and fixture-restored CSVs and comparison JSONs retain the evidence. No historical demand was changed.
 
-A scoped repayment-controller repair is prepared. It converts paid to waived on the generated interest or penalty demand for DCR floorplan loans, then uses the native Demand cancellation when its owning waiver is cancelled. Existing demands, other loans and other repayment types retain native behavior. Four regression cases and the full 694-test Python suite pass, with 40 subtests and nine existing warnings. Deployment and hosted closure of both defects remain pending.
+A scoped repayment-controller repair is prepared. It converts paid to waived on the generated interest or penalty demand for DCR floorplan loans, then uses the native Demand cancellation when its owning waiver is cancelled. Existing demands, other loans and other repayment types retain native behavior. Four regression cases and the full 694-test Python suite pass, with 40 subtests and nine existing warnings. PR #98 merged at `d1a3055c38de7304da0d68f70a14a2b0bc264260`. DCR-only pipeline `3sp55a9inv` succeeded at 10:43 PM in 6 minutes 27 seconds. The independent site update completed as Pull Success at 10:42 PM; no schema changed. Cloud Apps verifies the exact installed merge commit. Core app versions remain pinned and failed-patch skipping remained disabled. Hosted interest-waiver closure passed as recorded below. A fresh restored Loan 25 is Disbursed with $218,250 pending principal.
+
+
+## October 11 repaired interest waiver acceptance
+
+Amended synthetic waiver `LM-REP-0015-1` saved and submitted through the normal form. Generated demand `LM-LD-00117` correctly shows $72.75 Waived Amount, zero Paid Amount and zero Outstanding Amount. All baseline GL rows remain. The six new balanced rows preserve the original waiver's net accounting, with no bank movement or principal reduction. Private `oct11-repaired-waiver-demand.jpg` shows the corrected reporting.
+
+Cancelling only the waiver automatically cancelled its generated demand. No separate demand cancellation was needed. A fresh native GL export exactly matches all 1,022 pre-trial posted rows, with zero additions or removals. Private `oct11-loan25-repaired-waiver-cancelled-gl.csv` and `oct11-repaired-waiver-cancel-comparison.json` retain the comparison. The fresh Loan remains Disbursed with $218,250 pending principal. Both trial documents are Cancelled.
+
+The specific earned, undemanded interest-waiver lifecycle now passes hosted acceptance. Penalty waivers have regression coverage but no positive hosted penalty trial. Existing-demand waivers, charges, capitalization, NPA, advance-payment policy, historical corrections and accounting-owner review remain open.
+
+
+## October 11 existing-demand partial waiver acceptance
+
+Loan-scoped Process Loan Demand `d3gjut51ra` submitted at March 1, 2028 after its saved Loan 25 filter was verified. It generated interest demand `LM-LD-00118` for $2,109.75 and principal demand `LM-LD-00119` for $2,250, matching active schedule 16. All 1,022 prior GL rows remain. New postings comprise 56 accrual rows from 28 daily accruals, plus two interest-demand rows. New earned interest is $2,037; the retained February 1 accrual contributes $72.75, making February's 29-day interest $2,109.75. The demand transfers that amount from accrued to interest receivable, with no bank or principal-account change. This produces a 1,080-row monthly-demand baseline. The valid accrued interest and monthly demands remain submitted, not reversed solely to recover the earlier undemanded state.
+
+Waiver amendment `LM-REP-0015-2` at March 1 waived $72.75 against existing demand 118. Native allocation has zero principal and zero unbooked interest. The existing demand shows zero paid, $72.75 waived and $2,037 outstanding. Four balanced GL rows have net income debit $72.75 and interest-receivable credit $72.75; two same-account rows offset each other. The initial expected two-row assertion was too narrow and was corrected to inspect the net account effects. No new demand or bank/principal posting was created.
+
+Cancelling waiver 15-2 preserved demand 118 as Submitted, restored zero waived and $2,109.75 outstanding, and retained Loan Disbursed with $218,250 pending principal. Exact comparison of the fresh native GL export matches all 1,080 baseline rows, with zero additions or removals. Private `oct11-existing-demand-partial-waiver.jpg`, monthly-baseline and waiver posted/cancelled CSVs, and `oct11-existing-demand-waiver-comparison.json` carry the proof. This accepts the existing-demand partial interest-waiver lifecycle; it does not establish policy for actual concessions or readiness of penalty, charges, capitalization and NPA cases.
+
+
+## October 11 scheduled March receipt and cancellation
+
+Normal repayment `LM-REP-0016`, value March 1, 2028, saved and submitted through the native workflow. Allocation is $2,250 principal plus $2,109.75 February interest, with zero excess or unbooked interest. Existing principal demand 119 and interest demand 118 both became fully paid. Fresh Loan 25 remained Disbursed and its pending principal decreased from $218,250 to $216,000.
+
+The posted GL retained all 1,080 monthly-baseline rows and added three rows belonging only to repayment 16. They debit Trust $4,359.75, credit loans receivable $2,250 and credit interest receivable $2,109.75. No new accrual, demand or provider transfer occurred. Private `oct11-march-monthly-payment-submitted.jpg`, `oct11-loan25-march-repayment-posted-gl.csv` and its posting-comparison JSON carry the evidence.
+
+Normal cancellation restored the loan's $218,250 pending principal and each demand's full unpaid balance, with zero paid and waived. The fresh cancelled-receipt native GL export exactly matches all 1,080 monthly-baseline rows. Private `oct11-march-payment-cancel-comparison.json` records zero additions and removals. Repayment 16 is Cancelled; valid February accruals and March monthly demands remain Submitted. This accepts the next ordinary monthly payment and reversal after the two earlier restructures and waiver trials, while retaining the separate earlier-interest-only and remaining financial-variant checks.
+
+
+## October 11 capitalization source review
+
+The installed Lending source maps standalone Interest/Penalty/Charges Capitalization to the principal account for GL. Its generic update_paid_amounts increments payment counters without increasing loan_amount or outstanding principal, and mark_as_unpaid excludes capitalization types. This suggests a standalone principal/counter reconciliation risk. It is a source finding, not a hosted posting or reversal result. Native Loan Restructure handles the coordinated balance/schedule changes, and DCR's recorded approval snapshot restores prior balances and counters when an eligible normal restructure is cancelled. The owner is being asked whether to allow capitalization only through an approved restructure, prohibit it, or support standalone capitalization. No trial posting or rule change was made while that decision is pending.

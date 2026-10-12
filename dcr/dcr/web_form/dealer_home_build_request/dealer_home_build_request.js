@@ -130,7 +130,18 @@ frappe.ready(function () {
             recoverSaved();
             frappe.throw("Your request is saved. Its latest version needs to refresh before another save. Please wait, then Save again to retry your files.");
         }
-        return nativeValidate ? nativeValidate.call(form) : undefined;
+        const valid = nativeValidate ? nativeValidate.call(form) : undefined;
+        if (valid === false) return false;
+        for (const [fieldname, control] of Object.entries(form.fields_dict || {})) {
+            const df = control.df || {};
+            if (df.reqd || df.read_only || df.hidden || typeof control.get_value !== "function"
+                    || !control.$wrapper?.is(":visible")) continue;
+            const value = control.get_value();
+            // Native get_values omits nulls before merging into the saved doc.
+            // Keep an explicit clear so that merge cannot restore the old value.
+            if (value == null || value === "") form.doc[fieldname] = value ?? null;
+        }
+        return valid;
     };
     const nativeForm = document.querySelector(".web-form");
     if (nativeForm) nativeForm.addEventListener("submit", event => {
