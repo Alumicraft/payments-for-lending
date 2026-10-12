@@ -19,3 +19,8 @@
         grid-template-columns: minmax(0, 1fr);
     }
 }
+/* Keep useful purchasing/payment links; remove verified empty optional groups. */
+.dcr-po-unused-link,
+.dcr-po-unused-link-group {
+    display: none !important;
+}
