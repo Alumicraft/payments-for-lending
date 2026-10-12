@@ -24,7 +24,8 @@ function harness(hydrate = false) {
     const label=new Element('label'); label.classList={contains:name=>name==='reqd'}; label.textContent='Home type';
     const help=new Element('p'); help.textContent='Choose the type of home';
     const wrapper=new Element('div'); wrapper.querySelector=s=>s==='.control-label'?label:s==='.help-box'?help:null; wrapper.querySelectorAll=()=>[field];
-    const form={doc:{home_type:'Spec'},is_new:true,in_edit_mode:true,fields_dict:{home_type:{df:{label:'Home type',reqd:1}}},get_value:()=>field.value,on:()=>{},make_form_dirty:()=>{frappe.form_dirty=true;},validate:()=>true};
+    const nativeValidation={result:true};
+    const form={doc:{home_type:'Spec'},is_new:true,in_edit_mode:true,fields_dict:{home_type:{df:{label:'Home type',reqd:1}}},get_value:()=>field.value,on:()=>{},make_form_dirty:()=>{frappe.form_dirty=true;},validate:()=>nativeValidation.result};
     const document={createElement:tag=>new Element(tag),createTextNode:text=>({text}),
         addEventListener:(name,fn)=>documentEvents[name]=fn,
         querySelector:s=>s==='.web-form-footer'?footer:s==='.web-form-title h1'?heading:s==='.web-form'?native:null,
@@ -38,7 +39,7 @@ function harness(hydrate = false) {
     vm.runInNewContext(source,{document,window,frappe,URLSearchParams,setTimeout,MutationObserver:class{observe(){}},FormData:class{append(){}},fetch:async()=>({ok:true,json:async()=>({message:{uploaded:true}})})});
     const clickHeader=()=>{let prevented=false;documentEvents.click({target:{closest:()=>({href:'/portal'})},button:0,preventDefault:()=>prevented=true});assert(prevented);};
     const unload=()=>{let prevented=false;const event={preventDefault:()=>prevented=true};windowEvents.beforeunload(event);return{prevented,returnValue:event.returnValue};};
-    return{nodes,form,field,label,help,heading,window,frappe,warnings,navigations,notices,clickHeader,unload};
+    return{nodes,form,field,label,help,heading,window,frappe,warnings,navigations,notices,clickHeader,unload,nativeValidation};
 }
 (async()=>{
     let initial=harness(true);await new Promise(resolve=>setTimeout(resolve,5));
@@ -72,5 +73,30 @@ function harness(hydrate = false) {
     h=harness();await settle();h.window.saving=true;h.clickHeader();
     assert.equal(h.navigations.length,0);assert.equal(h.warnings.length,0);
     assert.match(h.notices[0],/finish saving/);assert.equal(h.unload().prevented,true,'in-flight save stays guarded');
+    h=harness();await settle();
+    const optional=(value, extra={})=>({df:{fieldname:'end_buyer_name',fieldtype:'Data',...extra},get_value:()=>value,$wrapper:{is:()=>true}});
+    h.form.doc.end_buyer_name='Saved buyer';
+    h.form.doc.park_contact_name='Hidden contact';
+    h.form.doc.factory_quote_no='Read-only quote';
+    h.form.doc.factory='Required factory';
+    h.form.fields_dict.end_buyer_name=optional(null);
+    h.form.fields_dict.park_contact_name={...optional(null),$wrapper:{is:()=>false}};
+    h.form.fields_dict.factory_quote_no=optional(null,{read_only:1});
+    h.form.fields_dict.factory=optional(null,{reqd:1});
+    assert.equal(h.form.validate(),true);
+    // Pinned native WebForm.save merges non-null FieldGroup values into doc.
+    // A cleared Data control is omitted, so the saved reference value must
+    // already be cleared before that native merge builds the POST payload.
+    const nativePayload={...h.form.doc,home_type:'Spec',selling_price:0};
+    assert.equal(nativePayload.end_buyer_name,null,'clearing an optional input must clear the submitted value');
+    assert.equal(nativePayload.park_contact_name,'Hidden contact','hidden context is retained');
+    assert.equal(nativePayload.factory_quote_no,'Read-only quote');
+    assert.equal(nativePayload.factory,'Required factory','native required validation remains responsible');
+    assert.equal(nativePayload.selling_price,0,'zero is preserved as a numeric value');
+
+    h=harness();await settle();h.nativeValidation.result=false;
+    h.form.doc.end_buyer_name='Saved buyer';h.form.fields_dict.end_buyer_name=optional(null);
+    assert.equal(h.form.validate(),false);
+    assert.equal(h.form.doc.end_buyer_name,'Saved buyer','failed validation does not rewrite saved state');
     console.log('Native labels, clean/dirty/pending leave, cancel/confirm, saving lock and successful save passed (mocked client)');
 })().catch(error=>{console.error(error);process.exitCode=1;});
