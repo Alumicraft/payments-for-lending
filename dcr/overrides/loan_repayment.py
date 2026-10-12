@@ -46,7 +46,41 @@ class CustomLoanRepayment(LoanRepayment):
 
     def on_cancel(self):
         super().on_cancel()
+        subtype = self._generated_waiver_subtype()
+        if subtype:
+            for name in frappe.get_all(
+                "Loan Demand", filters={
+                    "loan": self.against_loan, "loan_repayment": self.name,
+                    "docstatus": 1, "demand_subtype": subtype,
+                }, pluck="name",
+            ):
+                frappe.get_doc("Loan Demand", name).cancel()
         self._reopen_legacy_interest_only_loan()
+
+    def book_interest_accrued_not_demanded(self):
+        super().book_interest_accrued_not_demanded()
+        subtype = self._generated_waiver_subtype()
+        if not subtype:
+            return
+        for demand in frappe.get_all(
+            "Loan Demand", filters={
+                "loan": self.against_loan, "loan_repayment": self.name,
+                "docstatus": 1, "demand_subtype": subtype,
+            }, fields=["name", "paid_amount", "waived_amount"],
+        ):
+            if flt(demand.paid_amount) > 0:
+                frappe.db.set_value("Loan Demand", demand.name, {
+                    "paid_amount": 0,
+                    "waived_amount": flt(demand.waived_amount) + flt(demand.paid_amount),
+                }, update_modified=False)
+
+    def _generated_waiver_subtype(self):
+        subtype = {"Interest Waiver": "Interest", "Penalty Waiver": "Penalty"}.get(self.repayment_type)
+        if not subtype:
+            return None
+        from dcr.api.floorplan_accrual import floorplan_loan
+
+        return subtype if floorplan_loan(self.against_loan) else None
 
     def auto_close_loan(self):
         """Do not close an interest-only loan while principal is outstanding.

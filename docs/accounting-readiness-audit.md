@@ -436,3 +436,23 @@ A client repair replaces the legacy refund action only on submitted invoice-back
 PR96 installed at exacte3a8a1facf7b361dc0ee8501d0aca5af4fa2172d. DCR-only pipeline279at5rkoo succeeded10:05PM; site migration succeeded10:04PM. Fresh Desk asset version20261011-9. Native amendment14-1 retains $218,422.75 payment, $218,250 principal, $72.75 interest and $100 excess. The corrected loan action is absent at zero excess and opens the proper LoanRefund draft at positive excess, with correct amount/borrower/product/bank, excess mode checked and ValueDate blank for deliberate staff choice. Refund2 saves/submits after staff selects February2 and closes the loan. After refund cancellation the action remains available on the closed loan with actual excess; cancelling the amended payoff restores Loan25 and all1,022posted GL rows exactly to the pre-trial baseline. Private corrected-draft/submitted screenshots, restored CSV and comparison JSON retained. No provider transfer or product/account setting changed.
 
 Fresh request29 reload after refund2 showed LoanStageFunded although fresh Loan25 wasClosed. Missing refund stage hooks explain the persisted mismatch. A prepared repair invokes the existing request-stage synchronizer after native refund submit/cancel and resolves the refund's Loan link to its request. It does not change loan balances, native refund closing/cancellation behavior or receipt-based order-stage rules. Registered-hook tests failed before the repair and now verify closed loan stage on both events, with and without a submitted receipt, and no unrelated request update when the link is absent. All690Python tests and40subtests pass; hosted stage acceptance remains pending deployment. Simultaneous signed-in dealer polling is a separate unverified gate.
+
+
+## October 11 refund stage synchronization
+
+PR #97 is installed at `ae63849bd21bab557ce7663492804ef00119ccb8`. Cloud pipeline `2hg9q71k45` and the independent site migration succeeded at 10:22 PM. Core app versions remain pinned.
+
+Synthetic payoff amendment `LM-REP-0014-2` and native excess refund `LM-RF-00003` exercised the new registered Refund hooks. A fresh Loan and Home Build Request both show a Closed loan stage after refund submission. The order remains Ordered because no receipt is submitted. Refund cancellation preserves the native Closed loan state; subsequent payoff cancellation restores Loan Disbursed and request Funded. Both trial documents are now Cancelled.
+
+The fresh loan-scoped native GL export contains the same 1,022 posted rows as the pre-trial baseline. Exact multiset comparison found zero added or removed rows. Private evidence includes `oct11-refund-request-stage-closed.jpg`, `oct11-loan25-stage-refund-reversal-gl.csv` and `oct11-stage-refund-cancel-ledger-comparison.json`. This closes the persisted request-stage defect, not the separate simultaneous dealer-polling or full accounting-readiness checks.
+
+
+## October 11 undemanded interest waiver defects
+
+A normal synthetic Interest Waiver at February 2, 2028 allocated $72.75 to interest and zero to principal. The selected repayment account was interest income, so no bank movement posted. All prior 1,022 GL rows remained, plus six balanced rows from waiver `LM-REP-0015` and demand `LM-LD-00116`. Net earned interest decreased by the waived amount, and accrued interest cleared. Two same-account income rows net to zero.
+
+The pinned native `book_interest_accrued_not_demanded` calls `create_loan_demand` with `paid_amount` even for Interest Waiver and Penalty Waiver. The fresh generated demand therefore showed Paid Amount rather than Waived Amount. The native cancellation path reverses the waiver and allocated pre-existing demands, but leaves this separately generated demand Submitted and paid. Fresh GL after cancellation retained its two posting rows, and native unpaid-interest state disagreed with interest receivable. This trial does not pass waiver acceptance.
+
+Cancelling the synthetic generated demand through its native form restored an exact match to all 1,022 baseline posted rows. Both trial documents are Cancelled. Private posted, cancelled and fixture-restored CSVs and comparison JSONs retain the evidence. No historical demand was changed.
+
+A scoped repayment-controller repair is prepared. It converts paid to waived on the generated interest or penalty demand for DCR floorplan loans, then uses the native Demand cancellation when its owning waiver is cancelled. Existing demands, other loans and other repayment types retain native behavior. Four regression cases and the full 694-test Python suite pass, with 40 subtests and nine existing warnings. Deployment and hosted closure of both defects remain pending.
