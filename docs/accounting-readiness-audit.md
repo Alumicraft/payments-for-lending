@@ -264,3 +264,10 @@ ERPNext's new invoice/receipt and amended receipt flows reapply US ST6% even fro
 ### October 11: Inventory ordering and Cash dealer readback
 
 Synthetic Inventory33/PO20 submits normally at240000 with Flooring payment type and trial-only zero tax. No Inventory invoice, loan, receipt or payment created, so this proves ordering and checklist gates only. Fresh authenticated owner dealer sees Inventory33 Ordered/LoanNotStarted and CustomerSoldCash32 Delivered/LoanNotApplicable. Administrator session restored normally. Insurance, tax-default decision, automatic invoice account mapping and remaining financial reconciliations stay open; accounting is NOT READY.
+
+
+### October 11: Cash receipt-to-invoice account validation
+
+Native receipt5-1 Create PurchaseInvoice maps CustomerSoldCash request32, Champion, Manufactured Home qty1/rate220000 and source receipt. New unsaved invoice supplier bill DEMO-CASH-INVOICE-20261011, bill dateOctober11. The default6% template again appears; cleared only on this trial draft, including its tax row, leaving220000. Normal Save rejects with "Expense account is mandatory for item Manufactured Home". Draft retains entered supplier bill and220000; no invoice saved or submitted, no ledger posting. This gives hosted proof that the non-stock receipt is not silently assigned stock-received clearing. Private oct11-cash-invoice-account-validation.jpg and unsaved agent tab96 retained for continuation.
+
+Asked the owner whether DCR collects the full Cash/COD invoice and pays the factory, or the dealer pays the factory directly. This decides the clearing/receivable/payable workflow; assigning expense or loan funding clearing without that distinction would assume the purchasing model. Source guard is installed, but account routing remains unresolved. RelatedDocuments on PO20 still shows empty manufacturing, subcontracting and reference groups alongside useful receipt/invoice/payment actions. Retain that relevance review as open rather than claiming all controls are minimal.
