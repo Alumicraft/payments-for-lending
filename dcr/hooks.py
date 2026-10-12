@@ -154,6 +154,7 @@ doc_events = {
         "on_update": "dcr.api.hbr_stage.sync_from_doc",
     },
     "Loan": {
+        "onload": "dcr.api.loan_readback.show_posted_funding",
         "before_validate": "dcr.api.lending.apply_application_repayment_date",
         "validate": "dcr.api.lending.on_loan_validate",
         "after_insert": "dcr.api.lending.on_loan_after_insert",

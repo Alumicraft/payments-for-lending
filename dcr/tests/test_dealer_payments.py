@@ -14,9 +14,10 @@ def test_unowned_or_unsubmitted_loan_never_reads_payment_records(frappe):
         "name": "OTHER-LOAN", "applicant": "DEALER-A", "docstatus": 1})
 
 
+@patch.object(payments, "pending_principal", return_value=214000)
 @patch.object(portal, "_available_fields", side_effect=lambda doctype, fields: fields)
 @patch.object(payments, "frappe")
-def test_paid_demands_override_old_unchecked_flags_and_remaining_amount_is_not_full_emi(frappe, fields):
+def test_paid_demands_override_old_unchecked_flags_and_remaining_amount_is_not_full_emi(frappe, fields, pending):
     frappe.db.exists.return_value = True
     frappe.db.get_value.return_value = "USD"
     frappe.utils.today.return_value = "2026-10-06"
@@ -59,9 +60,10 @@ def test_approved_unfunded_loan_has_no_posted_balance_or_payment_schedule(frappe
     frappe.get_all.assert_not_called()
 
 
+@patch.object(payments, "pending_principal", return_value=1000)
 @patch.object(portal, "_available_fields", side_effect=lambda doctype, fields: fields)
 @patch.object(payments, "frappe")
-def test_charge_demands_are_included_in_displayed_breakdown(frappe, fields):
+def test_charge_demands_are_included_in_displayed_breakdown(frappe, fields, pending):
     frappe.db.exists.return_value = True
     frappe.utils.today.return_value = "2026-10-06"
     frappe.get_all.side_effect = lambda doctype, **kwargs: [{"demand_date": "2026-10-01",

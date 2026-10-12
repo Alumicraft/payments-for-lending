@@ -16,17 +16,12 @@ def payment_summary(loan, customer_name):
     if not frappe.db.exists("Loan", {"name": name, "applicant": customer_name, "docstatus": 1}):
         # A draft/sanctioned application has no posted payment balance.
         return None
-    required = ("disbursed_amount", "total_principal_paid", "written_off_amount")
-    balance = None
-    if all(_value(loan, field) is not None for field in required):
-        balance = float(max(Decimal(0), _amount(_value(loan, "disbursed_amount"))
-                            - _amount(_value(loan, "total_principal_paid"))
-                            - _amount(_value(loan, "written_off_amount"))))
     currency = frappe.db.get_value("Company", _value(loan, "company"), "default_currency")
     today = str(frappe.utils.today())[:10]
     if _value(loan, "disbursed_amount") == 0:
         return {"outstanding_principal": None, "currency": currency, "funded": False,
             "upcoming": [], "history": [], "history_truncated": False, "as_of": today}
+    balance = max(0.0, float(pending_principal(name)))
     demands = frappe.get_all("Loan Demand", filters={"loan": name, "docstatus": 1},
         fields=_available_fields("Loan Demand", ["name", "demand_date", "posting_date",
             "demand_subtype", "outstanding_amount", "repayment_schedule_detail"]),
@@ -78,3 +73,11 @@ def payment_summary(loan, customer_name):
             "date": _json_value(_value(row, "posting_date")), "amount": _json_value(_value(row, "amount_paid")),
             "type": _value(row, "repayment_type")} for row in history[:100]],
         "history_truncated": len(history) > 100, "as_of": frappe.utils.today()}
+
+
+def pending_principal(name):
+    from lending.loan_management.doctype.loan_repayment.loan_repayment import (
+        get_pending_principal_amount,
+    )
+
+    return get_pending_principal_amount(frappe.get_doc("Loan", name))
