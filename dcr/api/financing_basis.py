@@ -263,6 +263,12 @@ def ensure_financing_fields():
                             fieldtype='Int', insert_after='repayment_periods', default='0',
                             read_only=1, hidden=1, no_copy=1)).insert(ignore_permissions=True)
     frappe.clear_cache(doctype='Loan Repayment Schedule')
+    if not frappe.get_meta('Loan Restructure').has_field('dcr_restructure_snapshot'):
+        frappe.get_doc(dict(doctype='Custom Field', dt='Loan Restructure',
+                            fieldname='dcr_restructure_snapshot', label='DCR Pre-Approval Snapshot',
+                            fieldtype='Long Text', insert_after='loan',
+                            read_only=1, hidden=1, no_copy=1)).insert(ignore_permissions=True)
+    frappe.clear_cache(doctype='Loan Restructure')
     for field in [
         dict(fieldname='financed_invoice', label='Funding Invoice', fieldtype='Link',
              options='Purchase Invoice', insert_after='loan_amount',
