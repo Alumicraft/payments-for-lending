@@ -25,6 +25,26 @@ class CustomLoanRepayment(LoanRepayment):
             adjust_closure_amounts(self.against_loan, self.value_date, amounts)
         return super().set_missing_values(amounts)
 
+    def mark_as_unpaid(self):
+        if self.repayment_type not in ('Charge Payment', 'Charges Waiver'):
+            return super().mark_as_unpaid()
+        loan = frappe.qb.DocType('Loan')
+        query = (
+            frappe.qb.update(loan)
+            .set(loan.total_amount_paid, loan.total_amount_paid - self.amount_paid)
+            .set(loan.total_principal_paid, loan.total_principal_paid - self.principal_amount_paid)
+            .where(loan.name == self.against_loan)
+        )
+        if self.loan_disbursement:
+            disbursement = frappe.qb.DocType('Loan Disbursement')
+            (
+                frappe.qb.update(disbursement)
+                .set(disbursement.principal_amount_paid,
+                     disbursement.principal_amount_paid - self.principal_amount_paid)
+                .where(disbursement.name == self.loan_disbursement)
+            ).run()
+        self.update_limits(query, loan, cancel=1).run()
+
     def before_submit(self):
         if self.repayment_type == 'Loan Closure':
             from datetime import timedelta
