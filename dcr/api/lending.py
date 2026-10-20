@@ -257,6 +257,16 @@ def create_loan_demand_with_context(
     """Create a Lending demand with borrower context before GL submission."""
     from frappe.utils import cint, flt
 
+    if (demand_type == 'EMI' and demand_subtype == 'Interest'
+            and repayment_schedule_detail and process_loan_demand
+            and not loan_repayment and not is_imported
+            and not paid_amount and not is_partial_pre_paid_interest):
+        from dcr.api.floorplan_accrual import scheduled_interest_due
+
+        actual = scheduled_interest_due(loan, demand_date)
+        if actual is not None:
+            amount = actual
+
     precision = cint(frappe.db.get_default("currency_precision")) or 2
     if not amount:
         return

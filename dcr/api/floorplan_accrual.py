@@ -2,6 +2,7 @@
 
 from contextlib import contextmanager
 from datetime import timedelta
+from decimal import Decimal
 
 import frappe
 from frappe.utils import getdate
@@ -49,6 +50,25 @@ def projected_interest(loan, value_date):
     start = (getdate(latest[0].posting_date) + timedelta(days=1) if latest
              else min(getdate(day) for day, amount in events if float(amount) > 0))
     return elapsed_floorplan_interest(events, start, end, loan.rate_of_interest)
+
+
+def scheduled_interest_due(name, demand_date):
+    """Demand earned interest once, including unpaid-principal and waiver effects."""
+    loan = floorplan_loan(name)
+    if not loan:
+        return None
+    end = str(getdate(demand_date))
+    accrued = frappe.get_all('Loan Interest Accrual', filters={
+        'loan': name, 'docstatus': 1, 'interest_type': 'Normal Interest',
+        'posting_date': ['<', end],
+    }, fields=['sum(interest_amount) as amount'])
+    demanded = frappe.get_all('Loan Demand', filters={
+        'loan': name, 'docstatus': 1, 'demand_subtype': 'Interest',
+        'demand_date': ['<=', end],
+    }, fields=['sum(demand_amount) as amount'])
+    booked = Decimal(str(accrued[0].amount or 0))
+    billed = Decimal(str(demanded[0].amount or 0))
+    return max(Decimal(0), booked + projected_interest(loan, end) - billed)
 
 
 def adjust_closure_amounts(name, value_date, amounts):
