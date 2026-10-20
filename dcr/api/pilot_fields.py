@@ -162,6 +162,31 @@ def ensure_loan_payment_layout():
         frappe.clear_cache(doctype=doctype)
 
 
+def ensure_charge_payment_amount_column():
+    """Show the amount users must allocate beside each selected charge."""
+    doctype = "Loan Repayment Charges"
+    if not frappe.db.exists("DocType", doctype):
+        return
+    field = frappe.get_meta(doctype).get_field("amount")
+    if not field or field.in_list_view:
+        return
+    name = frappe.db.exists("Property Setter", {
+        "doc_type": doctype, "field_name": "amount", "property": "in_list_view",
+    })
+    if name:
+        setter = frappe.get_doc("Property Setter", name)
+        setter.value = "1"
+        setter.save(ignore_permissions=True)
+    else:
+        frappe.get_doc({
+            "doctype": "Property Setter", "doctype_or_field": "DocField",
+            "doc_type": doctype, "field_name": "amount",
+            "property": "in_list_view", "property_type": "Check", "value": "1",
+        }).insert(ignore_permissions=True)
+    frappe.clear_cache(doctype=doctype)
+    frappe.clear_cache(doctype="Loan Repayment")
+
+
 def populate_purchase_order_dealer(doc, method=None):
     """Keep new and edited orders aligned with their linked home request."""
     if not frappe.get_meta("Purchase Order").has_field("custom_dcr_dealer"):

@@ -8,6 +8,16 @@ from dcr.lending_rules import has_material_outstanding_principal
 
 
 class CustomLoanRepayment(LoanRepayment):
+    def allocate_charges(self, amount_paid, demands):
+        remaining = super().allocate_charges(amount_paid, demands)
+        precision = cint(frappe.db.get_default("currency_precision")) or 2
+        if self.repayment_type == 'Charge Payment' and flt(remaining, precision) > 0:
+            frappe.throw(
+                'Set the amounts in Payable Charges to cover this Charge Payment. '
+                'The payment cannot include principal or interest.'
+            )
+        return remaining
+
     def set_missing_values(self, amounts):
         if self.repayment_type == 'Loan Closure':
             from dcr.api.floorplan_accrual import adjust_closure_amounts
