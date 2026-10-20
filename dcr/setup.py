@@ -37,6 +37,7 @@ def after_install():
     from dcr.api.pilot_fields import (
         ensure_pilot_fields, ensure_purchase_order_form_layout,
         ensure_loan_application_insurance_layout, ensure_loan_payment_layout,
+        ensure_charge_payment_amount_column,
     )
     # Map block first — isolated so any later setup failure cannot block it.
     try:
@@ -146,6 +147,7 @@ def after_install():
         ensure_inventory_loan_application_fields,
         ensure_loan_application_insurance_layout,
         ensure_loan_payment_layout,
+        ensure_charge_payment_amount_column,
         ensure_lending_calculation_values,
         ensure_hbr_stage_field_options,
         sync_existing_hbr_stage_fields,
