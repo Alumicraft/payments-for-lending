@@ -1,6 +1,6 @@
 # Accounting readiness audit
 
-Updated October 11, 2026. Status: **not ready; configuration findings and posting reconciliation remain open**. This is part of the pilot checklist, not a certification of the ledger.
+Updated October 20, 2026. Status: **not ready; configuration findings and posting reconciliation remain open**. This is part of the pilot checklist, not a certification of the ledger.
 
 ## Initial configuration findings
 
@@ -488,3 +488,17 @@ Normal cancellation restored the loan's $218,250 pending principal and each dema
 ## October 11 capitalization source review
 
 The installed Lending source maps standalone Interest/Penalty/Charges Capitalization to the principal account for GL. Its generic update_paid_amounts increments payment counters without increasing loan_amount or outstanding principal, and mark_as_unpaid excludes capitalization types. This suggests a standalone principal/counter reconciliation risk. It is a source finding, not a hosted posting or reversal result. Native Loan Restructure handles the coordinated balance/schedule changes, and DCR's recorded approval snapshot restores prior balances and counters when an eligible normal restructure is cancelled. The owner is being asked whether to allow capitalization only through an approved restructure, prohibit it, or support standalone capitalization. No trial posting or rule change was made while that decision is pending.
+
+## October 20 penalty mappings and zero-balance waiver guards
+
+A fresh loan-scoped native General Ledger export through March 1, 2028 contains 1,080 posted rows. All posting columns match the October 11 monthly baseline. The report's derived running Balance column differs with grouping and is excluded from that cross-format comparison. Loan 25 remains Disbursed with $218,250 pending principal.
+
+The Standard product and Loan 25 both have a 0% penalty rate. The native Loan Interest Accrual list has no manual-create action. No penalty accrual was fabricated, no penalty rate was enabled, and no positive penalty lifecycle is claimed.
+
+The product still mapped Penalty Accrued and Penalty Income to the same `40110 - Service/Fee Income - DCR` account, with Penalty Receivable sharing principal's `10202 - Loans Receivable - DCR`. Pinned Lending `97f692e` posts a penalty accrual as debit accrued / credit income, then a penalty demand as debit receivable / credit accrued. The shared income mapping would cancel the accrual's net accounting rather than recognize an accrued asset.
+
+Using normal Account forms, created `Accrued Flooring Penalties - DCR` and `Flooring Penalties Receivable - DCR` as enabled, non-group USD Asset / Balance Sheet accounts under `10200 - Current Assets - DCR`, with no opening entries. Normal product Save assigned these to Penalty Accrued and Penalty Receivable. Fresh readback and Version `51u3lp157n` confirm exactly those two mapping changes. Penalty Income and Penalty Waiver retain the service/fee income account, and the penalty rate remains 0%. Historical postings were not rewritten. The existing field order places the collapsed account sections under Connections; the empty native Accounting tab does not indicate missing permissions or data.
+
+An unsaved native Loan Repayment on Loan 25, value date March 1, 2028, was tested with $25 against a zero balance. Penalty Waiver Save rejects it with `Waived penalty amount 25.0 cannot be greater than overdue amount 0.0`. Charges Waiver rejects the same amount with `Waived charges amount 25.0 cannot be greater than overdue amount 0.0`. Neither produced a saved repayment or submission. These are rejection-path checks, not positive posting/reversal acceptance.
+
+A second native GL export retains all 1,080 posted rows, with zero additions or removals across all 15 posting columns; only the report's derived Balance column is excluded because grouping reset on reload. Private `oct20-penalty-config-ledger-comparison.json`, before/after CSVs, mapping screenshot and both rejection screenshots retain the evidence. The owner is being asked whether penalties should remain disabled or which rate/grace period to use. Positive penalty and charge lifecycles, NPA behavior, earlier separate interest-only receipts and accounting-owner acceptance remain open.
