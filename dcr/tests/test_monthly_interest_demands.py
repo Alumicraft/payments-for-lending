@@ -52,18 +52,20 @@ def demand_context(booked=38594.25, demanded=38594.25, latest='2028-02-29', paym
 
     def get_all(doctype, filters, fields, **kwargs):
         assert filters['docstatus'] == 1
+        assert not any(isinstance(field, str) and '(' in field for field in fields), \
+            'Frappe v16 requires structured aggregate fields'
         if doctype == 'Loan Disbursement':
             return [Doc(disbursement_date='2026-10-01', disbursed_amount=225000)]
         if doctype == 'Loan Repayment':
             return [Doc(value_date=day, principal_amount_paid=amount) for day, amount in (
                 ('2027-11-01', 2250), ('2027-12-01', 2250), ('2028-02-01', 2250), *payments)]
         if doctype == 'Loan Interest Accrual':
-            if fields == ['sum(interest_amount) as amount']:
+            if fields == [{'SUM': 'interest_amount', 'as': 'amount'}]:
                 return [Doc(amount=booked)]
             assert fields == ['posting_date']
             return [Doc(posting_date=latest)] if latest else []
         assert doctype == 'Loan Demand'
-        assert fields == ['sum(demand_amount) as amount']
+        assert fields == [{'SUM': 'demand_amount', 'as': 'amount'}]
         assert filters['demand_subtype'] == 'Interest'
         return [Doc(amount=demanded)]
 

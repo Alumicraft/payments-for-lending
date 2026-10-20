@@ -61,11 +61,11 @@ def scheduled_interest_due(name, demand_date):
     accrued = frappe.get_all('Loan Interest Accrual', filters={
         'loan': name, 'docstatus': 1, 'interest_type': 'Normal Interest',
         'posting_date': ['<', end],
-    }, fields=['sum(interest_amount) as amount'])
+    }, fields=[{'SUM': 'interest_amount', 'as': 'amount'}])
     demanded = frappe.get_all('Loan Demand', filters={
         'loan': name, 'docstatus': 1, 'demand_subtype': 'Interest',
         'demand_date': ['<=', end],
-    }, fields=['sum(demand_amount) as amount'])
+    }, fields=[{'SUM': 'demand_amount', 'as': 'amount'}])
     booked = Decimal(str(accrued[0].amount or 0))
     billed = Decimal(str(demanded[0].amount or 0))
     return max(Decimal(0), booked + projected_interest(loan, end) - billed)
