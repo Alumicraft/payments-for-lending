@@ -502,3 +502,40 @@ Using normal Account forms, created `Accrued Flooring Penalties - DCR` and `Floo
 An unsaved native Loan Repayment on Loan 25, value date March 1, 2028, was tested with $25 against a zero balance. Penalty Waiver Save rejects it with `Waived penalty amount 25.0 cannot be greater than overdue amount 0.0`. Charges Waiver rejects the same amount with `Waived charges amount 25.0 cannot be greater than overdue amount 0.0`. Neither produced a saved repayment or submission. These are rejection-path checks, not positive posting/reversal acceptance.
 
 A second native GL export retains all 1,080 posted rows, with zero additions or removals across all 15 posting columns; only the report's derived Balance column is excluded because grouping reset on reload. Private `oct20-penalty-config-ledger-comparison.json`, before/after CSVs, mapping screenshot and both rejection screenshots retain the evidence. The owner is being asked whether penalties should remain disabled or which rate/grace period to use. Positive penalty and charge lifecycles, NPA behavior, earlier separate interest-only receipts and accounting-owner acceptance remain open.
+
+## October 20 current scheduler and generated-posting evidence
+
+Read-only native job inspection confirms Stopped unchecked for the following jobs. No scheduler setting was saved and no job was manually triggered. Times are America/Los_Angeles.
+
+| Job | Last execution | Next execution | Retained results reviewed |
+| --- | --- | --- | --- |
+| Interest accrual `h9avlsfpk1` | October 20 11:48:11 | October 21 00:00 | All seven listed logs Complete; latest `dahls8rqq7`, no displayed error details |
+| Loan demand `h9at5rqcmp` | October 20 11:48:32 | October 21 00:00 | All seven listed logs Complete; latest `dao3i0lbbm` |
+| Loan accounting `1547c74ssq` | October 20 11:48:35 | October 21 00:00 | All seven listed logs Complete; latest `bap5nujli0` |
+| Settlement reconciliation `1o9r6r3aeb` | October 20 15:00:40 | October 20 16:00 | Latest 20 listed logs Complete out of 94 retained; latest `6rai4ekg02` |
+
+Today's submitted accrual process `LM-PLA-00394` covers October 19 and generated six submitted Normal Interest / Regular accruals, `LM-LIA-01161` through `LM-LIA-01166`, for loans 8, 13, 15, 16, 17 and 24. Sample 1161 records $231,111 at 12%, October 18–19, and $77.04 interest, matching one Actual/360 day rounded to cents. Its native Accounting Ledger posts October 20: debit Accrued Flooring Interest $77.04 and credit Flooring Interest Income $77.04, Main cost center, against Loan 8. Private `oct20-scheduled-accrual-posting.jpg` retains the posting proof. This verifies a current scheduled output and its posting, not the whole legacy ledger's correctness.
+
+Today's submitted demand process `dao4lgsrqe` has October 20 cutoff and an empty linked demand list filtered by that exact process ID. No eligible-demand or missed-demand conclusion is inferred from an empty list alone. The separately reconciled positive monthly-demand trial remains the posting evidence. Current classification outcomes, bank settlements and final accounting-owner acceptance remain open.
+
+## October 20 legacy principal and shared-account bridge
+
+Joined the October 11 native company GL snapshot with its funding and demand exports, then read the four referenced receipts and all seven legacy Loan counters through native forms on October 20. Every posted funding ID matches its loan and exported disbursed amount. Each shared-account demand matches an exported Interest demand. Each receipt's amount equals its saved principal, interest and excess allocation and the shared-account credit. No unclassified posting remains in this bridge.
+
+The initial funding-only explanation failed for loans 14 and 15 because four receipts also credited the shared account. Native readback resolves those credits: receipts 3 and 4 are each $500 excess with zero principal/interest allocation; receipt 5 pays $500 interest; receipt 6-1 pays $1,000 interest. All four have zero principal paid. They must not be treated as principal reductions solely from the account name.
+
+| Legacy loan | Funded principal | Net interest in shared account | Excess cash offset | Shared-account net debit |
+| --- | ---: | ---: | ---: | ---: |
+| 8 | $231,111.00 | $4,938.70 | $0.00 | $236,049.70 |
+| 13 | $218,000.00 | $13,080.00 | $0.00 | $231,080.00 |
+| 14 | $25,000.00 | $0.00 | $1,000.00 | $24,000.00 |
+| 15 | $100,000.00 | $2,000.00 | $0.00 | $102,000.00 |
+| 16 | $200,000.00 | $6,000.00 | $0.00 | $206,000.00 |
+| 17 | $220,000.00 | $6,600.00 | $0.00 | $226,600.00 |
+| 24 | $124,561.00 | $1,245.61 | $0.00 | $125,806.61 |
+
+All seven bridges match: $1,118,672 funded principal + $35,364.31 posted interest demands - $1,500 allocated interest receipts - $1,000 excess = $1,151,536.31 in the shared account. Current native Loan counters report zero principal paid on all seven and $1,000 excess only on Loan 14. These are accounting-record facts, not an assertion about collectible balances or contract entitlement.
+
+Loan 14 is a specific unresolved closure exception: native status Closed, disbursed and loan amount $25,000, total principal paid $0, total amount paid $1,500, saved total payment $28,000 and excess $1,000. Closure Date is June 25. Written Off Amount displays blank, no linked write-off count is shown, and the inspected GL snapshot contains no write-off posting for this loan. The source already has a legacy interest-only closure safeguard on future repayment validation/submission; merely viewing an old Loan does not run it. No historical receipt was re-saved to invoke that safeguard, no old loan was reopened, and no excess was allocated or refunded. Review the closure and the two excess receipts with the accounting owner before any correction or cutover.
+
+Private `oct20-legacy-principal-bridge.json`, `oct20-legacy-receipt-allocation-readback.json` and `oct20-legacy-loan-counter-readback.json` retain the joins and native counters. `oct20-legacy-loan14-closed-principal-exception.jpg` shows Closed status with $0 principal paid and $1,500 total paid. All seven live disbursed, principal-paid and excess counters match the bridge inputs. The ledger and funding/demand scope is the October 11 export snapshot; receipt and Loan readback is October 20. Original contracts, complete current GL and actual bank statements remain necessary for a final reconciliation if these records are carried into production balances. These are historical test records in the resettable app, separate from the current Loan 25 acceptance trial. The previously identified historical accrual/day-count and recognition issues remain unresolved; this bridge supplies no adjustment amount.
