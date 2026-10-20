@@ -1,6 +1,8 @@
 from contextlib import contextmanager
+import importlib.util
+from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 import sys
 
 import pytest
@@ -13,15 +15,38 @@ class Doc(SimpleNamespace):
         return getattr(self, key, default)
 
 
+class NativeDemand(Doc):
+    def is_new(self):
+        return self.saved == 0
+
+    def validate(self):
+        self.outstanding_amount = self.demand_amount - self.get('paid_amount', 0)
+
+    def save(self):
+        self.validate()
+        self.saved += 1
+
+    def submit(self):
+        self.docstatus = 1
+        self.validate()
+        self.before_submit()
+        self.make_gl_entries()
+        self.submitted += 1
+
+    def make_gl_entries(self, cancel=0):
+        self.gl_amounts.append(self.demand_amount)
+
+
 @contextmanager
 def demand_context(booked=38594.25, demanded=38594.25, latest='2028-02-29', payments=()):
     loan = Doc(name='LOAN', loan_product='Standard', company='DCR',
                original_financed_principal=225000, home_build_request='HOME', rate_of_interest=12)
     created = []
+    controller = None
 
     def new_doc(doctype):
         assert doctype == 'Loan Demand'
-        doc = Doc(save=Mock(), submit=Mock())
+        doc = controller(docstatus=0, saved=0, submitted=0, gl_amounts=[])
         created.append(doc)
         return doc
 
@@ -55,24 +80,52 @@ def demand_context(booked=38594.25, demanded=38594.25, latest='2028-02-29', paym
         frappe.db.get_default.return_value = 2
         frappe.get_all.side_effect = get_all
         frappe.new_doc.side_effect = new_doc
+        spec = importlib.util.spec_from_file_location('monthly_demand_controller',
+            Path(__file__).parents[1] / 'overrides/loan_demand.py')
+        module = importlib.util.module_from_spec(spec)
+        with patch.dict(sys.modules, {
+            'lending.loan_management.doctype.loan_demand.loan_demand':
+                SimpleNamespace(LoanDemand=NativeDemand),
+        }):
+            spec.loader.exec_module(module)
+        controller = module.CustomLoanDemand
         yield SimpleNamespace(created=created, loan=loan, frappe=frappe)
 
 
-def issue(**changes):
+def demand_values(**changes):
     values = dict(loan='LOAN', demand_date='2028-04-01', demand_type='EMI',
                   demand_subtype='Interest', amount=2232,
                   loan_repayment_schedule='SCHEDULE', repayment_schedule_detail='APRIL',
                   process_loan_demand='PROCESS')
     values.update(changes)
-    lending.create_loan_demand_with_context(**values)
+    return values
+
+
+def issue(**changes):
+    lending.create_loan_demand_with_context(**demand_values(**changes))
 
 
 def test_unpaid_month_does_not_assume_forecast_principal_was_received():
     with demand_context() as context:
         issue()
         assert context.created[0].demand_amount == 2255.25
-        context.created[0].save.assert_called_once()
-        context.created[0].submit.assert_called_once()
+        assert context.created[0].saved == context.created[0].submitted == 1
+
+
+@pytest.mark.parametrize('save_first', [True, False])
+def test_queued_native_creation_uses_the_controller_without_the_process_wrapper(save_first):
+    with demand_context() as context:
+        values = demand_values()
+        doc = context.frappe.new_doc('Loan Demand')
+        doc.demand_amount = values.pop('amount')
+        for key, value in values.items():
+            setattr(doc, key, value)
+        if save_first:
+            doc.save()
+        doc.submit()
+        assert doc.demand_amount == 2255.25
+        assert doc.outstanding_amount == 2255.25
+        assert doc.gl_amounts == [2255.25]
 
 
 @pytest.mark.parametrize('payments,expected', [
@@ -104,13 +157,16 @@ def test_a_generated_waiver_demand_is_not_billed_again_at_month_end():
         assert context.created[0].demand_amount == 2182.50
 
 
-def test_already_demanded_interest_does_not_create_a_second_or_negative_demand():
+def test_already_demanded_interest_marks_the_period_without_another_gl_charge():
     with demand_context(booked=40849.50, demanded=40849.50, latest='2028-03-31') as context:
         issue()
-        assert context.created == []
+        assert context.created[0].demand_amount == 0
+        assert context.created[0].outstanding_amount == 0
+        assert context.created[0].gl_amounts == []
     with demand_context(demanded=50000) as context:
         issue()
-        assert context.created == []
+        assert context.created[0].demand_amount == 0
+        assert context.created[0].gl_amounts == []
 
 
 @pytest.mark.parametrize('due,already_demanded,expected', [
@@ -150,3 +206,31 @@ def test_non_monthly_or_already_paid_demands_keep_native_handling(changes):
         issue(**changes)
         assert context.created[0].demand_amount == 2232
         context.frappe.get_all.assert_not_called()
+
+
+def test_submitted_demand_validation_does_not_rewrite_historical_amounts():
+    with demand_context() as context:
+        doc = context.frappe.new_doc('Loan Demand')
+        values = demand_values()
+        doc.demand_amount = values.pop('amount')
+        for key, value in values.items():
+            setattr(doc, key, value)
+        doc.docstatus = 1
+        doc.saved = 1
+        doc.validate()
+        assert doc.demand_amount == 2232
+        context.frappe.get_all.assert_not_called()
+
+
+def test_other_schedule_products_keep_native_handling():
+    with demand_context() as context, patch.object(floorplan_accrual, 'product_terms',
+                                                  return_value={'schedule_type': 'Amortizing'}):
+        issue()
+        assert context.created[0].demand_amount == 2232
+        context.frappe.get_all.assert_not_called()
+
+
+def test_first_demand_accepts_empty_database_aggregates():
+    with demand_context(booked=None, demanded=None, latest=None) as context:
+        issue(demand_date='2026-11-01', amount=2325)
+        assert context.created[0].demand_amount == 2325
