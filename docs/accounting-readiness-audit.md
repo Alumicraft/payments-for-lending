@@ -773,3 +773,10 @@ This accepts the real native restructure quote and Draft Save correction. Relate
 ## October 20 restricted purchasing-role acceptance
 
 Owner-approved temporary `dcr-po-qa@example.test` used only Purchase User, with welcome email off and native impersonation. Submitted PO 18, cancelled PO 17 and Closed PO 17-1 are readable; submitted tabs/pricing, clean reload and native incomplete-draft validation passed. Factory/Closed history filtering survives reload. Customer lookup and combined dealer/date history are permission-blocked, and upstream HBR navigation returns native Page permission denial. This does not accept lending/accounting access or the complete staff workflow. No additional role was granted and no financial document changed. Administrator was restored through Cloud and the temporary account was disabled, verified after reload. Full accounting readiness remains open.
+
+
+## October 20 receipt-driven live dealer update trial
+
+Created synthetic `MAT-PRE-2026-00006` normally from PO20 for HBR33, saved and submitted it, then cancelled it normally. The receipt contains one $240,000 home and inherited $14,400 purchase tax, total $254,400. Independent dealer Chrome retained the same open request page while staff used the in-app browser. Its stage changed Ordered to Delivered after Submit and returned to Ordered after Cancel, without dealer refresh or navigation.
+
+Cancelled receipt voucher GL, scoped through native View > Accounting Ledger to October 20, shows zero active entries and zero Opening/Total/Closing. The saved DOM and subsequently recovered CSV export agree: only zero Opening, Total and Closing rows, with no voucher rows. Native Stock Ledger scoped to receipt6 says Nothing to show. Fresh PO20 readback is To Receive and Bill at $240,000 without a dirty state. Posted voucher reconciliation and a full inventory-balance comparison were not checked in this trial. No tax applicability decision, provider transfer or signature occurred. Receipt 6 remains Cancelled; broader accounting readiness remains open.
