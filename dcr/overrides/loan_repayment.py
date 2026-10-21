@@ -67,6 +67,21 @@ class CustomLoanRepayment(LoanRepayment):
             return native_before_submit()
 
     def validate(self):
+        if (self.repayment_type == 'Charge Payment'
+                or (self.repayment_type in ('Charges Waiver', 'Charges Capitalization')
+                    and self.get('loan_restructure'))):
+            charges = []
+            for row in self.get('payable_charges') or []:
+                if not row.get('charge_code'):
+                    if flt(row.get('amount')):
+                        frappe.throw(
+                            f'Payable Charges row {row.idx}: choose a Charge Code before entering an amount.'
+                        )
+                    continue
+                charges.append(row)
+            self.set('payable_charges', charges)
+            for idx, row in enumerate(charges, 1):
+                row.idx = idx
         self._reopen_legacy_interest_only_loan()
         super().validate()
 
