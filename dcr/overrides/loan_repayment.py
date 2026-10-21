@@ -67,6 +67,7 @@ class CustomLoanRepayment(LoanRepayment):
             return native_before_submit()
 
     def validate(self):
+        self._validate_advance_disbursement_scope()
         if (self.repayment_type == 'Charge Payment'
                 or (self.repayment_type in ('Charges Waiver', 'Charges Capitalization')
                     and self.get('loan_restructure'))):
@@ -84,6 +85,29 @@ class CustomLoanRepayment(LoanRepayment):
                 row.idx = idx
         self._reopen_legacy_interest_only_loan()
         super().validate()
+
+    def _validate_advance_disbursement_scope(self):
+        if (self.repayment_type not in ('Advance Payment', 'Pre Payment')
+                or not self.get('loan_disbursement') or self.get('is_imported')):
+            return
+        from dcr.api.floorplan_accrual import floorplan_loan
+
+        loan = floorplan_loan(self.against_loan)
+        if not loan or loan.repayment_schedule_type == 'Line of Credit':
+            return
+        active = {'loan': self.against_loan, 'docstatus': 1, 'status': 'Active'}
+        if frappe.db.exists('Loan Repayment Schedule', {
+            **active, 'loan_disbursement': self.loan_disbursement,
+        }):
+            return
+        if frappe.db.exists('Loan Repayment Schedule', {
+            **active, 'loan_disbursement': ['is', 'not set'],
+        }):
+            frappe.throw(
+                "This loan's current repayment schedule covers the whole loan, "
+                "not the selected disbursement. Clear Loan Disbursement to "
+                "calculate this payment against the current schedule."
+            )
 
     def on_submit(self):
         super().on_submit()
