@@ -22,6 +22,9 @@ def repayment():
     with patch.dict(sys.modules, {
         'lending.loan_management.doctype.loan_repayment.loan_repayment':
             SimpleNamespace(LoanRepayment=Native),
+        'lending.loan_management.doctype.loan_interest_accrual':
+            SimpleNamespace(loan_interest_accrual=SimpleNamespace(
+                get_principal_amount_for_term_loan=lambda *args: 0)),
     }):
         module = importlib.import_module('dcr.overrides.loan_repayment')
         with patch.object(module, 'frappe') as frappe, \

@@ -235,6 +235,7 @@ override_doctype_class = {
     "Process Loan Demand": "dcr.overrides.process_loan_demand.CustomProcessLoanDemand",
     "Process Loan Interest Accrual": "dcr.overrides.process_loan_interest_accrual.CustomProcessLoanInterestAccrual",
     "Loan Repayment": "dcr.overrides.loan_repayment.CustomLoanRepayment",
+    "Loan Restructure": "dcr.overrides.loan_restructure.CustomLoanRestructure",
     "Loan Repayment Schedule": "dcr.overrides.loan_repayment_schedule.CustomLoanRepaymentSchedule",
 }
 
