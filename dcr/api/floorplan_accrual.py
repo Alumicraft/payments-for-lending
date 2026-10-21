@@ -1,6 +1,6 @@
 """Actual principal balances for invoice-backed DCR floorplan interest."""
 
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from datetime import timedelta
 from decimal import Decimal
 
@@ -89,9 +89,11 @@ def calculate_amounts(against_loan, posting_date, payment_type=None, with_loan_d
         calculate_amounts as native_calculate,
     )
 
-    result = native_calculate(against_loan, posting_date, payment_type=payment_type,
-        with_loan_details=with_loan_details, charges=charges,
-        loan_disbursement=loan_disbursement, for_update=for_update)
+    with (actual_principal_accruals() if payment_type in ('Advance Payment', 'Pre Payment')
+          else nullcontext()):
+        result = native_calculate(against_loan, posting_date, payment_type=payment_type,
+            with_loan_details=with_loan_details, charges=charges,
+            loan_disbursement=loan_disbursement, for_update=for_update)
     if payment_type == 'Loan Closure':
         amounts = result['amounts'] if with_loan_details else result
         adjust_closure_amounts(against_loan, posting_date, amounts)

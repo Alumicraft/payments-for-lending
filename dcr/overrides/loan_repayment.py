@@ -1,5 +1,7 @@
 """DCR safeguards for Frappe Lending repayments."""
 
+from contextlib import nullcontext
+
 import frappe
 from frappe.utils import cint, flt
 from lending.loan_management.doctype.loan_repayment.loan_repayment import LoanRepayment
@@ -84,7 +86,11 @@ class CustomLoanRepayment(LoanRepayment):
             for idx, row in enumerate(charges, 1):
                 row.idx = idx
         self._reopen_legacy_interest_only_loan()
-        super().validate()
+        from dcr.api.floorplan_accrual import actual_principal_accruals
+
+        with (actual_principal_accruals() if self.repayment_type in ('Advance Payment', 'Pre Payment')
+              else nullcontext()):
+            super().validate()
 
     def _validate_advance_disbursement_scope(self):
         if (self.repayment_type not in ('Advance Payment', 'Pre Payment')
@@ -110,7 +116,11 @@ class CustomLoanRepayment(LoanRepayment):
             )
 
     def on_submit(self):
-        super().on_submit()
+        from dcr.api.floorplan_accrual import actual_principal_accruals
+
+        with (actual_principal_accruals() if self.repayment_type in ('Advance Payment', 'Pre Payment')
+              else nullcontext()):
+            super().on_submit()
         self._reopen_legacy_interest_only_loan()
 
     def on_cancel(self):
