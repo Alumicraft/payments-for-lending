@@ -30,6 +30,7 @@ app_include_js = [
     versioned_asset("/assets/dcr/js/dated_loan_preview.js"),
     versioned_asset("/assets/dcr/js/loan_application.js"),
     versioned_asset("/assets/dcr/js/flooring_loan_display.js"),
+    versioned_asset("/assets/dcr/js/charge_invoice_cancellation.js"),
     versioned_asset("/assets/dcr/js/factory_assignment.js"),
     versioned_asset("/assets/dcr/js/purchase_order_ux.js"),
     versioned_asset("/assets/dcr/js/hbr_dashboard_plus_patch_20260525_10.js"),
@@ -180,6 +181,9 @@ doc_events = {
     },
     "Sales Invoice": {
         "before_validate": "dcr.api.financing_basis.prepare_financed_charge_invoice",
+        "onload": "dcr.api.charge_invoice_cancellation.onload",
+        "before_cancel": "dcr.api.charge_invoice_cancellation.before_cancel",
+        "on_cancel": "dcr.api.charge_invoice_cancellation.on_cancel",
     },
     "Loan Demand": {
         "validate": "dcr.api.lending.populate_loan_demand_from_loan",
