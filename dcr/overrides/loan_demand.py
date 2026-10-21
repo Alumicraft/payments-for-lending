@@ -1,10 +1,21 @@
+import frappe
 from lending.loan_management.doctype.loan_demand.loan_demand import LoanDemand
 
 from dcr.api.lending import populate_loan_demand_from_loan
-from dcr.api.floorplan_accrual import scheduled_interest_due
+from dcr.api.floorplan_accrual import floorplan_loan, scheduled_interest_due
 
 
 class CustomLoanDemand(LoanDemand):
+    def cancel(self):
+        if (self.docstatus == 2 and self.get('demand_type') == 'Charges'
+                and self.get('sales_invoice') and self.get('loan')):
+            invoice = frappe.db.get_value('Sales Invoice', self.sales_invoice,
+                ['docstatus', 'loan'], as_dict=True)
+            if (invoice and invoice.docstatus == 2 and invoice.loan == self.loan
+                    and floorplan_loan(self.loan)):
+                return self
+        return super().cancel()
+
     def validate(self):
         populate_loan_demand_from_loan(self)
         if ((self.get('docstatus', 0) == 0 or self.is_new()) and self.get('demand_type') == 'EMI'
