@@ -1,6 +1,16 @@
 # Accounting readiness audit
 
-Updated October 20, 2026. Status: **not ready; configuration findings and posting reconciliation remain open**. This is part of the pilot checklist, not a certification of the ledger.
+Updated November 7, 2026. Status: **not ready; configuration findings and posting reconciliation remain open**. This is part of the pilot checklist, not a certification of the ledger. The [remaining-work overview](demo-prep-overview-2026-11-07.md) separates demo acceptance from accounting and production setup.
+
+## November 7 resumption
+
+Readback confirms Company Actual/360 and loan accounting enabled, DCR still installed at PR #123, and automatic ACH debits off. No accounting setting or transaction changed in this review. Applications 14/15 retain their prior submitted invoice-backed amounts and have no Loans. Their fresh packets were visually reviewed; the owner-authorized Sandbox invitations are delivered as SIG-0195 and SIG-0196. The application-15 embedded Finish Later return retained its dealer session and request. Completed signing, revised-invoice funding and the twelve separate monthly receipts are still pending.
+
+The twelve-month application-15 answer key uses $225,000 unchanged principal, 12% Actual/360 from November 1, 2026, first payment December 1, no insurance/extra charges, and no intervening principal payment. It is expected data only, not posted acceptance. Packet bytes/hashes, readbacks and the answer key are private local artifacts. Existing Loan 25, receipt 24, restructure 5 and their ledger/draft history were not altered.
+
+The payoff print still derives interest from `total_interest_payable` less interest paid and adds collected principal to its total. Live Loan 25 readback has forecast interest $112,994.25, total paid $6,807 and principal paid $2,250; the formula would therefore show $108,437.25 as interest owed. That is a calculation from the stored fields, not a native dated payoff quote or a newly rendered hosted payoff PDF. Keep the prior print-purpose decision and native reconciliation open. This does not establish that native loan closure charges future interest.
+
+All 786 Python tests and 40 subtests pass. These are mocked-Frappe source checks; they do not replace positive penalty/capitalization, extra-payment schedule, insurance/cash policy, historical correction, bank reconciliation or accounting-owner acceptance.
 
 ## Initial configuration findings
 
