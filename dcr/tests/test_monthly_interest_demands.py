@@ -40,7 +40,8 @@ class NativeDemand(Doc):
 @contextmanager
 def demand_context(booked=38594.25, demanded=38594.25, latest='2028-02-29', payments=()):
     loan = Doc(name='LOAN', loan_product='Standard', company='DCR',
-               original_financed_principal=225000, home_build_request='HOME', rate_of_interest=12)
+               original_financed_principal=225000, home_build_request='HOME', rate_of_interest=12,
+               repayment_start_date='2026-11-01')
     created = []
     controller = None
 
@@ -132,7 +133,7 @@ def test_queued_native_creation_uses_the_controller_without_the_process_wrapper(
 
 @pytest.mark.parametrize('payments,expected', [
     ((('2028-03-01', 2250),), 2232),
-    ((('2028-03-01', 1000),), 2245.02),
+    ((('2028-03-01', 1000),), 2244.92),
     ((('2028-03-16', 2250),), 2243.25),
 ])
 def test_actual_principal_payment_amount_and_value_date_determine_interest(payments, expected):

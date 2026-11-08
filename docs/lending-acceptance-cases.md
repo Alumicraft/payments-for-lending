@@ -22,6 +22,10 @@ At the same principal and rate, interest is $73.333333 per charged day before fi
 
 Count interest from the invoice/period start through the day before payment, so consecutive periods do not overlap. Expected values: February 2027 has 28 days; February 2028 has 29; January 20–February 1 has 12. Test a principal reduction during a period, using the balance applicable to each date. Then compare the schedule forecast, actual accrual, demands, and payoff under the same approved convention.
 
+The owner approved period/payoff-total rounding on November 7. Calculate Actual/360 on the actual dated principal balances at full precision, then round the period or elapsed payoff amount once to cents with half-up rounding. A daily accrual is the difference between rounded cumulative interest through that day and through the previous day within the original monthly period. This makes the daily entries sum to the quoted amount. Retain the original first-payment/month-end anchor after restructuring. Do not reprice historical posted entries automatically.
+
+For Loan 26's synthetic extra-payment case, January 1–14, 2028 uses $220,500 and January 15–31 uses $215,500 after a $5,000 principal-only payment. Interest is $1,029.00 + $1,221.166666… = $2,250.17. Independently rounding every day would produce $2,250.11. The February 1 installment must still include $2,250 principal, totaling $4,500.17 and leaving $213,250 principal. Unpaid interest must carry forward without a false paid-interest demand. These are acceptance targets until hosted posting and reversal reconcile.
+
 For a late invoice, record shipment, invoice, and funding dates separately. Interest starts at invoice date, understood as funding/set-aside date; check delayed entry and later factory remittance against that date. An offline-date estimate is not automatically an interest-start date.
 
 ## Early payoff and closure

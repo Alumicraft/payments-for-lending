@@ -93,6 +93,7 @@ class TestLoanRepaymentScheduleOverride(unittest.TestCase):
                 schedule.is_dcr_floorplan_structure = lambda: True
                 schedule.get_contract_interest_rate = lambda: 12
                 schedule.get_floorplan_principal_reduction = lambda *args: 2250
+                schedule.extra_payment_interest = lambda next_due: 1221.17
                 schedule.get_prev_schedule_demand_generated = lambda *args: 0
                 schedule.get_next_payment_date = lambda day: (
                     date(2028, 2, 1) if day < date(2028, 2, 1) else date(2028, 3, 1))

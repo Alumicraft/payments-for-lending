@@ -23,6 +23,8 @@ assert.equal(prompt.fields[0].default, '2026-11-07');
 prompt.done({ quote_date: '2028-01-15' });
 assert.equal(calls[0].args.quote_date, '2028-01-15');
 assert.equal(calls[0].args.loan, 'LOAN');
+context.send_payoff({ doc: { name: 'LOAN', applicant: 'DEALER', payoff_date: '2028-02-15' } }, 'Flooring');
+assert.equal(prompt.fields[0].default, '2028-02-15');
 context.send_payoff({ doc: { name: 'CASH', applicant: 'DEALER' } }, 'COD');
 assert.equal(calls[1].args.payoff_type, 'COD');
 assert.equal(calls[1].args.quote_date, undefined);

@@ -89,6 +89,7 @@ def test_pre_payment_preserves_native_adjustment_and_skipped_demand_without_rate
     schedule.current_principal_amount = 5000
     schedule.get_next_payment_date = lambda value: date(value.year, value.month+1, 1)
     schedule.get_prev_schedule_demand_generated = lambda *args: 1
+    schedule.extra_payment_interest = lambda next_due: 26.67
     # Prepayment is before first due, so native cycle-date helper is used.
     native = schedule.add_rows_from_prev_disbursement.__globals__['native_schedule']
     native.get_cyclic_date = lambda *args, **kwargs: date(2026,2,1)

@@ -19,6 +19,34 @@ class CustomLoanRepaymentSchedule(LoanRepaymentSchedule):
     - Then dated interest + principal as a fixed % of original financed principal.
     """
 
+    def make_demand_for_advance_payment(self):
+        if self.restructure_type != 'Pre Payment' or not self.is_dcr_floorplan_structure():
+            return super().make_demand_for_advance_payment()
+        from lending.loan_management.doctype.loan_demand.loan_demand import create_loan_demand
+        from lending.loan_management.doctype.process_loan_interest_accrual.process_loan_interest_accrual import (
+            process_loan_interest_accrual_for_loans,
+        )
+        from frappe.utils import add_days
+
+        amounts = frappe.db.get_value('Loan Restructure', self.loan_restructure,
+            ['adjusted_unaccrued_interest', 'balance_principal', 'loan_repayment'], as_dict=True)
+        process_loan_interest_accrual_for_loans(posting_date=add_days(self.posting_date, -1),
+            loan=self.loan, loan_disbursement=self.loan_disbursement, from_demand=True)
+        for subtype, amount in [('Interest', flt(amounts.adjusted_unaccrued_interest)),
+                                ('Principal', max(0, -flt(amounts.balance_principal)))]:
+            if amount > 0:
+                create_loan_demand(self.loan, self.posting_date, 'EMI', subtype, amount,
+                    paid_amount=amount, loan_repayment_schedule=self.name,
+                    loan_disbursement=self.loan_disbursement, loan_repayment=amounts.loan_repayment)
+
+    def extra_payment_interest(self, next_due):
+        from dcr.api.floorplan_accrual import extra_payment_interest
+
+        amount = extra_payment_interest(self.loan, self.posting_date, next_due,
+                                        self.current_principal_amount)
+        return (amount if amount is not None else flt(self.current_principal_amount
+                * self.get_contract_interest_rate() * date_diff(next_due, self.posting_date) / 36000, 2))
+
     def add_rows_from_prev_disbursement(
         self, schedule_field, principal_share_percentage, interest_share_percentage=100
     ):
@@ -230,9 +258,7 @@ class CustomLoanRepaymentSchedule(LoanRepaymentSchedule):
                     pending_prev_days = date_diff(next_emi_date, self.posting_date)
 
                     if pending_prev_days > 0:
-                        interest_amount = flt(
-                            self.current_principal_amount * self.get_contract_interest_rate() * pending_prev_days / (36000)
-                        )
+                        interest_amount = self.extra_payment_interest(next_emi_date)
 
                     unpaid_interest = frappe.db.get_value(
                         "Loan Restructure", self.loan_restructure, "balance_unaccrued_interest"

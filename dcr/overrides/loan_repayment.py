@@ -25,6 +25,12 @@ class CustomLoanRepayment(LoanRepayment):
             from dcr.api.floorplan_accrual import adjust_closure_amounts
 
             adjust_closure_amounts(self.against_loan, self.value_date, amounts)
+        elif self.repayment_type == 'Pre Payment':
+            from dcr.api.floorplan_accrual import floorplan_loan, projected_interest
+
+            loan = floorplan_loan(self.against_loan)
+            if loan:
+                amounts['unaccrued_interest'] = float(projected_interest(loan, self.value_date))
         return super().set_missing_values(amounts)
 
     def mark_as_unpaid(self):
@@ -69,6 +75,9 @@ class CustomLoanRepayment(LoanRepayment):
             return native_before_submit()
 
     def validate(self):
+        from dcr.api.floorplan_accrual import populate_repayment_loan_type
+
+        populate_repayment_loan_type(self)
         self._validate_advance_disbursement_scope()
         self._validate_extra_principal_policy()
         if (self.repayment_type == 'Charge Payment'
