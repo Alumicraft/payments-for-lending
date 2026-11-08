@@ -59,6 +59,33 @@ def test_canonical_invoice_total_plus_only_additional_fees_and_supplier_date(dea
     assert app.loan_amount == 220000  # No second addition of fees already on invoice
 
 
+def test_native_amendment_cannot_retain_the_original_applications_signed_packet(deal):
+    app, _, _, _, f = deal
+    app.update(amended_from='ORIGINAL-APP', signed_packet='/private/files/original.pdf')
+    original = f.db.get_value.side_effect
+    f.db.get_value.side_effect = lambda doctype, *args, **kwargs: (
+        None if doctype == 'Signature Request' else original(doctype, *args, **kwargs))
+    rules.apply_application_invoice(app)
+    assert app.signed_packet is None
+    assert app.amended_from == 'ORIGINAL-APP'
+    assert app.loan_amount == 225000
+
+
+def test_amended_application_keeps_its_own_signature_for_the_current_financial_basis(deal):
+    app, _, _, _, f = deal
+    app.update(amended_from='ORIGINAL-APP', signed_packet='/private/files/revised.pdf')
+    original = f.db.get_value.side_effect
+    f.db.get_value.side_effect = lambda doctype, *args, **kwargs: (
+        'NEW-SIG' if doctype == 'Signature Request' else original(doctype, *args, **kwargs))
+    rules.apply_application_invoice(app)
+    assert app.signed_packet == '/private/files/revised.pdf'
+    query = next(c for c in f.db.get_value.call_args_list if c.args[0] == 'Signature Request')
+    assert query.args[1] == dict(reference_doctype='Loan Application', reference_name='APP',
+        document_type='Flooring Packet', customer='DEALER', status='Signed',
+        financial_basis_hash=rules.snapshot_hash(rules.financial_snapshot(app)),
+        signed_attachment='/private/files/revised.pdf')
+
+
 @pytest.mark.parametrize('changes', [dict(docstatus=0),dict(is_return=1),dict(company='OTHER'),
                                      dict(currency='EUR'),dict(home_build_request='OTHER'),
                                      dict(supplier='OTHER')])

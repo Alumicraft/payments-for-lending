@@ -234,15 +234,10 @@ class CustomLoanRepaymentSchedule(LoanRepaymentSchedule):
                             self.current_principal_amount * self.get_contract_interest_rate() * pending_prev_days / (36000)
                         )
 
-                        unaccrued_interest, adjusted_unaccrued_interest = frappe.db.get_value(
-                            "Loan Restructure",
-                            self.loan_restructure,
-                            ["unaccrued_interest", "adjusted_unaccrued_interest"],
-                        )
-
-                        if adjusted_unaccrued_interest and adjusted_unaccrued_interest < unaccrued_interest:
-                            previous_interest_amount = unaccrued_interest - adjusted_unaccrued_interest
-                            interest_amount += previous_interest_amount
+                    unpaid_interest = frappe.db.get_value(
+                        "Loan Restructure", self.loan_restructure, "balance_unaccrued_interest"
+                    )
+                    interest_amount = flt(interest_amount + max(0, flt(unpaid_interest)), 2)
 
                     # This future due is still a regular DCR installment:
                     # zero principal during IO, then fixed original-basis 1%.

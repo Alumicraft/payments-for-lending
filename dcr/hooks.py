@@ -67,6 +67,8 @@ override_whitelisted_methods = {
 after_install = "dcr.setup.after_install"
 after_migrate = "dcr.setup.after_install"
 
+jinja = {"methods": ["dcr.api.payoff.flooring_payoff_quote"]}
+
 # Fixtures — Property Setters only (standard field behavior).
 # Custom fields are managed directly on Frappe Cloud Customize Form.
 fixtures = [

@@ -7,7 +7,7 @@ from pathlib import Path
 PRINT_FORMATS = Path(__file__).resolve().parents[1] / "dcr" / "print_format"
 
 
-def render_financial_format(name, doc, bank=None):
+def render_financial_format(name, doc, bank=None, payoff=None):
     from jinja2 import Environment, ChainableUndefined
     from types import SimpleNamespace
     source = json.loads((PRINT_FORMATS / name / (name + '.json')).read_text())
@@ -15,7 +15,35 @@ def render_financial_format(name, doc, bank=None):
         (bank or {}) if doctype == 'Bank Account' else 'Demo Bank' if doctype == 'Bank' else {}),
         utils=SimpleNamespace(fmt_money=lambda amount, **kw: f'${float(amount):,.2f}',
                               formatdate=lambda value, *args: str(value)))
-    return Environment(undefined=ChainableUndefined).from_string(source['html']).render(doc=doc,frappe=frappe)
+    env = Environment(undefined=ChainableUndefined)
+    env.globals['flooring_payoff_quote'] = lambda *args: payoff
+    return env.from_string(source['html']).render(doc=doc,frappe=frappe)
+
+
+def test_payoff_print_uses_dated_unpaid_balances_instead_of_forecast_or_collected_principal():
+    html = render_financial_format('dealer_flooring_loan_payoff', dict(
+        name='LOAN-TEST', loan_amount=220500, original_financed_principal=225000,
+        total_interest_payable=112994.25,
+        total_amount_paid=6807, total_principal_paid=2250,
+        paid_from_escrow=500000, custom_rebate_percentage=10, qualifying_amount=225000,
+    ), payoff=dict(available=True, date='2028-01-15', principal=218250,
+                   interest=3307.50, penalty=25, charges=50, total=221632.50))
+    assert '$218,250.00' in html
+    assert '$225,000.00' in html
+    assert 'Original financed principal' in html
+    assert '$3,307.50' in html
+    assert '$221,632.50' in html
+    assert '2028-01-15' in html
+    assert '$108,437.25' not in html
+    assert 'Principal collected' not in html
+    assert 'Paid from Escrow' not in html
+
+
+def test_payoff_print_does_not_invent_a_quote_when_no_funding_or_loan_is_closed():
+    html = render_financial_format('dealer_flooring_loan_payoff', dict(name='LOAN-TEST'),
+                                  payoff=dict(available=False, reason='Loan is closed.'))
+    assert 'Loan is closed.' in html
+    assert 'Total payoff' not in html
 
 
 def test_final_receipt_uses_invoice_date_and_all_in_principal():

@@ -65,6 +65,7 @@ def test_loan_wide_schedule_rejects_an_obsolete_disbursement_scope(repayment, ki
 @pytest.mark.parametrize('scope', ['matching', 'blank', 'native', 'line-of-credit', 'imported', 'no-active'])
 def test_supported_scopes_keep_native_validation(repayment, scope):
     doc, frappe, floorplan = repayment
+    doc.repayment_type = 'Pre Payment'
     if scope == 'matching':
         frappe.db.exists.side_effect = lambda doctype, filters: filters.get('loan_disbursement') == 'DISBURSEMENT'
     elif scope == 'blank':
@@ -78,6 +79,28 @@ def test_supported_scopes_keep_native_validation(repayment, scope):
     elif scope == 'no-active':
         frappe.db.exists.side_effect = None
         frappe.db.exists.return_value = False
+    doc.validate()
+    assert doc.native_validated
+
+
+def test_dcr_extra_principal_cannot_use_a_future_installment_advance(repayment):
+    doc, _, _ = repayment
+    doc.loan_disbursement = None
+    with pytest.raises(ValueError, match='Use Pre Payment for extra principal'):
+        doc.validate()
+    assert not doc.get('native_validated')
+
+
+@pytest.mark.parametrize('scope', ['native', 'line-of-credit', 'imported'])
+def test_advance_policy_preserves_unrelated_native_and_imported_records(repayment, scope):
+    doc, _, floorplan = repayment
+    doc.loan_disbursement = None
+    if scope == 'native':
+        floorplan.return_value = None
+    elif scope == 'line-of-credit':
+        floorplan.return_value.repayment_schedule_type = 'Line of Credit'
+    else:
+        doc.is_imported = 1
     doc.validate()
     assert doc.native_validated
 

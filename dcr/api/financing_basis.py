@@ -99,6 +99,14 @@ def apply_application_invoice(doc, method=None):
     doc.set('loan_amount', float(basis['principal']))
     doc.set('requested_advance_amount', float(basis['principal']))
     doc.set('financed_invoice_date', basis['invoice_date'])
+    if not doc.get('docstatus') and doc.get('amended_from') and doc.get('signed_packet'):
+        current = frappe.db.get_value('Signature Request', {
+            'reference_doctype': 'Loan Application', 'reference_name': doc.name,
+            'document_type': 'Flooring Packet', 'customer': doc.applicant, 'status': 'Signed',
+            'financial_basis_hash': snapshot_hash(basis), 'signed_attachment': doc.signed_packet,
+        }, 'name')
+        if not current:
+            doc.set('signed_packet', None)
 
 
 def require_current_signed_packet(application, basis):

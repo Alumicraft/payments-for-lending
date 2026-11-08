@@ -1,5 +1,7 @@
 # Accounting readiness audit
 
+November 7 checkpoint: **NOT READY for production sign-off.** New Loan 26's twelve separate interest-only receipts and payments 13–14 now reconcile across 917 GL rows and 457 complete vouchers. The first twelve collect $27,375 interest; current principal after receipt 14 is $220,500. Native GL uses November 7 posting dates despite future trial value dates. Revised-invoice funding correctly rejects the old signature, with no posting. Extra-principal receipt 39 remains Draft pending release/acceptance of the earned-interest schedule carry correction. See the [current demo overview](demo-prep-overview-2026-11-07.md) for the latest checkpoint; older pending-signature/monthly-trial statements below are historical.
+
 Updated November 7, 2026. Status: **not ready; configuration findings and posting reconciliation remain open**. This is part of the pilot checklist, not a certification of the ledger. The [remaining-work overview](demo-prep-overview-2026-11-07.md) separates demo acceptance from accounting and production setup.
 
 ## November 7 resumption

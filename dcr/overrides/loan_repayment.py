@@ -70,6 +70,7 @@ class CustomLoanRepayment(LoanRepayment):
 
     def validate(self):
         self._validate_advance_disbursement_scope()
+        self._validate_extra_principal_policy()
         if (self.repayment_type == 'Charge Payment'
                 or (self.repayment_type in ('Charges Waiver', 'Charges Capitalization')
                     and self.get('loan_restructure'))):
@@ -91,6 +92,19 @@ class CustomLoanRepayment(LoanRepayment):
         with (actual_principal_accruals() if self.repayment_type in ('Advance Payment', 'Pre Payment')
               else nullcontext()):
             super().validate()
+
+    def _validate_extra_principal_policy(self):
+        if self.repayment_type != 'Advance Payment' or self.get('is_imported'):
+            return
+        from dcr.api.floorplan_accrual import floorplan_loan
+
+        loan = floorplan_loan(self.against_loan)
+        if loan and loan.repayment_schedule_type != 'Line of Credit':
+            frappe.throw(
+                'Use Pre Payment for extra principal on this DCR floorplan loan. '
+                'Principal reduces on the payment date and normal monthly curtailments continue; '
+                'Advance Payment can skip a future installment.'
+            )
 
     def _validate_advance_disbursement_scope(self):
         if (self.repayment_type not in ('Advance Payment', 'Pre Payment')

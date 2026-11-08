@@ -268,12 +268,12 @@ function send_disbursement_notice(frm) {
 
 
 function send_payoff(frm, payoff_type) {
-    frappe.confirm(
+    const send = (quote_date) => frappe.confirm(
         __('Send {0} Payoff Letter to {1}?', [payoff_type, frm.doc.applicant]),
         function() {
             frappe.call({
                 method: 'dcr.api.docusign.send_payoff_letter',
-                args: { loan: frm.doc.name, payoff_type: payoff_type },
+                args: { loan: frm.doc.name, payoff_type: payoff_type, quote_date: quote_date },
                 freeze: true,
                 freeze_message: __('Sending payoff letter...'),
                 callback: function(r) {
@@ -287,4 +287,12 @@ function send_payoff(frm, payoff_type) {
             });
         }
     );
+    if (payoff_type === 'Flooring') {
+        frappe.prompt([{
+            fieldname: 'quote_date', fieldtype: 'Date', label: __('Payoff date'),
+            default: frappe.datetime.get_today(), reqd: 1
+        }], (values) => send(values.quote_date), __('Flooring payoff date'), __('Continue'));
+    } else {
+        send();
+    }
 }
