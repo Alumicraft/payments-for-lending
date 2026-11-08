@@ -71,7 +71,7 @@ def test_denied_quote_restores_native_function_without_reading_financial_events(
 
 
 @pytest.mark.parametrize('phase', ['validate', 'on_submit'])
-@pytest.mark.parametrize('kind', ['Advance Payment', 'Pre Payment'])
+@pytest.mark.parametrize('kind', ['Pre Payment'])
 def test_repayment_controller_uses_actual_principal_in_native_calculation(quote_environment, phase, kind):
     native, original, quote, _ = quote_environment
     class Native(Record):

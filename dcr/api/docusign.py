@@ -973,7 +973,7 @@ def send_pre_approval(loan_application):
 
 
 @frappe.whitelist()
-def send_payoff_letter(loan, payoff_type="Flooring"):
+def send_payoff_letter(loan, payoff_type="Flooring", quote_date=None):
     """Send a payoff letter (FL or COD) as PDF email attachment.
 
     Args:
@@ -993,7 +993,15 @@ def send_payoff_letter(loan, payoff_type="Flooring"):
         else "Dealer Cash on Delivery Payoff"
     )
 
-    pdf_content = frappe.get_print("Loan", loan, print_format, as_pdf=True)
+    if payoff_type == "Flooring":
+        from dcr.api.payoff import flooring_payoff_quote
+
+        quote = flooring_payoff_quote(loan, quote_date)
+        if not quote['available']:
+            frappe.throw(_(quote['reason']))
+        loan_doc.payoff_quote_date = quote['date']
+
+    pdf_content = frappe.get_print("Loan", loan, print_format, as_pdf=True, doc=loan_doc)
 
     from dcr.api.dcr_email import send_payoff_letter as _send_payoff_letter_email
 

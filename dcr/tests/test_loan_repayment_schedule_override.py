@@ -56,6 +56,56 @@ def import_override_with_stubs():
 
 
 class TestLoanRepaymentScheduleOverride(unittest.TestCase):
+    def test_extra_principal_carries_unpaid_earned_interest_and_continues_curtailment(self):
+        from types import SimpleNamespace
+        module, frappe = import_override_with_stubs()
+        old = SimpleNamespace(payment_date=date(2028, 1, 1), principal_amount=2250,
+                              interest_amount=2301.75, total_payment=4551.75,
+                              balance_loan_amount=220500, number_of_days=31, demand_generated=1)
+        previous = SimpleNamespace(posting_date=date(2026, 11, 1), loan_disbursement=None,
+            repayment_start_date=date(2026, 12, 1), current_principal_amount=225000,
+            monthly_repayment_amount=4500, broken_period_interest=0,
+            floorplan_periods_before_schedule=13, total_installments_raised=14,
+            total_installments_paid=14, total_installments_overdue=0,
+            get=lambda field: [old])
+        frappe.get_doc = MagicMock(return_value=previous)
+        for unpaid in (0, 1029):
+            with self.subTest(unpaid=unpaid):
+                def value(doctype, name, field):
+                    if doctype == 'Loan':
+                        return 'Disbursed'
+                    if field == 'balance_unaccrued_interest':
+                        return unpaid
+                    return (1029, 1029 - unpaid)
+                frappe.db.get_value.side_effect = value
+                schedule = module.CustomLoanRepaymentSchedule()
+                values = dict(loan='LOAN', loan_product='Standard', loan_restructure='RESTRUCTURE',
+                    current_principal_amount=215500, loan_disbursement=None,
+                    repayment_schedule_type='Monthly as per repayment start date',
+                    repayment_frequency='Monthly', restructure_type='Pre Payment',
+                    repayment_method='Repay Fixed Amount per Period',
+                    repayment_start_date=date(2028, 2, 1), posting_date=date(2028, 1, 15),
+                    moratorium_end_date=None, rate_of_interest=12)
+                for key, val in values.items():
+                    setattr(schedule, key, val)
+                rows = []
+                schedule.get = lambda field: rows
+                schedule.is_dcr_floorplan_structure = lambda: True
+                schedule.get_contract_interest_rate = lambda: 12
+                schedule.get_floorplan_principal_reduction = lambda *args: 2250
+                schedule.get_prev_schedule_demand_generated = lambda *args: 0
+                schedule.get_next_payment_date = lambda day: (
+                    date(2028, 2, 1) if day < date(2028, 2, 1) else date(2028, 3, 1))
+                schedule.add_repayment_schedule_row = lambda *args, **kwargs: rows.append(
+                    SimpleNamespace(payment_date=args[0], principal_amount=args[1],
+                        interest_amount=args[2], total_payment=args[4], balance_loan_amount=args[5]))
+                result = schedule.add_rows_from_prev_disbursement('repayment_schedule', 100)
+                self.assertEqual(rows[-1].payment_date, date(2028, 2, 1))
+                self.assertEqual(rows[-1].principal_amount, 2250)
+                self.assertEqual(rows[-1].interest_amount, round(1221.1666666667 + unpaid, 2))
+                self.assertEqual(rows[-1].balance_loan_amount, 213250)
+                self.assertEqual(result, (0, 213250, 0, 0))
+
     def test_non_dcr_carry_still_uses_native_controller(self):
         module, _ = import_override_with_stubs()
         schedule = module.CustomLoanRepaymentSchedule()

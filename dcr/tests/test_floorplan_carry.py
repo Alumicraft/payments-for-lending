@@ -92,10 +92,10 @@ def test_pre_payment_preserves_native_adjustment_and_skipped_demand_without_rate
     # Prepayment is before first due, so native cycle-date helper is used.
     native = schedule.add_rows_from_prev_disbursement.__globals__['native_schedule']
     native.get_cyclic_date = lambda *args, **kwargs: date(2026,2,1)
-    frappe.db.get_value.side_effect = lambda doctype, *args: (300,100) if doctype == 'Loan Restructure' else 'Disbursed'
+    frappe.db.get_value.side_effect = lambda doctype, *args: 200 if doctype == 'Loan Restructure' else 'Disbursed'
     carry, balance, _, _ = schedule.add_rows_from_prev_disbursement('repayment_schedule',100)
     first = saved['repayment_schedule'][0]
-    assert first.interest_amount == pytest.approx(226.66666667)  # 26.67 new + 200 unpaid, unchanged
+    assert first.interest_amount == 226.67  # 26.67 new + 200 unpaid
     assert first.principal_amount == 0  # Still within twelve IO installments
     assert first.demand_generated == 1
     assert (carry,balance) == (0,5000)
