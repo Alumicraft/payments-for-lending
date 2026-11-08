@@ -60,12 +60,12 @@ const data = {
             if (url.pathname === "/portal") return route.fulfill({ contentType: "text/html; charset=utf-8", body: html });
             if (url.pathname.startsWith("/assets/dcr/")) {
                 const asset = path.join(app, "public", url.pathname.slice("/assets/dcr/".length));
-                return route.fulfill({ contentType: asset.endsWith(".js") ? "text/javascript" : "text/css", body: fs.readFileSync(asset) });
+                return route.fulfill({ contentType: asset.endsWith(".js") ? "text/javascript" : asset.endsWith(".woff2") ? "font/woff2" : "text/css", body: fs.readFileSync(asset) });
             }
             return route.fulfill({ status: 404, body: "" });
         });
         await page.goto("http://portal.test/portal?request=HBR-A");
-        await page.getByRole("heading", { name: "Pilot home", exact: true }).waitFor();
+        await page.getByRole("heading", { name: "HBR-A", exact: true }).waitFor();
         assert.equal(calls, 1);
         await advance();
         assert.equal(calls, 2, "a visible portal must refresh without a manual reload");
@@ -77,7 +77,7 @@ const data = {
 
         await page.locator('.dcr-btn-row[data-signature="SIGN-A"]').focus();
         const position = await page.locator("#dcr-portal-main").evaluate((node) => {
-            node.scrollTop = Math.min(180, node.scrollHeight - node.clientHeight);
+            node.scrollTop = Math.min(60, node.scrollHeight - node.clientHeight);
             return node.scrollTop;
         });
         assert.ok(position > 0, "the fixture must exercise a scrolled page");
@@ -91,10 +91,16 @@ const data = {
         assert.equal(await page.locator("#dcr-portal-main").evaluate((node) => node.scrollTop), position);
         assert.deepEqual(errors, [], "the portal should render updated data without a browser error");
         assert.match(await page.locator("#dcr-portal-view").innerText(), /Home ordered/, "the updated ordering step should be visible");
-        assert.match(await page.locator("#dcr-portal-view").innerText(), /Next payment[\s\S]*\$4,400/);
+        await page.getByRole("link", { name: "Payments", exact: true }).last().click();
+        await page.getByRole("table", { name: "Build payments", exact: true }).waitFor();
+        assert.match(await page.locator("#dcr-portal-view").innerText(), /\$4,400/);
         assert.doesNotMatch(await page.locator("#dcr-portal-view").innerText(), /Total interest|Total payable/);
         assert.match(await page.locator("#dcr-portal-view").innerText(), /TBD/);
+        await page.getByRole("link", { name: "Details", exact: true }).click();
+        await page.getByRole("heading", { name: "Build details", exact: true }).waitFor();
         assert.match(await page.locator("#dcr-portal-view").innerText(), /Off Line Date/);
+        await page.getByRole("link", { name: "Overview", exact: true }).click();
+        await page.getByRole("heading", { name: "Next steps", exact: true }).waitFor();
         assert.doesNotMatch(await page.locator("#dcr-portal-view").innerText(), /â€/, "the production script must be served as UTF-8");
 
         // An in-flight request must not produce overlapping interval reads.
@@ -146,12 +152,14 @@ const data = {
         const uploadResponse = page.waitForResponse(isContext);
         releaseAction();
         await finish(uploadResponse);
+        await page.locator('.dcr-tab[href$="/documents"]').click();
+        await page.getByRole("table", { name: "Documents for HBR-A", exact: true }).waitFor();
         assert.match(await page.locator("#dcr-portal-view").innerText(), /pilot\.pdf/);
         assert.equal(await page.locator('input[type="file"]').count(), 0);
 
         responseStatus = 503;
         await advance();
-        assert.match(await page.locator("#dcr-portal-view").innerText(), /Pilot home/);
+        assert.match(await page.locator("#dcr-portal-view").innerText(), /HBR-A/);
         assert.equal(await page.locator("#dcr-portal-toast").isVisible(), false, "background failures must not interrupt the dealer");
         responseStatus = 200;
         Object.assign(data.deals[0], { docstatus: 1, portal_status: "Accepted" });
@@ -166,6 +174,8 @@ const data = {
         Object.assign(data.deals[0], { home_type: "Customer Sold", end_buyer_name: "Pilot buyer", selling_price: 240000,
             installed_value: 260000, quoted_amount: 220000, quote_no: "QT-A", factory: { name: "PLANT-A", label: "Pilot plant" } });
         await advance();
+        await page.getByRole("link", { name: "Details", exact: true }).click();
+        await page.getByRole("heading", { name: "Build details", exact: true }).waitFor();
         const soldSummary = await page.locator("#dcr-portal-view").innerText();
         for (const value of ["Pilot buyer", "$240,000.00", "$260,000.00", "QT-A", "Pilot plant"]) assert.ok(soldSummary.includes(value));
         data.deals[0].home_type = "Inventory";
@@ -179,7 +189,7 @@ const data = {
         }
         responseStatus = 401;
         await advance();
-        assert.doesNotMatch(await page.locator("#dcr-portal-view").innerText(), /Pilot home|Home delivered|220,000/, "an expired session clears cached dealer data");
+        assert.doesNotMatch(await page.locator("#dcr-portal-view").innerText(), /HBR-A|Home delivered|220,000/, "an expired session clears cached dealer data");
         assert.equal(await page.getByRole("button", { name: "Try again", exact: true }).count(), 1);
         assert.deepEqual(errors, []);
         console.log("Portal browser checks passed: automatic updates, DOM/focus/scroll preservation, scheduled payment, serialized reads, visibility, signing/upload protection, transient recovery and expired sessions");

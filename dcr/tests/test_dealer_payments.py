@@ -5,6 +5,33 @@ from dcr.api import dealer_payments as payments
 from dcr.api import dealer_portal as portal
 
 
+@patch.object(payments, "pending_principal", return_value=215500)
+@patch.object(portal, "_available_fields", side_effect=lambda doctype, fields: fields)
+@patch.object(payments, "frappe")
+def test_prepaid_schedule_copies_do_not_rebill_paid_installments(frappe, fields, pending):
+    frappe.db.exists.return_value = True
+    frappe.db.get_value.return_value = "USD"
+    frappe.utils.today.return_value = "2028-01-15"
+    records = {
+        "Loan Demand": [{"repayment_schedule_detail": "OLD-JAN", "loan_disbursement": "FUND-A",
+            "demand_date": "2028-02-01", "outstanding_amount": 0, "demand_subtype": "Interest"}],
+        "Loan Repayment Schedule": [{"name": "NEW", "loan_disbursement": "FUND-A"},
+                                    {"name": "OTHER", "loan_disbursement": "FUND-B"}],
+        "Repayment Schedule": [
+            {"name": "COPIED-JAN", "parent": "NEW", "payment_date": "2028-02-01",
+             "principal_amount": 2250, "interest_amount": 2250.17, "total_payment": 4500.17},
+            {"name": "OTHER-FEB", "parent": "OTHER", "payment_date": "2028-02-01",
+             "principal_amount": 500, "interest_amount": 100, "total_payment": 600},
+            {"name": "MARCH", "parent": "NEW", "payment_date": "2028-03-01",
+             "principal_amount": 2250, "interest_amount": 2061.42, "total_payment": 4311.42}],
+        "Loan Repayment": [], "Loan Disbursement": [],
+    }
+    frappe.get_all.side_effect = lambda doctype, **kwargs: records[doctype]
+    result = payments.payment_summary({"name": "LOAN-A", "disbursed_amount": 225000}, "DEALER-A")
+    assert [(r["date"], r["total"]) for r in result["upcoming"]] == [
+        ("2028-02-01", 600), ("2028-03-01", 4311.42)]
+
+
 @patch.object(payments, "frappe")
 def test_unowned_or_unsubmitted_loan_never_reads_payment_records(frappe):
     frappe.db.exists.return_value = False
@@ -26,7 +53,8 @@ def test_paid_demands_override_old_unchecked_flags_and_remaining_amount_is_not_f
             {"repayment_schedule_detail": "PAID", "demand_date": "2026-10-31", "outstanding_amount": 0},
             {"repayment_schedule_detail": "PARTIAL", "demand_date": "2026-09-30", "outstanding_amount": 700, "demand_subtype": "Interest"},
         ],
-        "Loan Repayment Schedule": ["RS-A"],
+        "Loan Repayment Schedule": [{"name": "RS-A"}],
+        "Loan Disbursement": [],
         "Repayment Schedule": [
             {"name": "PAID", "payment_date": "2026-10-31", "total_payment": 2200, "demand_generated": 0},
             {"name": "PARTIAL", "payment_date": "2026-09-30", "total_payment": 2200, "demand_generated": 0},
@@ -142,3 +170,17 @@ def test_other_dealer_payoff_request_cannot_reach_loan_or_email(related, identit
     with pytest.raises(ValueError):
         portal.request_payoff_letter("OTHER-HBR")
     related.assert_not_called()
+
+
+@patch.object(portal, "_has_field", return_value=True)
+@patch.object(portal, "_latest_related", side_effect=[
+    {"name": "APP-AMENDED", "signed_packet": "/private/files/old-original.pdf"}, None])
+@patch.object(portal, "frappe")
+def test_amended_application_does_not_inherit_original_signature(frappe, related, fields):
+    frappe.db.exists.return_value = False
+    result = portal._loan_summary("HBR-A", "DEALER-A")
+    assert result["signed"] is False
+    frappe.db.exists.assert_called_once_with("Signature Request", {
+        "customer": "DEALER-A", "reference_doctype": "Loan Application",
+        "reference_name": "APP-AMENDED", "status": "Signed",
+        "signed_attachment": "/private/files/old-original.pdf"})
