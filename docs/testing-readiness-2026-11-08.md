@@ -5,11 +5,11 @@ Updated November 8, 2026. This document distinguishes a workflow that is ready t
 ## Environment and boundaries
 
 - Hosted app: https://backdesk.dealercapital.net/portal and https://backdesk.dealercapital.net/desk.
-- Frappe Cloud Apps readback confirms DCR a6ad9b80f1777569bc8b508ef6b5a93fce44292f. The redesigned portal is installed. The November 8 financial and packet follow-up is awaiting review and deployment.
+- Frappe Cloud Apps readback confirms DCR 17dcde17a1aa90ac61631d0db1c5a46eaa8714f7. The redesign and November 8 financial/packet fixes are installed. DCR-only deployment 0adojovutm succeeded in 2m57s. Automatic reversal acceptance is in progress.
 - DocuSign, Plaid and ACHQ are Sandbox. ACH scope is Controlled Pilot, its pilot loan is blank, and automatic debits are off. Do not enable real collections for testing.
 - Status notifications are off. There are 75 Recorded historical notices and zero Queued notices. Enabling the existing global queue would send the backlog to the override recipient. Select a bounded testing window before acceptance of automated status email.
 - Dealer identity is Portal Test, customer `DEMO ONLY - Fresh Dealer 20261006`, with the owner's `send2tristan@gmail.com` mailbox. Use the normal email-link sign-in, not shared Administrator credentials. Keep dealer and staff in separate browser sessions.
-- The intended staff tester and role are awaiting the owner's answer. Administrator checks do not prove restricted-role acceptance. The earlier Purchase User test account remains disabled.
+- Tristan confirmed that he or Bob will test, and both use Administrator. The intended staff acceptance role is therefore Administrator; a broader restricted-role rollout remains separate. The earlier Purchase User test account remains disabled.
 
 ## Approved financial rules
 
@@ -25,7 +25,7 @@ For Loan 26 the original financed basis is $225,000 and the monthly principal re
 | Loan 26 original schedule LN-RS-2026-00020 | Clean continuation after reversal recovery | Active. February 1, 2028 shows $2,250 principal plus $2,278.50 interest, total $4,528.50, demand not yet generated. |
 | Loan 26 native repost, November 8 at 13:11:57.981473 | Recovery from the old cancellation path | Completed. No active accruals or demands from January 15, 2028 onward. Valid earned interest through January 14 remains $32,955.75; $31,926.75 collected. All 471 active vouchers balance. |
 | HBR 30 / application 14-1 / invoice 10-1 / Loan 27 / draft funding 14 | Revised invoice and replacement signing | $275,000 invoice plus $5,000 fees equals $280,000 financed. Invoice date October 11, 2026; first payment November 1, $1,960. Old signature must not permit funding. |
-| HBR 32 / PO 19 | Customer Sold Cash | Saved scenario and normal delivery/reversal path. Cash ownership policy still needs the owner. |
+| HBR 32 / PO 19 | Customer Sold Cash | Saved scenario and normal delivery/reversal path. Owner confirms DCR collects from the dealer and pays the factory. Verify the collection/payable path under that rule. |
 | HBR 33 / PO 20 / cancelled receipt 6 | Inventory and dealer live updates | Ordered after receipt cancellation; submitting a fresh authorized test receipt should move it to Delivered without dealer refresh. |
 | HBR 34 | Incomplete intake and insurance upload | Keep as an incomplete example. An uploaded file and a staff waiver must remain distinct. |
 | Loan 25 | Month 37, missed payments, charges and normal restructure | Prior bounded cases passed. Do not submit its old advance-payment drafts. |
@@ -40,9 +40,9 @@ Record the tester, role, installed revision, request/loan IDs, expected result, 
 
 | Case | Action and expected result | Position |
 | --- | --- | --- |
-| T01 Login and ownership | Dealer signs in by email link. A different dealer's records and private files must be denied. Staff uses the intended role. | Dealer path covered; intended staff role open. |
+| T01 Login and ownership | Dealer signs in by email link. A different dealer's records and private files must be denied. Staff uses the intended role. | Fresh dealer login covered November 8; owner confirms Administrator for Tristan/Bob. |
 | T02 Customer Sold financed | Save, reload, review, approve and obtain the required documents without presenting review as financing approval. | Implementation and bounded scenarios covered; staff rehearsal open. |
-| T03 Customer Sold Cash/COD | Complete native request, order, invoice, delivery and cancellation. Confirm who collects money before posting that variant. | Saved/delivery variants covered; money-handling policy open. |
+| T03 Customer Sold Cash/COD | DCR collects from the dealer and pays the factory. Complete native request, order, invoice, collection, supplier payment, delivery and cancellation. | Saved/delivery variants covered; owner settled money handling November 8; collection/account mapping acceptance remains. |
 | T04 Spec | Buyer stays blank, serial may be TBD, quote and final invoice remain distinct. | Covered; revised funding completion open. |
 | T05 Inventory | Save/reload, order, receipt and reversal; dealer stage follows source documents. | Covered. |
 | T06 Serial checks | Repeated TBD variants are allowed; duplicate assigned serial is rejected appropriately. | Covered. |
@@ -51,10 +51,10 @@ Record the tester, role, installed revision, request/loan IDs, expected result, 
 | T09 Dates | Invoice interest date, first payment and Off Line Date survive save and reload with an audit trail. | Covered. |
 | T10 Map | Verify address, park/space, cards and request navigation, including return after an edit. | Covered. |
 | T11 Factory assignment | Confirm real plant/contact and documents, then deliberately send a reviewed packet to the controlled recipient. Assignment submission alone stays quiet. | Final contacts/documents and delivery open. |
-| T12 Bank | Complete Plaid return/session and manual-bank path. Connection must not enable autopay. | Existing Sandbox account covered; fresh callback/manual acceptance open. |
+| T12 Bank | Complete Plaid return/session and manual-bank path. Connection must not enable autopay. | Fresh approved Sandbox Plaid flow reached callback, which returned HTTP 409. Repeated masked account names collide under native ERPNext naming. Unique connection names are fixed in source; release/retest pending. |
 | T13 Documents | Staff uploads privately; owner dealer can view/download identical bytes. Waiver is a separate state. | Covered. |
 | T14 Signing | Open every PDF, confirm recipient and amounts, sign in embedded flow, return to the same request/session, receive delayed callback once and compare executed copies. | Original email signatures and pending return covered; fresh completed embedded return open. |
-| T15 Revised invoice | Original signed record stays available. Replacement sheet shows $275,000 invoice and Exhibit A $280,000 financed. Sign replacement, then fund its matching amount/date. | New sheet mismatch found and fixed in source; deploy and signing open. |
+| T15 Revised invoice | Original signed record stays available. Replacement sheet shows $275,000 invoice and Exhibit A $280,000 financed. Sign replacement, then fund its matching amount/date. | Corrected hosted PDFs visually reviewed on all five pages; SIG-0197 sent and Gmail delivery confirmed. Owner signature and revised funding remain. |
 | T16 Funding/fees | Native funding, factory payable/payment and financed fee invoice agree with the packet and general ledger. | Original cases covered; revised funding open. |
 | T17 Monthly receipts | Twelve separate interest-only receipts must leave original principal outstanding. | Covered on Loan 26. |
 | T18 Curtailment boundary | Payment 12 remains interest-only. Payments 13 and 14 each reduce principal $2,250. | Covered. |
@@ -71,8 +71,8 @@ Record the tester, role, installed revision, request/loan IDs, expected result, 
 
 ## Human inputs and product scope
 
-The owner must sign the replacement Sandbox packet. Staff testing needs a named person and intended role; do not grant broad accounting access to make a test pass. Cash/COD handling, insurance collection/remittance, tax applicability, final legal wording and real factory contacts require business answers. They can be explicit test cases without being treated as production-approved policy.
+The owner must sign replacement Sandbox packet SIG-0197 through the dealer portal to complete the same-request return test. Tristan or Bob will test as Administrator. DCR collects Cash/COD and pays the factory. Insurance collection/remittance, tax applicability, final legal wording and real factory contacts still need business answers. They can be explicit test cases without being treated as production-approved policy.
 
 The setup screen does not block new builds. Enforcing a gate requires approved mandatory items and waivers. Dealers can request payoff letters; the portal does not fabricate a dated quote. Past-due rows contact DCR because dealer payment submission is not implemented. Those are deliberate scope limits, not tested features.
 
-Source checks pass 863 Python tests, 44 subtests and 17 Node test files. Project preflight and v16 reviews found no blockers. Review follow-ups capture dependencies before native cancellation, exclude the payment's own due-date demand as a repost trigger, retain native settlement/LOC handling and require account names in exported proof. Hosted installation, real provider outcomes, human signatures and accounting approval remain separate evidence.
+Source checks pass 868 Python tests, 44 subtests and the previously checked 17 Node test files. Project preflight and v16 reviews passed for deployed PR #134. Its review follow-ups capture dependencies before native cancellation, exclude the payment's own due-date demand as a repost trigger, retain native settlement/LOC handling and require account names in exported proof. The subsequent bank naming and notification-window changes await their required reviews and deployment. Hosted installation, real provider outcomes, human signatures and accounting approval remain separate evidence.

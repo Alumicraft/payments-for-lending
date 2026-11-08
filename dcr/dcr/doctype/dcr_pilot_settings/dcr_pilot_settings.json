@@ -6,6 +6,7 @@
  "field_order": [
   "enable_status_notifications",
   "pilot_notification_recipient",
+  "pilot_notifications_from",
   "staff_notification_recipient"
  ],
  "fields": [
@@ -21,6 +22,13 @@
    "options": "Email",
    "label": "Pilot Recipient Override",
    "description": "Required when enabled. All pilot notices go to this controlled test mailbox, including staff notices."
+  },
+  {
+   "fieldname": "pilot_notifications_from",
+   "fieldtype": "Datetime",
+   "label": "Send Notices From",
+   "description": "Send only notices created on or after this time. Earlier notices stay in history.",
+   "mandatory_depends_on": "eval:doc.enable_status_notifications"
   },
   {
    "fieldname": "staff_notification_recipient",
@@ -45,7 +53,7 @@
  "track_changes": 1,
  "issingle": 1,
  "creation": "2026-10-05 00:00:00.000000",
- "modified": "2026-10-05 00:00:00.000000",
+ "modified": "2026-11-08 13:55:00.000000",
  "modified_by": "Administrator",
  "owner": "Administrator",
  "actions": [],

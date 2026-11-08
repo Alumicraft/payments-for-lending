@@ -572,7 +572,9 @@ def _create_bank_account(customer, bank_name, account_type, token, token_source,
     bank_record = _get_or_create_bank(bank_name)
 
     ba = frappe.new_doc("Bank Account")
-    ba.account_name = f"{customer} - {bank_name or 'Bank'} {account_last4}"
+    # Masks are not unique account identifiers. Keep each verified connection
+    # separate, including reconnects, instead of overwriting an older token.
+    ba.account_name = f"{customer} - {bank_name or 'Bank'} {account_last4} - {frappe.generate_hash(length=12)}"
     ba.bank = bank_record
     ba.party_type = "Customer"
     ba.party = customer
