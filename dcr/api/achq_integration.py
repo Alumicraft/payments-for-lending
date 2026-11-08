@@ -569,12 +569,18 @@ def _get_or_create_bank(bank_name):
 def _create_bank_account(customer, bank_name, account_type, token, token_source,
                          verify_status, account_last4, routing_last4, is_default, settings):
     """Create a Bank Account record with ACH custom fields."""
+    frappe.db.get_value('Customer', customer, 'name', for_update=True)
     bank_record = _get_or_create_bank(bank_name)
 
     ba = frappe.new_doc("Bank Account")
     # Masks are not unique account identifiers. Keep each verified connection
     # separate, including reconnects, instead of overwriting an older token.
-    ba.account_name = f"{customer} - {bank_name or 'Bank'} {account_last4} - {frappe.generate_hash(length=12)}"
+    connection_id = frappe.generate_hash(length=12)
+    name_budget = 140 - len(bank_record or '') - 3
+    if name_budget < len(connection_id):
+        frappe.throw(_('Bank name is too long to save this connection. Please contact DCR.'))
+    label = f"{customer} - {account_type} {account_last4} - "
+    ba.account_name = label[:name_budget - len(connection_id)] + connection_id
     ba.bank = bank_record
     ba.party_type = "Customer"
     ba.party = customer

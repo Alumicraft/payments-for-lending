@@ -26,9 +26,9 @@
   {
    "fieldname": "pilot_notifications_from",
    "fieldtype": "Datetime",
-   "label": "Send Notices From",
-   "description": "Send only notices created on or after this time. Earlier notices stay in history.",
-   "mandatory_depends_on": "eval:doc.enable_status_notifications"
+   "label": "Notices Enabled From",
+   "description": "A new delivery window starts whenever notifications are enabled. Earlier notices stay in history.",
+   "read_only": 1
   },
   {
    "fieldname": "staff_notification_recipient",

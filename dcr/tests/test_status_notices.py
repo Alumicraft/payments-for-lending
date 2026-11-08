@@ -97,22 +97,24 @@ def test_starting_a_new_testing_window_keeps_older_notices_recorded(f):
     assert notices['OLD'].status == 'Recorded'
 
 
-@pytest.mark.parametrize('cutoff', [None, '2026-11-08 13:50:00'])
-def test_enabling_pilot_delivery_requires_an_explicit_window(cutoff):
+@pytest.mark.parametrize('enabled,before_enabled', [(True, False), (True, True), (False, True), (False, False)])
+def test_delivery_window_resets_on_reenable_and_uses_server_time(enabled, before_enabled):
     from dcr.dcr.doctype.dcr_pilot_settings.dcr_pilot_settings import DCRPilotSettings
     doc = DCRPilotSettings()
-    doc.enable_status_notifications = 1
+    doc.enable_status_notifications = enabled
     doc.pilot_notification_recipient = 'pilot@example.test'
-    doc.pilot_notifications_from = cutoff
+    doc.pilot_notifications_from = '2000-01-01 00:00:00'
     doc.get = lambda field: getattr(doc, field, None)
-    with patch('dcr.dcr.doctype.dcr_pilot_settings.dcr_pilot_settings.frappe') as f:
+    previous = Settings(enable_status_notifications=before_enabled,
+                        pilot_notifications_from='2026-11-08 13:50:00')
+    doc.get_doc_before_save = lambda: previous
+    with patch('dcr.dcr.doctype.dcr_pilot_settings.dcr_pilot_settings.frappe') as f, \
+            patch('dcr.dcr.doctype.dcr_pilot_settings.dcr_pilot_settings.now_datetime', return_value='2026-11-08 14:05:00'):
         f.throw.side_effect = ValueError
-        if cutoff:
-            doc.validate()
-            f.throw.assert_not_called()
-        else:
-            with pytest.raises(ValueError):
-                doc.validate()
+        doc.validate()
+        assert doc.pilot_notifications_from == (
+            None if not enabled else previous.pilot_notifications_from if before_enabled else '2026-11-08 14:05:00')
+        f.throw.assert_not_called()
 
 
 def test_queue_routes_to_pilot_override_and_links_existing_queue(f):

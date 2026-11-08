@@ -11,7 +11,7 @@ def money(value):
     return Decimal(str(value or 0)).quantize(Decimal('.01'))
 
 
-def verify(path, phase):
+def verify(path, phase, extra_receipt='LM-REP-0039'):
     csv.field_size_limit(8 * 1024 * 1024)
     with path.open(newline='', encoding='utf-8-sig') as source:
         rows = list(csv.DictReader(source))
@@ -22,15 +22,15 @@ def verify(path, phase):
     assert loan['name'] == 'ACC-LOAN-2026-00026'
     assert money(loan['original_financed_principal']) == 225000
     receipts = [r for r in data['receipts'] if r['docstatus'] == 1]
-    extra = [r for r in receipts if r['name'] == 'LM-REP-0039']
-    expected_principal = {'baseline': 220500, 'extra': 215500, 'monthly': 213250,
+    extra = [r for r in receipts if r['name'] == extra_receipt]
+    expected_principal = {'baseline': 220500, 'extra': 215500, 'demanded': 215500, 'monthly': 213250,
                           'closed': 0, 'reversed': 220500, 'recovered': 220500}[phase]
     actual_principal = Decimal(225000) - sum(money(r['principal_amount_paid']) for r in receipts)
     assert actual_principal == expected_principal, (actual_principal, expected_principal)
     pending = money(loan['total_payment']) - money(loan['total_interest_payable']) - money(loan['total_principal_paid'])
     pending += money(loan['debit_adjustment_amount']) - money(loan['credit_adjustment_amount'])
     assert pending == expected_principal, ('native pending principal', pending)
-    if phase in ('extra', 'monthly', 'closed'):
+    if phase in ('extra', 'demanded', 'monthly', 'closed'):
         receipt, = extra
         assert receipt['is_term_loan'] == 1
         assert money(receipt['amount_paid']) == money(receipt['principal_amount_paid']) == 5000
@@ -44,11 +44,18 @@ def verify(path, phase):
         assert money(row['total_payment']) == Decimal('4500.17')
         if phase == 'extra':
             assert row['demand_generated'] == 0
+        elif phase == 'demanded':
+            assert row['demand_generated'] == 1
+            demand, = [d for d in data['demands'] if d['docstatus'] == 1
+                       and d['demand_subtype'] == 'Interest'
+                       and str(d['demand_date'])[:10] == '2028-02-01']
+            assert money(demand['demand_amount']) == Decimal('2250.17')
+            assert money(demand['paid_amount']) == 0
     else:
         assert not extra
         assert len(receipts) == 14
         if phase in ('reversed', 'recovered'):
-            cancelled, = [r for r in data['receipts'] if r['name'] == 'LM-REP-0039']
+            cancelled, = [r for r in data['receipts'] if r['name'] == extra_receipt]
             assert cancelled['docstatus'] == 2
             assert any(r['docstatus'] == 2 and r['repayment_type'] == 'Normal Repayment'
                        and str(r['value_date'])[:10] == '2028-02-01' for r in data['receipts'])
@@ -112,6 +119,7 @@ def verify(path, phase):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('csv', type=Path)
-    parser.add_argument('phase', choices=('baseline', 'extra', 'monthly', 'closed', 'reversed', 'recovered'))
+    parser.add_argument('phase', choices=('baseline', 'extra', 'demanded', 'monthly', 'closed', 'reversed', 'recovered'))
+    parser.add_argument('--extra-receipt', default='LM-REP-0039')
     args = parser.parse_args()
-    print(json.dumps(verify(args.csv, args.phase), indent=2))
+    print(json.dumps(verify(args.csv, args.phase, args.extra_receipt), indent=2))
