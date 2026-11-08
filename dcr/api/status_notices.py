@@ -50,9 +50,12 @@ def capture_hbr_changes(doc, method=None):
 
 def queue_pilot_notices():
     settings = frappe.get_single("DCR Pilot Settings")
-    if not settings.enable_status_notifications or not settings.pilot_notification_recipient:
+    cutoff = settings.get('pilot_notifications_from')
+    if not settings.enable_status_notifications or not settings.pilot_notification_recipient or not cutoff:
         return
-    names = frappe.get_all("DCR Status Notice", filters={"status": "Recorded"}, pluck="name", limit_page_length=100)
+    names = frappe.get_all("DCR Status Notice", filters={
+        "status": "Recorded", "creation": [">=", cutoff],
+    }, pluck="name", limit_page_length=100)
     for name in names:
         savepoint = "dcr_notice"
         frappe.db.savepoint(savepoint)

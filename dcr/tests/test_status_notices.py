@@ -5,13 +5,19 @@ import pytest
 from dcr.api.status_notices import record_transition, queue_pilot_notices, refresh_notice_delivery
 
 
+class Settings(SimpleNamespace):
+    def get(self, field, default=None):
+        return getattr(self, field, default)
+
+
 @pytest.fixture
 def f():
     with patch('dcr.api.status_notices.frappe') as f, patch('dcr.api.status_notices.get_url', return_value='https://pilot.example.test/portal'), patch('dcr.api.status_notices.queue_notification') as queue:
         f.sendmail = queue
         f.flags.in_migrate = False
         f.db.exists.return_value = None
-        f.get_single.return_value = SimpleNamespace(enable_status_notifications=0,pilot_notification_recipient=None,staff_notification_recipient='staff@example.test')
+        f.get_single.return_value = Settings(enable_status_notifications=0,pilot_notification_recipient=None,
+            staff_notification_recipient='staff@example.test',pilot_notifications_from='2026-11-08 13:50:00')
         yield f
 
 
@@ -61,6 +67,54 @@ def test_enabled_without_override_never_queues(f):
     f.get_single.return_value.enable_status_notifications = 1
     queue_pilot_notices()
     f.sendmail.assert_not_called()
+
+
+def test_enabled_without_a_testing_window_does_not_release_history(f):
+    f.get_single.return_value.enable_status_notifications = 1
+    f.get_single.return_value.pilot_notification_recipient = 'pilot@example.test'
+    f.get_single.return_value.pilot_notifications_from = None
+    queue_pilot_notices()
+    f.get_all.assert_not_called()
+    f.sendmail.assert_not_called()
+
+
+def test_starting_a_new_testing_window_keeps_older_notices_recorded(f):
+    f.get_single.return_value.enable_status_notifications = 1
+    f.get_single.return_value.pilot_notification_recipient = 'pilot@example.test'
+    notices = {name: MagicMock(name=name) for name in ['OLD', 'NEW']}
+    for name, day in [('OLD', '2026-10-05 10:00:00'), ('NEW', '2026-11-08 14:00:00')]:
+        notices[name].creation = day
+        notices[name].status = 'Recorded'
+        notices[name].subject = name
+    def records(doctype, filters, **kwargs):
+        cutoff = filters.get('creation', ['>=', ''])[1]
+        return [name for name, notice in notices.items() if notice.creation >= cutoff]
+    f.get_all.side_effect = records
+    f.get_doc.side_effect = lambda doctype, name: notices[name]
+    queue_pilot_notices()
+    f.sendmail.assert_called_once()
+    assert f.sendmail.call_args.kwargs['subject'] == 'NEW'
+    assert notices['OLD'].status == 'Recorded'
+
+
+@pytest.mark.parametrize('enabled,before_enabled', [(True, False), (True, True), (False, True), (False, False)])
+def test_delivery_window_resets_on_reenable_and_uses_server_time(enabled, before_enabled):
+    from dcr.dcr.doctype.dcr_pilot_settings.dcr_pilot_settings import DCRPilotSettings
+    doc = DCRPilotSettings()
+    doc.enable_status_notifications = enabled
+    doc.pilot_notification_recipient = 'pilot@example.test'
+    doc.pilot_notifications_from = '2000-01-01 00:00:00'
+    doc.get = lambda field: getattr(doc, field, None)
+    previous = Settings(enable_status_notifications=before_enabled,
+                        pilot_notifications_from='2026-11-08 13:50:00')
+    doc.get_doc_before_save = lambda: previous
+    with patch('dcr.dcr.doctype.dcr_pilot_settings.dcr_pilot_settings.frappe') as f, \
+            patch('dcr.dcr.doctype.dcr_pilot_settings.dcr_pilot_settings.now_datetime', return_value='2026-11-08 14:05:00'):
+        f.throw.side_effect = ValueError
+        doc.validate()
+        assert doc.pilot_notifications_from == (
+            None if not enabled else previous.pilot_notifications_from if before_enabled else '2026-11-08 14:05:00')
+        f.throw.assert_not_called()
 
 
 def test_queue_routes_to_pilot_override_and_links_existing_queue(f):
