@@ -69,13 +69,14 @@ class TestLoanRepaymentScheduleOverride(unittest.TestCase):
             total_installments_paid=14, total_installments_overdue=0,
             get=lambda field: [old])
         frappe.get_doc = MagicMock(return_value=previous)
-        for unpaid in (0, 1029):
-            with self.subTest(unpaid=unpaid):
+        for saved, current in ((0, None), (1029, None), (0, 1029), (1029, 0)):
+            unpaid = saved if current is None else current
+            with self.subTest(saved=saved, current=current):
                 def value(doctype, name, field):
                     if doctype == 'Loan':
                         return 'Disbursed'
                     if field == 'balance_unaccrued_interest':
-                        return unpaid
+                        return saved
                     return (1029, 1029 - unpaid)
                 frappe.db.get_value.side_effect = value
                 schedule = module.CustomLoanRepaymentSchedule()
@@ -88,6 +89,8 @@ class TestLoanRepaymentScheduleOverride(unittest.TestCase):
                     moratorium_end_date=None, rate_of_interest=12)
                 for key, val in values.items():
                     setattr(schedule, key, val)
+                if current is not None:
+                    schedule._dcr_balance_unaccrued_interest = current
                 rows = []
                 schedule.get = lambda field: rows
                 schedule.is_dcr_floorplan_structure = lambda: True

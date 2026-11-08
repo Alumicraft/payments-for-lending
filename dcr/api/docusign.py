@@ -849,7 +849,14 @@ def preview_signature(document_type, reference_name):
     context = _signature_context(document_type, reference_name)
     documents = []
     for doctype, name, print_format, filename in context.pop("prints"):
-        pdf = frappe.get_print(doctype, name, print_format, as_pdf=True)
+        print_args = {}
+        basis = context.get('financial_basis') or {}
+        if (document_type == 'Flooring Packet' and print_format == 'New Home Info Sheet'
+                and doctype == 'Home Build Request' and basis.get('source') == 'invoice'):
+            request = frappe.get_doc(doctype, name)
+            request.home_invoice_plus_freight = float(basis['invoice_total'])
+            print_args['doc'] = request
+        pdf = frappe.get_print(doctype, name, print_format, as_pdf=True, **print_args)
         documents.append({"name": filename, "content_base64": base64.b64encode(pdf).decode()})
     token = secrets.token_urlsafe(32)
     context["documents"] = documents

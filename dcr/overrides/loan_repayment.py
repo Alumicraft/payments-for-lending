@@ -10,6 +10,30 @@ from dcr.lending_rules import has_material_outstanding_principal
 
 
 class CustomLoanRepayment(LoanRepayment):
+    def check_future_entries(self, cancel=0):
+        result = super().check_future_entries(cancel=cancel)
+        if (not cancel or self.is_backdated or self.is_write_off_waiver
+                or self.get('is_imported') or flt(self.principal_amount_paid) <= 0):
+            return result
+        from dcr.api.floorplan_accrual import floorplan_loan
+
+        if not floorplan_loan(self.against_loan):
+            return result
+        scope = {'loan': self.against_loan, 'docstatus': 1}
+        if self.loan_disbursement:
+            scope['loan_disbursement'] = self.loan_disbursement
+        # Native only checks later receipts. Earned interest and demands also
+        # depend on this principal event and need its normal repost on reversal.
+        if (frappe.db.exists('Loan Interest Accrual', {
+                **scope, 'interest_type': 'Normal Interest',
+                'posting_date': ['>=', self.value_date],
+            }) or frappe.db.exists('Loan Demand', {
+                **scope, 'demand_type': 'EMI', 'demand_date': ['>=', self.value_date],
+            })):
+            self.is_backdated = True
+            self.db_set('is_backdated', True)
+        return result
+
     def allocate_amounts(self, amounts, on_submit=False):
         from dcr.api.floorplan_accrual import floorplan_loan
 

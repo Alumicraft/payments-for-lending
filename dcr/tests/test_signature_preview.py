@@ -22,6 +22,32 @@ def test_preview_renders_pdf_without_creating_envelope(context):
         f.cache.set_value.assert_called_once()
 
 
+@pytest.mark.parametrize('source,expected', [('invoice', 275000), ('quote', 260000)])
+def test_flooring_info_sheet_uses_reviewed_invoice_without_rewriting_request(source, expected):
+    from types import SimpleNamespace
+    context = dict(document_type='Flooring Packet', reference_doctype='Loan Application',
+        reference_name='APP', customer='DEALER', recipient_email='review@example.test',
+        recipient_name='Dealer', fingerprint='VERSION',
+        financial_basis={'source': source, 'invoice_total': '275000.00', 'principal': '280000.00'},
+        prints=[('Home Build Request', 'HBR', 'New Home Info Sheet', 'Info.pdf'),
+                ('Loan Application', 'APP', 'Exhibit A Receipt', 'Exhibit.pdf')])
+    request = SimpleNamespace(home_invoice_plus_freight=260000, save=MagicMock())
+    with patch.object(docusign, '_signature_context', return_value=context), \
+            patch.object(docusign, 'frappe') as f:
+        f.get_doc.return_value = request
+        def render(doctype, name, fmt, as_pdf=False, doc=None):
+            if fmt == 'New Home Info Sheet':
+                assert (doc or request).home_invoice_plus_freight == expected
+            else:
+                assert doc is None
+            return b'%PDF-REVIEW'
+        f.get_print.side_effect = render
+        result = docusign.preview_signature('Flooring Packet', 'APP')
+        assert len(result['documents']) == 2
+        request.save.assert_not_called()
+        f.db.set_value.assert_not_called()
+
+
 @pytest.mark.parametrize('review', [None, {'user':'other@example.test'}, {'user':'staff@example.test','document_type':'MIFA','reference_name':'OTHER'}])
 def test_send_rejects_absent_expired_or_other_user_review(context, review):
     with patch.object(docusign, '_signature_context', return_value=context), patch.object(docusign, 'require_staff'), patch.object(docusign, 'frappe') as f, patch.object(docusign, 'DocuSignClient') as provider:

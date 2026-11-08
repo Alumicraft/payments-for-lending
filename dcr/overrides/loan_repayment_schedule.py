@@ -260,9 +260,11 @@ class CustomLoanRepaymentSchedule(LoanRepaymentSchedule):
                     if pending_prev_days > 0:
                         interest_amount = self.extra_payment_interest(next_emi_date)
 
-                    unpaid_interest = frappe.db.get_value(
-                        "Loan Restructure", self.loan_restructure, "balance_unaccrued_interest"
-                    )
+                    unpaid_interest = getattr(self, '_dcr_balance_unaccrued_interest', None)
+                    if unpaid_interest is None:
+                        unpaid_interest = frappe.db.get_value(
+                            "Loan Restructure", self.loan_restructure, "balance_unaccrued_interest"
+                        )
                     interest_amount = flt(interest_amount + max(0, flt(unpaid_interest)), 2)
 
                     # This future due is still a regular DCR installment:

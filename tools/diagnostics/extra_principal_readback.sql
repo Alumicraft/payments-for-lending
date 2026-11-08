@@ -1,0 +1,20 @@
+-- Read Only Cloud SQL Playground. Synthetic Loan 26 only. Export the single result row as CSV.
+-- Use a distinct readback_id integer for each run; do not reuse a prior result panel.
+SELECT
+  0 AS readback_id,
+  (SELECT JSON_ARRAYAGG(JSON_OBJECT('name', `name`, 'status', `status`, 'is_term_loan', `is_term_loan`, 'original_financed_principal', `original_financed_principal`, 'loan_amount', `loan_amount`, 'total_payment', `total_payment`, 'total_interest_payable', `total_interest_payable`, 'total_principal_paid', `total_principal_paid`, 'total_amount_paid', `total_amount_paid`, 'debit_adjustment_amount', `debit_adjustment_amount`, 'credit_adjustment_amount', `credit_adjustment_amount`))
+   FROM `tabLoan` WHERE name='ACC-LOAN-2026-00026') AS `loan`,
+  (SELECT JSON_ARRAYAGG(JSON_OBJECT('name', `name`, 'docstatus', `docstatus`, 'repayment_type', `repayment_type`, 'value_date', `value_date`, 'amount_paid', `amount_paid`, 'principal_amount_paid', `principal_amount_paid`, 'total_interest_paid', `total_interest_paid`, 'total_penalty_paid', `total_penalty_paid`, 'total_charges_paid', `total_charges_paid`, 'loan_restructure', `loan_restructure`, 'is_term_loan', `is_term_loan`))
+   FROM `tabLoan Repayment` WHERE against_loan='ACC-LOAN-2026-00026') AS `receipts`,
+  (SELECT JSON_ARRAYAGG(JSON_OBJECT('name', `name`, 'docstatus', `docstatus`, 'status', `status`, 'restructure_type', `restructure_type`, 'loan_repayment', `loan_repayment`, 'principal_adjusted', `principal_adjusted`, 'new_loan_amount', `new_loan_amount`, 'unaccrued_interest', `unaccrued_interest`, 'adjusted_unaccrued_interest', `adjusted_unaccrued_interest`, 'balance_unaccrued_interest', `balance_unaccrued_interest`))
+   FROM `tabLoan Restructure` WHERE loan='ACC-LOAN-2026-00026') AS `restructures`,
+  (SELECT JSON_ARRAYAGG(JSON_OBJECT('name', `name`, 'docstatus', `docstatus`, 'status', `status`, 'loan_restructure', `loan_restructure`, 'loan_amount', `loan_amount`, 'monthly_repayment_amount', `monthly_repayment_amount`))
+   FROM `tabLoan Repayment Schedule` WHERE loan='ACC-LOAN-2026-00026') AS `schedules`,
+  (SELECT JSON_ARRAYAGG(JSON_OBJECT('name', `name`, 'parent', `parent`, 'payment_date', `payment_date`, 'principal_amount', `principal_amount`, 'interest_amount', `interest_amount`, 'total_payment', `total_payment`, 'balance_loan_amount', `balance_loan_amount`, 'demand_generated', `demand_generated`))
+   FROM `tabRepayment Schedule` WHERE parent IN (SELECT name FROM `tabLoan Repayment Schedule` WHERE loan='ACC-LOAN-2026-00026')) AS `installments`,
+  (SELECT JSON_ARRAYAGG(JSON_OBJECT('name', `name`, 'docstatus', `docstatus`, 'start_date', `start_date`, 'posting_date', `posting_date`, 'base_amount', `base_amount`, 'interest_amount', `interest_amount`, 'interest_type', `interest_type`, 'loan_repayment_schedule', `loan_repayment_schedule`))
+   FROM `tabLoan Interest Accrual` WHERE loan='ACC-LOAN-2026-00026') AS `accruals`,
+  (SELECT JSON_ARRAYAGG(JSON_OBJECT('name', `name`, 'docstatus', `docstatus`, 'demand_date', `demand_date`, 'demand_type', `demand_type`, 'demand_subtype', `demand_subtype`, 'demand_amount', `demand_amount`, 'paid_amount', `paid_amount`, 'waived_amount', `waived_amount`, 'outstanding_amount', `outstanding_amount`, 'loan_repayment', `loan_repayment`, 'loan_repayment_schedule', `loan_repayment_schedule`))
+   FROM `tabLoan Demand` WHERE loan='ACC-LOAN-2026-00026') AS `demands`,
+  (SELECT JSON_ARRAYAGG(JSON_OBJECT('name', `name`, 'account', `account`, 'voucher_type', `voucher_type`, 'voucher_no', `voucher_no`, 'posting_date', `posting_date`, 'debit', `debit`, 'credit', `credit`, 'is_cancelled', `is_cancelled`))
+   FROM `tabGL Entry` WHERE voucher_no IN (SELECT name FROM `tabLoan Interest Accrual` WHERE loan='ACC-LOAN-2026-00026' UNION ALL SELECT name FROM `tabLoan Demand` WHERE loan='ACC-LOAN-2026-00026' UNION ALL SELECT name FROM `tabLoan Repayment` WHERE against_loan='ACC-LOAN-2026-00026' UNION ALL SELECT name FROM `tabLoan Disbursement` WHERE against_loan='ACC-LOAN-2026-00026' UNION ALL SELECT 'ACC-SINV-2026-00015' UNION ALL SELECT 'ACC-PINV-2026-00011')) AS `gl`;
