@@ -5,6 +5,24 @@ import pytest
 from dcr.api import dealer_portal as portal
 
 
+def test_standard_columns_survive_docfield_metadata_filtering():
+    with patch.object(portal, "frappe") as frappe:
+        frappe.get_meta.return_value.has_field.return_value = False
+        assert portal._available_fields("Loan", ["name", "docstatus", "modified", "missing_custom_field"]) == [
+            "name", "docstatus", "modified"]
+
+
+def test_funded_loan_keeps_its_payoff_action_with_standard_metadata():
+    with patch.object(portal, "frappe") as frappe, patch("dcr.api.dealer_payments.payment_summary", return_value={}):
+        frappe.get_meta.return_value.has_field.side_effect = lambda name: name in {
+            "home_build_request", "status", "disbursed_amount", "company"}
+        frappe.get_all.side_effect = lambda doctype, **kw: ([{field: value for field, value in {
+            "name": "LOAN-A", "docstatus": 1, "status": "Disbursed", "disbursed_amount": 225000,
+            "company": "DCR"}.items() if field in kw["fields"]}] if doctype == "Loan" else [])
+        result = portal._loan_summary("HBR-A", "DEALER-A")
+        assert result["payoff"]["can_request"] is True
+
+
 def test_hbr_metadata_is_queried_once_with_all_private_attachment_constraints():
     hbr = {"name": "HBR-A", "doc_checklist": [
         {"document_type": "Spec Info Sheet", "attachment": "/private/files/a.pdf"},
