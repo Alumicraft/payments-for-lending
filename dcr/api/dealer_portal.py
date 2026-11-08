@@ -207,7 +207,8 @@ def _has_field(doctype, fieldname):
 
 
 def _available_fields(doctype, fields):
-    return [field for field in fields if field == "name" or _has_field(doctype, field)]
+    standard = {"name", "owner", "creation", "modified", "modified_by", "docstatus", "idx"}
+    return [field for field in fields if field in standard or _has_field(doctype, field)]
 
 
 def _portal_status(doc):
