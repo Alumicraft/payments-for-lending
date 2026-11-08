@@ -6,7 +6,7 @@
  * - Create → MIFA — after dealer agreement is signed
  * - Create → Factory Assignment — if none exists
  *
- * Bank account management uses standard Bank Account "+" on Customer form.
+ * Create → Verify bank account — manual verification without enabling debits.
  * Auto-Pay setup email is sent from the Loan form.
  */
 
@@ -17,6 +17,12 @@ frappe.ui.form.on('Customer', {
         }
 
         patch_dealer_document_uploads(frm);
+
+        if (frappe.model.can_create('Bank Account') && frappe.model.can_write('Customer')) {
+            frm.add_custom_button(__('Verify bank account'), function() {
+                verify_dealer_bank_account(frm);
+            }, __('Create'));
+        }
 
         // Signing status indicator
         if (frm.doc.dealer_agreement_status === 'Signed') {
@@ -55,6 +61,44 @@ frappe.ui.form.on('Customer', {
 
     }
 });
+
+
+function verify_dealer_bank_account(frm) {
+    var dialog = new frappe.ui.Dialog({
+        title: __('Verify bank account'),
+        fields: [
+            { fieldname: 'routing_number', label: __('Routing number'), fieldtype: 'Data', reqd: 1 },
+            { fieldname: 'account_number', label: __('Account number'), fieldtype: 'Password', reqd: 1 },
+            { fieldname: 'account_type', label: __('Account type'), fieldtype: 'Select', options: ['Checking', 'Savings'], default: 'Checking', reqd: 1 },
+            { fieldname: 'check_type', label: __('Account holder'), fieldtype: 'Select', options: ['Business', 'Personal'], default: 'Business', reqd: 1 },
+            { fieldname: 'is_default', label: __('Use as default bank account'), fieldtype: 'Check', default: 0,
+                description: __('Verifying this account does not enable automatic payments.') }
+        ],
+        primary_action_label: __('Verify'),
+        onhide: function() {
+            dialog.set_value('account_number', '');
+            dialog.set_value('routing_number', '');
+        },
+        primary_action: async function(values) {
+            dialog.get_primary_btn().prop('disabled', true);
+            try {
+                var result = await frappe.call({
+                    method: 'dcr.api.achq_integration.setup_bank_account',
+                    args: Object.assign({ customer: frm.doc.name }, values)
+                });
+                if (result.message && result.message.success) {
+                    dialog.hide();
+                    frappe.show_alert({ message: __('Bank account verified and connected'), indicator: 'green' });
+                    await frm.reload_doc();
+                }
+            } finally {
+                dialog.get_primary_btn().prop('disabled', false);
+            }
+        }
+    });
+    dialog.show();
+    dialog.fields_dict.account_number.$input.attr('autocomplete', 'off');
+}
 
 
 var DEALER_DOCUMENT_FIELDS = [

@@ -607,7 +607,7 @@ def _create_bank_account(customer, bank_name, account_type, token, token_source,
 @frappe.whitelist()
 def setup_bank_account(customer, routing_number, account_number, account_type, is_default=True, check_type=None):
     """
-    Set up a bank account for ACH autopay using manual entry.
+    Verify and connect a bank account using manual entry, without enabling debits.
 
     Creates a Bank Account linked to the customer.
 
@@ -641,7 +641,7 @@ def setup_bank_account(customer, routing_number, account_number, account_type, i
     if not customer_name:
         frappe.throw(_("Customer not found"))
 
-    client = ACHQClient()
+    client = ACHQClient(allow_disabled=True)
     result = client.tokenize_and_verify(
         routing_number=routing_number,
         account_number=account_number,
@@ -690,7 +690,7 @@ def setup_bank_account(customer, routing_number, account_number, account_type, i
         "bank_account_name": ba.name,
         "verification_status": verify_status,
         "is_default": ba.is_default,
-        "message": "Bank account successfully linked for autopay"
+        "message": "Bank account successfully verified and connected"
     }
 
 

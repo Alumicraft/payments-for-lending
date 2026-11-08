@@ -15,6 +15,7 @@ def f():
     with patch('dcr.api.status_notices.frappe') as f, patch('dcr.api.status_notices.get_url', return_value='https://pilot.example.test/portal'), patch('dcr.api.status_notices.queue_notification') as queue:
         f.sendmail = queue
         f.flags.in_migrate = False
+        f.get_installed_apps.return_value = []
         f.db.exists.return_value = None
         f.get_single.return_value = Settings(enable_status_notifications=0,pilot_notification_recipient=None,
             staff_notification_recipient='staff@example.test',pilot_notifications_from='2026-11-08 13:50:00')
@@ -167,3 +168,21 @@ def test_native_queue_bypasses_immediate_shared_email_override():
         assert native.call_args.kwargs['delayed'] is True
         assert native.call_args.kwargs['now'] is False
         patched.assert_not_called()
+
+
+def test_email_service_site_admits_notice_without_the_unconfigured_smtp_queue(f):
+    pilot = f.get_single.return_value
+    pilot.enable_status_notifications = 1
+    pilot.pilot_notification_recipient = 'pilot@example.test'
+    f.get_installed_apps.return_value = ['emails']
+    f.get_single.side_effect = lambda doctype: pilot if doctype == 'DCR Pilot Settings' else Settings(enabled=1,vercel_service_url='https://mail.example.test')
+    f.get_all.return_value = ['NOTICE-1']
+    notice = f.get_doc.return_value
+    notice.status = 'Recorded'
+    queue_pilot_notices()
+    f.sendmail.assert_not_called()
+    f.db.commit.assert_not_called()
+    assert notice.status == 'Queued'
+    assert notice.delivery_transport == 'Email Service'
+    assert notice.delivered_to == 'pilot@example.test'
+    assert not notice.email_queue
