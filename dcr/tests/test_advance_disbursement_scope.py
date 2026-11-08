@@ -24,13 +24,15 @@ def repayment():
             SimpleNamespace(LoanRepayment=Native),
         'lending.loan_management.doctype.loan_interest_accrual':
             SimpleNamespace(loan_interest_accrual=SimpleNamespace(
-                get_principal_amount_for_term_loan=lambda *args: 0)),
+                get_principal_amount_for_term_loan=lambda *args: 0,
+                make_loan_interest_accrual_entry=lambda *args, **kwargs: None)),
     }):
         module = importlib.import_module('dcr.overrides.loan_repayment')
         with patch.object(module, 'frappe') as frappe, \
                 patch('dcr.api.floorplan_accrual.floorplan_loan') as floorplan:
             frappe.db.get_value.return_value = None
-            floorplan.return_value = Record(name='LOAN', repayment_schedule_type='Monthly as per cycle date')
+            floorplan.return_value = Record(name='LOAN', is_term_loan=1,
+                                            repayment_schedule_type='Monthly as per cycle date')
             def exists(doctype, filters):
                 return filters.get('loan_disbursement') == ['is', 'not set']
             frappe.db.exists.side_effect = exists

@@ -17,14 +17,19 @@ class Record(SimpleNamespace):
 @pytest.fixture
 def quote_environment():
     original = Mock(return_value=171000)
-    native = SimpleNamespace(get_principal_amount_for_term_loan=original)
-    loan = Record(name='LOAN', rate_of_interest=12)
+    native = SimpleNamespace(get_principal_amount_for_term_loan=original,
+                             make_loan_interest_accrual_entry=Mock())
+    loan = Record(name='LOAN', company='DCR', rate_of_interest=12, is_term_loan=1,
+                  repayment_start_date='2026-11-01',
+                  repayment_schedule_type='Monthly as per repayment start date')
     def quote():
         return round(native.get_principal_amount_for_term_loan('SCHEDULE', '2029-11-01') * .12 / 360, 2)
     def records(doctype, **kwargs):
         assert kwargs['filters']['docstatus'] == 1
         if doctype == 'Loan Disbursement':
             return [Record(disbursement_date='2026-10-01', disbursed_amount=225000)]
+        if doctype == 'Loan Interest Accrual':
+            return [Record(posting_date='2029-10-31')]
         assert doctype == 'Loan Repayment'
         return [Record(value_date=day, principal_amount_paid=2250) for day in
                 ('2027-11-01', '2027-12-01', '2028-02-01')]
@@ -33,7 +38,8 @@ def quote_environment():
             SimpleNamespace(loan_interest_accrual=native),
     }), patch.object(accrual, 'frappe') as frappe, \
             patch.object(accrual, 'floorplan_loan', return_value=loan) as eligibility:
-        frappe.db.get_value.return_value = 'LOAN'
+        frappe.db.get_value.side_effect = lambda doctype, *args, **kwargs: (
+            'Daily' if doctype == 'Company' else 'LOAN')
         frappe.get_all.side_effect = records
         yield native, original, quote, eligibility
 
@@ -118,7 +124,7 @@ def test_registered_restructure_controller_preserves_native_fields_and_legacy_qu
                 SimpleNamespace(LoanRestructure=Native),
         }):
             controller = getattr(importlib.import_module(module_name), class_name)
-            doc = controller(loan='LOAN')
+            doc = controller(loan='LOAN', restructure_date='2029-11-02')
             assert doc.update_overdue_amounts() == 'native-result'
             assert doc.unaccrued_interest == (72.75 if eligible else 57)
             assert doc.interest_overdue == 46487.25

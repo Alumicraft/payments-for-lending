@@ -7,7 +7,7 @@ from pathlib import Path
 PRINT_FORMATS = Path(__file__).resolve().parents[1] / "dcr" / "print_format"
 
 
-def render_financial_format(name, doc, bank=None, payoff=None):
+def render_financial_format(name, doc, bank=None, payoff=None, quote_calls=None):
     from jinja2 import Environment, ChainableUndefined
     from types import SimpleNamespace
     source = json.loads((PRINT_FORMATS / name / (name + '.json')).read_text())
@@ -16,7 +16,11 @@ def render_financial_format(name, doc, bank=None, payoff=None):
         utils=SimpleNamespace(fmt_money=lambda amount, **kw: f'${float(amount):,.2f}',
                               formatdate=lambda value, *args: str(value)))
     env = Environment(undefined=ChainableUndefined)
-    env.globals['flooring_payoff_quote'] = lambda *args: payoff
+    def quote(*args):
+        if quote_calls is not None:
+            quote_calls.append(args)
+        return payoff
+    env.globals['flooring_payoff_quote'] = quote
     return env.from_string(source['html']).render(doc=doc,frappe=frappe)
 
 
@@ -44,6 +48,15 @@ def test_payoff_print_does_not_invent_a_quote_when_no_funding_or_loan_is_closed(
                                   payoff=dict(available=False, reason='Loan is closed.'))
     assert 'Loan is closed.' in html
     assert 'Total payoff' not in html
+
+
+def test_payoff_print_uses_the_saved_date_unless_staff_selected_another_date():
+    for selected, expected in [(None, '2028-02-15'), ('2028-01-15', '2028-01-15')]:
+        calls = []
+        render_financial_format('dealer_flooring_loan_payoff', dict(name='LOAN',
+            payoff_date='2028-02-15', payoff_quote_date=selected),
+            payoff=dict(available=False, reason='Test'), quote_calls=calls)
+        assert calls == [('LOAN', expected)]
 
 
 def test_final_receipt_uses_invoice_date_and_all_in_principal():

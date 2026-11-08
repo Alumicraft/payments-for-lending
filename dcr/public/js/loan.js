@@ -290,7 +290,7 @@ function send_payoff(frm, payoff_type) {
     if (payoff_type === 'Flooring') {
         frappe.prompt([{
             fieldname: 'quote_date', fieldtype: 'Date', label: __('Payoff date'),
-            default: frappe.datetime.get_today(), reqd: 1
+            default: frm.doc.payoff_date || frappe.datetime.get_today(), reqd: 1
         }], (values) => send(values.quote_date), __('Flooring payoff date'), __('Continue'));
     } else {
         send();

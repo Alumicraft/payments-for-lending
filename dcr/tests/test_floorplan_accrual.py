@@ -17,7 +17,9 @@ class Doc(SimpleNamespace):
 
 def loan(**changes):
     fields = dict(name='LOAN', loan_product='Standard', company='DCR',
-                  original_financed_principal=225000, home_build_request='HOME', rate_of_interest=12)
+                  original_financed_principal=225000, home_build_request='HOME', rate_of_interest=12,
+                  repayment_start_date='2026-11-01', is_term_loan=1,
+                  repayment_schedule_type='Monthly as per repayment start date')
     fields.update(changes)
     return Doc(**fields)
 
@@ -101,7 +103,8 @@ def test_adjusted_principal_requires_review_instead_of_forecast_guess():
 
 def test_accrual_uses_receipts_and_restores_native_function_on_failure():
     original = Mock(return_value=999)
-    native = SimpleNamespace(get_principal_amount_for_term_loan=original)
+    native = SimpleNamespace(get_principal_amount_for_term_loan=original,
+                             make_loan_interest_accrual_entry=Mock())
     package = SimpleNamespace(loan_interest_accrual=native)
     with patch.dict(sys.modules, {'lending.loan_management.doctype.loan_interest_accrual':package}), \
             patch.object(accrual,'frappe') as frappe, \
@@ -119,7 +122,8 @@ def test_accrual_uses_receipts_and_restores_native_function_on_failure():
 
 def test_native_accrual_stays_native_for_legacy_schedule():
     original = Mock(return_value=1000)
-    native = SimpleNamespace(get_principal_amount_for_term_loan=original)
+    native = SimpleNamespace(get_principal_amount_for_term_loan=original,
+                             make_loan_interest_accrual_entry=Mock())
     package = SimpleNamespace(loan_interest_accrual=native)
     with patch.dict(sys.modules, {'lending.loan_management.doctype.loan_interest_accrual':package}), \
             patch.object(accrual,'frappe') as frappe, \

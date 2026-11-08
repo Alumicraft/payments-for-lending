@@ -13,7 +13,7 @@ def principal_on_day(events, day):
 
 
 def elapsed_floorplan_interest(events, start, end, annual_rate):
-    """Daily-rounded Actual/360 interest on actual balances over [start, end)."""
+    """Actual/360 interest on actual balances, rounded once over [start, end)."""
     from datetime import date, timedelta
     from decimal import Decimal, ROUND_HALF_UP
 
@@ -22,9 +22,42 @@ def elapsed_floorplan_interest(events, start, end, annual_rate):
     rate = Decimal(str(annual_rate))
     total = Decimal(0)
     while day < end:
-        total += (principal_on_day(events, day) * rate / Decimal(36000)).quantize(
-            Decimal('0.01'), rounding=ROUND_HALF_UP)
+        total += principal_on_day(events, day) * rate
         day += timedelta(days=1)
+    return (total / Decimal(36000)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+
+def floorplan_interval_interest(events, first_payment_date, start, end, annual_rate):
+    """Difference of rounded monthly cumulative earnings, including partial periods."""
+    from calendar import monthrange
+    from datetime import date
+    from decimal import Decimal
+
+    first = date.fromisoformat(str(first_payment_date)[:10])
+    cursor = date.fromisoformat(str(start)[:10])
+    end = date.fromisoformat(str(end)[:10])
+    funding = min(date.fromisoformat(str(day)[:10]) for day, amount in events if Decimal(str(amount)) > 0)
+    month_end = first.day == monthrange(first.year, first.month)[1]
+
+    def due(offset):
+        year, month = divmod(first.year * 12 + first.month - 1 + offset, 12)
+        month += 1
+        last = monthrange(year, month)[1]
+        return date(year, month, last if month_end else min(first.day, last))
+
+    total = Decimal(0)
+    while cursor < end:
+        if cursor < first:
+            period_start, next_due = funding, first
+        else:
+            offset = (cursor.year-first.year)*12 + cursor.month-first.month
+            if due(offset) > cursor:
+                offset -= 1
+            period_start, next_due = due(offset), due(offset+1)
+        stop = min(end, next_due)
+        total += (elapsed_floorplan_interest(events, period_start, stop, annual_rate)
+                  - elapsed_floorplan_interest(events, period_start, cursor, annual_rate))
+        cursor = stop
     return total
 
 

@@ -8,7 +8,7 @@ import frappe
 from frappe.utils import getdate
 
 from dcr.api.floorplan_terms import product_terms
-from dcr.lending_rules import elapsed_floorplan_interest, principal_on_day
+from dcr.lending_rules import elapsed_floorplan_interest, floorplan_interval_interest, principal_on_day
 
 
 def floorplan_loan(name):
@@ -39,6 +39,10 @@ def principal_events(loan):
 
 
 def projected_interest(loan, value_date):
+    return interest_projection(loan, value_date)[0]
+
+
+def interest_projection(loan, value_date):
     end = getdate(value_date)
     if frappe.db.get_value('Company', loan.company, 'loan_accrual_frequency') != 'Daily':
         frappe.throw('DCR floorplan interest requires Daily loan accrual frequency.')
@@ -49,7 +53,36 @@ def projected_interest(loan, value_date):
     }, fields=['posting_date'], order_by='posting_date desc', limit_page_length=1)
     start = (getdate(latest[0].posting_date) + timedelta(days=1) if latest
              else min(getdate(day) for day, amount in events if float(amount) > 0))
-    return elapsed_floorplan_interest(events, start, end, loan.rate_of_interest)
+    return (floorplan_interval_interest(events, first_payment_date(loan), start, end, loan.rate_of_interest),
+            elapsed_floorplan_interest(events, start, end, loan.rate_of_interest))
+
+
+def first_payment_date(loan):
+    first = (frappe.db.get_value('Loan Application', loan.loan_application, 'first_payment_date')
+             if loan.get('loan_application') else None)
+    first = first or loan.get('repayment_start_date')
+    if not first:
+        frappe.throw('The original first payment date is required for floorplan interest rounding.')
+    return first
+
+
+def extra_payment_interest(name, start, end, balance_after_payment):
+    loan = floorplan_loan(name)
+    if not loan:
+        return None
+    events = principal_events(loan)
+    events.append((start, Decimal(str(balance_after_payment)) - principal_on_day(events, start)))
+    return float(floorplan_interval_interest(events, first_payment_date(loan), start, end,
+                                            loan.rate_of_interest))
+
+
+def populate_repayment_loan_type(doc):
+    if doc.repayment_type not in ('Pre Payment', 'Loan Closure') or doc.get('is_imported'):
+        return
+    loan = floorplan_loan(doc.against_loan)
+    if loan:
+        doc.is_term_loan = loan.is_term_loan
+        doc.repayment_schedule_type = loan.repayment_schedule_type
 
 
 def scheduled_interest_due(name, demand_date):
@@ -97,6 +130,11 @@ def calculate_amounts(against_loan, posting_date, payment_type=None, with_loan_d
     if payment_type == 'Loan Closure':
         amounts = result['amounts'] if with_loan_details else result
         adjust_closure_amounts(against_loan, posting_date, amounts)
+    elif payment_type in ('Advance Payment', 'Pre Payment'):
+        loan = floorplan_loan(against_loan)
+        if loan:
+            amounts = result['amounts'] if with_loan_details else result
+            amounts['unaccrued_interest'] = float(projected_interest(loan, posting_date))
     return result
 
 
@@ -105,6 +143,7 @@ def actual_principal_accruals():
     from lending.loan_management.doctype.loan_interest_accrual import loan_interest_accrual as native
 
     original = native.get_principal_amount_for_term_loan
+    original_entry = native.make_loan_interest_accrual_entry
     schedules = {}
 
     def actual_balance(schedule, day):
@@ -115,8 +154,27 @@ def actual_principal_accruals():
         events = schedules[schedule]
         return float(principal_on_day(events, day)) if events is not None else original(schedule, day)
 
+    def rounded_entry(loan, base_amount, interest_amount, process_loan_interest, start_date,
+                      posting_date, accrual_type, interest_type, rate_of_interest, loan_demand=None,
+                      loan_repayment_schedule=None, additional_interest=0, accrual_date=None,
+                      loan_repayment_schedule_detail=None, loan_disbursement=None, is_imported=False):
+        if interest_type == 'Normal Interest' and not is_imported:
+            contract = floorplan_loan(loan)
+            if contract:
+                events = principal_events(contract)
+                base_amount = float(principal_on_day(events, posting_date))
+                interest_amount = float(floorplan_interval_interest(events, first_payment_date(contract),
+                    start_date, getdate(posting_date)+timedelta(days=1), rate_of_interest))
+        return original_entry(loan, base_amount, interest_amount, process_loan_interest, start_date,
+            posting_date, accrual_type, interest_type, rate_of_interest, loan_demand=loan_demand,
+            loan_repayment_schedule=loan_repayment_schedule, additional_interest=additional_interest,
+            accrual_date=accrual_date, loan_repayment_schedule_detail=loan_repayment_schedule_detail,
+            loan_disbursement=loan_disbursement, is_imported=is_imported)
+
     native.get_principal_amount_for_term_loan = actual_balance
+    native.make_loan_interest_accrual_entry = rounded_entry
     try:
         yield
     finally:
         native.get_principal_amount_for_term_loan = original
+        native.make_loan_interest_accrual_entry = original_entry
