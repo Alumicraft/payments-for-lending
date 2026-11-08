@@ -11,6 +11,7 @@ from contextlib import contextmanager
 from datetime import date, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 import hashlib
+import importlib.util
 from pathlib import Path
 import sys
 from types import SimpleNamespace
@@ -39,6 +40,7 @@ def verify(root):
     paths = {
         'loan_interest_accrual': '0af3eb36dab0c0ba184caaa1a0412e9187a08d2e697b01be613290be524baecc',
         'loan_repayment_schedule': '8ae00a7598f0a8becee4459fafee9f5e968b22ae44b8d641aaab2f2c7b46cf33',
+        'loan_repayment': 'de9ef9fe1959abcd24f0efa2543d30719f285e21737825a8687778c1ec35861a',
     }
     source = {}
     for name, expected in paths.items():
@@ -127,7 +129,68 @@ def verify(root):
         assert demands == [('Principal', 5000.0, 5000.0)]
     print('Pinned native factory: daily total 2250.11 -> 2250.17; sub-cent month -> 0.01.')
     print('Pinned native prepayment: false paid interest 1029.00 -> 0.00; paid principal stays 5000.00.')
+    verify_allocation(source['loan_repayment'])
     print('Offline source check only. Hosted posting, ledger and reversal acceptance remain separate.')
+
+
+def verify_allocation(source):
+    def reject(message):
+        raise ValueError(message)
+
+    frappe = SimpleNamespace(db=SimpleNamespace(get_default=lambda key: 2,
+        get_value=lambda *args: 'Disbursed'), throw=reject)
+    scope = dict(frappe=frappe, flt=flt, cint=int)
+    class Native(SimpleNamespace):
+        def get(self, key, default=None):
+            return getattr(self, key, default)
+
+        def set(self, key, value):
+            setattr(self, key, value)
+
+        def hard_clear_table(self):
+            self.repayment_details = []
+
+        def update_amounts_for_write_off_recovery(self, status, amounts):
+            return amounts
+
+        def allocate_amount_against_demands(self, status, amounts, cash):
+            assert not amounts['unpaid_demands']
+            return cash
+
+        def handle_final_closure_payments(self, amounts):
+            pass
+
+    for method in ('allocate_amounts', 'init_amounts'):
+        setattr(Native, method, load_function(source, method, scope, 'LoanRepayment'))
+    amounts = dict(unaccrued_interest=1029, unbooked_interest=0,
+                   unbooked_penalty=0, unpaid_demands=[], pending_principal_amount=220500)
+    values = dict(repayment_type='Pre Payment', against_loan='LOAN', amount_paid=5000,
+                  total_charges_payable=0, is_imported=False)
+    old = Native(**values)
+    old.allocate_amounts(amounts)
+    assert (old.principal_amount_paid, old.total_interest_paid) == (3971, 1029)
+    path = Path(__file__).resolve().parents[2] / 'dcr/overrides/loan_repayment.py'
+    with patch.dict(sys.modules, {
+        'frappe': frappe, 'frappe.utils': SimpleNamespace(flt=flt, cint=int),
+        'lending.loan_management.doctype.loan_repayment.loan_repayment': SimpleNamespace(LoanRepayment=Native),
+        'dcr.api.floorplan_accrual': SimpleNamespace(floorplan_loan=lambda name: SimpleNamespace()),
+    }):
+        spec = importlib.util.spec_from_file_location('allocation_diagnostic', path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        for on_submit in (False, True):
+            doc = module.CustomLoanRepayment(**values)
+            doc.allocate_amounts(amounts, on_submit=on_submit)
+            assert (doc.principal_amount_paid, doc.total_interest_paid, doc.unbooked_interest_paid) == (5000, 0, 0)
+        doc = module.CustomLoanRepayment(**dict(values, amount_paid=220500))
+        try:
+            doc.allocate_amounts(amounts)
+        except ValueError as error:
+            assert 'Loan Closure' in str(error)
+        else:
+            raise AssertionError('A principal-only payment must not close a loan with earned interest.')
+    assert amounts['unaccrued_interest'] == 1029
+    print('Pinned native allocation on draft/submit: 3971 principal + 1029 interest -> 5000 principal; payoff uses Closure.')
 
 
 if __name__ == '__main__':
