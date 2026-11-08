@@ -10,6 +10,18 @@ from dcr.lending_rules import has_material_outstanding_principal
 
 
 class CustomLoanRepayment(LoanRepayment):
+    def allocate_amounts(self, amounts, on_submit=False):
+        from dcr.api.floorplan_accrual import floorplan_loan
+
+        extra_principal = (self.repayment_type == 'Pre Payment' and not self.get('is_imported')
+                           and floorplan_loan(self.against_loan) is not None)
+        if extra_principal:
+            amounts = dict(amounts, unaccrued_interest=0, unbooked_interest=0)
+        result = super().allocate_amounts(amounts, on_submit=on_submit)
+        if extra_principal and flt(self.principal_amount_paid, 2) >= flt(amounts['pending_principal_amount'], 2):
+            frappe.throw('Use Loan Closure to pay off the remaining principal and earned interest.')
+        return result
+
     def allocate_charges(self, amount_paid, demands):
         remaining = super().allocate_charges(amount_paid, demands)
         precision = cint(frappe.db.get_default("currency_precision")) or 2
@@ -25,12 +37,6 @@ class CustomLoanRepayment(LoanRepayment):
             from dcr.api.floorplan_accrual import adjust_closure_amounts
 
             adjust_closure_amounts(self.against_loan, self.value_date, amounts)
-        elif self.repayment_type == 'Pre Payment':
-            from dcr.api.floorplan_accrual import floorplan_loan, projected_interest
-
-            loan = floorplan_loan(self.against_loan)
-            if loan:
-                amounts['unaccrued_interest'] = float(projected_interest(loan, self.value_date))
         return super().set_missing_values(amounts)
 
     def mark_as_unpaid(self):
