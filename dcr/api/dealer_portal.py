@@ -596,6 +596,14 @@ def _plaid_is_available():
         return False
 
 
+def _automatic_payment_status():
+    try:
+        value = frappe.db.get_single_value("ACH Settings", "enable_ach_autopay")
+        return "Confirm with DCR" if value in (True, 1, "1") else "Not set up"
+    except Exception:
+        return "Unavailable"
+
+
 @frappe.whitelist()
 def get_portal_context():
     """Return the complete dealer-safe dashboard payload."""
@@ -642,7 +650,9 @@ def get_portal_context():
     signatures = _get_signatures(customer)
     from dcr.api.dealer_finance import financial_summary
     try:
-        finance = financial_summary(_value(customer, "name"))
+        balances = {_value(deal["loan"], "name"): _value(deal["loan"]["payments_summary"], "outstanding_principal")
+                    for deal in deals if deal.get("loan", {}).get("payments_summary")}
+        finance = financial_summary(_value(customer, "name"), balances)
     except Exception:
         frappe.log_error(title="Dealer financial readback failed", message=frappe.get_traceback())
         finance = {"available": False}
@@ -657,12 +667,12 @@ def get_portal_context():
         "onboarding_documents": onboarding,
         "signatures": signatures,
         "finance": finance,
+        "as_of": frappe.utils.today(),
         "support_url": _support_url(),
         "ach": {
             "accounts": _get_ach_accounts(customer),
             "available": _plaid_is_available(),
-            "automatic_payments": ("Confirm with DCR" if frappe.db.get_single_value(
-                "ACH Settings", "enable_ach_autopay") else "Not set up"),
+            "automatic_payments": _automatic_payment_status(),
         },
     }
 

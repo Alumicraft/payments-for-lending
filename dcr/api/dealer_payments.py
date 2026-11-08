@@ -6,7 +6,7 @@ import frappe
 
 CASH_REPAYMENT_TYPES = {"Normal Repayment", "Loan Closure", "Pre Payment", "Advance Payment",
     "Write Off Recovery", "Write Off Settlement", "Charge Payment", "Full Settlement",
-    "Partial Settlement", "Principal Adjustment"}
+    "Partial Settlement"}
 
 
 def _amount(value):
@@ -91,8 +91,9 @@ def payment_summary(loan, customer_name):
         fields=["posting_date", "disbursement_date", "disbursed_amount"],
         limit_page_length=0, ignore_permissions=True)
     for receipt in funding:
-        day = str(_json_value(_value(receipt, "posting_date") or _value(receipt, "disbursement_date")))[:10]
-        principal[day] += _amount(_value(receipt, "disbursed_amount"))
+        day = _value(receipt, "posting_date") or _value(receipt, "disbursement_date")
+        if day:
+            principal[str(_json_value(day))[:10]] += _amount(_value(receipt, "disbursed_amount"))
     return {"outstanding_principal": balance, "currency": currency, "funded": _amount(_value(loan, "disbursed_amount")) > 0,
         "upcoming": upcoming, "history": [{"name": _value(row, "name"),
             "date": _json_value(_value(row, "posting_date")), "amount": _json_value(_value(row, "amount_paid")),
@@ -100,7 +101,8 @@ def payment_summary(loan, customer_name):
             "is_payment": _value(row, "repayment_type") in CASH_REPAYMENT_TYPES} for row in history],
         "paid_total": float(sum(paid.values(), Decimal(0))),
         "paid_series": _running_series(paid), "principal_series": _running_series(principal),
-        "funded_on": min((str(_value(row, "disbursement_date"))[:10] for row in funding), default=None),
+        "funded_on": min((str(_value(row, "disbursement_date"))[:10] for row in funding
+                          if _value(row, "disbursement_date")), default=None),
         "history_truncated": False, "as_of": frappe.utils.today()}
 
 

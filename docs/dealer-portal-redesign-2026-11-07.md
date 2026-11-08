@@ -8,7 +8,7 @@ Source: Paper file DCR, Dealer portal page, boards at y13700 and y14900. The Nov
 - A 228px sidebar, shared table lanes, underline tabs, system dark theme and phone bottom navigation. Settings retains uploads and signature history. Phone users can sign out through Settings.
 - Request IDs identify builds. Wide tables omit only the organizational ACC prefix from link text so distinct HBR numbers fit. Link targets, titles, page headings and breadcrumbs retain the saved ID.
 - Historical charts use submitted funding and repayment posting dates. Projected principal uses unpaid schedule reductions and a dashed line. A history that does not reconcile with the native balance displays as unavailable.
-- Account totals read all owned submitted loans and receipts. Noncash waivers/capitalizations do not inflate paid-to-date. A missing MIFA limit remains unavailable. Existing native balance calculations remain authoritative.
+- Account totals read all owned submitted loans and receipts. Noncash waivers, capitalizations and Principal Adjustment records do not inflate paid-to-date or appear as paid installments. Paid-to-date includes submitted collection receipts, including write-off recovery and cash settlement records; it does not claim provider settlement. A missing or blank MIFA limit remains unavailable. Actual outstanding uses native balances. Used credit and Available share the staff approval calculation, including reserved amounts for partially disbursed loans. These figures can differ from actual funded principal.
 - Paid schedule copies are matched by funding and due date as well as row ID. This prevents prepayment from presenting a paid installment again without suppressing a different funding's installment on the same date.
 - An amended application's signed flag requires its own matching dealer Signature Request. An inherited file pointer cannot claim it is signed.
 
@@ -33,3 +33,9 @@ Browser fixture invocation uses `DCR_PLAYWRIGHT_MODULE` for an existing Playwrig
 InterVariable.woff2 and its license come from rsms/inter commit e3a3d4c57d5ecc01453a575621882a384c1995a3. No external font service is contacted by the portal.
 
 Run the project preflight and v16-linter agents on this diff before a main push. Deployment and signed-in hosted acceptance must be recorded separately from these local checks.
+
+## Release checks
+
+The preflight and v16-linter agents reviewed candidate 81aa05b. Their findings led to a shared staff/portal credit-usage helper, exclusion of Principal Adjustment from cash receipts, blank-limit handling, a guarded ACH status read, reuse of already-verified loan balances, and font coverage in MANIFEST.in. Both portal and native request-form cache tokens advance together. The API client sends reads as POST, so the review's inferred GET-log rollback issue does not apply to this path.
+
+Final validation passes 828 Python tests and 42 subtests, all 17 Node test files, and both browser fixtures. The fixtures produce desktop, dark and phone screenshots under the local output directory. Polling still returns full owned histories every ten seconds. This release reduces duplicate loan reads but does not claim a measured hosted performance result.

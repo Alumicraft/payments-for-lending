@@ -184,3 +184,18 @@ def test_amended_application_does_not_inherit_original_signature(frappe, related
         "customer": "DEALER-A", "reference_doctype": "Loan Application",
         "reference_name": "APP-AMENDED", "status": "Signed",
         "signed_attachment": "/private/files/old-original.pdf"})
+
+
+@patch.object(portal, "frappe")
+def test_unavailable_autopay_setting_does_not_break_dashboard(frappe):
+    frappe.db.get_single_value.side_effect = ValueError("settings unavailable")
+    assert portal._automatic_payment_status() == "Unavailable"
+
+
+@patch.object(portal, "frappe")
+def test_autopay_is_off_for_numeric_or_string_zero(frappe):
+    for value in (0, "0", False, None):
+        frappe.db.get_single_value.return_value = value
+        assert portal._automatic_payment_status() == "Not set up"
+    frappe.db.get_single_value.return_value = "1"
+    assert portal._automatic_payment_status() == "Confirm with DCR"

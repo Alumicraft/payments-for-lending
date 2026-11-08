@@ -1,6 +1,7 @@
 from dcr.api.access import require_staff
 from dcr.api.floorplan_terms import product_terms
 import frappe
+from dcr.api.dealer_finance import credit_usage as _get_dealer_outstanding_balance
 from frappe import _
 from frappe.utils import getdate, add_days, today
 
@@ -158,25 +159,6 @@ def _apply_loan_calculation_values(doc):
         else:
             setattr(doc, fieldname, value)
     return values
-
-
-def _get_dealer_outstanding_balance(customer):
-    """Get total outstanding loan balance for a dealer.
-
-    Frappe Lending doesn't store an `outstanding_amount` column on Loan;
-    the unpaid principal is computed as loan_amount - total_principal_paid.
-    """
-    result = frappe.db.sql(
-        """
-        SELECT COALESCE(SUM(loan_amount - COALESCE(total_principal_paid, 0)), 0) AS total
-        FROM `tabLoan`
-        WHERE applicant = %s AND applicant_type = 'Customer'
-        AND status IN ('Disbursed', 'Partially Disbursed', 'Active')
-        """,
-        (customer,),
-        as_dict=True,
-    )
-    return result[0].total if result else 0
 
 
 def _require_complete_dealer_loan_access(customer):

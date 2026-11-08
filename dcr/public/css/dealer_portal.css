@@ -171,12 +171,12 @@
     .dcr-wide-table thead { display: none; }
     .dcr-wide-table tbody, .dcr-wide-table tr { display: block; width: 100%; }
     .dcr-wide-table tr { position: relative; height: auto !important; padding: 14px 0; border-bottom: 1px solid var(--dcr-line); }
-    .dcr-wide-table tr > * { display: none; border: 0; }
+    .dcr-wide-table table tbody tr > * { display: none; border: 0; }
     .dcr-wide-table tr > :first-child { display: block; width: 100%; padding: 0; padding-right: 108px; overflow: visible; }
     .dcr-wide-table .dcr-col-amount { display: block; position: absolute; right: 0; top: 12px; width: 104px; padding: 0; }
     .dcr-wide-table .dcr-c-act { display: block; width: 100%; padding: 8px 0 0; text-align: left; }
     .dcr-wide-table .dcr-phone-summary { display: block; font-size: 12px; margin-top: 4px; }
-    .dcr-side-request { width: 110px !important; }
+    .dcr-side-request { width: 130px !important; }
     .dcr-side-due { width: 60px !important; }
     .dcr-side-amount { width: 84px !important; }
     .dcr-toast { bottom: 90px; }

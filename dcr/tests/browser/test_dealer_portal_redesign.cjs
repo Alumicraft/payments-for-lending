@@ -10,11 +10,11 @@ const html = ('<html><head><meta charset="utf-8">' + block('head_include') + '</
 const output = process.env.DCR_PORTAL_SCREENSHOT_DIR;
 const documents = ['dealer_license_copy', 'sellers_permit_copy', 'w9_copy', 'retailer_application_copy'].map(fieldname => ({ fieldname, label: fieldname, uploaded: true, can_download: true, uploaded_on: '2026-10-01', file_name: 'owned.pdf' }));
 const data = {
-    customer: { name: 'DEALER-A', label: 'Harbor Point Homes', email: 'dealer@example.test' },
+    customer: { name: 'DEALER-A', label: 'Harbor Point Homes', email: 'dealer@example.test' }, as_of: '2026-11-07',
     factories: [{ name: 'FACTORY-A', label: 'Champion' }], onboarding_documents: documents,
     signatures: ['Dealer Agreement', 'MIFA'].map((document_type, i) => ({ name: 'ACCOUNT-' + i, document_type, status: 'Signed', signed_date: '2026-10-01', can_download: true })),
     support_url: 'mailto:accounting@example.test', ach: { available: true, accounts: [{ bank_name: 'First Platypus', last4: '0000', status: 'Active' }], automatic_payments: 'Not set up' },
-    finance: { available: true, outstanding: 900000, funded_loans: 4, credit_limit: 1500000, available_credit: 600000, paid_total: 9000,
+    finance: { available: true, outstanding: 900000, credit_used: 900000, funded_loans: 4, credit_limit: 1500000, available_credit: 600000, paid_total: 9000,
         principal_series: [{ date: '2026-10-01', amount: 909000 }, { date: '2026-11-07', amount: 900000 }], paid_series: [{ date: '2026-10-01', amount: 4500 }, { date: '2026-11-07', amount: 9000 }] },
     deals: Array.from({ length: 4 }, (_, i) => ({ name: 'ACC-HBR-2026-000' + (30 + i), floor_plan: 'Plan ' + i, home_type: i ? 'Spec' : 'Customer Sold',
         end_buyer_name: i ? 'Stale buyer' : 'Alex Rivera', home_serial_no: i ? 'TBD' : 'SN-2026', docstatus: 1, portal_status: 'Accepted',
@@ -24,7 +24,8 @@ const data = {
             principal_series: [{ date: '2026-10-01', amount: 225000 }, { date: '2026-11-07', amount: 225000 }],
             upcoming: [{ date: '2026-12-01', principal: 0, interest: 2250, total: 2250, due_status: 'Scheduled' },
                 { date: '2027-01-01', principal: 2250, interest: 2250.17, total: 4500.17, due_status: 'Scheduled' }],
-            history: [{ date: '2026-11-01', amount: 2250, type: 'Normal Repayment' }] } } })),
+            history: [{ date: '2026-11-01', amount: 2250, type: 'Normal Repayment' },
+                { date: '2026-11-02', amount: 123.45, type: 'Principal Adjustment', is_payment: false }] } } })),
 };
 
 (async () => {
@@ -79,6 +80,7 @@ const data = {
             assert.doesNotMatch(await page.locator('#dcr-portal-view').innerText(), /Interest \$|Principal \$|Interest owed|Total interest/);
             if (!tab) assert.equal(await page.locator('.dcr-line-chart [stroke-dasharray]').count(), 1);
             if (tab === '/details') assert.equal(await page.getByRole('link', { name: 'Edit', exact: true }).count(), 0);
+            if (tab === '/payments') assert.doesNotMatch(await page.locator('#dcr-portal-view').innerText(), /123\.45/);
             await noOverflow(); await shot('build-' + (tab.slice(1) || 'overview'));
         }
         await open('loans');
