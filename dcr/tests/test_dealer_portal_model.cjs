@@ -20,11 +20,13 @@ const waiting = { name: "S1", document_type: "Flooring Packet", status: "Sent", 
 assert.equal(M.lifecycle(funded).label, "Funded");
 assert.equal(M.needs(funded, [waiting]), "Sign the Flooring Packet");
 
-// Identity: floorplan, then serial, then the request number. Never the buyer.
-assert.deepEqual(M.identity(deal({ floor_plan: "Plan A", home_serial_no: "SN-1", home_type: "Spec", end_buyer_name: "Private Person" })), { primary: "Plan A", secondary: "SN-1 · Spec" });
-assert.equal(M.identity(deal({ floor_plan: "", home_serial_no: "SN-1" })).primary, "SN-1");
+// The request ID is primary; a spec/stock build never leaks a stale buyer.
+assert.deepEqual(M.identity(deal({ floor_plan: "Plan A", home_serial_no: "SN-1", home_type: "Spec", end_buyer_name: "Private Person" })), { primary: "HBR-1", secondary: "– · Serial SN-1" });
+assert.equal(M.identity(deal({ floor_plan: "", home_serial_no: "SN-1" })).primary, "HBR-1");
 assert.equal(M.identity(deal({ floor_plan: "", home_serial_no: "" })).primary, "HBR-1");
 for (const placeholder of ["TBD", "t.b.d", "tbd"]) assert.equal(M.identity(deal({ home_serial_no: placeholder })).primary, "HBR-1");
+
+assert.deepEqual(M.identity(deal({ home_type: "Customer Sold", end_buyer_name: "Buyer A", home_serial_no: "SN-2" })), { primary: "HBR-1", secondary: "Buyer A · Serial SN-2" });
 
 // Scheduled curtailment changes the payment; the initial monthly amount
 // cannot replace it, and past-due amounts appear in their own section.

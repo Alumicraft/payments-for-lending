@@ -392,7 +392,11 @@ def _loan_summary(hbr_name, customer_name=None):
         "monthly_payment": _json_value(_value(source, "monthly_repayment_amount", _value(source, "repayment_amount"))),
         "total_interest": _json_value(total_interest),
         "total_payable": _json_value(total_payable),
-        "signed": bool(_value(application, "signed_packet")),
+        "signed": bool(_value(application, "signed_packet") and frappe.db.exists("Signature Request", {
+            "customer": customer_name, "reference_doctype": "Loan Application",
+            "reference_name": _value(application, "name"), "status": "Signed",
+            "signed_attachment": _value(application, "signed_packet"),
+        })),
         "payments_summary": payments,
         "payments_unavailable": payments_unavailable,
         "payoff": {"can_request": bool(loan and _value(loan, "docstatus") == 1
@@ -516,7 +520,7 @@ def _get_signatures(customer):
         filters={"customer": _value(customer, "name")},
         fields=_available_fields("Signature Request", fields),
         order_by="modified desc",
-        limit_page_length=50,
+        limit_page_length=0,
         ignore_permissions=True,
     )
     signed_rows = [row for row in rows or []
@@ -592,6 +596,14 @@ def _plaid_is_available():
         return False
 
 
+def _automatic_payment_status():
+    try:
+        value = frappe.db.get_single_value("ACH Settings", "enable_ach_autopay")
+        return "Confirm with DCR" if value in (True, 1, "1") else "Not set up"
+    except Exception:
+        return "Unavailable"
+
+
 @frappe.whitelist()
 def get_portal_context():
     """Return the complete dealer-safe dashboard payload."""
@@ -620,7 +632,7 @@ def get_portal_context():
         filters={"customer": _value(customer, "name")},
         fields=hbr_fields,
         order_by="modified desc",
-        limit_page_length=100,
+        limit_page_length=0,
         ignore_permissions=True,
     )
     deals = []
@@ -636,6 +648,14 @@ def get_portal_context():
 
     onboarding = _get_onboarding_documents(customer)
     signatures = _get_signatures(customer)
+    from dcr.api.dealer_finance import financial_summary
+    try:
+        balances = {_value(deal["loan"], "name"): _value(deal["loan"]["payments_summary"], "outstanding_principal")
+                    for deal in deals if deal.get("loan", {}).get("payments_summary")}
+        finance = financial_summary(_value(customer, "name"), balances)
+    except Exception:
+        frappe.log_error(title="Dealer financial readback failed", message=frappe.get_traceback())
+        finance = {"available": False}
     return {
         "customer": {
             "name": _value(customer, "name"),
@@ -646,10 +666,13 @@ def get_portal_context():
         "deals": deals,
         "onboarding_documents": onboarding,
         "signatures": signatures,
+        "finance": finance,
+        "as_of": frappe.utils.today(),
         "support_url": _support_url(),
         "ach": {
             "accounts": _get_ach_accounts(customer),
             "available": _plaid_is_available(),
+            "automatic_payments": _automatic_payment_status(),
         },
     }
 

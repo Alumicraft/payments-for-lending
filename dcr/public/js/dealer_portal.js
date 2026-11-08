@@ -110,15 +110,10 @@ var dcrPortalModel = (function () {
         return { label: "Monthly payment", amount: deal.loan && deal.loan.monthly_payment };
     }
 
-    // What a dealer calls the home: floorplan first, then assigned serial.
     function identity(deal) {
-        var serial = serialNumber(deal);
-        var primary = deal.floor_plan || serial || deal.name;
-        var parts = [];
-        if (deal.floor_plan && serial) parts.push(serial);
-        if (deal.home_type) parts.push(deal.home_type);
-        if (deal.financing_type === "Cash") parts.push("Cash");
-        return { primary: String(primary), secondary: parts.join(" · ") };
+        var serial = serialNumber(deal) || "TBD";
+        var buyer = deal.home_type === "Customer Sold" && deal.end_buyer_name ? deal.end_buyer_name : "–";
+        return { primary: String(deal.name), secondary: buyer + " · Serial " + serial };
     }
 
     function signatureDeal(signature, deals) {
@@ -198,7 +193,7 @@ var dcrPortalModel = (function () {
             (data.upcoming || []).forEach(function (row) {
                 (row.due_status === "Past due" ? out.pastDue : out.upcoming).push(Object.assign({ deal: deal.name }, row));
             });
-            (data.history || []).forEach(function (row) { out.paid.push(Object.assign({ deal: deal.name }, row)); });
+            (data.history || []).forEach(function (row) { if (row.is_payment !== false) out.paid.push(Object.assign({ deal: deal.name }, row)); });
         });
         var byDate = function (a, b) { return String(a.date).localeCompare(String(b.date)); };
         out.pastDue.sort(byDate);
@@ -323,15 +318,16 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
     var PREVIEW_ROWS = 6;
 
     var ICONS = {
-        home: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g transform="translate(2.5 2)"><path d="M6.635,18.773V15.716A1.419,1.419,0,0,1,8.058,14.3h2.874a1.429,1.429,0,0,1,1.007.414,1.408,1.408,0,0,1,.417,1v3.058a1.213,1.213,0,0,0,.356.867,1.231,1.231,0,0,0,.871.36h1.961a3.46,3.46,0,0,0,2.443-1A3.41,3.41,0,0,0,19,16.578V7.867a2.473,2.473,0,0,0-.9-1.9L11.434.676A3.1,3.1,0,0,0,7.485.747L.967,5.965A2.474,2.474,0,0,0,0,7.867v8.7A3.444,3.444,0,0,0,3.456,20H5.372a1.231,1.231,0,0,0,1.236-1.218Z"></path></g></svg>',
-        paper: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g transform="translate(3.5 2)"><path d="M4.674,20A4.7,4.7,0,0,1,0,15.29V4.51A4.493,4.493,0,0,1,4.465,0H9.752a.458.458,0,0,1,.455.46V3.68a3.341,3.341,0,0,0,3.308,3.34c.423,0,.794,0,1.122.006.257,0,.481,0,.68,0,.141,0,.323,0,.521,0,.229,0,.486-.005.716-.005A.448.448,0,0,1,17,7.47v8.04A4.473,4.473,0,0,1,12.554,20Zm.01-6.359a.756.756,0,0,0,.743.75h5.386a.756.756,0,0,0,.743-.75.742.742,0,0,0-.743-.741H5.426A.742.742,0,0,0,4.684,13.64Zm0-4.99a.742.742,0,0,0,.743.74H8.772a.742.742,0,0,0,.743-.74.756.756,0,0,0-.743-.75H5.426A.756.756,0,0,0,4.684,8.65Zm8.964-3.091a2.018,2.018,0,0,1-2-2.017V.906a.473.473,0,0,1,.814-.334l3.986,4.187a.477.477,0,0,1-.34.806h-.691C14.793,5.567,14.149,5.564,13.648,5.559Z"></path></g></svg>',
-        setting: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g transform="translate(2.5 2)"><path d="M10.2,20H8.807a2.066,2.066,0,0,1-2.125-2.05A1.9,1.9,0,0,0,4.8,16.13a1.58,1.58,0,0,0-.9.23,2.163,2.163,0,0,1-1.084.3A2.122,2.122,0,0,1,1,15.62l-.7-1.2a2,2,0,0,1-.021-2.05,2.108,2.108,0,0,1,.817-.789,1.653,1.653,0,0,0,.644-.64,1.782,1.782,0,0,0,.19-1.365A1.837,1.837,0,0,0,1.071,8.44,2.045,2.045,0,0,1,.314,5.61L1,4.43a2.123,2.123,0,0,1,2.882-.76,1.894,1.894,0,0,0,.9.224A1.959,1.959,0,0,0,6.446,2.98a1.538,1.538,0,0,0,.236-.88A1.788,1.788,0,0,1,6.968,1.04,2.2,2.2,0,0,1,8.776,0h1.441a2.154,2.154,0,0,1,1.82,1.04A1.781,1.781,0,0,1,12.312,2.1a1.545,1.545,0,0,0,.235.88,1.964,1.964,0,0,0,1.672.914,1.926,1.926,0,0,0,.9-.224,2.111,2.111,0,0,1,2.872.76l.684,1.18a2.027,2.027,0,0,1-.756,2.831,1.829,1.829,0,0,0-.853,1.138,1.771,1.771,0,0,0,.2,1.362,1.571,1.571,0,0,0,.634.64,2.307,2.307,0,0,1,.828.789,2.031,2.031,0,0,1-.02,2.05l-.715,1.2a2.1,2.1,0,0,1-2.893.74,1.621,1.621,0,0,0-.9-.23,1.9,1.9,0,0,0-1.891,1.82A2.061,2.061,0,0,1,10.2,20ZM9.512,7.18a2.87,2.87,0,0,0-2.9,2.83,2.763,2.763,0,0,0,.849,2,2.93,2.93,0,0,0,2.053.821A2.822,2.822,0,0,0,11.55,8.006,2.877,2.877,0,0,0,9.512,7.18Z"></path></g></svg>',
-        logout: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g transform="translate(2 2)"><path d="M4.517,20A4.482,4.482,0,0,1,0,15.56V4.45A4.493,4.493,0,0,1,4.528,0H9.492A4.48,4.48,0,0,1,14,4.44V9.23H7.9a.77.77,0,1,0,0,1.54H14v4.78A4.493,4.493,0,0,1,9.472,20ZM16.54,13.451a.773.773,0,0,1,0-1.09l1.6-1.59H14V9.23h4.14l-1.6-1.59a.773.773,0,0,1,0-1.09.764.764,0,0,1,1.09-.01l2.92,2.91a.766.766,0,0,1,.229.55.741.741,0,0,1-.229.54l-2.92,2.911a.762.762,0,0,1-1.09,0Z"></path></g></svg>',
+        home: '<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"> <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /> <path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /> </svg>',
+        paper: '<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"> <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /> <rect x="8" y="2" width="8" height="4" rx="1" fill="none" stroke="currentColor" stroke-width="1.6" /> <path d="M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /> </svg>',
+        setting: '<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"> <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" fill="none" stroke="currentColor" stroke-width="1.6" /> <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.6" /> </svg>',
+        logout: '<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"> <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /> </svg>',
         paperupload: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g transform="translate(3.5 2)"><path d="M4.674,20A4.7,4.7,0,0,1,0,15.29V4.51A4.493,4.493,0,0,1,4.465,0H9.752a.464.464,0,0,1,.455.46V3.68a3.341,3.341,0,0,0,3.308,3.34c.416,0,.785,0,1.11.005.256,0,.482,0,.682,0,.141,0,.323,0,.521,0,.229,0,.486-.005.716-.005A.453.453,0,0,1,17,7.47v8.04A4.478,4.478,0,0,1,12.544,20ZM7.4,9.293V14.12a.738.738,0,1,0,1.475,0V9.29l1.574,1.6a.731.731,0,0,0,1.04,0,.739.739,0,0,0,.01-1.05L8.654,6.96A.78.78,0,0,0,8.416,6.8a.644.644,0,0,0-.277-.06.7.7,0,0,0-.287.06.78.78,0,0,0-.238.159L4.783,9.84a.748.748,0,0,0,0,1.05.731.731,0,0,0,1.04,0l1.572-1.6,0,0Zm6.246-3.733a2.018,2.018,0,0,1-2-2.017V.906a.472.472,0,0,1,.813-.334C13.53,1.7,15.4,3.661,16.445,4.759a.477.477,0,0,1-.34.806h-.691C14.787,5.567,14.144,5.564,13.642,5.559Z"></path></g></svg>',
         edit: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g transform="translate(3 3)"><path d="M11.28,18a1.023,1.023,0,0,1,0-2.047h5.71a1.023,1.023,0,0,1,0,2.047ZM.848,17.576l-.8-3.451a2.132,2.132,0,0,1,.4-1.8L6.684,4.268a.313.313,0,0,1,.424-.054L9.73,6.3a.846.846,0,0,0,.647.183.945.945,0,0,0,.817-1.043,1.053,1.053,0,0,0-.329-.635L8.319,2.763a.378.378,0,0,1-.064-.526L9.241.957A2.584,2.584,0,0,1,13.03.7l1.475,1.172a3.062,3.062,0,0,1,1.146,1.752,2.4,2.4,0,0,1-.488,2.042L6.377,17.028a2.105,2.105,0,0,1-1.634.817l-3.5.042A.4.4,0,0,1,.848,17.576Z"></path></g></svg>',
         send: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g transform="translate(2 2)"><path d="M19.435.582A1.933,1.933,0,0,0,17.5.079L1.408,4.76A1.919,1.919,0,0,0,.024,6.281a2.253,2.253,0,0,0,1,2.1L6.06,11.477a1.3,1.3,0,0,0,1.61-.193l5.763-5.8a.734.734,0,0,1,1.06,0,.763.763,0,0,1,0,1.067l-5.773,5.8a1.324,1.324,0,0,0-.193,1.619L11.6,19.054A1.91,1.91,0,0,0,13.263,20a2.078,2.078,0,0,0,.25-.01A1.95,1.95,0,0,0,15.144,18.6L19.916,2.525a1.964,1.964,0,0,0-.48-1.943"></path></g></svg>',
         danger: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g transform="translate(2 3)"><path d="M17.316,18H2.679a3.129,3.129,0,0,1-.91-.2A2.809,2.809,0,0,1,.218,16.275,2.747,2.747,0,0,1,.21,14.146L7.529,1.433a2.746,2.746,0,0,1,1.1-1.08A2.819,2.819,0,0,1,9.993,0a2.853,2.853,0,0,1,2.484,1.442l7.268,12.615a2.936,2.936,0,0,1,.25,1,2.753,2.753,0,0,1-.73,2.021A2.841,2.841,0,0,1,17.316,18ZM10,12.272a.873.873,0,1,0,0,1.745.877.877,0,0,0,.869-.883A.867.867,0,0,0,10,12.272ZM10,6.09a.872.872,0,0,0-.88.862v2.8a.888.888,0,0,0,.88.873.872.872,0,0,0,.869-.873v-2.8A.867.867,0,0,0,10,6.09Z"></path></g></svg>',
-        money: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.8v18.4M16.6 8.2c-.6-1.6-2.3-2.6-4.5-2.6-2.7 0-4.7 1.4-4.7 3.4 0 4.6 9.5 2.2 9.5 6.9 0 2-2 3.5-4.8 3.5-2.4 0-4.2-1.1-4.9-2.8"></path></svg>'
+        loans: '<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"> <path d="M3 22h18M6 18v-7M10 18v-7M14 18v-7M18 18v-7M12 2l9 5H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /> </svg>',
+        money: '<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"> <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /> </svg>'
     };
     var FILE_ICONS = {
         pdf: '<svg width="24" height="24" viewBox="0 0 40 40" fill="none" aria-hidden="true"><path fill="#D92D20" d="M4 4a4 4 0 0 1 4-4h16l12 12v24a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"></path><path fill="#fff" d="m24 0 12 12h-8a4 4 0 0 1-4-4z" opacity=".3"></path><path fill="#fff" d="M11.75 32v-6.546h2.582q.744 0 1.268.285.524.281.8.783.277.498.277 1.15 0 .653-.28 1.151a1.94 1.94 0 0 1-.816.777q-.53.278-1.285.278H12.65v-1.11h1.423q.399 0 .658-.137a.9.9 0 0 0 .39-.386q.13-.25.13-.572 0-.326-.13-.57a.88.88 0 0 0-.39-.38q-.262-.137-.665-.137h-.933V32zm8.147 0h-2.32v-6.546h2.339q.987 0 1.7.394.712.39 1.096 1.122.387.731.387 1.75 0 1.024-.387 1.759-.384.735-1.102 1.128-.717.393-1.713.393m-.937-1.186h.879q.614 0 1.032-.217.422-.22.633-.68.214-.464.214-1.196 0-.726-.214-1.186a1.4 1.4 0 0 0-.63-.677q-.418-.218-1.032-.218h-.882zM24.124 32v-6.546h4.334v1.142h-2.95v1.56h2.662v1.14h-2.662V32z"></path></svg>',
@@ -340,17 +336,17 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
     };
 
     var MARKS = {
-        draft: '<circle cx="7" cy="7" r="5.6" stroke="#8c8c8c" stroke-width="1.4" stroke-dasharray="2.3 2.3"></circle>',
-        progress: '<circle cx="7" cy="7" r="5.6" stroke="#0070cc" stroke-width="1.4"></circle><path d="M7 3.6a3.4 3.4 0 0 1 0 6.8z" fill="#0070cc"></path>',
-        current: '<circle cx="7" cy="7" r="5.5" stroke="#0070cc" stroke-width="1.4"></circle><circle cx="7" cy="7" r="2.6" fill="#0070cc"></circle>',
-        upcoming: '<circle cx="7" cy="7" r="5.5" stroke="#8fc0e8" stroke-width="1.4"></circle>',
-        action: '<circle cx="7" cy="7" r="5.5" stroke="#d98200" stroke-width="1.4"></circle><circle cx="7" cy="7" r="2.6" fill="#d98200"></circle>',
-        done: '<circle cx="7" cy="7" r="6.3" fill="#30a66d"></circle><path d="M4.3 7.2l1.9 1.9 3.6-3.9" stroke="#ffffff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path>',
-        closed: '<circle cx="7" cy="7" r="6.3" fill="#8c8c8c"></circle><path d="M4.3 7.2l1.9 1.9 3.6-3.9" stroke="#ffffff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path>',
-        cancelled: '<circle cx="7" cy="7" r="6.3" fill="#8c8c8c"></circle><path d="M4.8 4.8l4.4 4.4M9.2 4.8L4.8 9.2" stroke="#ffffff" stroke-width="1.4" stroke-linecap="round"></path>',
-        neutral: '<circle cx="7" cy="7" r="5.6" stroke="#8c8c8c" stroke-width="1.4"></circle><path d="M4.4 7h5.2" stroke="#8c8c8c" stroke-width="1.4" stroke-linecap="round"></path>'
+        draft: '<circle cx="7" cy="7" r="5.6" stroke="var(--dcr-muted)" stroke-width="1.4" stroke-dasharray="2.3 2.3"></circle>',
+        progress: '<circle cx="7" cy="7" r="5.6" stroke="var(--dcr-blue)" stroke-width="1.4"></circle><path d="M7 3.6a3.4 3.4 0 0 1 0 6.8z" fill="var(--dcr-blue)"></path>',
+        current: '<circle cx="7" cy="7" r="5.5" stroke="var(--dcr-blue)" stroke-width="1.4"></circle><circle cx="7" cy="7" r="2.6" fill="var(--dcr-blue)"></circle>',
+        upcoming: '<circle cx="7" cy="7" r="5.5" stroke="var(--dcr-muted)" stroke-width="1.4"></circle>',
+        action: '<circle cx="7" cy="7" r="5.5" stroke="var(--dcr-orange)" stroke-width="1.4"></circle><circle cx="7" cy="7" r="2.6" fill="var(--dcr-orange)"></circle>',
+        done: '<circle cx="7" cy="7" r="6.3" fill="var(--dcr-green)"></circle><path d="M4.3 7.2l1.9 1.9 3.6-3.9" stroke="#ffffff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path>',
+        closed: '<circle cx="7" cy="7" r="6.3" fill="var(--dcr-muted)"></circle><path d="M4.3 7.2l1.9 1.9 3.6-3.9" stroke="#ffffff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path>',
+        cancelled: '<circle cx="7" cy="7" r="6.3" fill="var(--dcr-muted)"></circle><path d="M4.8 4.8l4.4 4.4M9.2 4.8L4.8 9.2" stroke="#ffffff" stroke-width="1.4" stroke-linecap="round"></path>',
+        neutral: '<circle cx="7" cy="7" r="5.6" stroke="var(--dcr-muted)" stroke-width="1.4"></circle><path d="M4.4 7h5.2" stroke="var(--dcr-muted)" stroke-width="1.4" stroke-linecap="round"></path>'
     };
-    var CHEVRON = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#8c8c8c" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 2.5L8 6l-3.5 3.5"></path></svg>';
+    var CHEVRON = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="var(--dcr-muted)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 2.5L8 6l-3.5 3.5"></path></svg>';
     var PLUS = '<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M6 1.5v9M1.5 6h9"></path></svg>';
 
     // ------------------------------------------------------------ helpers
@@ -404,7 +400,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
     }
 
     function small_icon(svg, size) {
-        return svg.replace('width="16" height="16"', 'width="' + size + '" height="' + size + '"');
+        return svg.replace(/width="\d+" height="\d+"/, 'width="' + size + '" height="' + size + '"');
     }
 
     function section(title, body, aside, id) {
@@ -432,7 +428,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
                 return index === row.header ? '<th scope="row" class="' + cls + '">' + html + "</th>" : '<td class="' + cls + '">' + html + "</td>";
             }).join("") + "</tr>";
         }).join("");
-        return '<div class="dcr-table"><table><caption class="dcr-sr">' + esc(caption) + "</caption><thead><tr>" + head + "</tr></thead><tbody>" + body + "</tbody></table></div>";
+        return '<div class="dcr-table' + (columns.some(function (c) { return c.cls === "dcr-col-request"; }) ? " dcr-wide-table" : "") + '"><table><caption class="dcr-sr">' + esc(caption) + "</caption><thead><tr>" + head + "</tr></thead><tbody>" + body + "</tbody></table></div>";
     }
 
     function toggle_button(key, total, noun) {
@@ -640,7 +636,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
     }
 
     function new_request_button() {
-        return '<a class="dcr-btn-primary" href="' + WEB_FORM + '/new">' + PLUS + "New request</a>";
+        return '<a class="dcr-btn-primary" href="' + WEB_FORM + '/new">' + PLUS + "New build</a>";
     }
 
     function page_head(title, action) {
@@ -653,350 +649,266 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
         return hour < 12 ? "Good morning" : (hour < 18 ? "Good afternoon" : "Good evening");
     }
 
-    // Only what the server marks actionable, or a dealer document that is missing.
-    // Signed, declined, voided and unsent records are history, not to-dos.
-    var ACCOUNT_SCOPE = '<span class="dcr-strong">Dealer account</span>';
+    function dot(needed) { return needed ? '<i class="dcr-attention-dot" aria-label="Needs you"></i>' : ''; }
 
-    function attention_rows() {
-        var rows = [];
-        M.partitionSignatures(signatures(), deals()).waiting.forEach(function (entry) {
-            if (entry.deal) return; // shown on its own request row below
-            var item = entry.signature;
-            rows.push([status("action", "To do"), ACCOUNT_SCOPE, '<span class="dcr-strong">' + esc("Sign " + item.document_type) + "</span>", '<span class="dcr-muted">' + esc(item.sent_date ? "Sent " + fmt_date(item.sent_date) : "Waiting for your signature") + "</span>",
-                '<a class="dcr-btn-row" href="#/settings" aria-label="' + esc("Review " + item.document_type + " in Settings") + '">Review</a>']);
-        });
-        var needed = ((state.data && state.data.onboarding_documents) || []).filter(function (item) { return !item.uploaded || item.can_download === false; });
-        if (needed.length) {
-            rows.push([status("action", "To do"), ACCOUNT_SCOPE, '<span class="dcr-strong">Upload dealer documents</span>', '<span class="dcr-muted">' + esc(needed.map(function (item) { return item.label; }).join(", ")) + "</span>",
-                '<a class="dcr-btn-row" href="#/settings" aria-label="Upload dealer documents in Settings">Upload</a>']);
-        }
-        return rows;
+    function tabs(label, items, selected) {
+        return '<nav class="dcr-tabs" aria-label="' + esc(label) + '">' + items.map(function (item) {
+            return '<a class="dcr-tab" href="' + esc(item.href) + '"' + (item.key === selected ? ' aria-current="page"' : '') + '>' + esc(item.label) + dot(item.needs) + '</a>';
+        }).join('') + '</nav>';
     }
 
-    function attention_section() {
-        var rows = attention_rows();
-        if (!rows.length) return "";
-        var title = deals().some(M.isAccepted) ? "Needs your attention" : "Set up your dealer profile";
-        // Same first two columns as the requests table below, so "what is this for" lines up.
-        return section(title, table(title, [{ label: "Status", cls: "dcr-nowrap dcr-c-status" }, { label: "Home", cls: "dcr-c-home" }, { label: "Needs from you" }, { label: "Details" }, { label: "Actions", cls: "dcr-c-act", hidden: true }],
-            rows.map(function (row) { return { cells: [row[0], row[1], row[2], row[3], '<span class="dcr-actions">' + row[4] + "</span>"], header: 1 }; })));
+    function buyer(deal) { return deal.home_type === 'Customer Sold' && deal.end_buyer_name ? deal.end_buyer_name : ''; }
+    function optional(value) { return value ? esc(value) : '<span class="dcr-muted">–</span>'; }
+    function serial(deal) { return M.serialNumber(deal) ? esc(M.serialNumber(deal)) : '<span class="dcr-muted">TBD</span>'; }
+    function build_link(deal) { return '<a class="dcr-home-link" title="' + esc(deal.name) + '" href="' + request_href(deal.name) + '">' + esc(String(deal.name).replace(/^ACC-(?=HBR-)/, '')) + '</a><span class="dcr-phone-summary">' + optional(buyer(deal)) + ' · ' + serial(deal) + '</span>' + (next_step(deal).who === 'You' ? '<span class="dcr-phone-summary dcr-needs-you">You: ' + esc(next_step(deal).text) + '</span>' : ''); }
+
+    function next_step(deal) {
+        var need = M.needs(deal, signatures());
+        if (need) return { who: 'You', text: need, kind: 'action' };
+        var payments = M.summary(deal);
+        if (payments && (payments.upcoming || []).some(function (r) { return r.due_status === 'Past due'; })) return { who: 'You', text: 'Contact DCR about payment', kind: 'action' };
+        if (M.lifecycle(deal).group === 'Closed') return { who: '', text: '', kind: 'done' };
+        var current = M.progressSteps(deal, signatures()).find(function (s) { return s.kind === 'current'; });
+        return { who: current && current.note === 'With the factory' ? 'Factory' : 'DCR', text: current ? current.label : 'Review build', kind: 'progress' };
     }
 
-    function principal_card() {
-        var outlook = M.principalOutlook(deals(), new Date());
-        var loans = deals().filter(M.hasLoan);
-        var metric = outlook.unavailable || !outlook.loans ? "—" : money(outlook.balance);
-        var note = outlook.unavailable ? "Balance details could not load" : (!loans.length ? "No loans yet" : (outlook.loans ? "Across " + plural(outlook.loans, "funded loan") : "No funded loans yet"));
-        var chart = "";
-        var max = Math.max.apply(null, outlook.months.map(function (month) { return month.total; }));
-        if (!outlook.unavailable && outlook.loans && max > 0) {
-            var short_month = new Intl.DateTimeFormat("en-US", { month: "short" });
-            var long_month = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" });
-            chart = '<div class="dcr-card-foot"><p class="dcr-small" id="dcr-outlook-note">Principal scheduled to remain at each month end.</p>' +
-                '<div class="dcr-bars" aria-hidden="true">' + outlook.months.map(function (month, index) {
-                    return '<span class="dcr-bar' + (index === 0 ? " is-now" : "") + '"><em>' + esc(compact_money(month.total)) + '</em><i style="height:' + Math.max(2, Math.round(month.total / max * 100)) + '%"></i><b>' + esc(short_month.format(month.date)) + "</b></span>";
-                }).join("") + "</div>" +
-                '<ul class="dcr-sr" aria-describedby="dcr-outlook-note">' + outlook.months.map(function (month) { return "<li>" + esc(long_month.format(month.date) + ": " + money(month.total)) + "</li>"; }).join("") + "</ul></div>";
-        }
-        return '<div class="dcr-card"><span class="dcr-small">Outstanding principal</span><span class="dcr-metric">' + esc(metric) + '</span><span class="dcr-small">' + esc(note) + "</span>" + chart +
-            (loans.length ? '<a class="dcr-card-link" href="#/lending">View lending</a>' : "") + "</div>";
+    function build_columns() {
+        return [{ label: 'Request', cls: 'dcr-col-request' }, { label: 'Buyer', cls: 'dcr-col-buyer' },
+            { label: 'Serial', cls: 'dcr-col-serial' }, { label: 'Status', cls: 'dcr-col-status' },
+            { label: 'Waiting on', cls: 'dcr-col-waiting' }, { label: 'Next step', cls: 'dcr-col-flex' },
+            { label: 'Quoted', cls: 'dcr-col-amount dcr-right' }];
     }
 
-    function requests_card() {
-        var list = deals();
-        var colors = { "In review": "#0070cc", "In progress": "#8fc0e8", "Active": "#30a66d", "Closed": "#c7c7c7" };
-        var meaning = { "In review": "Saved and with DCR for review", "In progress": "Submitted: loan approved, funded, ordered or delivered", "Active": "Delivered and repaying the loan", "Closed": "Closed or cancelled" };
-        var groups = M.lifecycleGroups(list);
-        var need = list.filter(function (deal) { return M.needs(deal, signatures()); }).length;
-        return '<div class="dcr-card"><span class="dcr-small">Home build requests</span><span class="dcr-metric">' + list.length + '</span><span class="dcr-small">' + (need ? esc(need + (need === 1 ? " needs" : " need") + " something from you") : "Nothing needed from you") + "</span>" +
-            '<div class="dcr-card-foot"><p class="dcr-small">By stage. A request appears once.</p><div class="dcr-stack" aria-hidden="true">' +
-            groups.filter(function (group) { return group.count; }).map(function (group) { return '<span style="flex:' + group.count + " 1 0;background:" + colors[group.label] + '"></span>'; }).join("") +
-            '</div><ul class="dcr-legend">' + groups.map(function (group) {
-                return '<li title="' + esc(meaning[group.label]) + '"><i style="background:' + colors[group.label] + '"></i><em>' + esc(group.label) + '<span class="dcr-sr">: ' + esc(meaning[group.label]) + '</span></em><span class="dcr-num">' + group.count + "</span></li>";
-            }).join("") + "</ul></div></div>";
-    }
-
-    function payments_card() {
-        var pay = M.paymentGroups(deals());
-        var lines = "";
-        var metric = "—";
-        var note;
-        if (!pay.loans) note = "No loans yet";
-        else if (!pay.reported) note = pay.unavailable.length ? "Payment details could not load" : "No payments before funding";
-        else {
-            var next = pay.upcoming[0];
-            metric = !pay.pastDueTotal.complete ? "—" : pay.pastDue.length ? money(pay.pastDueTotal.amount) : (next ? fmt_date(next.date) : "—");
-            note = !pay.pastDueTotal.complete ? "Payment total unavailable; some amounts are missing" : pay.pastDue.length ? "Past due across " + plural(pay.pastDue.length, "payment") : (next ? "Next payment · " + money(next.total) : "Nothing scheduled");
-            if (pay.pastDue.length) lines += '<div class="dcr-due">' + mark("action") + '<span class="dcr-grow">Past due</span><span class="dcr-num">' + esc(money(pay.pastDueTotal.amount) + (pay.pastDueTotal.complete ? "" : " known")) + "</span></div>";
-            lines += '<div class="dcr-due">' + mark("progress") + '<span class="dcr-grow">' + (next ? (pay.unavailable.length ? "Next recorded · " : "Next · ") + esc(fmt_date(next.date)) : pay.unavailable.length ? "Upcoming details unavailable" : "Nothing scheduled") + '</span><span class="dcr-num">' + esc(next ? money(next.total) : "") + "</span></div>";
-            if (pay.unavailable.length) lines += '<div class="dcr-due dcr-muted">' + mark("neutral") + '<span class="dcr-grow">' + esc(plural(pay.unavailable.length, "loan") + " could not load") + "</span></div>";
-        }
-        return '<div class="dcr-card"><span class="dcr-small">' + (pay.pastDue.length ? "Past due" : "Payments") + '</span><span class="dcr-metric">' + esc(metric) + '</span><span class="dcr-small">' + esc(note) + "</span>" +
-            (lines ? '<div class="dcr-card-foot">' + lines + "</div>" : "") + (pay.loans ? '<a class="dcr-card-link" href="#/payments">View payments</a>' : "") + "</div>";
-    }
-
-    function requests_table(list) {
-        var columns = [{ label: "Status", cls: "dcr-nowrap dcr-c-status" }, { label: "Home", cls: "dcr-c-home" }, { label: "Home Build Request", cls: "dcr-nowrap" }, { label: "Checklist", cls: "dcr-nowrap dcr-muted" }, { label: "Needs from you" }, { label: "Open", cls: "dcr-c-chev", hidden: true }];
-        return table("Home build requests", columns, list.map(function (deal) {
-            var current = M.lifecycle(deal);
-            var need = M.needs(deal, signatures());
-            return { href: request_href(deal.name), header: 1, cells: [status(current.kind, current.label), home_link(deal), request_number(deal.name), esc(M.checklist(deal).label),
-                need ? '<span class="dcr-strong">' + esc(need) + "</span>" : '<span class="dcr-muted">Nothing right now</span>', CHEVRON] };
+    function builds_table(list) {
+        if (!list.length) return '<p class="dcr-note">No builds in this view.</p>';
+        return table('Builds', build_columns(), list.map(function (deal) {
+            var stage = M.lifecycle(deal), next = next_step(deal);
+            return { href: request_href(deal.name), header: 0, cells: [build_link(deal), optional(buyer(deal)), serial(deal),
+                status(next.who === 'You' ? 'action' : stage.kind, stage.label),
+                '<span class="' + (next.who === 'You' ? 'dcr-needs-you' : 'dcr-muted') + '">' + esc(next.who || '–') + '</span>',
+                '<span class="' + (next.who === 'You' ? 'dcr-needs-you' : 'dcr-muted') + '">' + esc(next.text || '–') + '</span>', esc(money(deal.quoted_amount))] };
         }));
     }
 
-    function page_home() {
-        var list = deals();
-        var needing = list.filter(function (deal) { return M.needs(deal, signatures()); });
-        var order = list.slice().sort(function (a, b) { return (M.needs(b, signatures()) ? 1 : 0) - (M.needs(a, signatures()) ? 1 : 0); });
-        var shown = state.filter === "needs" ? needing : order;
-        var filter = function (key, label, count) {
-            return '<button type="button" class="dcr-seg' + (state.filter === key ? " is-on" : "") + '" data-action="filter" data-filter="' + key + '" data-focus-key="filter|' + key + '" aria-pressed="' + (state.filter === key ? "true" : "false") + '">' + label + ' <span class="dcr-num">' + count + "</span></button>";
-        };
-        var requests;
-        if (!list.length) requests = section("Home build requests", empty_state(ICONS.home, "No home build requests yet", "Your requests, loans and payments will show up here.", new_request_button()));
-        else {
-            var body = shown.length ? requests_table(shown) : '<p class="dcr-note">Nothing needs you right now. Choose All to see every request.</p>';
-            requests = '<section class="dcr-section" id="requests"><div class="dcr-section-head"><h2>Home build requests</h2><div class="dcr-segs" role="group" aria-label="Show requests">' + filter("all", "All", list.length) + filter("needs", "Needs you", needing.length) + "</div></div>" + body + "</section>";
-        }
-        return '<div class="dcr-page">' + page_head(greeting(), list.length ? new_request_button() : "") + attention_section() +
-            (list.length ? '<section class="dcr-cards" aria-label="At a glance">' + principal_card() + requests_card() + payments_card() + "</section>" : "") + requests + "</div>";
+    function setup_steps() {
+        var data = state.data || {}, customer = data.customer || {}, rows = [];
+        ['Dealer Agreement', 'MIFA'].forEach(function (type) {
+            var records = signatures().filter(function (s) { return s.document_type === type; });
+            var pending = records.find(function (s) { return s.actionable; });
+            var signed = records.find(function (s) { return s.status === 'Signed'; });
+            rows.push({ label: type, done: !pending && !!signed, date: signed && signed.signed_date,
+                detail: pending ? 'Review and sign your ' + type : signed ? 'Signed' : 'DCR will prepare your ' + type,
+                kind: pending ? 'action' : signed ? 'done' : 'progress',
+                action: pending ? sign_button(pending, type) : signed ? signed_document_links(signed) : '' });
+        });
+        (data.onboarding_documents || []).forEach(function (item) {
+            var done = M.canDownload(item);
+            rows.push({ label: item.label, done: done, date: item.uploaded_on, kind: done ? 'done' : 'action',
+                detail: done ? item.file_name || 'File uploaded' : 'PDF, Word or image, up to 10 MB',
+                action: done ? document_links('customer', customer.name, item.fieldname, item.label) : upload_control('dcr-btn-row', 'customer', customer.name, item.fieldname, 'Upload', item.label) });
+        });
+        var ach = data.ach || {}, account = (ach.accounts || [])[0];
+        rows.push({ label: 'Bank account', done: !!account, kind: account ? 'done' : ach.available ? 'action' : 'progress',
+            detail: account ? (account.bank_name || 'Bank account') + ' ····' + (account.last4 || '') : 'Connect an account for payments',
+            action: !account && ach.available ? '<button class="dcr-btn-row" data-action="connect-bank">Connect</button>' : '' });
+        var factories = data.factories || [];
+        rows.push({ label: 'Factory assignment', done: !!factories.length, kind: factories.length ? 'done' : 'progress',
+            detail: factories.length ? factories.map(function (f) { return f.label || f.name; }).join(', ') : 'DCR will assign your factory', action: '' });
+        return rows;
     }
 
-    // ------------------------------------------------------------ request
+    function setup_table(selected) {
+        var steps = setup_steps(), done = selected === 'done';
+        return tabs('Account setup', [{ key: 'todo', label: 'To do', href: '#/home/todo', needs: steps.some(function (r) { return !r.done && r.kind === 'action'; }) },
+            { key: 'done', label: 'Done', href: '#/home/done' }], done ? 'done' : 'todo') +
+            table('Account setup', [{ label: 'Step', cls: 'dcr-col-step' }, { label: 'Details' }, { label: done ? 'Date' : 'Status', cls: 'dcr-col-status' }, { label: 'Action', hidden: true, cls: 'dcr-c-act' }],
+                steps.filter(function (r) { return r.done === done; }).map(function (r) { return { header: 0, cells: [esc(r.label), '<span class="dcr-muted">' + esc(r.detail) + '</span>',
+                    done ? esc(fmt_date(r.date) || '–') : status(r.kind, r.kind === 'action' ? 'Needs you' : 'With DCR'), '<span class="dcr-actions">' + r.action + '</span>'] }; }));
+    }
+
+    function line_chart(label, amount, series, projection) {
+        var points = (series || []).filter(function (p) { return p.date && M.isNumber(p.amount); });
+        var future = projection || [];
+        var metric = '<div class="dcr-chart-label">' + esc(label) + '</div><div class="dcr-chart-value">' + esc(money(amount)) + '</div>';
+        if (!points.length || !M.isNumber(amount) || Math.abs(Number(points[points.length - 1].amount) - Number(amount)) > .02) {
+            return '<section class="dcr-chart" aria-label="' + esc(label) + '">' + metric + '<p class="dcr-chart-empty">' + (M.isNumber(amount) && Number(amount) === 0 ? (label === 'Paid to date' ? 'No payments yet.' : 'No outstanding balance.') : 'Historical chart is not available.') + '</p></section>';
+        }
+        var asOf = state.data.as_of;
+        if (asOf && points[points.length - 1].date < asOf) points.push({ date: asOf, amount: amount });
+        var all = points.concat(future), values = all.map(function (p) { return Number(p.amount); });
+        var max = Math.max.apply(null, values.concat([1])), min = Math.min.apply(null, values.concat([0]));
+        var begin = parse_date(all[0].date).getTime(), end = parse_date(all[all.length - 1].date).getTime();
+        function position(p) { return [((parse_date(p.date).getTime() - begin) / Math.max(end - begin, 1) * 600).toFixed(2), (126 - (Number(p.amount) - min) / Math.max(max - min, 1) * 110).toFixed(2)]; }
+        var actual = points.map(position), d = actual.map(function (p, i) { return (i ? 'L' : 'M') + p.join(' '); }).join(' ');
+        var projected = future.length ? [points[points.length - 1]].concat(future).map(position) : [];
+        var id = 'dcr-chart-' + label.replace(/[^a-z]/gi, '').toLowerCase();
+        var svg = '<svg class="dcr-line-chart" viewBox="0 0 600 142" preserveAspectRatio="none" role="img" aria-label="' + esc(label + ' over time. ' + (future.length ? 'Dashed line shows scheduled projection.' : 'Posted transactions.')) + '"><defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="currentColor" stop-opacity=".08"/><stop offset="100%" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs>' +
+            '<path d="' + d + ' L' + actual[actual.length - 1][0] + ' 142 L' + actual[0][0] + ' 142Z" fill="url(#' + id + ')"/>' +
+            '<path d="' + d + '" fill="none" stroke="currentColor" stroke-width="1.5" vector-effect="non-scaling-stroke"/>' +
+            (projected.length ? '<polyline points="' + projected.map(function (p) { return p.join(','); }).join(' ') + '" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>' : '') +
+            '<circle cx="' + actual[actual.length - 1][0] + '" cy="' + actual[actual.length - 1][1] + '" r="2.5" fill="currentColor"/></svg>';
+        var sampled = all.filter(function (_, i) { return all.length <= 6 || i === 0 || i === all.length - 1 || i % Math.ceil(all.length / 5) === 0; });
+        return '<section class="dcr-chart" aria-label="' + esc(label) + '">' + metric + svg + '<div class="dcr-chart-axis">' + sampled.map(function (p) { return '<span>' + esc(fmt_date(p.date)) + '</span>'; }).join('') + '</div>' +
+            '<details class="dcr-chart-data"><summary>View chart values</summary>' + table(label + ' values', [{ label: 'Date' }, { label: 'Amount', cls: 'dcr-right' }], all.map(function (p) { return { cells: [esc(fmt_date(p.date)), esc(money(p.amount))] }; })) + '</details></section>';
+    }
+
+    function side_payments(title, rows) {
+        var total = M.sumAmounts(rows, 'total');
+        var shown = rows.length > 3 ? rows.slice(0, 2) : rows;
+        var body = table(title, [{ label: 'Request', cls: 'dcr-side-request' }, { label: 'Buyer' }, { label: 'Due', cls: 'dcr-side-due' }, { label: 'Amount', cls: 'dcr-right dcr-side-amount' }], shown.map(function (r) {
+            var deal = deal_by_name(r.deal);
+            return { header: 0, cells: [deal ? build_link(deal) : esc(r.deal), deal ? optional(buyer(deal)) : optional(''), esc(fmt_date(r.date)), esc(money(r.total))] };
+        }));
+        if (rows.length > 3) body += '<a class="dcr-overflow-row" href="#/payments/schedule">' + esc((rows.length - 2) + ' more · next due ' + fmt_date(rows[2].date)) + '<span>View all →</span></a>';
+        if (!rows.length) body = '<p class="dcr-muted">Nothing due.</p>';
+        return '<section class="dcr-payment-side"><h2>' + esc(title) + '</h2><div class="dcr-chart-value dcr-side-total">' + esc(total.complete ? money(total.amount) : 'Unavailable') + '</div>' + body + '</section>';
+    }
+
+    function page_home(arg) {
+        var unfinished = setup_steps().some(function (r) { return !r.done; });
+        if (unfinished || arg === 'done' || arg === 'todo') return '<div class="dcr-page">' + page_head('Set up your account', new_request_button()) +
+            '<p class="dcr-subtitle">Complete these steps to get your account ready.</p>' + setup_table(arg) + '</div>';
+        var finance = state.data.finance || {}, pay = M.paymentGroups(deals());
+        var hasFunded = finance.funded_loans > 0 || deals().some(function (d) { return M.summary(d) && M.summary(d).funded; });
+        var warning = finance.available === false ? '<p class="dcr-alert" role="alert">Financial details could not load. Your builds are still available.</p>' : '';
+        var overview = hasFunded ? '<div class="dcr-overview-grid">' + line_chart('Outstanding', finance.outstanding, finance.principal_series) + side_payments('Upcoming payments', pay.upcoming.filter(function (r, i, rows) { return rows.findIndex(function (item) { return item.deal === r.deal; }) === i; })) + '</div>' : '';
+        return '<div class="dcr-page">' + page_head(greeting(), new_request_button()) + warning + overview + section('Builds', builds_table(deals().filter(function (d) { return M.lifecycle(d).group !== 'Closed'; }))) + '</div>';
+    }
+
+    function page_builds(arg) {
+        var selected = ['you', 'dcr', 'closed'].indexOf(arg) >= 0 ? arg : 'all';
+        var list = deals().filter(function (d) {
+            var closed = M.lifecycle(d).group === 'Closed', next = next_step(d);
+            return selected === 'closed' ? closed : selected === 'all' ? true : !closed && (selected === 'you' ? next.who === 'You' : next.who === 'DCR');
+        });
+        return '<div class="dcr-page">' + page_head('Builds', new_request_button()) + tabs('Build views', [
+            { key: 'all', label: 'All', href: '#/builds' }, { key: 'you', label: 'Waiting on you', href: '#/builds/you', needs: deals().some(function (d) { return next_step(d).who === 'You'; }) },
+            { key: 'dcr', label: 'Waiting on DCR', href: '#/builds/dcr' }, { key: 'closed', label: 'Closed and cancelled', href: '#/builds/closed' }], selected) + builds_table(list) + '</div>';
+    }
+
     function progress_list(deal) {
         return '<ol class="dcr-steps">' + M.progressSteps(deal, signatures()).map(function (step) {
             var note = step.noteIsDate ? fmt_date(step.note) : step.note;
-            var aside = note ? '<span class="dcr-small">' + esc(note) + "</span>" : "";
-            if (step.upload) aside = upload_control("dcr-btn-mini", "hbr", deal.name, step.upload.document_type, step.replace ? "Replace file" : "Upload", step.upload.document_type);
-            if (step.signature) aside = '<button type="button" class="dcr-btn-mini" data-action="sign" data-signature="' + esc(step.signature.name) + '" aria-label="' + esc("Sign " + step.signature.document_type) + '">Sign</button>';
-            var said = { done: "Done", current: "In progress", action: "Needs you", upcoming: "Later", cancelled: "Cancelled" }[step.kind] || "";
-            return '<li class="is-' + step.kind + '"><span class="dcr-step-mark">' + mark(step.kind) + '</span><span class="dcr-step-body"><span><span class="dcr-sr">' + said + ": </span>" + esc(step.label) + "</span>" + aside + "</span></li>";
-        }).join("") + "</ol>";
-    }
-
-    function tracker(deal) {
-        var rank = Math.max(["Draft", "Pending", "Ordered", "Delivered", "Closed"].indexOf(deal.order_stage), 1);
-        return '<ol class="dcr-tracker">' + ["Pending", "Ordered", "Delivered", "Closed"].map(function (label, index) {
-            var position = index + 1;
-            var cls = rank === 4 || position < rank ? "is-done" : (position === rank ? "is-now" : "");
-            var said = cls === "is-done" ? "Done" : (cls === "is-now" ? "Current" : "Later");
-            return '<li class="' + cls + '"><i></i><span><span class="dcr-sr">' + said + ": </span>" + label + "</span></li>";
-        }).join("") + "</ol>";
-    }
-
-    function payment_components(row) {
-        var parts = [];
-        if (M.isNumber(row.principal) && Number(row.principal)) parts.push("Principal " + money(row.principal));
-        if (M.isNumber(row.interest) && Number(row.interest)) parts.push("Interest " + money(row.interest));
-        if (M.isNumber(row.charges) && Number(row.charges)) parts.push("Charges " + money(row.charges));
-        return parts.join(" · ");
-    }
-
-    function loan_payments_section(deal) {
-        var data = M.summary(deal);
-        if (!data) return section("Payments", '<p class="dcr-note">' + (deal.loan.payments_unavailable ? "Payment details could not load. Refresh to try again." : "No payments yet. The schedule starts when the loan is funded.") + "</p>");
-        var rows = [];
-        var key = "loan|" + deal.name;
-        (data.upcoming || []).forEach(function (row) {
-            var late = row.due_status === "Past due";
-            rows.push({ cells: [status(late ? "action" : "progress", late ? "Past due" : "Scheduled"), esc(fmt_date(row.date)), '<span class="dcr-muted">' + esc(payment_components(row)) + "</span>", esc(money(row.total, data.currency))] });
-        });
-        (data.history || []).forEach(function (row) {
-            rows.push({ cells: [status("done", "Paid"), esc(fmt_date(row.date)), '<span class="dcr-muted">' + esc(row.type || "Payment") + "</span>", esc(money(row.amount, data.currency))] });
-        });
-        if (!rows.length) return section("Payments", '<p class="dcr-note">No payments yet. The schedule starts when the loan is funded.</p>');
-        var aside = [data.as_of ? "As of " + fmt_date(data.as_of) : "", data.history_truncated ? "most recent payments shown" : ""].filter(Boolean).join(" · ");
-        var body = table("Payments for " + deal.name, [{ label: "Status", cls: "dcr-nowrap" }, { label: "Date", cls: "dcr-nowrap" }, { label: "Details" }, { label: "Amount", cls: "dcr-right dcr-nowrap" }], preview(rows, key));
-        return section("Payments", body + (rows.length > PREVIEW_ROWS ? toggle_button(key, rows.length, "payment") : ""), esc(aside));
+            return '<li class="is-' + step.kind + '"><span class="dcr-step-mark">' + mark(step.kind) + '</span><span class="dcr-step-body"><span>' + esc(step.label) + '</span>' + (note ? '<span class="dcr-small">' + esc(note) + '</span>' : '') + '</span></li>';
+        }).join('') + '</ol>';
     }
 
     function field(deal, name) {
         var value = deal[name];
-        if ((value === null || value === undefined || value === "") && deal.editable) value = deal.editable[name];
-        return value === null || value === undefined ? "" : value;
+        if ((value === null || value === undefined || value === '') && deal.editable) value = deal.editable[name];
+        return value === null || value === undefined ? '' : value;
     }
 
-    function page_request(name) {
-        var deal = deal_by_name(name);
-        if (!deal) {
-            return '<div class="dcr-topbar"><nav class="dcr-crumbs" aria-label="Breadcrumb"><a href="#/home">Home</a>' + CHEVRON + '<h1 tabindex="-1">' + esc(name || "Request") + '</h1></nav></div><div class="dcr-page">' +
-                empty_state(ICONS.home, "This request is not available", "It may belong to another dealer account, or it is no longer in your list.", '<a class="dcr-btn" href="#/home">Back to Home</a>') + "</div>";
+    function build_details(deal) {
+        var address = ['delivery_address', 'address_line_2', 'city', 'state', 'zip'].map(function (n) { return field(deal, n); }).filter(Boolean).join(', ');
+        var details = [['Factory', deal.factory && deal.factory.label || '–'], ['Floorplan', deal.floor_plan || '–'], ['Serial number', M.serialNumber(deal) || 'TBD'],
+            ['Factory quote', deal.quote_no || '–'], ['Quoted amount', money(deal.quoted_amount)], ['Home type', deal.home_type || '–'],
+            ['Deal type', deal.financing_type || '–'], ['Property', deal.property_type || '–']];
+        if (address) details.push(['Delivery address', address]);
+        if (deal.offline_date) details.push(['Off Line Date', fmt_date(deal.offline_date)]);
+        if (deal.property_type === 'Park') details.push(['Community', [field(deal, 'community_name'), field(deal, 'space_number')].filter(Boolean).join(' · ')]);
+        if (deal.home_type === 'Customer Sold') {
+            details.push(['Buyer', buyer(deal) || '–']);
+            if (M.isNumber(field(deal, 'selling_price'))) details.push(['Selling price', money(field(deal, 'selling_price'))]);
+            if (M.isNumber(deal.installed_value)) details.push(['Installed value', money(deal.installed_value)]);
         }
-        var current = M.lifecycle(deal);
-        var open = M.isOpen(deal);
-        var accepted = M.isAccepted(deal);
-        var loan = deal.loan || {};
+        return section('Build details', cells(2, details), M.canEdit(deal) ? '<a class="dcr-btn" href="' + WEB_FORM + '/' + encodeURIComponent(deal.name) + '/edit">Edit</a>' : 'Read only');
+    }
+
+    function build_documents(deal) {
+        var items = M.documents(deal), signed = M.dealSignatures(deal, signatures());
+        var body = section('Documents', items.length ? documents_table('Documents for ' + deal.name, items, 'hbr', deal.name, M.canEdit(deal)) : '<p class="dcr-muted">No documents are required for this build.</p>');
+        if (signed.length) body += section('Signatures', sign_alert(signed) + table('Signatures for ' + deal.name, [{ label: 'Document' }, { label: 'Status', cls: 'dcr-col-status' }, { label: 'Date', cls: 'dcr-col-date' }, { label: 'Action', hidden: true, cls: 'dcr-c-act' }], signed.map(function (s) {
+            return { header: 0, cells: [esc(s.document_type), signature_status(s), esc(fmt_date(s.signed_date || s.sent_date)), '<span class="dcr-actions">' + (s.actionable ? sign_button(s, s.document_type) : signed_document_links(s)) + '</span>'] };
+        })));
+        return body;
+    }
+
+    function build_payments(deal) {
         var data = M.summary(deal);
-        var who = M.identity(deal);
-
-        var actions = "";
-        if (M.canEdit(deal)) actions += '<a class="dcr-btn" href="' + WEB_FORM + "/" + encodeURIComponent(deal.name) + '/edit">' + small_icon(ICONS.edit, 14) + "Edit</a>";
-        if (loan.payoff && loan.payoff.can_request) actions += '<button type="button" class="dcr-btn" data-action="payoff" data-hbr="' + esc(deal.name) + '">' + small_icon(ICONS.send, 14) + "Request payoff letter</button>";
-
-        var address = [field(deal, "delivery_address"), field(deal, "address_line_2"), field(deal, "city"), [field(deal, "state"), field(deal, "zip")].filter(Boolean).join(" ")].filter(Boolean).join(", ");
-        var details = [["Factory", deal.factory && deal.factory.label || ""], ["Floorplan", deal.floor_plan || ""], ["Serial number", M.serialNumber(deal) || "TBD"], ["Factory quote", deal.quote_no || ""], ["Quoted amount", money(deal.quoted_amount)]];
-        if (address) details.push(["Delivery address", address]);
-        if (deal.offline_date) details.push(["Off Line Date", fmt_date(deal.offline_date)]);
-        if (deal.property_type === "Park") {
-            var community = [field(deal, "community_name"), field(deal, "space_number") ? "Space " + field(deal, "space_number") : ""].filter(Boolean).join(" · ");
-            if (community) details.push(["Community", community]);
-        }
-        if (deal.home_type === "Customer Sold") {
-            if (deal.end_buyer_name) details.push(["End buyer", deal.end_buyer_name]);
-            if (M.isNumber(field(deal, "selling_price"))) details.push(["Selling price", money(field(deal, "selling_price"))]);
-            if (M.isNumber(deal.installed_value)) details.push(["Installed value", money(deal.installed_value)]);
-        }
-
-        var body = section("Home details", cells(3, details));
-        if (accepted && M.hasLoan(deal)) {
-            var known = data && M.isNumber(data.outstanding_principal);
-            var stage = M.loanStage(deal);
-            var payment = M.paymentDisplay(deal);
-            body += section("Loan details", cells(3, [[known ? "Outstanding principal" : "Principal", money(known ? data.outstanding_principal : loan.principal)],
-                ["Interest rate", M.isNumber(loan.interest_rate) ? Number(loan.interest_rate) + "%" : "—"], [payment.label, money(payment.amount)]]), status(stage.kind, stage.label));
-        }
-        if (accepted) body += section("Home status", tracker(deal), esc(M.homeStatus(deal)));
-        var items = M.documents(deal);
-        body += section("Documents", items.length ? documents_table("Documents for " + deal.name, items, "hbr", deal.name, open) : '<p class="dcr-note">No documents are required for this request.</p>', open && (M.missingDocuments(deal).length || items.some(function (item) { return item.uploaded && item.can_download === false; })) ? esc(UPLOAD_NOTE) : "");
-        var signed = M.dealSignatures(deal, signatures());
-        if (signed.length) {
-            body += section("Signatures", sign_alert(signed) + table("Signatures for " + deal.name, [{ label: "File type", cls: "dcr-c-icon", hidden: true }, { label: "Document" }, { label: "Status" }, { label: "Date", cls: "dcr-nowrap dcr-muted" }, { label: "Actions", cls: "dcr-c-act", hidden: true }],
-                signed.map(function (item) {
-                    return { header: 1, cells: [FILE_ICONS.pdf, '<span class="dcr-strong">' + esc(item.document_type) + "</span>", signature_status(item), esc(fmt_date(item.signed_date || item.sent_date)), '<span class="dcr-actions">' + (item.actionable ? sign_button(item, item.document_type) : signed_document_links(item)) + "</span>"] };
-                })));
-        }
-        if (accepted && M.hasLoan(deal)) body += loan_payments_section(deal);
-
-        var loan_stage = M.loanStage(deal);
-        var panel = '<aside class="dcr-float" aria-label="Progress and details"><section><h2>Progress</h2>' + progress_list(deal) + '</section><section><h2>Details</h2><dl class="dcr-kv">' +
-            "<dt>Status</dt><dd>" + status(current.kind, current.label) + "</dd>" +
-            "<dt>Request</dt><dd>" + request_number(deal.name) + "</dd>" +
-            "<dt>Home status</dt><dd>" + esc(M.homeStatus(deal)) + "</dd>" +
-            "<dt>Loan stage</dt><dd>" + esc(loan_stage.label) + "</dd>" +
-            (M.hasLoan(deal) && loan.name ? "<dt>Loan</dt><dd>" + request_number(loan.name) + "</dd>" : "") +
-            "<dt>Home type</dt><dd>" + esc(deal.home_type || "—") + "</dd><dt>Deal type</dt><dd>" + esc(deal.financing_type || "—") + "</dd><dt>Property</dt><dd>" + esc(deal.property_type || "—") + "</dd></dl></section></aside>";
-
-        return '<div class="dcr-topbar"><nav class="dcr-crumbs" aria-label="Breadcrumb"><a href="#/home">Home</a>' + CHEVRON + '<h1 tabindex="-1">' + esc(who.primary) + "</h1>" + (who.primary !== deal.name ? request_number(deal.name) : "") + '</nav><div class="dcr-topbar-actions">' + actions + '</div></div><div class="dcr-record"><div class="dcr-record-main">' + body + "</div>" + panel + "</div>";
+        if (!data) return '<p class="dcr-note">' + (deal.loan && deal.loan.payments_unavailable ? 'Payment details could not load.' : 'The schedule starts when the loan is funded.') + '</p>';
+        var rows = (data.upcoming || []).map(function (r) { return { date: r.date, amount: r.total, label: r.due_status, kind: r.due_status === 'Past due' ? 'action' : 'progress' }; })
+            .concat((data.history || []).filter(function (r) { return r.is_payment !== false; }).map(function (r) { return { date: r.date, amount: r.amount, label: 'Paid', kind: 'done' }; }));
+        rows.sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); });
+        return rows.length ? table('Build payments', [{ label: 'Due', cls: 'dcr-col-date' }, { label: 'Status' }, { label: 'Amount', cls: 'dcr-col-amount dcr-right' }], rows.map(function (r) { return { cells: [esc(fmt_date(r.date)), status(r.kind, r.label || 'Scheduled'), esc(money(r.amount))] }; })) : '<p class="dcr-note">No payments yet.</p>';
     }
 
-    // ------------------------------------------------------------ Lending
-    function page_lending() {
-        var loans = deals().filter(M.hasLoan);
-        var body;
-        if (!loans.length) {
-            body = empty_state(ICONS.paper, "No loans yet", "A loan appears here once DCR opens it for an accepted floored request.");
-        } else {
-            var columns = [{ label: "Loan stage", cls: "dcr-nowrap dcr-c-status" }, { label: "Home", cls: "dcr-c-home" }, { label: "Home Build Request", cls: "dcr-nowrap" }, { label: "Home status", cls: "dcr-nowrap dcr-muted dcr-wide-only" }, { label: "Outstanding", cls: "dcr-right dcr-nowrap" }, { label: "Next" }, { label: "Open", cls: "dcr-c-chev", hidden: true }];
-            body = table("Loans", columns, loans.map(function (deal) {
-                var stage = M.loanStage(deal);
-                var data = M.summary(deal);
-                var rows = (data && data.upcoming) || [];
-                var late = rows.filter(function (row) { return row.due_status === "Past due"; });
-                var next = rows.filter(function (row) { return row.due_status !== "Past due"; })[0];
-                var need = M.needs(deal, signatures());
-                var text;
-                if (need) text = '<span class="dcr-strong">' + esc(need) + "</span>";
-                else if (late.length) text = '<span class="dcr-status dcr-wrap dcr-strong">' + mark("action") + esc("Past due " + money(M.sumAmounts(late, "total").amount) + (M.sumAmounts(late, "total").complete ? "" : " known; total unavailable") + " · " + plural(late.length, "payment")) + "</span>";
-                else if (next) text = '<span class="dcr-muted">' + esc("Payment " + fmt_date(next.date) + " · " + money(next.total)) + "</span>";
-                else if (deal.loan.payments_unavailable) text = '<span class="dcr-muted">Payment details could not load</span>';
-                else if (!data || data.funded === false) text = '<span class="dcr-muted">Not funded yet</span>';
-                else text = '<span class="dcr-muted">Nothing scheduled</span>';
-                return { href: request_href(deal.name), header: 1, cells: [status(stage.kind, stage.label), home_link(deal), request_number(deal.name), esc(M.homeStatus(deal)), esc(money(data ? data.outstanding_principal : null)), text, CHEVRON] };
-            }));
+    function build_overview(deal) {
+        var data = M.summary(deal), body = '';
+        if (data && data.funded) {
+            var outlook = M.principalOutlook([deal], parse_date(data.as_of) || new Date());
+            body += line_chart('Outstanding', data.outstanding_principal, data.principal_series, outlook.months.map(function (m) { return { date: m.end, amount: m.total }; }));
         }
-        return '<div class="dcr-page">' + page_head("Lending") + body + "</div>";
+        var rows = M.progressSteps(deal, signatures()).filter(function (s) { return s.kind === 'action' || s.kind === 'current'; }).map(function (s) {
+            var action = s.signature ? sign_button(s.signature, s.signature.document_type) : s.upload ? upload_control('dcr-btn-row', 'hbr', deal.name, s.upload.document_type, s.replace ? 'Replace' : 'Upload', s.upload.document_type) : '';
+            return { cells: [esc(s.kind === 'action' ? 'You' : s.note === 'With the factory' ? 'Factory' : 'DCR'), esc(s.label), '<span class="dcr-muted">–</span>', action] };
+        });
+        if (M.canEdit(deal)) rows.push({ cells: ['You', 'Review build details', '–', '<a class="dcr-btn-row" href="' + WEB_FORM + '/' + encodeURIComponent(deal.name) + '/edit">Edit</a>'] });
+        return body + section('Next steps', rows.length ? table('Next steps', [{ label: 'Who', cls: 'dcr-col-waiting' }, { label: 'Step' }, { label: 'Due', cls: 'dcr-col-date' }, { label: 'Action', hidden: true, cls: 'dcr-c-act' }], rows) : '<p class="dcr-muted">Nothing needed from you right now.</p>') + sign_alert(M.dealSignatures(deal, signatures()));
     }
 
-    // ------------------------------------------------------------ Payments
-    function deal_cell(name) {
+    function page_request(name, tab) {
         var deal = deal_by_name(name);
-        return deal ? home_link(deal) : request_number(name);
+        if (!deal) return '<div class="dcr-page">' + page_head(name || 'Build') + empty_state(ICONS.home, 'This build is not available', 'It may belong to another dealer account.', '<a class="dcr-btn" href="#/builds">Back to Builds</a>') + '</div>';
+        var selected = ['details', 'documents', 'payments'].indexOf(tab) >= 0 ? tab : 'overview';
+        var base = request_href(name), pay = M.summary(deal), needsDocs = M.needs(deal, signatures());
+        var nav = tabs('Build tabs', [{ key: 'overview', label: 'Overview', href: base }, { key: 'details', label: 'Details', href: base + '/details' },
+            { key: 'documents', label: 'Documents', href: base + '/documents', needs: !!needsDocs }, { key: 'payments', label: 'Payments', href: base + '/payments', needs: pay && pay.upcoming.some(function (r) { return r.due_status === 'Past due'; }) }], selected);
+        var content = selected === 'details' ? build_details(deal) : selected === 'documents' ? build_documents(deal) : selected === 'payments' ? build_payments(deal) : build_overview(deal);
+        var payoff = deal.loan && deal.loan.payoff && deal.loan.payoff.can_request;
+        var aside = '<aside class="dcr-build-aside"><section><h2>Progress</h2>' + progress_list(deal) + '</section><section><h2>Payoff quote</h2><p class="dcr-muted">' + (payoff ? 'Request a reviewed payoff letter from DCR.' : 'Available for an open, funded loan.') + '</p>' +
+            (payoff ? '<button class="dcr-btn" data-action="payoff" data-hbr="' + esc(name) + '">Request payoff letter</button>' : '') + '</section></aside>';
+        return '<div class="dcr-page dcr-build-page"><header><nav class="dcr-crumbs" aria-label="Breadcrumb"><a href="#/builds">Builds</a>' + CHEVRON + '<span>' + esc(name) + '</span></nav>' + page_head(name) +
+            '<p class="dcr-subtitle">' + optional(buyer(deal)) + ' · Serial ' + serial(deal) + '</p></header><div class="dcr-build-layout"><div class="dcr-record-main">' + nav + '<div class="dcr-build-content">' + content + '</div></div>' + aside + '</div></div>';
     }
 
-    var PAYMENT_TABS = [["upcoming", "Upcoming"], ["past-due", "Past due"], ["paid", "Paid"], ["banking", "Banking"]];
+    function page_lending(arg) {
+        var selected = arg === 'repaid' ? 'repaid' : 'active', finance = state.data.finance || {};
+        var list = deals().filter(function (d) { return M.hasLoan(d) && !M.isCancelled(d) && (selected === 'repaid' ? d.loan_stage === 'Closed' : d.loan_stage !== 'Closed'); });
+        var credit = section('Available credit', cells(3, [['Limit', M.isNumber(finance.credit_limit) ? money(finance.credit_limit) : 'Not available'], ['Used credit', money(finance.credit_used)], ['Available', M.isNumber(finance.available_credit) ? money(finance.available_credit) : 'Not available']]));
+        return '<div class="dcr-page">' + page_head('Loans') + '<div class="dcr-overview-grid">' + line_chart('Outstanding', finance.outstanding, finance.principal_series) + credit + '</div>' +
+            tabs('Loan views', [{ key: 'active', label: 'Active', href: '#/loans' }, { key: 'repaid', label: 'Repaid', href: '#/loans/repaid' }], selected) +
+            (list.length ? table('Loans', [{ label: 'Request', cls: 'dcr-col-request' }, { label: 'Buyer', cls: 'dcr-col-buyer' }, { label: 'Serial', cls: 'dcr-col-serial' }, { label: 'Funded', cls: 'dcr-col-date' }, { label: 'Rate', cls: 'dcr-col-rate' }, { label: 'Status' }, { label: 'Principal', cls: 'dcr-col-amount dcr-right' }], list.map(function (d) {
+                var s = M.summary(d), stage = M.loanStage(d);
+                return { href: request_href(d.name), header: 0, cells: [build_link(d), optional(buyer(d)), serial(d), esc(fmt_date(s && s.funded_on) || '–'), esc(M.isNumber(d.loan.interest_rate) ? Number(d.loan.interest_rate) + '%' : '–'), status(stage.kind, stage.label), esc(money(s && s.outstanding_principal))] };
+            })) : '<p class="dcr-note">No ' + (selected === 'repaid' ? 'repaid loans.' : 'loans yet.') + '</p>') + '</div>';
+    }
+
+    function payment_table(rows, pastDue) {
+        if (!rows.length) return '<p class="dcr-note">' + (pastDue ? 'Nothing past due.' : 'No payments scheduled.') + '</p>';
+        var columns = [{ label: 'Request', cls: 'dcr-col-request' }, { label: 'Buyer', cls: 'dcr-col-buyer' }, { label: 'Serial', cls: 'dcr-col-serial' },
+            { label: 'Due date', cls: 'dcr-col-date' }, { label: 'Status' }, { label: 'Amount', cls: 'dcr-col-amount dcr-right' }];
+        if (pastDue) columns.push({ label: 'Action', hidden: true, cls: 'dcr-c-act' });
+        return table(pastDue ? 'Past due' : 'Payment schedule', columns, rows.map(function (r) {
+            var deal = deal_by_name(r.deal), late = r.due_status === 'Past due';
+            var values = [(deal ? build_link(deal) : esc(r.deal)) + '<span class="dcr-phone-summary">Due ' + esc(fmt_date(r.date)) + ' · ' + esc(late ? 'Past due' : 'Scheduled') + '</span>', deal ? optional(buyer(deal)) : optional(''), deal ? serial(deal) : optional(''), esc(fmt_date(r.date)), status(late ? 'action' : 'progress', late ? 'Past due' : 'Scheduled'), esc(money(r.total))];
+            if (pastDue) values.push(support_link('Contact DCR', 'dcr-btn-row', 'Contact DCR about payment for ' + r.deal) || '<span class="dcr-muted">Contact DCR</span>');
+            return { header: 0, cells: values };
+        }));
+    }
 
     function banking_panel() {
-        var ach = (state.data && state.data.ach) || {};
-        var accounts = ach.accounts || [];
-        var bank;
-        if (accounts.length) {
-            // A bank record on file is not evidence of a live provider link or of automatic debits.
-            bank = table("Bank accounts on file", [{ label: "Bank", cls: "dcr-c-icon", hidden: true }, { label: "Account" }, { label: "Use" }, { label: "Status", cls: "dcr-nowrap" }], accounts.map(function (account) {
-                var name = account.bank_name || "Bank account";
-                var initials = name.split(/\s+/).map(function (word) { return word.charAt(0); }).join("").slice(0, 2).toUpperCase();
-                return { header: 1, cells: ['<span class="dcr-bank-mark" aria-hidden="true">' + esc(initials) + "</span>", '<span class="dcr-strong">' + esc(name) + (account.last4 ? ' <span class="dcr-num">····' + esc(account.last4) + "</span>" : "") + "</span>",
-                    '<span class="dcr-muted">' + (account.is_default ? "Default" : "") + "</span>", account.status === "Paused" ? status("draft", "Paused") : status("neutral", "On file")] };
-            })) + '<p class="dcr-help">DCR manages payment setup. Contact DCR to confirm automatic payments.' + (support_url() ? " " + support_link("Contact DCR") : "") + "</p>";
-        } else {
-            bank = '<p class="dcr-note">No bank account is on file. Bank setup is not available in the portal yet; DCR will set up payments with you.' + (support_url() ? " " + support_link("Contact DCR") : "") + "</p>";
-        }
-        return bank;
-    }
-
-    // One tab, one job. The line above each schedule says how much it holds, so no separate overview is needed.
-    function payment_panel(heading, summary, content, footnote) {
-        return '<section class="dcr-section dcr-tab-panel"><h2 class="dcr-sr">' + esc(heading) + "</h2>" + (summary ? '<p class="dcr-tab-summary">' + esc(summary) + "</p>" : "") + content +
-            (footnote ? '<p class="dcr-help">' + esc(footnote) + "</p>" : "") + "</section>";
+        var ach = state.data.ach || {}, account = (ach.accounts || [])[0];
+        var action = ach.available ? '<button class="dcr-btn-row" data-action="connect-bank">' + (account ? 'Update' : 'Connect') + '</button>' : support_link('Contact DCR', 'dcr-btn-row');
+        return table('Payment setup', [{ label: 'Item', cls: 'dcr-col-step' }, { label: 'Details' }, { label: 'Status', cls: 'dcr-col-status' }, { label: 'Action', hidden: true, cls: 'dcr-c-act' }], [
+            { cells: ['Bank account', account ? esc((account.bank_name || 'Bank account') + ' ····' + (account.last4 || '')) : '<span class="dcr-muted">Not connected</span>', status(account ? 'done' : 'action', account ? 'On file' : 'Needs you'), action] },
+            { cells: ['Automatic payments', esc(ach.automatic_payments || 'Not set up'), status('draft', ach.automatic_payments === 'Not set up' || !ach.automatic_payments ? 'Off' : 'With DCR'), support_link('Contact DCR', 'dcr-btn-row')] }]);
     }
 
     function page_payments(arg) {
-        var tab = PAYMENT_TABS.some(function (item) { return item[0] === arg; }) ? arg : "upcoming";
-        var pay = M.paymentGroups(deals());
-        var tabs = '<nav class="dcr-tabs" aria-label="Payments">' + PAYMENT_TABS.map(function (item) {
-            var count = item[0] === "past-due" && pay.pastDue.length ? '<span class="dcr-tab-count">' + mark("action") + '<span class="dcr-num">' + pay.pastDue.length + '</span><span class="dcr-sr"> past-due payments</span></span>' : "";
-            return '<a class="dcr-tab" href="#/payments/' + item[0] + '" data-focus-key="tab|' + item[0] + '"' + (item[0] === tab ? ' aria-current="page"' : "") + ">" + item[1] + count + "</a>";
-        }).join("") + "</nav>";
-        var title = { "upcoming": "Upcoming payments", "past-due": "Past-due payments", "paid": "Paid payments", "banking": "Bank account" }[tab];
-        var total = function (sum) { return money(sum.amount) + (sum.complete ? "" : " known; total unavailable"); };
-        var footnote = (pay.asOf ? "As of " + fmt_date(pay.asOf) + ". " : "") + "Figures come from DCR's loan records." +
-            (pay.unavailable.length ? " " + plural(pay.unavailable.length, "loan") + " could not load and " + (pay.unavailable.length === 1 ? "is" : "are") + " not included: " + pay.unavailable.join(", ") + "." : "");
-        var body;
-        if (tab === "banking") {
-            body = payment_panel(title, "", banking_panel(), "");
-        } else if (!pay.loans) {
-            body = payment_panel(title, "", '<p class="dcr-note">No payments yet. They appear here once a loan is funded.</p>', "");
-        } else if (!pay.reported) {
-            body = payment_panel(title, "", '<p class="dcr-note">' + (pay.unavailable.length ? "Payment details could not load. Refresh to try again." : "No payments yet. The schedule starts when a loan is funded.") + "</p>", "");
-        } else {
-            var simple = function (caption, rows, key, kind, date_label, detail, amount) {
-                var columns = [{ label: kind, cls: "dcr-c-icon", hidden: true }, { label: date_label, cls: "dcr-nowrap" }, { label: "Home" }, { label: "Home Build Request", cls: "dcr-nowrap" }, { label: "Details" }, { label: "Amount", cls: "dcr-right dcr-nowrap" }];
-                return table(caption, columns, preview(rows, key).map(function (row) {
-                    return { cells: [mark(kind === "Paid" ? "done" : "progress"), esc(fmt_date(row.date)), deal_cell(row.deal), request_number(row.deal), '<span class="dcr-muted">' + esc(detail(row)) + "</span>", esc(money(amount(row)))] };
-                })) + (rows.length > PREVIEW_ROWS ? toggle_button(key, rows.length, "payment") : "");
-            };
-            if (tab === "past-due") {
-                if (!pay.pastDue.length) {
-                    body = payment_panel(title, "", '<p class="dcr-note">' + (pay.pastDueTotal.complete ? "Nothing is past due." : "Some payment details could not load. Past-due totals are unavailable.") + "</p>", footnote);
-                } else {
-                var groups = [];
-                pay.pastDueByDeal.forEach(function (group) {
-                    var key = "late|" + group.deal;
-                    var open = !!state.expanded[key];
-                    groups.push({ cls: "dcr-group", header: 1, cells: [mark("action"), deal_cell(group.deal), request_number(group.deal),
-                        '<span class="dcr-muted">' + esc(plural(group.rows.length, "payment") + " · oldest " + fmt_date(group.oldest)) + "</span>",
-                        '<span class="dcr-strong">' + esc(money(group.amount) + (group.complete ? "" : " known; total unavailable")) + "</span>",
-                        '<button type="button" class="dcr-btn-text" data-action="toggle" data-key="' + esc(key) + '" data-focus-key="toggle|' + esc(key) + '" aria-expanded="' + (open ? "true" : "false") + '" aria-label="' + esc((open ? "Hide" : "Show") + " past-due payments for " + group.deal) + '">' + (open ? "Hide" : "Show") + "</button>"] });
-                    if (open) group.rows.forEach(function (row) {
-                        groups.push({ cls: "dcr-sub", cells: ["", '<span class="dcr-muted">Due ' + esc(fmt_date(row.date)) + "</span>", "", '<span class="dcr-muted">' + esc(payment_components(row)) + "</span>", esc(money(row.total)), ""] });
-                    });
-                });
-                    body = payment_panel(title, plural(pay.pastDue.length, "payment") + " · " + total(pay.pastDueTotal),
-                        table("Past-due payments by request", [{ label: "Past due", cls: "dcr-c-icon", hidden: true }, { label: "Home" }, { label: "Home Build Request", cls: "dcr-nowrap" }, { label: "Details" }, { label: "Amount", cls: "dcr-right dcr-nowrap" }, { label: "Rows", cls: "dcr-c-act", hidden: true }], groups), footnote);
-                }
-            } else if (tab === "paid") {
-                body = payment_panel(title, pay.paid.length ? plural(pay.paid.length, "payment") + (pay.truncated ? ", most recent shown" : "") : "",
-                    pay.paid.length ? simple("Paid payments", pay.paid, "paid", "Paid", "Paid", function (row) { return row.type || "Payment"; }, function (row) { return row.amount; }) : '<p class="dcr-note">' + (pay.unavailable.length ? "Some payment details could not load. Payment history is unavailable." : "No payments have been made yet.") + "</p>", footnote);
-            } else {
-                var next = pay.upcoming[0];
-                body = payment_panel(title, pay.upcoming.length ? plural(pay.upcoming.length, "payment") + " · next " + fmt_date(next.date) + ", " + money(next.total) : "",
-                    pay.upcoming.length ? simple("Upcoming payments", pay.upcoming, "upcoming", "Scheduled", "Due", payment_components, function (row) { return row.total; }) : '<p class="dcr-note">' + (pay.unavailable.length ? "Some payment details could not load. Upcoming totals are unavailable." : "Nothing is scheduled right now.") + "</p>", footnote);
-            }
+        var pay = M.paymentGroups(deals()), selected = arg === 'bank' ? 'bank' : arg === 'schedule' || arg === 'upcoming' ? 'schedule' : 'overview';
+        var nav = tabs('Payment views', [{ key: 'overview', label: 'Overview', href: '#/payments' }, { key: 'schedule', label: 'Schedule', href: '#/payments/schedule', needs: !!pay.pastDue.length }, { key: 'bank', label: 'Bank', href: '#/payments/bank' }], selected);
+        var content;
+        if (selected === 'bank') content = banking_panel();
+        else if (selected === 'schedule') content = payment_table(pay.pastDue.concat(pay.upcoming));
+        else {
+            var finance = state.data.finance || {}, month = (pay.asOf || new Date().toISOString()).slice(0, 7);
+            content = '<div class="dcr-overview-grid">' + line_chart('Paid to date', finance.paid_total, finance.paid_series) + side_payments('Due this month', pay.pastDue.concat(pay.upcoming).filter(function (r) { return String(r.date).slice(0, 7) === month; })) + '</div>' + section('Past due', payment_table(pay.pastDue, true));
         }
-        return '<div class="dcr-page">' + page_head("Payments") + tabs + body + "</div>";
+        if (pay.unavailable.length) content = '<p class="dcr-alert" role="alert">Some payment details could not load. Totals and schedules may be incomplete.</p>' + content;
+        return '<div class="dcr-page">' + page_head('Payments') + nav + content + '</div>';
     }
 
-    // ------------------------------------------------------------ Settings
     function page_settings() {
         var data = state.data;
         var customer = data.customer || {};
@@ -1024,7 +936,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
             : '<p class="dcr-note">' + (parts.waiting.length ? "No earlier records." : "No agreements have been sent yet.") + "</p>", parts.history.length ? esc(plural(parts.history.length, "record")) : "");
 
         body += section("Dealer documents", documents_table("Dealer documents", onboarding, "customer", customer.name, true, true), onboarding.some(function (item) { return !item.uploaded || item.can_download === false; }) ? esc(UPLOAD_NOTE) : "");
-        return '<div class="dcr-page">' + page_head("Settings") + body + "</div>";
+        return '<div class="dcr-page">' + page_head("Settings", '<a class="dcr-btn-text dcr-signout" href="/logout">Sign out</a>') + body + "</div>";
     }
 
     // ------------------------------------------------------------ loading and errors
@@ -1045,7 +957,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
     // ------------------------------------------------------------ routing and render
     function current_route() {
         var parts = window.location.hash.replace(/^#\/?/, "").split("/");
-        return { name: parts[0] || "home", arg: parts.length > 1 ? decodeURIComponent(parts.slice(1).join("/")) : "" };
+        return { name: parts[0] || "home", arg: parts[1] ? decodeURIComponent(parts[1]) : "", tab: parts[2] || "" };
     }
 
     // reason "route": the dealer navigated, so focus moves to the new page heading.
@@ -1053,7 +965,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
     function render(reason) {
         var scrollTop = main.scrollTop;
         var route = current_route();
-        var active = route.name === "request" ? "home" : route.name;
+        var active = route.name === "request" ? "builds" : route.name === "lending" ? "loans" : route.name;
         var keep = reason === "refresh" ? (state.focusKey || (document.activeElement && view.contains(document.activeElement) && document.activeElement.getAttribute("data-focus-key")) || "") : "";
         state.focusKey = "";
         root.querySelectorAll("[data-nav]").forEach(function (link) {
@@ -1067,14 +979,15 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
         var html;
         if (state.loading && !state.data) html = page_loading();
         else if (state.error && !state.data) html = page_error(state.error);
-        else if (route.name === "request") html = page_request(route.arg);
-        else if (route.name === "lending") html = page_lending();
+        else if (route.name === "request") html = page_request(route.arg, route.tab);
+        else if (route.name === "builds") html = page_builds(route.arg);
+        else if (route.name === "loans" || route.name === "lending") html = page_lending(route.arg);
         else if (route.name === "payments") html = page_payments(route.arg);
         else if (route.name === "settings") html = page_settings();
-        else html = page_home();
+        else html = page_home(route.arg);
         view.innerHTML = html;
 
-        var key = route.name + "/" + route.arg;
+        var key = route.name + "/" + route.arg + "/" + route.tab;
         if (key !== state.lastRoute) {
             state.lastRoute = key;
             main.scrollTop = 0;
@@ -1084,7 +997,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
         var deal = route.name === "request" ? deal_by_name(route.arg) : null;
         document.title = (deal ? M.identity(deal).primary : (route.name === "request" && route.arg ? route.arg : active.charAt(0).toUpperCase() + active.slice(1))) + " · Dealer Portal";
 
-        var same_page = reason === "route" && route.name === "payments" && state.lastPage === "payments";
+        var same_page = reason === "route" && (route.name === "payments" || route.name === "request") && state.lastPage === route.name;
         state.lastPage = route.name;
         if (same_page) {
             var tab = view.querySelector('.dcr-tab[aria-current="page"]');
@@ -1186,6 +1099,17 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
             }
             return;
         }
+        if (name === "connect-bank") {
+            action.disabled = true;
+            try {
+                var setup = await api("get_ach_setup_url");
+                var setupUrl = setup && safe_url(setup.url);
+                if (setupUrl) { window.location.href = setupUrl; return; }
+                toast("Bank connection is not available. Contact DCR.", true);
+            } catch (error) { toast(error.message, true); }
+            action.disabled = false;
+            return;
+        }
         if (name === "payoff") {
             action.disabled = true;
             try {
@@ -1230,7 +1154,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = Object.ass
     window.addEventListener("hashchange", function () { render("route"); });
     document.addEventListener("visibilitychange", function () { if (!document.hidden) reload(true); });
     window.addEventListener("pagehide", function () { clearInterval(refreshTimer); refreshTimer = null; });
-    window.addEventListener("pageshow", function () { start_refresh(); reload(true); });
+    window.addEventListener("pageshow", function (event) { start_refresh(); if (event.persisted) reload(true); });
 
     async function start() {
         var query = new URLSearchParams(window.location.search);

@@ -7,19 +7,21 @@
 {% block footer %}{% endblock %}
 
 {% block head_include %}
-<link rel="stylesheet" href="/assets/dcr/css/dealer_portal.css?v=20261006-7">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="stylesheet" href="/assets/dcr/css/dealer_portal.css?v=20261107-portal2">
 {% endblock %}
 
 {% block page_content %}
 <div id="dcr-dealer-portal" class="dcr-portal-shell" data-csrf-token="{{ csrf_token }}" data-support-url="{{ support_url or '' }}">
     <aside class="dcr-sidebar">
         <a class="dcr-sidebar-brand" href="#/home" aria-label="Dealer portal home">
-            <img class="dcr-site-logo" src="{{ dealer_logo | e }}" alt="Dealer Capital Resources">
+            <span class="dcr-brand-mark" aria-hidden="true">DCR</span>
             <span class="dcr-clip" data-customer-label>Dealer portal</span>
         </a>
         <nav class="dcr-sidebar-nav" aria-label="Dealer portal navigation">
             <a class="dcr-nav-link" href="#/home" data-nav="home" title="Home"><span data-icon="home"></span><span class="dcr-nav-text">Home</span></a>
-            <a class="dcr-nav-link" href="#/lending" data-nav="lending" title="Lending"><span data-icon="paper"></span><span class="dcr-nav-text">Lending</span></a>
+            <a class="dcr-nav-link" href="#/builds" data-nav="builds" title="Builds"><span data-icon="paper"></span><span class="dcr-nav-text">Builds</span></a>
+            <a class="dcr-nav-link" href="#/loans" data-nav="loans" title="Loans"><span data-icon="loans"></span><span class="dcr-nav-text">Loans</span></a>
             <a class="dcr-nav-link" href="#/payments" data-nav="payments" title="Payments"><span data-icon="money"></span><span class="dcr-nav-text">Payments</span></a>
         </nav>
         <div class="dcr-sidebar-foot">
@@ -36,14 +38,15 @@
         </div>
     </div>
 
-    <div class="dcr-mobile-notice">
-        <img class="dcr-site-logo" src="{{ dealer_logo | e }}" alt="Dealer Capital Resources">
-        <h1>Use a computer</h1>
-        <p>The dealer portal works on a desktop or laptop.</p>
-        <a class="dcr-btn" href="/logout">Sign out</a>
-    </div>
+    <nav class="dcr-bottom-nav" aria-label="Dealer portal mobile navigation">
+        <a href="#/home" data-nav="home"><span data-icon="home"></span>Home</a>
+        <a href="#/builds" data-nav="builds"><span data-icon="paper"></span>Builds</a>
+        <a href="#/loans" data-nav="loans"><span data-icon="loans"></span>Loans</a>
+        <a href="#/payments" data-nav="payments"><span data-icon="money"></span>Payments</a>
+        <a href="#/settings" data-nav="settings"><span data-icon="setting"></span>Settings</a>
+    </nav>
 
     <div id="dcr-portal-toast" class="dcr-toast" role="status" aria-live="polite" hidden></div>
 </div>
-<script src="/assets/dcr/js/dealer_portal.js?v=20261008-4"></script>
+<script src="/assets/dcr/js/dealer_portal.js?v=20261107-portal2"></script>
 {% endblock %}
