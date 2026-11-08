@@ -82,20 +82,7 @@ frappe.ui.form.on('Loan Application', {
             }
         }
 
-        // Signing status indicator (show on any saved LA with HBR link)
-        if (!frm.is_new() && frm.doc.home_build_request) {
-            if (frm.doc.signed_packet) {
-                frm.page.set_indicator(__('Signed'), 'green');
-            } else {
-                frappe.db.get_value('Signature Request',
-                    {reference_doctype: 'Loan Application', reference_name: frm.doc.name, status: 'Sent'},
-                    'name', function(r) {
-                        if (r && r.name) {
-                            frm.page.set_indicator(__('Awaiting Signature'), 'orange');
-                        }
-                    });
-            }
-        }
+        refresh_flooring_signature(frm);
 
         // Render the HBR's Document Checklist as a read-only inline
         // table inside the LA's "HBR Documents" custom HTML field
@@ -106,13 +93,6 @@ frappe.ui.form.on('Loan Application', {
         if (frm.doc.docstatus !== 1) return;
         if (!frm.doc.home_build_request) return;
 
-        // Email: Flooring Packet (for signature)
-        if (!frm.doc.signed_packet) {
-            frm.add_custom_button(__('Flooring Packet'), function() {
-                send_flooring_packet(frm);
-            }, __('Email'));
-        }
-
         // Email: Pre-Approval
         frm.add_custom_button(__('Pre-Approval'), function() {
             send_pre_approval(frm);
@@ -120,7 +100,7 @@ frappe.ui.form.on('Loan Application', {
 
         // Create → Loan (available after submit; warns if packet unsigned)
         frm.add_custom_button(__('Loan'), function() {
-            if (!frm.doc.signed_packet) {
+            if (!frm.dcr_packet_signed) {
                 frappe.msgprint(__('Flooring Packet has not been signed. Please send and sign the packet before creating a Loan.'));
                 return;
             }
@@ -161,6 +141,39 @@ frappe.ui.form.on('Loan Application', {
         calculate_preapproval_fields(frm);
     }
 });
+
+function refresh_flooring_signature(frm) {
+    frm.dcr_packet_signed = false;
+    const token = {};
+    frm.dcr_signature_refresh = token;
+    if (frm.is_new() || !frm.doc.home_build_request) return;
+    const name = frm.doc.name;
+    const packet = frm.doc.signed_packet;
+    const current = () => frm.doc.name === name && frm.doc.signed_packet === packet
+        && frm.dcr_signature_refresh === token;
+    const filters = {reference_doctype: 'Loan Application', reference_name: name};
+    const unsigned = () => {
+        if (!current()) return;
+        frm.page.set_indicator(__('Signature required'), 'orange');
+        if (frm.doc.docstatus === 1) {
+            frm.add_custom_button(__('Flooring Packet'), () => send_flooring_packet(frm), __('Email'));
+        }
+        frappe.db.get_value('Signature Request', {...filters, status: 'Sent'}, 'name', (r) => {
+            if (current() && r && r.name) frm.page.set_indicator(__('Awaiting Signature'), 'orange');
+        });
+    };
+    if (!packet) return unsigned();
+    frappe.db.get_value('Signature Request', {...filters, status: 'Signed', signed_attachment: packet},
+        'name', (r) => {
+            if (!current()) return;
+            if (r && r.name) {
+                frm.dcr_packet_signed = true;
+                frm.page.set_indicator(__('Signed'), 'green');
+            } else {
+                unsigned();
+            }
+        });
+}
 
 
 function schedule_hbr_hydration(frm) {
