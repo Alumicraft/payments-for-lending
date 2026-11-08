@@ -1,5 +1,7 @@
 # DCR demo preparation and remaining work
 
+November 8 update: use the [testing handoff](testing-readiness-2026-11-08.md) for current state and the full acceptance script. The dashboard is deployed at a6ad9b8. Both original packets are signed. Extra-principal posting, the next installment and dated payoff/closure passed. Native repost recovery now reconciles the cancelled trial's future interest/demands and original schedule. The new automatic reversal, first-save schedule and revised packet-sheet fixes are awaiting review/deployment. The older checkpoint below is retained as history, not a current pending-work list.
+
 Updated November 7, 2026. The dealer workflow and core lending rules have substantial implementation and hosted evidence. The remaining work is complete workflow acceptance, several financial exceptions, production setup, and staff rehearsal. Accounting is still **not ready for production sign-off**.
 
 The complete pilot transcript was reread. Subsequent [owner decisions](pilot-checklist-2026-10-08.md#owner-decisions-after-the-blocked-audit) settle Actual/360 from invoice date, principal including financed fees, fixed 1% curtailment from payment 13, continuation beyond month 36 without an automatic balloon, and a revised signed packet when financial terms change. These decisions do not need to be reopened.

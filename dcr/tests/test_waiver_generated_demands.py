@@ -18,6 +18,9 @@ def trial():
     events = []
 
     class Native:
+        def get(self, field, default=None):
+            return getattr(self, field, default)
+
         def book_interest_accrued_not_demanded(self):
             events.append('native book')
             demands.append(dict(name='GENERATED', loan=self.against_loan, loan_repayment=self.name,

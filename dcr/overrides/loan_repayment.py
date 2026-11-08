@@ -10,6 +10,41 @@ from dcr.lending_rules import has_material_outstanding_principal
 
 
 class CustomLoanRepayment(LoanRepayment):
+    def check_future_entries(self, cancel=0):
+        result = super().check_future_entries(cancel=cancel)
+        if not cancel or self.is_backdated:
+            return result
+        dependent = getattr(self, '_dcr_principal_interest_repost', None)
+        if dependent is None:
+            dependent = self._needs_principal_interest_repost()
+        if dependent:
+            self.is_backdated = True
+            self.db_set('is_backdated', True)
+        return result
+
+    def _needs_principal_interest_repost(self):
+        if (self.repayment_type not in ('Normal Repayment', 'Pre Payment', 'Loan Closure')
+                or self.get('is_write_off_waiver') or self.get('is_imported')
+                or flt(self.get('principal_amount_paid')) <= 0
+                or getattr(self.flags, 'from_repost', False)):
+            return False
+        from dcr.api.floorplan_accrual import floorplan_loan
+
+        loan = floorplan_loan(self.against_loan)
+        if not loan or loan.get('repayment_schedule_type') == 'Line of Credit':
+            return False
+        scope = {'loan': self.against_loan, 'docstatus': 1}
+        if self.loan_disbursement:
+            scope['loan_disbursement'] = self.loan_disbursement
+        # Native only checks later receipts. Earned interest and demands also
+        # depend on this principal event and need its normal repost on reversal.
+        return bool(frappe.db.exists('Loan Interest Accrual', {
+                **scope, 'interest_type': 'Normal Interest',
+                'posting_date': ['>=', self.value_date],
+            }) or frappe.db.exists('Loan Demand', {
+                **scope, 'demand_type': 'EMI', 'demand_date': ['>', self.value_date],
+            }))
+
     def allocate_amounts(self, amounts, on_submit=False):
         from dcr.api.floorplan_accrual import floorplan_loan
 
@@ -153,6 +188,8 @@ class CustomLoanRepayment(LoanRepayment):
         self._reopen_legacy_interest_only_loan()
 
     def on_cancel(self):
+        # Capture before native cancellation can reverse the child schedule.
+        self._dcr_principal_interest_repost = self._needs_principal_interest_repost()
         super().on_cancel()
         subtype = self._generated_waiver_subtype()
         if subtype:
