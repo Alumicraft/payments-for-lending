@@ -75,4 +75,4 @@ The owner must sign the replacement Sandbox packet. Staff testing needs a named 
 
 The setup screen does not block new builds. Enforcing a gate requires approved mandatory items and waivers. Dealers can request payoff letters; the portal does not fabricate a dated quote. Past-due rows contact DCR because dealer payment submission is not implemented. Those are deliberate scope limits, not tested features.
 
-Source checks pass 859 Python tests, 44 subtests and 17 Node test files. Hosted installation, real provider outcomes, human signatures and accounting approval remain separate evidence.
+Source checks pass 863 Python tests, 44 subtests and 17 Node test files. Project preflight and v16 reviews found no blockers. Review follow-ups capture dependencies before native cancellation, exclude the payment's own due-date demand as a repost trigger, retain native settlement/LOC handling and require account names in exported proof. Hosted installation, real provider outcomes, human signatures and accounting approval remain separate evidence.

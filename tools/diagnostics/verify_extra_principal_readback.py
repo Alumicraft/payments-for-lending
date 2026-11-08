@@ -73,6 +73,10 @@ def verify(path, phase):
         vouchers[(row['voucher_type'], row['voucher_no'])] += value
         accounts[row['account']] += value
     assert vouchers and all(value == 0 for value in vouchers.values()), 'Unbalanced or missing vouchers'
+    for account in ('10202 - Loans Receivable - DCR', '10101 - Chase Checking 9016 (Trust) - DCR',
+                    '40102 - Flooring Interest Income - DCR', 'Accrued Flooring Interest - DCR',
+                    'Flooring Interest Receivable - DCR', 'Funding Clearing - DCR', 'DCR Fee Receivable - DCR'):
+        assert account in accounts, ('Required account is missing from the export', account)
     assert accounts['10202 - Loans Receivable - DCR'] == expected_principal
     cash = sum(money(r['amount_paid']) for r in receipts)
     interest_paid = sum(money(r['total_interest_paid']) for r in receipts)
