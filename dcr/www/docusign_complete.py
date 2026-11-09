@@ -17,5 +17,5 @@ def get_context(context):
         context.icon = "&#10007;"
     else:
         context.title = "Signature not confirmed"
-        context.message = "DCR has not received a completed signed document. Return to the document and choose Finish. If you have already finished, contact DCR."
+        context.message = "DCR has not received confirmation of a completed signature yet. Check your document or contact DCR if you have already finished."
         context.icon = "&#8230;"
