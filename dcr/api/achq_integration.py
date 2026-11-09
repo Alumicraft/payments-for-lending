@@ -667,6 +667,8 @@ def setup_bank_account(customer, routing_number, account_number, account_type, i
         ))
 
     verify_status = result.get("verify_status", "UNK")
+    if verify_status not in ("POS", "NEG"):
+        verify_status = "UNK"
 
     if verify_status == "NEG":
         frappe.throw(_("Bank account verification failed. This account cannot be used for autopay."))
