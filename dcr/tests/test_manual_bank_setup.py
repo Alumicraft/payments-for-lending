@@ -18,7 +18,7 @@ def test_manual_verification_while_autopay_is_off_only_tokenizes():
          patch.object(api, "require_staff") as staff, \
          patch.object(api, "_check_rate_limit"), \
          patch.object(api, "_create_bank_account", return_value=SimpleNamespace(name="Test Bank Account", is_default=0)) as create, \
-         patch.object(api, "_send_connected_email"), \
+         patch.object(api, "_send_connected_email") as email, \
          patch.object(api.requests, "post", return_value=response) as post:
         f.throw.side_effect = lambda message, *args: (_ for _ in ()).throw(ValueError(message))
         f.get_single.return_value = settings
@@ -39,6 +39,7 @@ def test_manual_verification_while_autopay_is_off_only_tokenizes():
     assert "account_number" not in create.call_args.kwargs
     assert create.call_args.kwargs['consent_captured'] is False
     assert settings.enable_ach_autopay == 0
+    email.assert_not_called()
 
 
 def test_payment_client_still_refuses_when_autopay_is_off():
@@ -75,6 +76,16 @@ def test_missing_institution_is_actionable_before_native_account_naming():
             api._create_bank_account('DEMO', None, 'Checking', 'test-token', 'Manual', 'POS',
                 '6789', '3123', False, SimpleNamespace(default_sec_code='CCD'), consent_captured=False)
         f.new_doc.assert_not_called()
+
+
+@pytest.mark.parametrize('bank_name', [[], {'name': 'Bank'}, 123, 'B' * 141])
+def test_invalid_institution_name_is_rejected_before_tokenization(bank_name):
+    with patch.object(api, 'frappe') as f, patch.object(api, 'require_staff'), \
+         patch.object(api, 'ACHQClient') as client:
+        f.throw.side_effect = ValueError
+        with pytest.raises(ValueError):
+            api.setup_bank_account('DEMO', '123123123', '123456789', 'Checking', bank_name=bank_name)
+        client.assert_not_called()
 
 
 def test_staff_verification_creates_paused_account_without_dealer_consent():

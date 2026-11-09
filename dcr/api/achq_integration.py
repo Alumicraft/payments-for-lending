@@ -573,7 +573,7 @@ def _create_bank_account(customer, bank_name, account_type, token, token_source,
     frappe.db.get_value('Customer', customer, 'name', for_update=True)
     bank_record = _get_or_create_bank(bank_name)
     if not bank_record:
-        frappe.throw(_('Enter the bank name before connecting this account.'))
+        frappe.throw(_('The bank name is unavailable. Contact DCR to complete this connection.'))
 
     ba = frappe.new_doc("Bank Account")
     # Masks are not unique account identifiers. Keep each verified connection
@@ -627,6 +627,11 @@ def setup_bank_account(customer, routing_number, account_number, account_type, i
         dict with success, bank_name, account_last4, bank_account_name
     """
     require_staff("Customer", customer, "write")
+    if bank_name is not None and not isinstance(bank_name, str):
+        frappe.throw(_('Bank name must be text.'))
+    bank_name = (bank_name or '').strip()
+    if len(bank_name) > 140:
+        frappe.throw(_('Bank name must be 140 characters or fewer.'))
     if not customer or not routing_number or not account_number:
         frappe.throw(_("Customer, routing number, and account number are required"))
 
@@ -670,7 +675,7 @@ def setup_bank_account(customer, routing_number, account_number, account_type, i
 
     is_default = is_default in [True, 1, "1", "true", "True"]
 
-    resolved_bank_name = result.get('bank_name') or (bank_name or '').strip()
+    resolved_bank_name = result.get('bank_name') or bank_name
     ba = _create_bank_account(
         customer=customer,
         bank_name=resolved_bank_name,
@@ -686,8 +691,6 @@ def setup_bank_account(customer, routing_number, account_number, account_type, i
     )
 
     frappe.db.commit()
-
-    _send_connected_email(customer, resolved_bank_name, result.get("account_last4", ""))
 
     return {
         "success": True,
