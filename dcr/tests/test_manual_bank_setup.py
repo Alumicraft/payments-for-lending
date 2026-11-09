@@ -23,7 +23,8 @@ def test_manual_verification_while_autopay_is_off_only_tokenizes():
         f.throw.side_effect = lambda message, *args: (_ for _ in ()).throw(ValueError(message))
         f.get_single.return_value = settings
         f.db.get_value.return_value = "Synthetic Dealer"
-        result = api.setup_bank_account("DEMO", "021000021", "123456789", "Checking", is_default=False)
+        result = api.setup_bank_account("DEMO", "021000021", "123456789", "Checking", is_default=False,
+            bank_name='Staff-entered institution')
 
     assert result["success"] is True
     assert result["is_default"] == 0
@@ -34,6 +35,7 @@ def test_manual_verification_while_autopay_is_off_only_tokenizes():
     assert payload["TestMode"] == "On"
     assert "Amount" not in payload
     assert create.call_args.kwargs["token"] == "test-token"
+    assert create.call_args.kwargs['bank_name'] == 'Test Bank'
     assert create.call_args.kwargs["account_last4"] == "6789"
     assert create.call_args.kwargs["routing_last4"] == "0021"
     assert "account_number" not in create.call_args.kwargs
@@ -51,7 +53,7 @@ def test_payment_client_still_refuses_when_autopay_is_off():
         post.assert_not_called()
 
 
-@pytest.mark.parametrize('provider_name', [None, ''])
+@pytest.mark.parametrize('provider_name', [None, '', '  '])
 def test_manual_verification_uses_entered_institution_when_provider_omits_it(provider_name):
     client = MagicMock()
     client.tokenize_and_verify.return_value = dict(success=True, token='test-token',
@@ -78,7 +80,8 @@ def test_missing_institution_is_actionable_before_native_account_naming():
         f.new_doc.assert_not_called()
 
 
-@pytest.mark.parametrize('bank_name', [[], {'name': 'Bank'}, 123, 'B' * 141])
+@pytest.mark.parametrize('bank_name', [[], {'name': 'Bank'}, 123, 'B' * 141,
+    '<img src=x>', 'Bank\nName', 'Bank\x7fName'])
 def test_invalid_institution_name_is_rejected_before_tokenization(bank_name):
     with patch.object(api, 'frappe') as f, patch.object(api, 'require_staff'), \
          patch.object(api, 'ACHQClient') as client:

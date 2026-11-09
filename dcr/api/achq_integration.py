@@ -632,6 +632,8 @@ def setup_bank_account(customer, routing_number, account_number, account_type, i
     bank_name = (bank_name or '').strip()
     if len(bank_name) > 140:
         frappe.throw(_('Bank name must be 140 characters or fewer.'))
+    if any(char in '<>' or ord(char) < 32 or ord(char) == 127 for char in bank_name):
+        frappe.throw(_('Bank name must be plain text without markup or control characters.'))
     if not customer or not routing_number or not account_number:
         frappe.throw(_("Customer, routing number, and account number are required"))
 
@@ -675,7 +677,8 @@ def setup_bank_account(customer, routing_number, account_number, account_type, i
 
     is_default = is_default in [True, 1, "1", "true", "True"]
 
-    resolved_bank_name = result.get('bank_name') or bank_name
+    provider_bank_name = result.get('bank_name')
+    resolved_bank_name = (provider_bank_name.strip() if isinstance(provider_bank_name, str) else '') or bank_name
     ba = _create_bank_account(
         customer=customer,
         bank_name=resolved_bank_name,
