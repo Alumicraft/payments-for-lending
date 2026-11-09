@@ -59,10 +59,11 @@ def test_missing_provider_verification_follows_unknown_account_policy(status, al
     client = MagicMock()
     client.tokenize_and_verify.return_value = dict(success=True, token='test-token',
         bank_name='Test Bank', verify_status=status, account_last4='6789', routing_last4='3123')
-    with patch.object(api, 'frappe') as f, patch.object(api, 'require_staff'), \
+    with patch.object(api, 'frappe') as f, patch.object(api, '_', side_effect=lambda text: text), \
+         patch.object(api, 'require_staff'), \
          patch.object(api, '_check_rate_limit'), patch.object(api, 'ACHQClient', return_value=client), \
          patch.object(api, '_create_bank_account', return_value=SimpleNamespace(name='Test connection', is_default=0)) as create:
-        f.throw.side_effect = ValueError
+        f.throw.side_effect = lambda message: (_ for _ in ()).throw(ValueError(message))
         f.get_single.return_value = SimpleNamespace(allow_unknown_accounts=allow_unknown)
         if allow_unknown:
             result = api.setup_bank_account('DEMO', '123123123', '123456789', 'Checking', bank_name='Test Bank')
@@ -70,7 +71,7 @@ def test_missing_provider_verification_follows_unknown_account_policy(status, al
             assert create.call_args.kwargs['verify_status'] == 'UNK'
             assert create.call_args.kwargs['consent_captured'] is False
         else:
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match='could not be verified'):
                 api.setup_bank_account('DEMO', '123123123', '123456789', 'Checking', bank_name='Test Bank')
             create.assert_not_called()
 
