@@ -572,6 +572,8 @@ def _create_bank_account(customer, bank_name, account_type, token, token_source,
     """Create a Bank Account record with ACH custom fields."""
     frappe.db.get_value('Customer', customer, 'name', for_update=True)
     bank_record = _get_or_create_bank(bank_name)
+    if not bank_record:
+        frappe.throw(_('The bank name is unavailable. Contact DCR to complete this connection.'))
 
     ba = frappe.new_doc("Bank Account")
     # Masks are not unique account identifiers. Keep each verified connection
@@ -606,7 +608,7 @@ def _create_bank_account(customer, bank_name, account_type, token, token_source,
 
 
 @frappe.whitelist()
-def setup_bank_account(customer, routing_number, account_number, account_type, is_default=True, check_type=None):
+def setup_bank_account(customer, routing_number, account_number, account_type, is_default=True, check_type=None, bank_name=None):
     """
     Verify and connect a bank account using manual entry, without enabling debits.
 
@@ -619,11 +621,19 @@ def setup_bank_account(customer, routing_number, account_number, account_type, i
         account_type: 'Checking' or 'Savings'
         is_default: Set as default payment account (default True)
         check_type: 'Personal' or 'Business' (optional)
+        bank_name: Institution name when ACHQ does not return one
 
     Returns:
         dict with success, bank_name, account_last4, bank_account_name
     """
     require_staff("Customer", customer, "write")
+    if bank_name is not None and not isinstance(bank_name, str):
+        frappe.throw(_('Bank name must be text.'))
+    bank_name = (bank_name or '').strip()
+    if len(bank_name) > 140:
+        frappe.throw(_('Bank name must be 140 characters or fewer.'))
+    if any(char in '<>' or ord(char) < 32 or ord(char) == 127 for char in bank_name):
+        frappe.throw(_('Bank name must be plain text without markup or control characters.'))
     if not customer or not routing_number or not account_number:
         frappe.throw(_("Customer, routing number, and account number are required"))
 
@@ -667,9 +677,11 @@ def setup_bank_account(customer, routing_number, account_number, account_type, i
 
     is_default = is_default in [True, 1, "1", "true", "True"]
 
+    provider_bank_name = result.get('bank_name')
+    resolved_bank_name = (provider_bank_name.strip() if isinstance(provider_bank_name, str) else '') or bank_name
     ba = _create_bank_account(
         customer=customer,
-        bank_name=result.get("bank_name", ""),
+        bank_name=resolved_bank_name,
         account_type=account_type,
         token=result.get("token"),
         token_source="Manual",
@@ -683,11 +695,9 @@ def setup_bank_account(customer, routing_number, account_number, account_type, i
 
     frappe.db.commit()
 
-    _send_connected_email(customer, result.get("bank_name", ""), result.get("account_last4", ""))
-
     return {
         "success": True,
-        "bank_name": result.get("bank_name", ""),
+        "bank_name": resolved_bank_name,
         "account_last4": result.get("account_last4", ""),
         "bank_account_name": ba.name,
         "verification_status": verify_status,

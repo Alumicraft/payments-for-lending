@@ -67,6 +67,7 @@ function verify_dealer_bank_account(frm) {
     var dialog = new frappe.ui.Dialog({
         title: __('Verify bank account'),
         fields: [
+            { fieldname: 'bank_name', label: __('Bank name'), fieldtype: 'Data', reqd: 1 },
             { fieldname: 'routing_number', label: __('Routing number'), fieldtype: 'Data', reqd: 1 },
             { fieldname: 'account_number', label: __('Account number'), fieldtype: 'Password', reqd: 1 },
             { fieldname: 'account_type', label: __('Account type'), fieldtype: 'Select', options: ['Checking', 'Savings'], default: 'Checking', reqd: 1 },
