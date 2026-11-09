@@ -16,6 +16,6 @@ def get_context(context):
         context.message = "You have declined to sign this document. Please contact us if you have questions."
         context.icon = "&#10007;"
     else:
-        context.title = "Signing Complete"
-        context.message = "Thank you! You can close this page."
-        context.icon = "&#10003;"
+        context.title = "Signature not confirmed"
+        context.message = "DCR has not received confirmation of a completed signature yet. Check your document or contact DCR if you have already finished."
+        context.icon = "&#8230;"

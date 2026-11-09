@@ -12,6 +12,8 @@
   "subject",
   "message",
   "status",
+  "delivery_transport",
+  "provider_message_id",
   "email_queue",
   "delivered_to",
   "last_error",
@@ -67,7 +69,7 @@
   {
    "fieldname": "status",
    "fieldtype": "Select",
-   "options": "Recorded\nQueued\nSent\nError",
+   "options": "Recorded\nQueued\nSending\nSent\nError\nOutcome Unknown",
    "default": "Recorded",
    "label": "Status",
    "read_only": 1,
@@ -101,6 +103,19 @@
    "read_only": 1,
    "unique": 1,
    "reqd": 1
+  },
+  {
+   "fieldname": "delivery_transport",
+   "fieldtype": "Select",
+   "options": "Native\nEmail Service",
+   "label": "Delivery Transport",
+   "read_only": 1
+  },
+  {
+   "fieldname": "provider_message_id",
+   "fieldtype": "Data",
+   "label": "Provider Message ID",
+   "read_only": 1
   }
  ],
  "permissions": [
@@ -127,7 +142,7 @@
  "autoname": "field:event_key",
  "naming_rule": "By fieldname",
  "creation": "2026-10-05 00:00:00.000000",
- "modified": "2026-10-05 00:00:00.000000",
+ "modified": "2026-11-08 14:40:00.000000",
  "modified_by": "Administrator",
  "owner": "Administrator",
  "actions": [],

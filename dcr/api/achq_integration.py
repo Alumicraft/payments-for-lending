@@ -567,7 +567,8 @@ def _get_or_create_bank(bank_name):
 
 
 def _create_bank_account(customer, bank_name, account_type, token, token_source,
-                         verify_status, account_last4, routing_last4, is_default, settings):
+                         verify_status, account_last4, routing_last4, is_default, settings,
+                         consent_captured=True):
     """Create a Bank Account record with ACH custom fields."""
     frappe.db.get_value('Customer', customer, 'name', for_update=True)
     bank_record = _get_or_create_bank(bank_name)
@@ -589,15 +590,15 @@ def _create_bank_account(customer, bank_name, account_type, token, token_source,
     ba.account_type = account_type
 
     # ACH custom fields
-    ba.custom_ach_status = "Active"
+    ba.custom_ach_status = "Active" if consent_captured else "Paused"
     ba.custom_achq_token = token
     ba.custom_token_source = token_source
     ba.custom_account_last_four = account_last4
     ba.custom_routing_last_4 = routing_last4
     ba.custom_verification_status = verify_status
-    ba.custom_consent_captured = 1
-    ba.custom_authorization_ip = frappe.local.request_ip if hasattr(frappe.local, 'request_ip') else ""
-    ba.custom_authorization_date = now_datetime()
+    ba.custom_consent_captured = 1 if consent_captured else 0
+    ba.custom_authorization_ip = (frappe.local.request_ip if hasattr(frappe.local, 'request_ip') else "") if consent_captured else None
+    ba.custom_authorization_date = now_datetime() if consent_captured else None
     ba.custom_sec_code = settings.default_sec_code
 
     ba.insert()
@@ -607,7 +608,7 @@ def _create_bank_account(customer, bank_name, account_type, token, token_source,
 @frappe.whitelist()
 def setup_bank_account(customer, routing_number, account_number, account_type, is_default=True, check_type=None):
     """
-    Set up a bank account for ACH autopay using manual entry.
+    Verify and connect a bank account using manual entry, without enabling debits.
 
     Creates a Bank Account linked to the customer.
 
@@ -641,7 +642,7 @@ def setup_bank_account(customer, routing_number, account_number, account_type, i
     if not customer_name:
         frappe.throw(_("Customer not found"))
 
-    client = ACHQClient()
+    client = ACHQClient(allow_disabled=True)
     result = client.tokenize_and_verify(
         routing_number=routing_number,
         account_number=account_number,
@@ -677,6 +678,7 @@ def setup_bank_account(customer, routing_number, account_number, account_type, i
         routing_last4=result.get("routing_last4", ""),
         is_default=is_default,
         settings=settings,
+        consent_captured=False,
     )
 
     frappe.db.commit()
@@ -690,7 +692,7 @@ def setup_bank_account(customer, routing_number, account_number, account_type, i
         "bank_account_name": ba.name,
         "verification_status": verify_status,
         "is_default": ba.is_default,
-        "message": "Bank account successfully linked for autopay"
+        "message": "Bank account successfully verified and connected"
     }
 
 

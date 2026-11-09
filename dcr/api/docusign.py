@@ -772,20 +772,22 @@ def signing_complete(sig, token, event=None):
         )
         return
 
+    signed = sig_req.get("status") == "Signed"
     try:
-        if sig_req.get("status") != "Signed":
+        if not signed:
             client = DocuSignClient()
             envelope_id = sig_req.get("envelope_id")
             if client.get_envelope_status(envelope_id) == "completed":
                 _handle_envelope_completed(envelope_id, {"status": "completed"})
                 frappe.db.commit()
+                signed = True
     except Exception as e:
         frappe.log_error(
             f"Failed to finalize DocuSign return for {sig}: {str(e)}",
             "DocuSign Signing Complete",
         )
 
-    complete_event = event or "signing_complete"
+    complete_event = "signing_complete" if signed else "decline" if event == "decline" else "pending"
     frappe.local.response["type"] = "redirect"
     frappe.local.response["location"] = frappe.utils.get_url(
         f"/docusign-complete?event={complete_event}"
