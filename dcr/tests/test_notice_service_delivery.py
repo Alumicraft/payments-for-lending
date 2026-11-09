@@ -23,6 +23,7 @@ def delivery():
          patch.dict('sys.modules',{'emails.email_service.vercel_client':provider,
                                   'emails.email_service.branding':branding}):
         f.get_doc.return_value = notice
+        f.db.get_value.return_value = notice
         f.get_single.return_value = settings
         def update(doctype,name,values):
             for field,value in values.items():
@@ -110,9 +111,37 @@ def test_failure_to_persist_claim_never_calls_provider(delivery):
 
 def test_failure_to_persist_result_leaves_durable_claim_for_review(delivery):
     f,notice,settings,provider = delivery
-    f.db.set_value.side_effect = RuntimeError('Database unavailable')
+    def update(doctype,name,values):
+        if values.get('status') == 'Sending':
+            notice.status = 'Sending'
+        else:
+            raise RuntimeError('Database unavailable')
+    f.db.set_value.side_effect = update
     with pytest.raises(RuntimeError):
         api._deliver_service_notice('NOTICE-1')
     assert notice.status == 'Sending'
     api._deliver_service_notice('NOTICE-1')
     provider.send_email.assert_called_once()
+
+
+def test_scheduler_dispatches_current_service_notices_in_a_bounded_batch(delivery):
+    f,notice,settings,provider = delivery
+    f.get_all.side_effect = [[],['FAILED','NEXT']]
+    with patch.object(api,'_deliver_service_notice',side_effect=[RuntimeError('Claim failed'),None]) as deliver:
+        api.refresh_notice_delivery()
+    assert [call.args[0] for call in deliver.call_args_list] == ['FAILED','NEXT']
+    f.db.rollback.assert_called_once()
+    query = f.get_all.call_args.kwargs
+    assert query['limit_page_length'] == 5
+    assert query['order_by'] == 'creation asc'
+    assert query['filters']['creation'] == ['>=','2026-11-08 14:40:00']
+    assert query['filters']['delivered_to'] == 'pilot@example.test'
+
+
+def test_current_locked_state_overrules_a_stale_document_snapshot(delivery):
+    f,notice,settings,provider = delivery
+    f.get_doc.return_value = SimpleNamespace(status='Queued')
+    notice.status = 'Sending'
+    api._deliver_service_notice('NOTICE-1')
+    provider.send_email.assert_not_called()
+    f.get_doc.assert_not_called()

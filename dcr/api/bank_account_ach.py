@@ -89,6 +89,8 @@ def resume(bank_account_name):
 
     if ba.get("custom_ach_status") != "Paused":
         frappe.throw(_("Only paused bank accounts can be resumed"))
+    if not ba.get("custom_consent_captured"):
+        frappe.throw(_("Record the dealer's ACH debit authorization before resuming this account"))
 
     ba.custom_ach_status = "Active"
     ba.add_comment("Comment", "ACH resumed")

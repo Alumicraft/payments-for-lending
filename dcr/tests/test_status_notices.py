@@ -17,6 +17,7 @@ def f():
         f.flags.in_migrate = False
         f.get_installed_apps.return_value = []
         f.db.exists.return_value = None
+        f.db.get_value.return_value = "Recorded"
         f.get_single.return_value = Settings(enable_status_notifications=0,pilot_notification_recipient=None,
             staff_notification_recipient='staff@example.test',pilot_notifications_from='2026-11-08 13:50:00')
         yield f
@@ -186,3 +187,13 @@ def test_email_service_site_admits_notice_without_the_unconfigured_smtp_queue(f)
     assert notice.delivery_transport == 'Email Service'
     assert notice.delivered_to == 'pilot@example.test'
     assert not notice.email_queue
+
+
+@pytest.mark.parametrize('recipient',['one@example.test,two@example.test','one@example.test;two@example.test',
+    'Name <one@example.test>','one@example.test\nBcc:two@example.test'])
+def test_pilot_recipient_cannot_expand_to_a_list(recipient):
+    from dcr.dcr.doctype.dcr_pilot_settings.dcr_pilot_settings import validate_pilot_recipient
+    with patch('dcr.dcr.doctype.dcr_pilot_settings.dcr_pilot_settings.frappe') as f:
+        f.throw.side_effect = ValueError
+        with pytest.raises(ValueError):
+            validate_pilot_recipient(recipient)

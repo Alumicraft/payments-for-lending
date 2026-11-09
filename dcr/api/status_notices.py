@@ -4,6 +4,7 @@ from html import escape
 import frappe
 from frappe.utils import get_datetime, get_url
 from dcr.api.notification_queue import queue_notification
+from dcr.dcr.doctype.dcr_pilot_settings.dcr_pilot_settings import validate_pilot_recipient
 
 EVENT_FIELDS = {
     "custom_portal_status": "Review status",
@@ -53,6 +54,7 @@ def queue_pilot_notices():
     cutoff = settings.get('pilot_notifications_from')
     if not settings.enable_status_notifications or not settings.pilot_notification_recipient or not cutoff:
         return
+    validate_pilot_recipient(settings.pilot_notification_recipient)
     transport = "Native"
     if "emails" in frappe.get_installed_apps():
         service = frappe.get_single("Email Service Settings")
@@ -65,7 +67,8 @@ def queue_pilot_notices():
         savepoint = "dcr_notice"
         frappe.db.savepoint(savepoint)
         try:
-            frappe.db.get_value("DCR Status Notice", name, "name", for_update=True)
+            if frappe.db.get_value("DCR Status Notice", name, "status", for_update=True) != "Recorded":
+                continue
             notice = frappe.get_doc("DCR Status Notice", name)
             if notice.status != "Recorded":
                 continue
@@ -92,19 +95,36 @@ def queue_pilot_notices():
 
 
 def refresh_notice_delivery():
-    for row in frappe.get_all("DCR Status Notice", filters={"status": "Queued"}, fields=["name", "email_queue", "delivery_transport"], limit_page_length=100):
-        if not row.email_queue and row.delivery_transport == "Email Service":
-            _deliver_service_notice(row.name)
-            continue
+    for row in frappe.get_all("DCR Status Notice", filters={"status": "Queued", "email_queue": ["is", "set"]}, fields=["name", "email_queue"], limit_page_length=100):
         status = frappe.db.get_value("Email Queue", row.email_queue, "status")
         if status in ("Sent", "Error"):
             frappe.db.set_value("DCR Status Notice", row.name, "status", status)
+    settings = frappe.get_single("DCR Pilot Settings")
+    if not settings.enable_status_notifications or not settings.pilot_notifications_from or not settings.pilot_notification_recipient:
+        return
+    validate_pilot_recipient(settings.pilot_notification_recipient)
+    # Five provider timeouts fit within the scheduler's normal time budget.
+    # Older windows cannot fill this batch and starve current notices.
+    names = frappe.get_all("DCR Status Notice", filters={"status": "Queued",
+        "delivery_transport": "Email Service", "email_queue": ["is", "not set"],
+        "creation": [">=", settings.pilot_notifications_from],
+        "delivered_to": settings.pilot_notification_recipient},
+        pluck="name", order_by="creation asc", limit_page_length=5)
+    for name in names:
+        try:
+            _deliver_service_notice(name)
+        except Exception as error:
+            frappe.db.rollback()
+            frappe.log_error(f"{name}: {error}", "DCR Notice Delivery")
 
 
 def _deliver_service_notice(name):
     """Claim one durable notice before sending. Ambiguous outcomes never auto-retry."""
-    frappe.db.get_value("DCR Status Notice", name, "name", for_update=True)
-    notice = frappe.get_doc("DCR Status Notice", name)
+    notice = frappe.db.get_value("DCR Status Notice", name,
+        ["status", "email_queue", "delivery_transport", "creation", "delivered_to", "subject", "message"],
+        as_dict=True, for_update=True)
+    if not notice:
+        return
     settings = frappe.get_single("DCR Pilot Settings")
     if notice.status != "Queued" or notice.email_queue or notice.delivery_transport != "Email Service":
         return
@@ -112,6 +132,7 @@ def _deliver_service_notice(name):
             or get_datetime(notice.creation) < get_datetime(settings.pilot_notifications_from)
             or notice.delivered_to != settings.pilot_notification_recipient):
         return
+    validate_pilot_recipient(notice.delivered_to)
     try:
         from emails.email_service.vercel_client import get_service_config, send_email
         from emails.email_service.branding import get_company_branding
@@ -120,8 +141,7 @@ def _deliver_service_notice(name):
     except Exception as error:
         frappe.db.set_value("DCR Status Notice", name, "last_error", str(error))
         return
-    notice.status = "Sending"
-    notice.save(ignore_permissions=True)
+    frappe.db.set_value("DCR Status Notice", name, {"status": "Sending", "last_error": None})
     # Commit the claim before the external call. A crash or timeout leaves a
     # reviewable Sending/Outcome Unknown row, never an automatic duplicate send.
     frappe.db.commit()

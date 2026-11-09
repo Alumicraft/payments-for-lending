@@ -72,7 +72,7 @@ function verify_dealer_bank_account(frm) {
             { fieldname: 'account_type', label: __('Account type'), fieldtype: 'Select', options: ['Checking', 'Savings'], default: 'Checking', reqd: 1 },
             { fieldname: 'check_type', label: __('Account holder'), fieldtype: 'Select', options: ['Business', 'Personal'], default: 'Business', reqd: 1 },
             { fieldname: 'is_default', label: __('Use as default bank account'), fieldtype: 'Check', default: 0,
-                description: __('Verifying this account does not enable automatic payments.') }
+                description: __('This account stays paused until dealer debit authorization is recorded. Verifying it does not enable automatic payments.') }
         ],
         primary_action_label: __('Verify'),
         onhide: function() {
