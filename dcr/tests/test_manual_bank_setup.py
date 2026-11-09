@@ -53,6 +53,28 @@ def test_payment_client_still_refuses_when_autopay_is_off():
         post.assert_not_called()
 
 
+@pytest.mark.parametrize('status', ['', None, 'UNRECOGNIZED'])
+@pytest.mark.parametrize('allow_unknown', [False, True])
+def test_missing_provider_verification_follows_unknown_account_policy(status, allow_unknown):
+    client = MagicMock()
+    client.tokenize_and_verify.return_value = dict(success=True, token='test-token',
+        bank_name='Test Bank', verify_status=status, account_last4='6789', routing_last4='3123')
+    with patch.object(api, 'frappe') as f, patch.object(api, 'require_staff'), \
+         patch.object(api, '_check_rate_limit'), patch.object(api, 'ACHQClient', return_value=client), \
+         patch.object(api, '_create_bank_account', return_value=SimpleNamespace(name='Test connection', is_default=0)) as create:
+        f.throw.side_effect = ValueError
+        f.get_single.return_value = SimpleNamespace(allow_unknown_accounts=allow_unknown)
+        if allow_unknown:
+            result = api.setup_bank_account('DEMO', '123123123', '123456789', 'Checking', bank_name='Test Bank')
+            assert result['verification_status'] == 'UNK'
+            assert create.call_args.kwargs['verify_status'] == 'UNK'
+            assert create.call_args.kwargs['consent_captured'] is False
+        else:
+            with pytest.raises(ValueError):
+                api.setup_bank_account('DEMO', '123123123', '123456789', 'Checking', bank_name='Test Bank')
+            create.assert_not_called()
+
+
 @pytest.mark.parametrize('provider_name', [None, '', '  '])
 def test_manual_verification_uses_entered_institution_when_provider_omits_it(provider_name):
     client = MagicMock()
