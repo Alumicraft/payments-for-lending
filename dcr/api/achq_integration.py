@@ -572,6 +572,8 @@ def _create_bank_account(customer, bank_name, account_type, token, token_source,
     """Create a Bank Account record with ACH custom fields."""
     frappe.db.get_value('Customer', customer, 'name', for_update=True)
     bank_record = _get_or_create_bank(bank_name)
+    if not bank_record:
+        frappe.throw(_('Enter the bank name before connecting this account.'))
 
     ba = frappe.new_doc("Bank Account")
     # Masks are not unique account identifiers. Keep each verified connection
@@ -606,7 +608,7 @@ def _create_bank_account(customer, bank_name, account_type, token, token_source,
 
 
 @frappe.whitelist()
-def setup_bank_account(customer, routing_number, account_number, account_type, is_default=True, check_type=None):
+def setup_bank_account(customer, routing_number, account_number, account_type, is_default=True, check_type=None, bank_name=None):
     """
     Verify and connect a bank account using manual entry, without enabling debits.
 
@@ -619,6 +621,7 @@ def setup_bank_account(customer, routing_number, account_number, account_type, i
         account_type: 'Checking' or 'Savings'
         is_default: Set as default payment account (default True)
         check_type: 'Personal' or 'Business' (optional)
+        bank_name: Institution name when ACHQ does not return one
 
     Returns:
         dict with success, bank_name, account_last4, bank_account_name
@@ -667,9 +670,10 @@ def setup_bank_account(customer, routing_number, account_number, account_type, i
 
     is_default = is_default in [True, 1, "1", "true", "True"]
 
+    resolved_bank_name = result.get('bank_name') or (bank_name or '').strip()
     ba = _create_bank_account(
         customer=customer,
-        bank_name=result.get("bank_name", ""),
+        bank_name=resolved_bank_name,
         account_type=account_type,
         token=result.get("token"),
         token_source="Manual",
@@ -683,11 +687,11 @@ def setup_bank_account(customer, routing_number, account_number, account_type, i
 
     frappe.db.commit()
 
-    _send_connected_email(customer, result.get("bank_name", ""), result.get("account_last4", ""))
+    _send_connected_email(customer, resolved_bank_name, result.get("account_last4", ""))
 
     return {
         "success": True,
-        "bank_name": result.get("bank_name", ""),
+        "bank_name": resolved_bank_name,
         "account_last4": result.get("account_last4", ""),
         "bank_account_name": ba.name,
         "verification_status": verify_status,

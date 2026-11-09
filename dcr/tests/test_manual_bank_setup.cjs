@@ -39,14 +39,16 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js/customer.js')
 (async () => {
     let reloads = 0;
     const frm = { doc: { name: 'Synthetic Dealer' }, reload_doc: async () => { reloads++; } };
-    const values = { routing_number: '021000021', account_number: '123456789',
+    const values = { bank_name: 'DCR Sandbox Test Bank', routing_number: '021000021', account_number: '123456789',
         account_type: 'Checking', check_type: 'Business', is_default: 0 };
     context.verify_dealer_bank_account(frm);
     const dialog = currentDialog;
+    assert.equal(dialog.fields.find(field => field.fieldname === 'bank_name').reqd, 1);
     const pending = dialog.primary_action(values);
     assert.equal(dialog.disabled, true, 'Verification blocks duplicate clicks while the provider is pending');
     assert.equal(request.method, 'dcr.api.achq_integration.setup_bank_account');
     assert.equal(request.args.customer, 'Synthetic Dealer');
+    assert.equal(request.args.bank_name, 'DCR Sandbox Test Bank');
     assert.equal(request.args.is_default, 0, 'Verification need not replace the default account');
     resolveRequest({ message: { success: true } });
     await pending;

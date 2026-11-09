@@ -50,6 +50,33 @@ def test_payment_client_still_refuses_when_autopay_is_off():
         post.assert_not_called()
 
 
+@pytest.mark.parametrize('provider_name', [None, ''])
+def test_manual_verification_uses_entered_institution_when_provider_omits_it(provider_name):
+    client = MagicMock()
+    client.tokenize_and_verify.return_value = dict(success=True, token='test-token',
+        bank_name=provider_name, verify_status='POS', account_last4='6789', routing_last4='3123')
+    with patch.object(api, 'frappe') as f, patch.object(api, 'require_staff'), \
+         patch.object(api, '_check_rate_limit'), patch.object(api, 'ACHQClient', return_value=client), \
+         patch.object(api, '_send_connected_email'), \
+         patch.object(api, '_create_bank_account', return_value=SimpleNamespace(name='Test connection', is_default=0)) as create:
+        f.throw.side_effect = ValueError
+        result = api.setup_bank_account('DEMO', '123123123', '123456789', 'Checking',
+            is_default=False, bank_name='  DCR Sandbox Test Bank  ')
+    assert create.call_args.kwargs['bank_name'] == 'DCR Sandbox Test Bank'
+    assert result['bank_name'] == 'DCR Sandbox Test Bank'
+
+
+def test_missing_institution_is_actionable_before_native_account_naming():
+    with patch.object(api, 'frappe') as f, patch.object(api, '_', side_effect=lambda text: text), \
+         patch.object(api, '_get_or_create_bank', return_value=None), \
+         patch.object(api, 'require_staff'), patch.object(api, '_check_rate_limit'):
+        f.throw.side_effect = lambda message: (_ for _ in ()).throw(ValueError(message))
+        with pytest.raises(ValueError, match='bank name'):
+            api._create_bank_account('DEMO', None, 'Checking', 'test-token', 'Manual', 'POS',
+                '6789', '3123', False, SimpleNamespace(default_sec_code='CCD'), consent_captured=False)
+        f.new_doc.assert_not_called()
+
+
 def test_staff_verification_creates_paused_account_without_dealer_consent():
     bank = SimpleNamespace(insert=MagicMock())
     with patch.object(api,'frappe') as f, patch.object(api,'_get_or_create_bank',return_value='Test Bank'):
